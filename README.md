@@ -15,6 +15,9 @@ pip install -r requirements.txt
 python -B -m uvicorn main:app --reload
 ```
 
+## Accessing API Documentation
+After running the application, you can access the interactive API documentation provided by Swagger at: [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
+
 ## API Endpoints
 ### Authentication (auth)
 * **POST** `/auth/register`  
