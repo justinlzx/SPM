@@ -5,7 +5,7 @@ from database import get_db
 router = APIRouter()
 
 # Fetch user by email
-@router.get("/user/email/{email}")
+@router.get("/email/{email}")
 def get_user_by_email_route(email: str, db=Depends(get_db)):
     user = get_user_by_email(db, email)
     if not user:
@@ -19,7 +19,7 @@ def get_user_by_email_route(email: str, db=Depends(get_db)):
     }
 
 # Fetch user by username
-@router.get("/user/username/{username}")
+@router.get("/username/{username}")
 def get_user_by_username_route(username: str, db=Depends(get_db)):
     user = get_user_by_username(db, username)
     if not user:
