@@ -7,10 +7,18 @@
 
 ### Install Dependencies
 ```bash
+cd backend
 pip install -r requirements.txt
 ```
 
 ## Running the Application
+If you're **not** already in the backend directory:
+```bash 
+cd backend
+python -B -m uvicorn main:app --reload
+```
+
+If you're already in the backend directory:
 ```bash 
 python -B -m uvicorn main:app --reload
 ```
