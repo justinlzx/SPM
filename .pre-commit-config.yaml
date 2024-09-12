@@ -13,4 +13,4 @@ repos:
       - id: pretty-format-json # Checks that all your JSON files are pretty.
         args: ["--autofix"]
       - id: requirements-txt-fixer # Sorts entries in requirements.txt and constraints.txt and removes incorrect entry for pkg-resources==0.0.0
-      - id: trailing-whitespace # Trims trailing whitespace.
+      # - id: trailing-whitespace # Trims trailing whitespace.
