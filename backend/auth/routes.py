@@ -1,9 +1,10 @@
 from fastapi import APIRouter, Depends, HTTPException, Form
+from pydantic import EmailStr
 from sqlalchemy.orm import Session
 from auth.models import create_user, get_user_by_username, get_user_by_email
 from database import get_db
-from auth.utils import hash_password, verify_password, generate_uuid
-from pydantic import EmailStr
+from auth.utils import generate_JWT, hash_password, verify_password, generate_uuid
+from schemas.user_schemas import UserLogin
 
 router = APIRouter()
 
@@ -42,8 +43,19 @@ def login(
     
     user_uuid = user.uuid
     stored_hash = user.hashed_password
+    role = user.role
     
     if not verify_password(password, stored_hash, user_uuid):
         raise HTTPException(status_code=400, detail="Invalid username or password")
     
-    return {"message": "Login successful"}
+    access_token = generate_JWT({"user_id": user_uuid})
+
+    
+    return {"message": "Login successful",
+            "data": {
+                "access_token": access_token,
+                "token_type": "bearer",
+                "role": role,
+                "username": username
+            }
+        }
