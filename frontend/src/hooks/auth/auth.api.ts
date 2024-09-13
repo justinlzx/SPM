@@ -7,14 +7,13 @@ export const login = async (credentials: {
   username: string;
   password: string;
 }) => {
-  console.log(credentials.username, credentials.password);
-  const response = await axios.post(`${BACKEND_URL}/auth/login`, {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: qs.stringify(credentials),
-  });
-
-  console.log("response:", response);
+  const response = await axios.post(
+    `${BACKEND_URL}/auth/login`,
+    qs.stringify(credentials),
+    {
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    }
+  );
 
   if (!response) {
     throw new Error("Login failed");
