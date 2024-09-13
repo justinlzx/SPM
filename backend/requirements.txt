@@ -13,11 +13,13 @@ email_validator==2.2.0
 exceptiongroup==1.2.2
 fastapi==0.114.1
 filelock==3.16.0
+greenlet==3.1.0
 h11==0.14.0
 identify==2.6.1
 idna==3.8
 nodeenv==1.9.1
 pandas==2.2.2
+nodeenv==1.9.1
 passlib==1.7.4
 platformdirs==4.3.3
 pre-commit==3.8.0
