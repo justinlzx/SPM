@@ -9,9 +9,15 @@
 Pre-commit hooks run code quality checks everytime you commit. Hooks to be used are specified in .pre-commit-config.yaml, and more hooks can be added from https://github.com/pre-commit/pre-commit-hooks
 
 1. Create and activate a Python venv
+For macOS:
 ```bash
 python3 -m venv venv
 source venv/bin/activate
+```
+For Windows:
+```bash
+python -m venv venv
+venv/bin/activate
 ```
 
 2. Install the pre-commit package manager
