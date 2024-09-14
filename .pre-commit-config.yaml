@@ -6,11 +6,11 @@ repos:
     hooks:
       - id: check-merge-conflict # Check for files that contain merge conflict strings.
       - id: check-yaml # Attempts to load all YAML files to verify syntax.
-        # - id: detect-aws-credentials # Checks for the existence of AWS secrets that you have set up with the AWS CLI.
-        # - id: detect-private-key # Checks for the existence of private keys.
-        # - id: end-of-file-fixer # Makes sure files end in a newline and only a newline.
-        # - id: name-tests-test # verifies that test files are named correctly.
-        # - id: pretty-format-json # Checks that all your JSON files are pretty.
-        # args: ["--autofix"]
+      - id: detect-aws-credentials # Checks for the existence of AWS secrets that you have set up with the AWS CLI.
+      - id: detect-private-key # Checks for the existence of private keys.
+      # - id: end-of-file-fixer # Makes sure files end in a newline and only a newline.
+      # - id: name-tests-test # verifies that test files are named correctly.
+      - id: pretty-format-json # Checks that all your JSON files are pretty.
+        args: ["--autofix"]
       - id: requirements-txt-fixer # Sorts entries in requirements.txt and constraints.txt and removes incorrect entry for pkg-resources==0.0.0
       # - id: trailing-whitespace # Trims trailing whitespace.
