@@ -4,6 +4,8 @@ from fastapi import FastAPI
 
 from .employees import models as employee_models
 
+from .auth import models as auth_models
+
 from .auth.routes import router as auth_router
 
 from .users.routes import router as users_router
@@ -13,6 +15,7 @@ from .database import engine
 from .init_db import load_data
 
 employee_models.Base.metadata.create_all(bind=engine)
+auth_models.Base.metadata.create_all(bind=engine)
 
 """
 Create a context manager to handle the lifespan of the FastAPI application
