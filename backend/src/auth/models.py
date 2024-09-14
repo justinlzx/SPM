@@ -1,4 +1,5 @@
 from sqlalchemy import Column, Integer, String
+from sqlalchemy.orm import Session
 from database import Base
 
 class User(Base):
@@ -11,15 +12,15 @@ class User(Base):
     hashed_password = Column(String)
     role = Column(String)
     
-def create_user(db, uuid: str, email: str, username: str, hashed_password: str, role: str):
+def create_user(db: Session, uuid: str, email: str, username: str, hashed_password: str, role: str):
     new_user = User(uuid=uuid, email=email, username=username, hashed_password=hashed_password, role=role)
     db.add(new_user)
     db.commit()
     db.refresh(new_user)
     return new_user
 
-def get_user_by_username(db, username: str):
+def get_user_by_username(db: Session, username: str):
     return db.query(User).filter(User.username == username).first()
 
-def get_user_by_email(db, email: str):
+def get_user_by_email(db: Session, email: str):
     return db.query(User).filter(User.email == email).first()
