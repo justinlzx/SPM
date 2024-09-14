@@ -4,7 +4,6 @@ from sqlalchemy.orm import Session
 from auth.models import create_user, get_user_by_username, get_user_by_email
 from database import get_db
 from auth.utils import generate_JWT, hash_password, verify_password, generate_uuid
-from schemas.user_schemas import UserLogin
 
 router = APIRouter()
 
@@ -14,19 +13,17 @@ def register(
     username: str = Form(...),
     password: str = Form(...),
     role: str = Form(...),
-    db: Session = Depends(get_db)
+    db=Depends(get_db)
 ):
-    # Check if username or email already exists
     if get_user_by_username(db, username):
         raise HTTPException(status_code=400, detail="Username already exists")
     if get_user_by_email(db, email):
         raise HTTPException(status_code=400, detail="Email already exists")
 
-    # Generate UUID and hash the password
+    # Generate UUID
     user_uuid = generate_uuid()
     hashed_password = hash_password(password, user_uuid)
 
-    # Create the user in the database
     create_user(db, user_uuid, email, username, hashed_password, role)
     return {"message": "User registered successfully", "uuid": user_uuid}
 
@@ -34,7 +31,7 @@ def register(
 def login(
     username: str = Form(...),
     password: str = Form(...),
-    db: Session = Depends(get_db)
+    db=Depends(get_db)
 ):
     user = get_user_by_username(db, username)
     
