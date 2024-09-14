@@ -14,9 +14,6 @@ from .database import engine
 
 from .init_db import load_data
 
-employee_models.Base.metadata.create_all(bind=engine)
-auth_models.Base.metadata.create_all(bind=engine)
-
 """
 Create a context manager to handle the lifespan of the FastAPI application
 Code before the yield keyword is run before the application starts
@@ -26,6 +23,7 @@ Code after the yield keyword is run after the application stops
 async def lifespan(app: FastAPI):
     # Recreate all tables
     employee_models.Base.metadata.create_all(bind=engine)
+    auth_models.Base.metadata.create_all(bind=engine)
     
     # Load employee data from CSV
     load_data.load_employee_data_from_csv("./src/init_db/employee.csv")
@@ -34,6 +32,7 @@ async def lifespan(app: FastAPI):
     
     # Drop all tables
     employee_models.Base.metadata.drop_all(bind=engine)
+    auth_models.Base.metadata.drop_all(bind=engine)
 
 app = FastAPI(lifespan=lifespan)
 
