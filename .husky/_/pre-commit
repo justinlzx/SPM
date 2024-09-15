@@ -1,6 +1,9 @@
 #!/bin/sh
-# Check if any staged files are in the frontend directory
+echo "Running pre-commit hook..."
 if git diff --cached --name-only | grep -q '^frontend/'; then
+  echo "Frontend files detected. Running lint-staged..."
   cd frontend
   npx lint-staged
+else
+  echo "No frontend files detected."
 fi
