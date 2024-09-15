@@ -27,7 +27,7 @@ export const SignUpPage = () => {
   const [password, setPassword] = useState("");
   const [role, setRole] = useState<Roles>(Roles.Select);
 
-  const [showPassword, setShowPassword] = React.useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleClickShowPassword = () => setShowPassword((show) => !show);
 
@@ -68,7 +68,7 @@ export const SignUpPage = () => {
           </InputLabel>
           <Input
             type="email"
-            placeholder="Enter email here"
+            placeholder="Enter email"
             value={email}
             onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
               setEmail(e.target.value)
@@ -84,7 +84,7 @@ export const SignUpPage = () => {
           </InputLabel>
           <Input
             type="username"
-            placeholder="Enter username here"
+            placeholder="Enter username"
             value={username}
             onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
               setUsername(e.target.value)
@@ -103,7 +103,7 @@ export const SignUpPage = () => {
             type={showPassword ? "text" : "password"}
             value={password}
             className="w-full p-3 rounded-md border border-gray-300"
-            placeholder="Enter password here"
+            placeholder="Enter password"
             disableUnderline={true}
             endAdornment={
               <InputAdornment position="end">
