@@ -6,21 +6,24 @@
 * SQLite (built-in with Python)
 
 ### Install Pre-Commit Hook
-Pre-commit hooks run code quality checks everytime you commit. Hooks to be used are specified in .pre-commit-config.yaml, and more hooks can be added from https://github.com/pre-commit/pre-commit-hooks
+Pre-commit hooks run code quality checks everytime you commit. Hooks to be used are specified in .pre-commit-config.yaml.
 
-1. Create and activate a Python venv
+*NOTE: pre-commit will only work using the ```git commit``` command in terminal. It will not work using the VSCode Source Control GUI.
+
+1. (Optional) Create and activate a Python venv
+
 For macOS:
 ```bash
-python3 -m venv venv
-source venv/bin/activate
+python -m venv <name_of_venv>
+source <name_of_venv>/bin/activate
 ```
 For Windows:
 ```bash
-python -m venv venv
-venv/bin/activate
+python -m venv <name_of_venv>
+<name_of_venv>/bin/activate
 ```
 
-2. Install the pre-commit package manager
+2. Install the pre-commit hook manager
 ```bash
 pip install pre-commit
 ```
@@ -36,16 +39,15 @@ cd backend
 pip install -r requirements.txt
 ```
 
-## Running the Application
-If you're **not** already in the backend directory:
+## Running the backend application
+1. Change to the backend directory
 ```bash
 cd backend
-python -B -m uvicorn main:app --reload
 ```
 
-If you're already in the backend directory:
+2. Run the app
 ```bash
-python -B -m uvicorn main:app --reload
+python -m main
 ```
 
 ## Accessing API Documentation
