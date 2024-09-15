@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useContext, useState } from "react";
 import {
   IconButton,
   Input,
@@ -9,10 +9,12 @@ import {
 } from "@mui/material";
 import Visibility from "@mui/icons-material/Visibility";
 import VisibilityOff from "@mui/icons-material/VisibilityOff";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import React from "react";
-import logo from "../logo.svg";
-import { useSignUp } from "../hooks/auth/auth";
+import logo from "../../logo.svg";
+import { useSignup } from "../../hooks/auth/auth";
+import { AppContext } from "../../context/AppContextProvider";
+import { AlertStatus } from "../../common/SnackBar";
 
 enum Roles {
   Select = "Select role",
@@ -27,7 +29,9 @@ export const SignUpPage = () => {
   const [password, setPassword] = useState("");
   const [role, setRole] = useState<Roles>(Roles.Select);
 
-  const [showPassword, setShowPassword] = useState(false);
+  const [showPassword, setShowPassword] = useState(true);
+
+  const navigate = useNavigate();
 
   const handleClickShowPassword = () => setShowPassword((show) => !show);
 
@@ -43,13 +47,36 @@ export const SignUpPage = () => {
     event.preventDefault();
   };
 
-  const { mutate } = useSignUp();
+  const { mutate } = useSignup();
+  const { setAlertStatus, setShowSnackbar, setSnackbarMessage } =
+    useContext(AppContext);
 
-  //   TODO: connect to backend
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     // Handle form submission logic
-    mutate({ username, password, email, role });
+    mutate(
+      {
+        email,
+        username,
+        password,
+        role,
+      },
+      {
+        onSuccess: () => {
+          setAlertStatus(AlertStatus.Success);
+          setShowSnackbar(true);
+          setSnackbarMessage("Signup successful");
+          navigate("/login");
+        },
+        onError: (error: any) => {
+          setAlertStatus(AlertStatus.Error);
+          setShowSnackbar(true);
+          if (error.message) {
+            setSnackbarMessage(error.message);
+          }
+        },
+      }
+    );
   };
 
   return (

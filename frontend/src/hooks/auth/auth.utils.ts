@@ -26,8 +26,9 @@ export const signUp = async (credentials: {
     );
     console.log("Signup successful");
 
-  } catch (error) {
-    throw new Error("Signup failed");
+  } catch (error: any) {
+    console.log(error)
+    throw new Error(error.response.data.detail);
   }
 };
 

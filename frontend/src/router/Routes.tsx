@@ -1,7 +1,8 @@
 import { createBrowserRouter } from "react-router-dom";
-import { LoginPage } from "../login-signup/LoginPage";
-import { SignUpPage } from "../login-signup/SignUpPage";
-import App from "../App";
+import { LoginPage } from "../pages/login-signup/LoginPage";
+import { SignUpPage } from "../pages/login-signup/SignUpPage";
+import { App } from "../App";
+import { HomePage } from "../pages/home/HomePage";
 
 type routesProps = {
   path: string;
@@ -11,17 +12,22 @@ type routesProps = {
 
 const routes: routesProps[] = [
   {
-    path: "/login",
-    element: <LoginPage />,
-  },
-  {
-    path: "/sign-up",
-    element: <SignUpPage />,
-  },
-  {
     path: "/",
     element: <App />,
-    children: [],
+    children: [
+      {
+        path: "/login",
+        element: <LoginPage />,
+      },
+      {
+        path: "/sign-up",
+        element: <SignUpPage />,
+      },
+      {
+        path: "/home",
+        element: <HomePage />,
+      },
+    ],
   },
 ];
 
