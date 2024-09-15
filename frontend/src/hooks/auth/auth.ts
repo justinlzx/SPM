@@ -43,12 +43,12 @@ export const useLogin = () => {
   });
 };
 
-export const useSignUp = () => {
+export const useSignup = () => {
   const navigate = useNavigate();
 
   return useMutation<void, Error, TSignupCredentials>({
     mutationFn: signUp,
-    onSuccess: () => {
+    onSuccess: async () => {
       // Handle successful signup
       console.log("Signup successful");
       // Redirect to login page
@@ -59,5 +59,4 @@ export const useSignUp = () => {
       console.error("Signup failed", error);
     },
   });
-
 };

@@ -1,8 +1,8 @@
 import { useState } from "react";
-import logo from "../logo.svg";
+import logo from "../../logo.svg";
 import { IconButton, Input, InputAdornment, InputLabel } from "@mui/material";
 import { Link } from "react-router-dom";
-import { useLogin } from "../hooks/auth/auth";
+import { useLogin } from "../../hooks/auth/auth";
 import { VisibilityOff, Visibility } from "@mui/icons-material";
 
 export const LoginPage = () => {
