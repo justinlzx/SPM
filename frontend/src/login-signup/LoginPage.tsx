@@ -50,16 +50,6 @@ export const LoginPage = () => {
             className="w-full rounded-lg border border-gray-300 p-3"
           />
 
-          {/* Forgot password link aligned to the left */}
-          <div className="flex justify-start">
-            <Link
-              to="/forgot-password"
-              className="text-sm text-blue-950 hover:underline"
-            >
-              Forgot password?
-            </Link>
-          </div>
-
           {/* Submit button */}
           <div>
             <button
