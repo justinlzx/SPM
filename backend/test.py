@@ -14,6 +14,8 @@ def test_pre_commit():
         print("Pre-commit hook failed. Please fix the issues before committing.")
         print(result.stdout)
 
+    # Add some comment
+
 
 if __name__ == "__main__":
     test_pre_commit()
