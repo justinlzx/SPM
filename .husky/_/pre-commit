@@ -1,0 +1,6 @@
+#!/bin/sh
+# Check if any staged files are in the frontend directory
+if git diff --cached --name-only | grep -q '^frontend/'; then
+  cd frontend
+  npx lint-staged
+fi
