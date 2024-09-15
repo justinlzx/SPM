@@ -1,8 +1,9 @@
 import { useState } from "react";
 import logo from "../logo.svg";
-import { Input } from "@mui/material";
+import { IconButton, Input, InputAdornment, InputLabel } from "@mui/material";
 import { Link } from "react-router-dom";
 import { useLogin } from "../hooks/auth/auth";
+import { VisibilityOff, Visibility } from "@mui/icons-material";
 
 export const LoginPage = () => {
   const [username, setUsername] = useState("");
@@ -11,6 +12,22 @@ export const LoginPage = () => {
   const [isLoggingIn, setIsLoggingIn] = useState(false);
 
   const { mutate } = useLogin();
+
+  const [showPassword, setShowPassword] = useState(false);
+
+  const handleClickShowPassword = () => setShowPassword((show) => !show);
+
+  const handleMouseDownPassword = (
+    event: React.MouseEvent<HTMLButtonElement>
+  ) => {
+    event.preventDefault();
+  };
+
+  const handleMouseUpPassword = (
+    event: React.MouseEvent<HTMLButtonElement>
+  ) => {
+    event.preventDefault();
+  };
 
   const handleLogin = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -29,9 +46,12 @@ export const LoginPage = () => {
         {/* Form */}
         <form className="space-y-6" onSubmit={handleLogin}>
           {/* Username input */}
+          <InputLabel htmlFor="filled-adornment-password" variant="outlined">
+            Username
+          </InputLabel>
           <Input
             type="username"
-            placeholder="Username"
+            placeholder="Enter Username"
             value={username}
             onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
               setUsername(e.target.value)
@@ -40,14 +60,32 @@ export const LoginPage = () => {
           />
 
           {/* Password input */}
+          <InputLabel htmlFor="filled-adornment-password" variant="outlined">
+            Password
+          </InputLabel>
           <Input
-            type="password"
-            placeholder="Password"
+            id="filled-adornment-password"
+            type={showPassword ? "text" : "password"}
             value={password}
+            className="w-full p-3 rounded-md border border-gray-300"
+            placeholder="Enter Password"
+            disableUnderline={true}
+            endAdornment={
+              <InputAdornment position="end">
+                <IconButton
+                  aria-label="toggle password visibility"
+                  onClick={handleClickShowPassword}
+                  onMouseDown={handleMouseDownPassword}
+                  onMouseUp={handleMouseUpPassword}
+                  edge="end"
+                >
+                  {showPassword ? <VisibilityOff /> : <Visibility />}
+                </IconButton>
+              </InputAdornment>
+            }
             onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
               setPassword(e.target.value)
             }
-            className="w-full rounded-lg border border-gray-300 p-3"
           />
 
           {/* Submit button */}
