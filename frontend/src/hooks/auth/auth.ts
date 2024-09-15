@@ -2,11 +2,16 @@ import { useNavigate } from 'react-router-dom';
 import { useContext } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { UserContext } from '../../context/UserContextProvider';
-import { login } from './auth.utils';
+import { login, signUp } from './auth.utils';
 
-type Credentials = {
+type TCredentials = {
   username: string;
   password: string;
+};
+
+type TSignupCredentials = TCredentials & {
+  email: string;
+  role: string;
 };
 
 export type TLoginResponse = {
@@ -14,11 +19,11 @@ export type TLoginResponse = {
   role: string;
 };
 
-export const useAuth = () => {
+export const useLogin = () => {
   const navigate = useNavigate();
   const { setUser } = useContext(UserContext);
 
-  return useMutation<TLoginResponse, Error, Credentials>({
+  return useMutation<TLoginResponse, Error, TCredentials>({
     mutationFn: login,
     onSuccess: (response) => {
       // Handle successful login
@@ -36,4 +41,23 @@ export const useAuth = () => {
       // You might want to show an error message to the user
     },
   });
+};
+
+export const useSignUp = () => {
+  const navigate = useNavigate();
+
+  return useMutation<void, Error, TSignupCredentials>({
+    mutationFn: signUp,
+    onSuccess: () => {
+      // Handle successful signup
+      console.log("Signup successful");
+      // Redirect to login page
+      navigate("/login");
+    },
+    onError: (error) => {
+      // Handle signup error
+      console.error("Signup failed", error);
+    },
+  });
+
 };
