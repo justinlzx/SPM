@@ -10,6 +10,27 @@ export const AUTH_LOCAL_STORAGE_KEYS = {
   ROLE: "role",
 };
 
+export const signUp = async (credentials: {
+  username: string;
+  email: string;
+  password: string;
+  role: string;
+}): Promise<void> => {
+  try {
+    await axios.post(
+      `${BACKEND_URL}/auth/register`,
+      qs.stringify(credentials),
+      {
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      }
+    );
+    console.log("Signup successful");
+
+  } catch (error) {
+    throw new Error("Signup failed");
+  }
+};
+
 export const login = async (credentials: {
   username: string;
   password: string;

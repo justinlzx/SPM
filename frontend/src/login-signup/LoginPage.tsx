@@ -2,7 +2,7 @@ import { useState } from "react";
 import logo from "../logo.svg";
 import { Input } from "@mui/material";
 import { Link } from "react-router-dom";
-import { useAuth } from "../hooks/auth/auth";
+import { useLogin } from "../hooks/auth/auth";
 
 export const LoginPage = () => {
   const [username, setUsername] = useState("");
@@ -10,7 +10,7 @@ export const LoginPage = () => {
 
   const [isLoggingIn, setIsLoggingIn] = useState(false);
 
-  const { mutate } = useAuth();
+  const { mutate } = useLogin();
 
   const handleLogin = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();

@@ -12,6 +12,7 @@ import VisibilityOff from "@mui/icons-material/VisibilityOff";
 import { Link } from "react-router-dom";
 import React from "react";
 import logo from "../logo.svg";
+import { useSignUp } from "../hooks/auth/auth";
 
 enum Roles {
   Select = "Select role",
@@ -42,20 +43,13 @@ export const SignUpPage = () => {
     event.preventDefault();
   };
 
+  const { mutate } = useSignUp();
+
   //   TODO: connect to backend
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     // Handle form submission logic
-    console.log(
-      "Email:",
-      email,
-      "Username:",
-      username,
-      "Password:",
-      password,
-      "Role:",
-      role
-    );
+    mutate({ username, password, email, role });
   };
 
   return (
