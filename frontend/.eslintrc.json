@@ -21,6 +21,7 @@
     "@typescript-eslint"
   ],
   "rules": {
+    "no-unused-vars": "error",
     "quotes": [
       "error",
       "double"
