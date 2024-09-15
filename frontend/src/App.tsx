@@ -1,7 +1,6 @@
 import "./App.css";
 import { useContext, useEffect } from "react";
 import { UserContext } from "./context/UserContextProvider";
-import { LoginPage } from "./pages/login-signup/LoginPage";
 import { AppContext } from "./context/AppContextProvider";
 import { SnackBarComponent as SnackBar } from "./common/SnackBar";
 import { Outlet, useNavigate } from "react-router-dom";
@@ -19,7 +18,6 @@ export const App = () => {
     }
   }, [user, navigate]);
 
-function App() {
   return (
     <div>
       {alertStatus !== undefined && (
@@ -33,6 +31,4 @@ function App() {
       <Outlet />
     </div>
   );
-}
-
-export default App;
+};
