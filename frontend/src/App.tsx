@@ -19,7 +19,7 @@ export const App = () => {
   }, [user, navigate]);
 
   return (
-    <div>
+    <div className="App">
       {alertStatus !== undefined && (
         <SnackBar
           alertStatus={alertStatus}
