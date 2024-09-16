@@ -1,10 +1,7 @@
 {
-    "python.linting.enabled": true,
-    "python.linting.flake8Enabled": true,
-    "python.linting.flake8Args": [
-        "--config=${workspaceFolder}/config/.flake8"
+    "flake8.args": [
+        "--config=${workspaceFolder}/config/.flake8",
     ],
-    "python.formatting.provider": "black",
+    "eslint.format.enable": true,
     "editor.formatOnSave": true,
-    
 }
