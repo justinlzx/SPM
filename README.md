@@ -5,41 +5,37 @@
 * Python 3.8 or higher
 * SQLite (built-in with Python)
 
-### Install Pre-Commit Hook
-Pre-commit hooks run code quality checks everytime you commit. Hooks to be used are specified in .pre-commit-config.yaml.
-
-*NOTE: pre-commit will only work using the ```git commit``` command in terminal. It will not work using the VSCode Source Control GUI.
-
-1. (Optional) Create and activate a Python venv
-
-For macOS:
+### Setup development environment
+1. Ensure you are in the project root directory
+2. (MacOS/Linux users only) Give permissions to run the setup script
 ```bash
-python -m venv <name_of_venv>
-source <name_of_venv>/bin/activate
+chmod +x ./scripts/setup.sh
 ```
-For Windows:
+3. Run the setup script
+
+MacOS/Linux users:
 ```bash
-python -m venv <name_of_venv>
-<name_of_venv>/bin/activate
+./scripts/setup.sh
 ```
 
-2. Install the pre-commit hook manager
+Windows users:
 ```bash
-pip install pre-commit
+scripts\setup.bat
 ```
 
-3. Install the pre-commit hooks
+4. Activate the `project_venv` **before starting any development work**
+
+MacOS/Linux users:
 ```bash
-pre-commit install
+source project_venv/bin/activate
 ```
 
-### Install Dependencies
+Windows users:
 ```bash
-cd backend
-pip install -r requirements.txt
+.\project_venv\Scripts\activate
 ```
 
-## Running the backend application
+## Running the backend application (without Docker)
 1. Change to the backend directory
 ```bash
 cd backend
