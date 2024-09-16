@@ -1,26 +1,34 @@
-import React from 'react';
-import logo from './logo.svg';
-import './App.css';
+import "./App.css";
+import { useContext, useEffect } from "react";
+import { UserContext } from "./context/UserContextProvider";
+import { AppContext } from "./context/AppContextProvider";
+import { SnackBarComponent as SnackBar } from "./common/SnackBar";
+import { Outlet, useNavigate } from "react-router-dom";
 
-function App() {
+export const App = () => {
+  const { alertStatus, showSnackbar, snackbarMessage, handleCloseSnackBar } =
+    useContext(AppContext);
+
+  const { user } = useContext(UserContext);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!user) {
+      navigate("/login");
+    }
+  }, [user, navigate]);
+
   return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.tsx</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
+    <div>
+      {alertStatus !== undefined && (
+        <SnackBar
+          alertStatus={alertStatus}
+          showSnackbar={showSnackbar}
+          snackbarMessage={snackbarMessage}
+          handleCloseSnackBar={handleCloseSnackBar}
+        />
+      )}
+      <Outlet />
     </div>
   );
-}
-
-export default App;
+};
