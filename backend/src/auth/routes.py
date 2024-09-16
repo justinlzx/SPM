@@ -15,10 +15,13 @@ def register(
     role: str = Form(...),
     db: Session = Depends(get_db)
 ):
+    print(email, username, password, role)
     # Check if username or email already exists
     if get_user_by_username(db, username):
+        print("Username already exists")
         raise HTTPException(status_code=400, detail="Username already exists")
     if get_user_by_email(db, email):
+        print("Email already exists")
         raise HTTPException(status_code=400, detail="Email already exists")
 
     # Generate UUID and hash the password
