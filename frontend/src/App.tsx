@@ -4,6 +4,7 @@ import { UserContext } from "./context/UserContextProvider";
 import { AppContext } from "./context/AppContextProvider";
 import { SnackBarComponent as SnackBar } from "./common/SnackBar";
 import { Outlet, useNavigate } from "react-router-dom";
+import { useHealthCheck } from "./hooks/auth/health/health";
 
 export const App = () => {
   const { alertStatus, showSnackbar, snackbarMessage, handleCloseSnackBar } =
@@ -13,13 +14,26 @@ export const App = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (!user) {
+    if (user === undefined) {
       navigate("/login");
+      return;
     }
   }, [user, navigate]);
 
+  const healthCheckMutation = useHealthCheck();
+
+  // useEffect(() => {
+  //   healthCheckMutation.mutate();
+  //   const intervalId = setInterval(() => {
+  //     healthCheckMutation.mutate();
+  //     console.log("Health check interval");
+  //   }, 60000); // 60000 milliseconds = 60 seconds
+
+  //   return () => clearInterval(intervalId);
+  // }, [healthCheckMutation]);
+
   return (
-    <div className="App">
+    <div>
       {alertStatus !== undefined && (
         <SnackBar
           alertStatus={alertStatus}
