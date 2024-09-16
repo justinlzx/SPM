@@ -14,6 +14,8 @@ from .database import engine
 
 from .init_db import load_data
 
+from fastapi.middleware.cors import CORSMiddleware
+
 """
 Create a context manager to handle the lifespan of the FastAPI application
 Code before the yield keyword is run before the application starts
@@ -35,6 +37,19 @@ async def lifespan(app: FastAPI):
     auth_models.Base.metadata.drop_all(bind=engine)
 
 app = FastAPI(lifespan=lifespan)
+
+origins = [
+    "http://localhost:3000",
+]
+
+# Add CORS middleware to allow requests from the frontend
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # Include the auth and user routes
 app.include_router(auth_router, prefix="/auth", tags=["Authentication"])

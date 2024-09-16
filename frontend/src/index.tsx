@@ -1,15 +1,30 @@
-import React from 'react';
-import ReactDOM from 'react-dom/client';
-import './index.css';
-import App from './App';
-import reportWebVitals from './reportWebVitals';
+import React, { useContext } from "react";
+import ReactDOM from "react-dom/client";
+import "./index.css";
+import reportWebVitals from "./reportWebVitals";
+import { RouterProvider } from "react-router-dom";
+import { router } from "./router/Routes";
+import { UserContextProvider } from "./context/UserContextProvider";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { AppContext, AppContextProvider } from "./context/AppContextProvider";
+import { SnackBarComponent as SnackBar } from "./common/SnackBar";
 
 const root = ReactDOM.createRoot(
-  document.getElementById('root') as HTMLElement
+  document.getElementById("root") as HTMLElement
 );
+
+
+
+const queryClient = new QueryClient();
 root.render(
   <React.StrictMode>
-    <App />
+    <QueryClientProvider client={queryClient}>
+      <AppContextProvider>
+        <UserContextProvider>
+          <RouterProvider router={router} />
+        </UserContextProvider>
+      </AppContextProvider>
+    </QueryClientProvider>
   </React.StrictMode>
 );
 
