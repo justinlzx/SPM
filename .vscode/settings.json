@@ -6,7 +6,5 @@
     ],
     "python.formatting.provider": "black",
     "editor.formatOnSave": true,
-    "eslint.options": {
-        "configFile": "${workspaceFolder}/config/.eslintrc.json"
-    }
+    
 }
