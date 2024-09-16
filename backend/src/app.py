@@ -1,6 +1,7 @@
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from ..database import engine
 from .auth import models as auth_models
@@ -8,8 +9,6 @@ from .auth.routes import router as auth_router
 from .employees import models as employee_models
 from .init_db import load_data
 from .users.routes import router as users_router
-
-from fastapi.middleware.cors import CORSMiddleware
 
 """
 Create a context manager to handle the lifespan of the FastAPI application
