@@ -3,7 +3,7 @@ echo "Running pre-commit hook..."
 
 # Run general hooks
 echo "Running general hooks..."
-pre-commit run --hook-stage commit
+pre-commit run --hook-stage commit --config config/.pre-commit-config.yaml
 
 # Check if there are staged files in the backend folder
 if git diff --cached --name-only | grep -q '^backend/'; then
