@@ -46,7 +46,7 @@
   "scripts": {
     "build": "react-scripts build",
     "eject": "react-scripts eject",
-    "prepare": "HUSKY=../.husky husky install",
+    "prepare": "HUSKY=../.husky husky",
     "start": "react-scripts start",
     "test": "react-scripts test"
   },
