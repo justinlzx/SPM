@@ -21,6 +21,8 @@ Create a context manager to handle the lifespan of the FastAPI application
 Code before the yield keyword is run before the application starts
 Code after the yield keyword is run after the application stops
 """
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Recreate all tables
