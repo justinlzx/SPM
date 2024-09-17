@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Form
 from pydantic import EmailStr
 from sqlalchemy.orm import Session
 from ..auth.models import create_user, get_user_by_username, get_user_by_email
-from database import get_db
+from ..database import get_db
 from ..auth.utils import generate_JWT, hash_password, verify_password, generate_uuid
 
 router = APIRouter()
