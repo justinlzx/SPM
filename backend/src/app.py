@@ -27,6 +27,9 @@ async def lifespan(app: FastAPI):
     # Load employee data from CSV
     load_data.load_employee_data_from_csv("./src/init_db/employee.csv")
 
+    # Load auth data from CSV
+    load_data.load_auth_data_from_csv("./src/init_db/auth.csv")
+
     yield
 
     # Drop all tables
