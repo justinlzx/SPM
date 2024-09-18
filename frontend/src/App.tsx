@@ -12,6 +12,7 @@ export const App = () => {
 
   const { user } = useContext(UserContext);
   const navigate = useNavigate();
+  const { mutate } = useHealthCheck();
 
   useEffect(() => {
     if (user === undefined) {
@@ -20,17 +21,9 @@ export const App = () => {
     }
   }, [user, navigate]);
 
-  const healthCheckMutation = useHealthCheck();
-
-  // useEffect(() => {
-  //   healthCheckMutation.mutate();
-  //   const intervalId = setInterval(() => {
-  //     healthCheckMutation.mutate();
-  //     console.log("Health check interval");
-  //   }, 60000); // 60000 milliseconds = 60 seconds
-
-  //   return () => clearInterval(intervalId);
-  // }, [healthCheckMutation]);
+  useEffect(() => {
+    mutate();
+  }, [mutate]);
 
   return (
     <div>
