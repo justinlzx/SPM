@@ -1,7 +1,8 @@
 import pandas as pd
 from sqlalchemy.orm import Session
-from ..employees.models import Employee
+
 from ...database import SessionLocal
+from ..employees.models import Employee
 
 
 def load_employee_data_from_csv(file_path: str):
