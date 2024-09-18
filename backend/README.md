@@ -17,7 +17,7 @@ source venv/bin/activate
 For Windows:
 ```bash
 python -m venv venv
-venv/bin/activate
+venv\Scripts\activate
 ```
 
 2. Install the pre-commit package manager
