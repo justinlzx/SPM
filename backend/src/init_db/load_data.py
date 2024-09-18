@@ -1,7 +1,7 @@
 import pandas as pd
 from sqlalchemy.orm import Session
 
-from ...database import SessionLocal
+from ..database import SessionLocal
 from ..employees.models import Employee
 
 
