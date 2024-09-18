@@ -1,6 +1,5 @@
 import hashlib
 import os
-import uuid
 from datetime import datetime, timedelta
 from typing import Optional
 
@@ -22,11 +21,6 @@ def verify_password(input_password: str, stored_hash: str, salt: str) -> bool:
     return hash_password(input_password, salt) == stored_hash
 
 
-def generate_uuid() -> str:
-    """Generate a unique UUID for each user."""
-    return str(uuid.uuid4())
-
-
 def generate_JWT(data: dict, expires_delta: Optional[timedelta] = None) -> str:
     """Generate a JWT token for the user."""
 
@@ -38,10 +32,3 @@ def generate_JWT(data: dict, expires_delta: Optional[timedelta] = None) -> str:
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, TOKEN_SECRET)
     return encoded_jwt
-
-
-if __name__ == "__main__":
-    # Test the hash_password and verify_password functions
-    token_data = {"user_id": "uuid1"}
-    token = generate_JWT(token_data)
-    print(f"Generated JWT: {token}")
