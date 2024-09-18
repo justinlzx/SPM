@@ -1,83 +1,112 @@
-# SPM Project - Mee Rebus
+# SPM:
 
-## Setup
-### Requirements
-* Python 3.8 or higher
-* SQLite (built-in with Python)
+This project contains a frontend and backend application that can be easily spun up using Docker Compose.
 
-### Install Pre-Commit Hook
-Pre-commit hooks run code quality checks everytime you commit. Hooks to be used are specified in .pre-commit-config.yaml, and more hooks can be added from https://github.com/pre-commit/pre-commit-hooks
+## Prerequisites
 
-1. Create and activate a Python venv
-For macOS:
-```bash
-python3 -m venv venv
-source venv/bin/activate
+Before you begin, ensure you have the following installed on your system:
+
+- [Docker](https://www.docker.com/get-started)
+- [Docker Compose](https://docs.docker.com/compose/install/)
+
+## Project Structure
+
 ```
-For Windows:
-```bash
-python -m venv venv
-venv/bin/activate
-```
-
-2. Install the pre-commit package manager
-```bash
-pip install pre-commit
+myapp/
+├── frontend/
+│   ├── Dockerfile
+│   └── ...
+├── backend/
+│   ├── Dockerfile
+│   └── ...
+├── docker-compose.yaml
+└── README.md
 ```
 
-3. Install the pre-commit hooks
-```bash
-pre-commit install
+## Getting Started
+
+Follow these steps to get your development environment running:
+
+1. Clone the repository:
+
+   ```
+   git clone https://github.com/yourusername/myapp.git
+   cd myapp
+   ```
+
+2. Start the application using Docker Compose:
+
+   ```
+   docker-compose up -d
+   ```
+
+   This command will build the images if they don't exist and start the containers in detached mode.
+
+3. Access the application:
+   - Frontend: http://localhost:3000
+   - Backend: http://localhost:8000
+
+## Services
+
+The `docker-compose.yaml` file defines the following services:
+
+- `frontend`: React application served by Nginx
+- `backend`: FastAPI server
+
+## Development
+
+To make changes to the application:
+
+1. Modify the code in the `frontend/` or `backend/` directories.
+2. Rebuild and restart the containers:
+
+   ```
+   docker-compose up -d --build
+   ```
+
+   ### Starting Individual Components
+
+   Frontend: [HERE](frontend/README.md)
+   Backend: [HERE](backend/README.md)
+
+## Stopping the Application
+
+To stop the application and remove the containers:
+
+```
+docker-compose down
 ```
 
-### Install Dependencies
-```bash
-cd backend
-pip install -r requirements.txt
+To stop the application and remove the containers, networks, and volumes:
+
+```
+docker-compose down -v
 ```
 
-## Running the Application
-If you're **not** already in the backend directory:
-```bash
-cd backend
-python -B -m uvicorn main:app --reload
+## Logs
+
+To view the logs of all services:
+
+```
+docker-compose logs
 ```
 
-If you're already in the backend directory:
-```bash
-python -B -m uvicorn main:app --reload
+To view logs for a specific service:
+
+```
+docker-compose logs frontend
 ```
 
-## Accessing API Documentation
-After running the application, you can access the interactive API documentation provided by Swagger at: [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
+or
 
-## API Endpoints
-### Authentication (auth)
-* **POST** `/auth/register`
-  Registers a new user by accepting email, username, password, and role. Returns the UUID for the user.
-* **POST** `/auth/login`
-    Logs in a user by validating their username and password.
+```
+docker-compose logs backend
+```
 
-### Users
-* **GET** `/users/email/{email}`
-Fetch a user by their email address.
-* **GET**  `/users/username/{username}`
-Fetch a user by their username.
+## Troubleshooting
 
-## Example Requests
-### Register a User
-```bash
-curl -X POST "http://127.0.0.1:8000/auth/register" -H "Content-Type: application/x-www-form-urlencoded" -d "email=user@example.com&username=user123&password=pass123&role=user"
-```
-### Login a User
-```bash
-curl -X POST "http://127.0.0.1:8000/auth/login" -H "Content-Type: application/x-www-form-urlencoded" -d "username=user123&password=pass123"
-```
-### Fetch a User by Email
-```bash
-curl -X GET "http://127.0.0.1:8000/users/email/user@example.com" -H "accept: application/json"
-```
-### Fetch a User by Username
-```bash
-curl -X GET "http://127.0.0.1:8000/users/username/user123" -H "accept: application/json"
-```
+If you encounter any issues:
+
+1. Ensure all required ports are free and not used by other applications.
+2. Check the logs for any error messages.
+3. Try rebuilding the images: `docker-compose build --no-cache`
