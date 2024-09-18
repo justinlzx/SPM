@@ -1,4 +1,4 @@
-# MyApp: Frontend and Backend with Docker Compose
+# SPM:
 
 This project contains a frontend and backend application that can be easily spun up using Docker Compose.
 
