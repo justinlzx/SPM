@@ -1,0 +1,23 @@
+#!/bin/sh
+echo "Running pre-commit hook..."
+
+# Run general hooks
+echo "Running general hooks..."
+pre-commit run --hook-stage commit --config config/.pre-commit-config.yaml
+
+# Check if there are staged files in the backend folder
+if git diff --cached --name-only | grep -q '^backend/'; then
+  echo "\nBackend files detected. Running backend-specific hooks..."
+  pre-commit run --hook-stage commit --files backend/ --config config/.pre-commit-config.yaml
+else
+  echo "No backend files detected."
+fi
+
+# Check if there are staged files in the backend folder
+if git diff --cached --name-only | grep -q '^frontend/'; then
+  echo "\nFrontend files detected. Running lint-staged..."
+  cd frontend
+  npx lint-staged
+else
+  echo "No frontend files detected."
+fi
