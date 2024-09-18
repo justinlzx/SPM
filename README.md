@@ -23,6 +23,36 @@ myapp/
 └── README.md
 ```
 
+### Setup development environment
+1. Ensure you are in the project root directory
+2. (MacOS/Linux users only) Give permissions to run the setup script
+```bash
+chmod +x ./scripts/setup.sh
+```
+3. Run the setup script
+
+MacOS/Linux users:
+```bash
+./scripts/setup.sh
+```
+
+Windows users:
+```bash
+scripts\setup.bat
+```
+
+4. Activate the `project_venv` **before starting any development work**
+
+MacOS/Linux users:
+```bash
+source project_venv/bin/activate
+```
+
+Windows users:
+```bash
+.\project_venv\Scripts\activate
+```
+
 ## Getting Started
 
 Follow these steps to get your development environment running:
