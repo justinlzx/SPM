@@ -4,6 +4,7 @@ import { UserContext } from "./context/UserContextProvider";
 import { AppContext } from "./context/AppContextProvider";
 import { SnackBarComponent as SnackBar } from "./common/SnackBar";
 import { Outlet, useNavigate } from "react-router-dom";
+import { useHealthCheck } from "./hooks/auth/health/health";
 
 export const App = () => {
   const { alertStatus, showSnackbar, snackbarMessage, handleCloseSnackBar } =
@@ -11,12 +12,18 @@ export const App = () => {
 
   const { user } = useContext(UserContext);
   const navigate = useNavigate();
+  const { mutate } = useHealthCheck();
 
   useEffect(() => {
-    if (!user) {
+    if (user === undefined) {
       navigate("/login");
+      return;
     }
   }, [user, navigate]);
+
+  useEffect(() => {
+    mutate();
+  }, [mutate]);
 
   return (
     <div>
