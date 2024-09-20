@@ -1,10 +1,11 @@
 import pandas as pd
 from sqlalchemy.orm import Session
 
-from ..database import SessionLocal
-from ..employees.models import Employee
 from ..auth.models import Auth
 from ..auth.utils import hash_password
+from ..database import SessionLocal
+from ..employees.models import Employee
+
 
 # Function to load employee data from employee.csv
 def load_employee_data_from_csv(file_path: str):
@@ -35,6 +36,7 @@ def load_employee_data_from_csv(file_path: str):
     # Close the session
     db.close()
 
+
 # Function to load auth data from auth.csv
 def load_auth_data_from_csv(file_path: str):
     # Read the CSV file for authentication data
@@ -53,7 +55,7 @@ def load_auth_data_from_csv(file_path: str):
         auth = Auth(
             staff_id=row["Staff_ID"],
             email=row["email"],
-            hashed_password=hashed_password
+            hashed_password=hashed_password,
         )
         db.add(auth)
 
