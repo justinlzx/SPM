@@ -20,6 +20,10 @@ Code after the yield keyword is run after the application stops
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # Drop all tables
+    employee_models.Base.metadata.drop_all(bind=engine)
+    auth_models.Base.metadata.drop_all(bind=engine)
+
     # Recreate all tables
     employee_models.Base.metadata.create_all(bind=engine)
     auth_models.Base.metadata.create_all(bind=engine)
@@ -31,10 +35,6 @@ async def lifespan(app: FastAPI):
     load_data.load_auth_data_from_csv("./src/init_db/auth.csv")
 
     yield
-
-    # Drop all tables
-    employee_models.Base.metadata.drop_all(bind=engine)
-    auth_models.Base.metadata.drop_all(bind=engine)
 
 
 app = FastAPI(lifespan=lifespan)
