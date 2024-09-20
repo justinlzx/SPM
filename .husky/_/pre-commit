@@ -1,6 +1,11 @@
 #!/bin/sh
 echo "Running pre-commit hook..."
 
+# Initialize exit code variables
+GENERAL_HOOKS_EXIT_CODE=0
+BACKEND_HOOKS_EXIT_CODE=0
+FRONTEND_HOOKS_EXIT_CODE=0
+
 # Run general hooks
 echo "Running general hooks..."
 pre-commit run --hook-stage commit --config config/.pre-commit-config.yaml
