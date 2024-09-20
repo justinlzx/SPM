@@ -1,5 +1,6 @@
 from pydantic import BaseModel
 
+
 class EmployeeBase(BaseModel):
     staff_id: int
     staff_fname: str
@@ -9,4 +10,3 @@ class EmployeeBase(BaseModel):
     email: str
     reporting_manager: int
     role: int
-    

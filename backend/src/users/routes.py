@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
 from pydantic import EmailStr
+from sqlalchemy.orm import Session
+
 from ..auth.models import get_user_by_email, get_user_by_staff_id
 from ..database import get_db
 

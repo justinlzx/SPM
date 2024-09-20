@@ -14,15 +14,34 @@ Before you begin, ensure you have the following installed on your system:
 ```
 myapp/
 ├── frontend/
+│   ├── src/
+│   │   ├── common/
+│   │   ├── contexts/
+│   │   ├── hooks/
+│   │   ├── pages/
+│   │   ├── router/
+│   │   ├── tests/
+│   │   └── utils/
 │   ├── Dockerfile
 │   └── ...
 ├── backend/
+│   ├── src/
+│   │   ├── employees/
+│   │   │   ├── crud.py
+│   │   │   ├── models.py
+│   │   │   ├── routes.py
+│   │   │   └── schemas.py
+│   │   ├── <other services...>/
+│   │   ├── database.py
+│   │   └── app.py
 │   ├── Dockerfile
-│   └── ...
+│   └── main.py
+├── config/
 ├── docker-compose.yaml
 └── README.md
 ```
 
+## Getting Started
 ### Setup development environment
 1. Ensure you are in the project root directory
 2. (MacOS/Linux users only) Give permissions to run the setup script
@@ -53,18 +72,11 @@ Windows users:
 .\project_venv\Scripts\activate
 ```
 
-## Getting Started
+### Start the application
 
 Follow these steps to get your development environment running:
 
-1. Clone the repository:
-
-   ```
-   git clone https://github.com/yourusername/myapp.git
-   cd myapp
-   ```
-
-2. Start the application using Docker Compose:
+1. Start the application using Docker Compose:
 
    ```
    docker-compose up -d
@@ -76,16 +88,18 @@ Follow these steps to get your development environment running:
    - Frontend: http://localhost:3000
    - Backend: http://localhost:8000
 
-## Services
+#### Services
 
 The `docker-compose.yaml` file defines the following services:
 
 - `frontend`: React application served by Nginx
 - `backend`: FastAPI server
 
-## Development
+#### Development
 
 To make changes to the application:
+
+(Backend code should automatically update the app in the container, frontend still configuring. Otherwise, follow the steps below)
 
 1. Modify the code in the `frontend/` or `backend/` directories.
 2. Rebuild and restart the containers:

@@ -1,16 +1,24 @@
 #!/bin/sh
 echo "Running pre-commit hook..."
 
+# Initialize exit code variables
+GENERAL_HOOKS_EXIT_CODE=0
+BACKEND_HOOKS_EXIT_CODE=0
+FRONTEND_HOOKS_EXIT_CODE=0
+
 # Run general hooks
 echo "Running general hooks..."
 pre-commit run --hook-stage commit --config config/.pre-commit-config.yaml
+GENERAL_HOOKS_EXIT_CODE=$?
 
 # Check if there are staged files in the backend folder
 if git diff --cached --name-only | grep -q '^backend/'; then
   echo "\nBackend files detected. Running backend-specific hooks..."
   pre-commit run --hook-stage commit --files backend/ --config config/.pre-commit-config.yaml
+  BACKEND_HOOKS_EXIT_CODE=$?
 else
   echo "No backend files detected."
+  BACKEND_HOOKS_EXIT_CODE=0
 fi
 
 # Check if there are staged files in the backend folder
@@ -18,6 +26,17 @@ if git diff --cached --name-only | grep -q '^frontend/'; then
   echo "\nFrontend files detected. Running lint-staged..."
   cd frontend
   npx lint-staged
+  LINT_STAGED_EXIT_CODE=$?
 else
   echo "No frontend files detected."
+  LINT_STAGED_EXIT_CODE=0
+fi
+
+# Abort the commit if any hook fails
+if [ $GENERAL_HOOKS_EXIT_CODE -ne 0 ] || [ $BACKEND_HOOKS_EXIT_CODE -ne 0 ] || [ $FRONTEND_HOOKS_EXIT_CODE -ne 0 ]; then
+  echo "Pre-commit checks failed. Aborting commit."
+  exit 1
+else
+  echo "Pre-commit checks passed. Proceeding with commit."
+  exit 0
 fi
