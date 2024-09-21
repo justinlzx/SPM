@@ -11,6 +11,7 @@ from .employees.routes import router as employee_router
 from .health.health import router as health_router
 from .init_db import load_data
 from .users.routes import router as users_router
+from .employees.routes import router as employees_router
 
 """
 Create a context manager to handle the lifespan of the FastAPI application
