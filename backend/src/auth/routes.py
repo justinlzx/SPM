@@ -8,6 +8,7 @@ from ..database import get_db
 
 router = APIRouter()
 
+
 @router.post("/register")
 def register(
     email: EmailStr = Form(...),
@@ -24,6 +25,7 @@ def register(
     # Create the user in the database
     create_user(db, email, hashed_password)
     return {"message": "User registered successfully", "email": email}
+
 
 @router.post("/login")
 def login(

@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 
 from ..database import Base
 
+
 class Auth(Base):
     __tablename__ = "auth"
 
