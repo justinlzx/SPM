@@ -16,7 +16,7 @@ class Employee(Base):
     position = Column(String(length=50), nullable=False)
     country = Column(String(length=50), nullable=False)
     email = Column(String, unique=True, nullable=False)
-    reporting_manager = Column(Integer, ForeignKey("employees.staff_id"))
+    reporting_manager = Column(Integer, ForeignKey("employees.staff_id"), nullable=True)
     role = Column(Integer, CheckConstraint("role IN (1, 2, 3)"), nullable=False)
 
     manager = relationship("Employee", remote_side=[staff_id])
