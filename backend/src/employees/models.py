@@ -1,6 +1,7 @@
 from sqlalchemy.orm import Session
 from sqlalchemy import CheckConstraint, Column, ForeignKey, Integer, String
 from sqlalchemy.orm import relationship
+from sqlalchemy.orm import joinedload
 
 from ..database import engine
 from ..database import Base
@@ -19,7 +20,19 @@ class Employee(Base):
     reporting_manager = Column(Integer, ForeignKey("employees.staff_id"), nullable=True)
     role = Column(Integer, CheckConstraint("role IN (1, 2, 3)"), nullable=False)
 
-    manager = relationship("Employee", remote_side=[staff_id])
+    manager = relationship("Employee", remote_side=[staff_id], lazy="select")
+
+
+def get_employee_by_staff_id(db: Session, staff_id: int):
+    return db.query(Employee).filter(Employee.staff_id == staff_id).first()
+
+
+def get_employees_by_manager_id(db: Session, manager_id: int):
+    return (
+        db.query(Employee)
+        # .options(joinedload(Employee.manager))
+        .filter(Employee.reporting_manager == manager_id).all()
+    )
 
 
 if __name__ == "__main__":
