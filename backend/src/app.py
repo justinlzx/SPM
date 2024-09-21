@@ -10,7 +10,7 @@ from .employees import models as employee_models
 from .employees.routes import router as employee_router
 from .health.health import router as health_router
 from .init_db import load_data
-from .users.routes import router as users_router
+# from .users.routes import router as users_router
 from .employees.routes import router as employees_router
 
 """
@@ -57,6 +57,6 @@ app.add_middleware(
 
 # Include the auth and user routes
 app.include_router(auth_router, prefix="/auth", tags=["Authentication"])
-app.include_router(users_router, prefix="/users", tags=["Users"])
+# app.include_router(users_router, prefix="/users", tags=["Users"])
 app.include_router(health_router, prefix="/health", tags=["Health"])
 app.include_router(employee_router, prefix="/employees", tags=["Employees"])
