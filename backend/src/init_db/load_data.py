@@ -47,13 +47,12 @@ def load_auth_data_from_csv(file_path: str):
 
     # Iterate over the DataFrame and insert data into the 'auth' table
     for _, row in df.iterrows():
-        # Hash the password using staff_id as the salt
-        salt = str(row["Staff_ID"])  # Use the staff_id as the salt
+        # Hash the password using email as the salt
+        salt = str(row["email"])
         hashed_password = hash_password(row["unhashed_password"], salt)
 
         # Create a Auth entry in the database
         auth = Auth(
-            staff_id=row["Staff_ID"],
             email=row["email"],
             hashed_password=hashed_password,
         )

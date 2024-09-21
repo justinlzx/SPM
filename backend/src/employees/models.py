@@ -5,6 +5,7 @@ from sqlalchemy.orm import joinedload
 
 from ..database import engine
 from ..database import Base
+from ..auth.models import Auth
 
 
 class Employee(Base):
@@ -16,11 +17,12 @@ class Employee(Base):
     dept = Column(String(length=50), nullable=False)
     position = Column(String(length=50), nullable=False)
     country = Column(String(length=50), nullable=False)
-    email = Column(String, unique=True, nullable=False)
+    email = Column(String, ForeignKey("auth.email"), unique=True, nullable=False)
     reporting_manager = Column(Integer, ForeignKey("employees.staff_id"), nullable=True)
     role = Column(Integer, CheckConstraint("role IN (1, 2, 3)"), nullable=False)
 
     manager = relationship("Employee", remote_side=[staff_id], lazy="select")
+    auth_info = relationship("Auth", back_populates="employee")
 
 
 def get_employee_by_staff_id(db: Session, staff_id: int):
