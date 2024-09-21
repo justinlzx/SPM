@@ -6,7 +6,7 @@ import { useLogin } from "../../hooks/auth/auth";
 import { VisibilityOff, Visibility } from "@mui/icons-material";
 
 export const LoginPage = () => {
-  const [username, setUsername] = useState("");
+  const [email, setUsername] = useState("");
   const [password, setPassword] = useState("");
 
   const [isLoggingIn, setIsLoggingIn] = useState(false);
@@ -31,7 +31,7 @@ export const LoginPage = () => {
 
   const handleLogin = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    mutate({ username, password });
+    mutate({ email, password });
     setIsLoggingIn(false);
   };
 
@@ -39,20 +39,20 @@ export const LoginPage = () => {
     <div className="flex min-h-screen items-center justify-center bg-white">
       <div className="w-full max-w-sm bg-transparent p-8">
         {/* TODO: replace with product logo */}
-        <div className="mb-6 flex justify-center py-5 animate-spin">
-          <img src={logo} />
+        <div className="mb-6 flex justify-center py-5">
+          <img src={logo} alt="login-logo" className="App-logo" />
         </div>
 
         {/* Form */}
         <form className="space-y-6" onSubmit={handleLogin}>
-          {/* Username input */}
+          {/* Email input */}
           <InputLabel htmlFor="filled-adornment-password" variant="outlined">
-            Username
+            Email
           </InputLabel>
           <Input
-            type="username"
-            placeholder="Enter Username"
-            value={username}
+            type="email"
+            placeholder="Enter Email"
+            value={email}
             onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
               setUsername(e.target.value)
             }

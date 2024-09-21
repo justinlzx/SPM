@@ -33,10 +33,10 @@ export const signUp = async (credentials: {
 };
 
 export const login = async (credentials: {
-  username: string;
+  email: string;
   password: string;
 }): Promise<TLoginResponse> => {
-  const { username } = credentials;
+  const { email } = credentials;
   
   try {
     const response = await axios.post(
@@ -50,13 +50,13 @@ export const login = async (credentials: {
     const { access_token: accessToken, role } = response.data.data;
 
     localStorage.setItem(AUTH_LOCAL_STORAGE_KEYS.JWT, accessToken);
-    localStorage.setItem(AUTH_LOCAL_STORAGE_KEYS.USER, username);
+    localStorage.setItem(AUTH_LOCAL_STORAGE_KEYS.USER, email);
     localStorage.setItem(AUTH_LOCAL_STORAGE_KEYS.ROLE, role);
 
     axios.defaults.headers.common.Authorization = `Bearer ${accessToken}`;
 
     return {
-      username,
+      email,
       role,
     };
   } catch (error) {

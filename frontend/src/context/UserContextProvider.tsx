@@ -7,7 +7,7 @@ import {
 import { login } from "../hooks/auth/auth.utils";
 
 export type TUser = {
-  username: string;
+  email: string;
   role: string;
 };
 

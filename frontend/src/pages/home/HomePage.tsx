@@ -21,7 +21,7 @@ export const HomePage = () => {
     <div>
       <header className="App-header">
         <img src={logo} className="App-logo" alt="logo" />
-        <p>Hello {user!.username}</p>
+        <p>Hello {user!.email}</p>
         <a
           className="App-link"
           href="https://reactjs.org"
