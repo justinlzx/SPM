@@ -5,17 +5,17 @@ import { UserContext } from '../../context/UserContextProvider';
 import { login, signUp } from './auth.utils';
 
 type TCredentials = {
-  username: string;
+  email: string;
   password: string;
 };
 
 type TSignupCredentials = TCredentials & {
-  email: string;
+  username: string;
   role: string;
 };
 
 export type TLoginResponse = {
-  username: string;
+  email: string;
   role: string;
 };
 
@@ -29,11 +29,11 @@ export const useLogin = () => {
       // Handle successful login
       console.log("Login successful");
 
-      const { username, role } = response;
+      const { email, role } = response;
 
-      setUser({ username, role });
+      setUser({ email, role });
       // Redirect to dashboard or home page
-      navigate("/");
+      navigate("/home");
     },
     onError: (error) => {
       // Handle login error
