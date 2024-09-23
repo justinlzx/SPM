@@ -9,13 +9,23 @@ FRONTEND_HOOKS_EXIT_CODE=0
 # Run general hooks
 echo "Running general hooks..."
 pre-commit run --hook-stage commit --config config/.pre-commit-config.yaml
+GENERAL_HOOKS_OUTPUT=$(pre-commit run --hook-stage commit --config config/.pre-commit-config.yaml 2>&1)
 GENERAL_HOOKS_EXIT_CODE=$?
+
+if [ $GENERAL_HOOKS_EXIT_CODE -ne 0 ]; then
+  echo "General hooks failed with the following output:"
+  echo "$GENERAL_HOOKS_OUTPUT"
+fi
 
 # Check if there are staged files in the backend folder
 if git diff --cached --name-only | grep -q '^backend/'; then
   echo "\nBackend files detected. Running backend-specific hooks..."
-  pre-commit run --hook-stage commit --files backend/ --config config/.pre-commit-config.yaml
+  BACKEND_HOOKS_OUTPUT=$(pre-commit run --hook-stage commit --files backend/ --config config/.pre-commit-config.yaml 2>&1)
   BACKEND_HOOKS_EXIT_CODE=$?
+  if [ $BACKEND_HOOKS_EXIT_CODE -ne 0 ]; then
+    echo "Backend hooks failed with the following output:"
+    echo "$BACKEND_HOOKS_OUTPUT"
+  fi
 else
   echo "No backend files detected."
   BACKEND_HOOKS_EXIT_CODE=0
@@ -25,11 +35,16 @@ fi
 if git diff --cached --name-only | grep -q '^frontend/'; then
   echo "\nFrontend files detected. Running lint-staged..."
   cd frontend
-  npx lint-staged
+  FRONTEND_HOOKS_OUTPUT=$(npx lint-staged 2>&1)
   FRONTEND_HOOKS_EXIT_CODE=$?
 else
   echo "No frontend files detected."
   FRONTEND_HOOKS_EXIT_CODE=0
+  if [ $FRONTEND_HOOKS_EXIT_CODE -ne 0 ]; then
+    echo "Frontend hooks failed with the following output:"
+    echo "$FRONTEND_HOOKS_OUTPUT"
+  fi
+  cd ..
 fi
 
 # Abort the commit if any hook fails
