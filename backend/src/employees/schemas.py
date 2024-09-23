@@ -1,8 +1,9 @@
-from pydantic import BaseModel
-from typing import Optional, List
+from typing import List, Optional
+
+from ..base import BaseSchema
 
 
-class EmployeeBase(BaseModel):
+class EmployeeBase(BaseSchema):
     staff_id: int
     staff_fname: str
     staff_lname: str
@@ -15,15 +16,7 @@ class EmployeeBase(BaseModel):
     )
     role: int
 
-    class Config:
-        from_attributes = (
-            True
-        )
 
-
-class EmployeePeerResponse(BaseModel):
+class EmployeePeerResponse(BaseSchema):
     manager_id: Optional[int]
     peer_employees: List[EmployeeBase]  # Use the Pydantic model for peer employees
-
-    class Config:
-        from_attributes = True

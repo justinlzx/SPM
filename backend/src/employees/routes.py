@@ -1,12 +1,14 @@
 from typing import List
+
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
 from sqlalchemy.exc import NoResultFound
+from sqlalchemy.orm import Session
+
 from ..database import get_db
-from ..employees.models import Employee
-from ..employees.models import get_employee_by_staff_id, get_employees_by_manager_id
-from .crud import get_employee_by_email, get_employee
+from ..employees.models import (Employee, get_employee_by_staff_id,
+                                get_employees_by_manager_id)
 from ..employees.schemas import EmployeeBase, EmployeePeerResponse
+from .crud import get_employee, get_employee_by_email
 
 router = APIRouter()
 
