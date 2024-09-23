@@ -3,16 +3,15 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from .arrangements import models as arrangement_models
 from .auth import models as auth_models
 from .auth.routes import router as auth_router
 from .database import engine
+from .email.routes import router as email_router
 from .employees import models as employee_models
 from .employees.routes import router as employee_router
 from .health.health import router as health_router
 from .init_db import load_data
-# from .users.routes import router as users_router
-from .email.routes import router as email_router
-
 
 """
 Create a context manager to handle the lifespan of the FastAPI application
@@ -24,12 +23,14 @@ Code after the yield keyword is run after the application stops
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Drop all tables
-    employee_models.Base.metadata.drop_all(bind=engine)
+    arrangement_models.Base.metadata.drop_all(bind=engine)
     auth_models.Base.metadata.drop_all(bind=engine)
+    employee_models.Base.metadata.drop_all(bind=engine)
 
     # Recreate all tables
-    employee_models.Base.metadata.create_all(bind=engine)
+    arrangement_models.Base.metadata.create_all(bind=engine)
     auth_models.Base.metadata.create_all(bind=engine)
+    employee_models.Base.metadata.create_all(bind=engine)
 
     # Load employee data from CSV
     load_data.load_employee_data_from_csv("./src/init_db/employee.csv")
