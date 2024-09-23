@@ -7,7 +7,10 @@ class Arrangement(Base):
     __tablename__ = "arrangements"
 
     arrangement_id = Column(
-        Integer, primary_key=True, doc="Unique identifier for the arrangement"
+        Integer,
+        primary_key=True,
+        autoincrement=True,
+        doc="Unique identifier for the arrangement",
     )
     last_updated_datetime = Column(
         String(length=50),
@@ -36,7 +39,7 @@ class Arrangement(Base):
         doc="Status of the request: pending, approved, or rejected",
     )
     __table_args__ = (
-        CheckConstraint("wfh_type IN ('full-time', 'am', 'pm')", name="check_wfh_type"),
+        CheckConstraint("wfh_type IN ('full', 'am', 'pm')", name="check_wfh_type"),
         CheckConstraint(
             "approval_status IN ('pending', 'approved', 'rejected')",
             name="check_approval_status",
