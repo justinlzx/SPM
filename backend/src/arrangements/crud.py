@@ -2,13 +2,14 @@ from pydantic import ValidationError
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
-from .models import Arrangement
-from .schemas import WFHRequestCreateBody
+from . import models, schemas
 
 
-def create_arrangement(db: Session, arrangement_data: WFHRequestCreateBody):
+def create_wfh_request(db: Session, arrangement_data: schemas.ArrangementCreate):
     try:
-        arrangement = Arrangement(**arrangement_data.model_dump(by_alias=True))
+        arrangement = models.ArrangementLog(
+            **arrangement_data.model_dump(by_alias=True)
+        )
         db.add(arrangement)
         db.commit()
         db.refresh(arrangement)
