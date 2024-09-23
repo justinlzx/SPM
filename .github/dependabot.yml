@@ -4,10 +4,10 @@ updates:
   - package-ecosystem: "pip"
     directory: "/SPM/backend" # Directory where requirements.txt is located
     schedule:
-      interval: "daily"
+      interval: "weekly"
 
   # For JavaScript dependencies in the frontend (using npm)
   - package-ecosystem: "npm"
     directory: "/SPM/frontend" # Directory where package.json and package-lock.json are located
     schedule:
-      interval: "daily"
+      interval: "weekly"
