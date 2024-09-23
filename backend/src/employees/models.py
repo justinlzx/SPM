@@ -1,11 +1,12 @@
-from sqlalchemy.orm import Session
 from sqlalchemy import CheckConstraint, Column, ForeignKey, Integer, String
-from sqlalchemy.orm import relationship
-from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import Session, relationship
 
-from ..database import engine
-from ..database import Base
-from ..auth.models import Auth
+from ..database import Base, engine
+
+# from sqlalchemy.orm import joinedload
+
+
+# from ..auth.models import Auth
 
 
 class Employee(Base):
