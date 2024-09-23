@@ -4,7 +4,7 @@ from .models import EmailModel
 router = APIRouter()
 
 
-@router.post("/send_email/")
+@router.post("/send_email")
 async def send_email(
     to_email: str = Form(...),
     subject: str = Form(...),

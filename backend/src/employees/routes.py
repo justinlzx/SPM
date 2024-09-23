@@ -11,7 +11,7 @@ from ..employees.schemas import EmployeeBase, EmployeePeerResponse
 router = APIRouter()
 
 
-@router.get("/manager/peer/{staff_id}", response_model=EmployeePeerResponse)
+@router.get("/peer_manager/{staff_id}", response_model=EmployeePeerResponse)
 def get_reporting_manager(staff_id: int, db: Session = Depends(get_db)):
     try:
         emp: Employee = get_employee_by_staff_id(db, staff_id)
@@ -43,7 +43,7 @@ def get_reporting_manager(staff_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Employee not found")
 
 
-@router.get("/employees/{staff_id}", response_model=EmployeeBase)
+@router.get("/{staff_id}", response_model=EmployeeBase)
 def read_employee(staff_id: int, db: Session = Depends(get_db)):
     """
     Get an employee by staff_id.
@@ -54,7 +54,7 @@ def read_employee(staff_id: int, db: Session = Depends(get_db)):
     return employee  # Pydantic model (EmployeeBase) will handle serialization
 
 
-@router.get("/employees/email/{email}", response_model=EmployeeBase)
+@router.get("/email/{email}", response_model=EmployeeBase)
 def read_employee_by_email(email: str, db: Session = Depends(get_db)):
     """
     Get an employee by email.
