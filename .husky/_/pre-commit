@@ -21,15 +21,15 @@ else
   BACKEND_HOOKS_EXIT_CODE=0
 fi
 
-# Check if there are staged files in the backend folder
+# Check if there are staged files in the frontend folder
 if git diff --cached --name-only | grep -q '^frontend/'; then
   echo "\nFrontend files detected. Running lint-staged..."
   cd frontend
   npx lint-staged
-  LINT_STAGED_EXIT_CODE=$?
+  FRONTEND_HOOKS_EXIT_CODE=$?
 else
   echo "No frontend files detected."
-  LINT_STAGED_EXIT_CODE=0
+  FRONTEND_HOOKS_EXIT_CODE=0
 fi
 
 # Abort the commit if any hook fails
