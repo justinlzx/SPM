@@ -11,12 +11,12 @@ type TCredentials = {
 
 type TSignupCredentials = TCredentials & {
   username: string;
-  role: string;
+  role: number;
 };
 
 export type TLoginResponse = {
   email: string;
-  role: string;
+  role: number;
 };
 
 export const useLogin = () => {

@@ -6,7 +6,7 @@ const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 
 export const AUTH_LOCAL_STORAGE_KEYS = {
   JWT: "jwt_access_token",
-  USER: "user",
+  EMAIL: "user",
   ROLE: "role",
 };
 
@@ -14,7 +14,7 @@ export const signUp = async (credentials: {
   username: string;
   email: string;
   password: string;
-  role: string;
+  role: number;
 }): Promise<void> => {
   try {
     await axios.post(
@@ -24,7 +24,6 @@ export const signUp = async (credentials: {
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
       }
     );
-    console.log("Signup successful");
 
   } catch (error: any) {
     console.log(error)
@@ -47,17 +46,18 @@ export const login = async (credentials: {
       }
     );
 
-    const { access_token: accessToken, role } = response.data.data;
-
+    const { access_token: accessToken } = response.data.data;
+    // TODO: remove this hardcode when the backend is ready
+    const role = 1
     localStorage.setItem(AUTH_LOCAL_STORAGE_KEYS.JWT, accessToken);
-    localStorage.setItem(AUTH_LOCAL_STORAGE_KEYS.USER, email);
-    localStorage.setItem(AUTH_LOCAL_STORAGE_KEYS.ROLE, role);
+    localStorage.setItem(AUTH_LOCAL_STORAGE_KEYS.EMAIL, email);
+    localStorage.setItem(AUTH_LOCAL_STORAGE_KEYS.ROLE, role.toString());
 
     axios.defaults.headers.common.Authorization = `Bearer ${accessToken}`;
 
     return {
       email,
-      role,
+      role: Number(role)
     };
   } catch (error) {
     throw new Error("Login failed");
@@ -66,6 +66,6 @@ export const login = async (credentials: {
 
 export const logout = () => {
   localStorage.removeItem(AUTH_LOCAL_STORAGE_KEYS.JWT);
-  localStorage.removeItem(AUTH_LOCAL_STORAGE_KEYS.USER);
+  localStorage.removeItem(AUTH_LOCAL_STORAGE_KEYS.EMAIL);
   delete axios.defaults.headers.common.Authorization;
 };

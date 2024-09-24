@@ -17,19 +17,16 @@ export const HomePage = () => {
     return <div>Loading...</div>;
   }
 
+  const handleNavigate = (path: string) => {
+    navigate(path);
+  };
+
   return (
     <div>
       <header className="App-header">
         <img src={logo} className="App-logo" alt="logo" />
         <p>Hello {user!.email}</p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
+        <button onClick={() => handleNavigate("/test")}>Go to test</button>
       </header>
       <Outlet />
     </div>
