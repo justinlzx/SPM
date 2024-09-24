@@ -1,5 +1,6 @@
 from datetime import datetime
-from typing import Literal
+from typing import Literal, Optional
+
 
 from pydantic import Field
 from pydantic.json_schema import SkipJsonSchema
@@ -57,6 +58,21 @@ class ArrangementCreate(ArrangementBase):
 #     update_datetime: datetime = Field(default_factory=datetime.now)
 #     approval_status: Literal["pending", "approved", "rejected", "withdrawn"]
 #     reason_description: str
+
+
+class ArrangementLog(ArrangementBase):
+    arrangement_id: int = Field(..., title="Unique identifier for the arrangement")
+    update_datetime: datetime = Field(..., title="Datetime of the arrangement update")
+    approval_status: Literal["pending", "approved", "rejected", "withdrawn"] = Field(
+        ..., title="Current status of the WFH request"
+    )
+    reason_description: str = Field(..., title="Reason for the status update")
+    batch_id: Optional[int] = Field(
+        None, title="Unique identifier for the batch, if any"
+    )  # Allow None
+
+    class Config:
+        from_attributes = True
 
 
 # class ArrangementSnapshot(ArrangementLog):

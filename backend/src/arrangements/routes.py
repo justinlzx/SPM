@@ -4,6 +4,8 @@ from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import JSONResponse
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
+from typing import List
+
 
 from ..database import get_db
 from . import crud, schemas
@@ -70,5 +72,14 @@ def create_wfh_request(
             },
         )
 
+    except SQLAlchemyError as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/view", response_model=List[schemas.ArrangementLog])
+def get_all_arrangements(db: Session = Depends(get_db)):
+    try:
+        arrangements = crud.get_all_arrangements(db)
+        return arrangements
     except SQLAlchemyError as e:
         raise HTTPException(status_code=500, detail=str(e))
