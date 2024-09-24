@@ -1,7 +1,7 @@
 import { useContext, useEffect } from "react";
 import { UserContext } from "../../context/UserContextProvider";
-import logo from "../../logo.svg";
 import { Outlet, useNavigate } from "react-router-dom";
+import { Header } from "../../common/Header";
 
 export const HomePage = () => {
   const { user } = useContext(UserContext);
@@ -19,19 +19,10 @@ export const HomePage = () => {
 
   return (
     <div>
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>Hello {user!.username}</p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
+      <Header/>
       <Outlet />
     </div>
   );
 };
+
+export default HomePage; 

@@ -3,6 +3,7 @@ import { LoginPage } from "../pages/login-signup/LoginPage";
 import { SignUpPage } from "../pages/login-signup/SignUpPage";
 import { App } from "../App";
 import { HomePage } from "../pages/home/HomePage";
+import  ApplicationPage  from "../pages/staff/ApplicationPage";
 
 type routesProps = {
   path: string;
@@ -27,6 +28,10 @@ const routes: routesProps[] = [
         path: "/home",
         element: <HomePage />,
       },
+      {
+        path: "/application", 
+        element: <ApplicationPage />, 
+      }
     ],
   },
 ];

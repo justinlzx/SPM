@@ -1,10 +1,18 @@
 import "./App.css";
 import { useContext, useEffect } from "react";
+import { createTheme, ThemeProvider } from "@mui/material/styles";
 import { UserContext } from "./context/UserContextProvider";
 import { AppContext } from "./context/AppContextProvider";
 import { SnackBarComponent as SnackBar } from "./common/SnackBar";
 import { Outlet, useNavigate } from "react-router-dom";
 import { useHealthCheck } from "./hooks/auth/health/health";
+import { Typography } from "@mui/material";
+
+const theme = createTheme({
+  typography: {
+    fontFamily: 'Roboto, Arial, sans-serif',
+  },
+});
 
 export const App = () => {
   const { alertStatus, showSnackbar, snackbarMessage, handleCloseSnackBar } =
@@ -16,7 +24,7 @@ export const App = () => {
 
   useEffect(() => {
     if (user === undefined) {
-      navigate("/login");
+      navigate("/home");
       return;
     }
   }, [user, navigate]);
@@ -26,6 +34,7 @@ export const App = () => {
   }, [mutate]);
 
   return (
+    <ThemeProvider theme={theme}>
     <div>
       {alertStatus !== undefined && (
         <SnackBar
@@ -37,5 +46,6 @@ export const App = () => {
       )}
       <Outlet />
     </div>
+    </ThemeProvider>
   );
 };
