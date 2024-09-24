@@ -2,7 +2,7 @@ import React from 'react'
 import { WfhForm } from '../../components/forms/WfhForm'
 
 
-export const ApplicationForm = () => {
+export const ApplicationPage = () => {
   return (
     <div>
       <WfhForm/>
@@ -10,4 +10,4 @@ export const ApplicationForm = () => {
   )
 }
 
-export default ApplicationForm; 
+export default ApplicationPage; 

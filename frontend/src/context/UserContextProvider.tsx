@@ -38,10 +38,8 @@ export const UserContextProvider = ({ children }: Props) => {
   useEffect(() => {
     // try {
     //   const accessToken = localStorage.getItem(AUTH_LOCAL_STORAGE_KEYS.JWT);
+    //   const userData = getUserInfoFromLocalStorage();
 
-    //   const userData = JSON.parse(
-    //     localStorage.getItem(AUTH_LOCAL_STORAGE_KEYS.USER) || ""
-    //   );
     //   axios.defaults.headers.common.Authorization = `Bearer ${accessToken}`;
     //   if (userData) {
     //     setUser(userData);

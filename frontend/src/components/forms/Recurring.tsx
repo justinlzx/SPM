@@ -16,25 +16,25 @@ interface RecurringProps {
 
 export const Recurring: React.FC<RecurringProps> = ({ values, setFieldValue }) => {
   
-  // Function to dynamically calculate the end date based on occurrences and repeat interval
   useEffect(() => {
     if (values.startDate && values.occurrences > 0 && values.repeatInterval > 0) {
       let calculatedEndDate = new Date(values.startDate);
       
+      // Calculate based on repeatIntervalUnit
       if (values.repeatIntervalUnit === 'week') {
         calculatedEndDate.setDate(calculatedEndDate.getDate() + values.occurrences * values.repeatInterval * 7);
       } else if (values.repeatIntervalUnit === 'month') {
         calculatedEndDate.setMonth(calculatedEndDate.getMonth() + values.occurrences * values.repeatInterval);
       }
 
-      // Set the calculated end date
+      // Set calculated end date
       setFieldValue('endDate', calculatedEndDate);
     }
   }, [values.startDate, values.occurrences, values.repeatInterval, values.repeatIntervalUnit, setFieldValue]);
 
   return (
     <>
-      {/* Start Date and End Date */}
+      {/* Start Date */}
       <div style={{ display: 'flex', gap: '16px' }}>
         <FormControl fullWidth sx={{ mb: 2 }}>
           <Typography variant="subtitle1">Start Date</Typography>
@@ -51,9 +51,25 @@ export const Recurring: React.FC<RecurringProps> = ({ values, setFieldValue }) =
           </FormHelperText>
         </FormControl>
 
+        {/* End Date (read-only) */}
         <FormControl fullWidth sx={{ mb: 2 }}>
           <Typography variant="subtitle1">End Date</Typography>
-          <DatePicker
+          <TextField
+            value={values.endDate ? new Intl.DateTimeFormat('en-GB').format(values.endDate) : ''}
+            fullWidth
+            disabled
+          />
+          <FormHelperText>
+            End date is automatically calculated based on the recurrence pattern.
+          </FormHelperText>
+        </FormControl>
+      </div>
+
+      {/* Repeat Interval */}
+      <FormControl fullWidth sx={{ mb: 2 }}>
+        <Typography variant="subtitle1">Repeats Every</Typography>
+        <div style={{ display: 'flex', gap: '16px' }}>
+        {/* <DatePicker
             selected={values.endDate || null}
             onChange={(date) => setFieldValue('endDate', date)}
             dateFormat="dd/MM/yyyy"
@@ -63,14 +79,7 @@ export const Recurring: React.FC<RecurringProps> = ({ values, setFieldValue }) =
           />
           <FormHelperText error>
             <ErrorMessage name="endDate" />
-          </FormHelperText>
-        </FormControl>
-      </div>
-
-      {/* Repeat Interval */}
-      <FormControl fullWidth sx={{ mb: 2 }}>
-        <Typography variant="subtitle1">Repeats Every</Typography>
-        <div style={{ display: 'flex', gap: '16px' }}>
+          </FormHelperText> */}
           <TextField
             name="repeatInterval"
             type="number"
