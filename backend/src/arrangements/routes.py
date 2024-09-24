@@ -1,3 +1,5 @@
+from datetime import datetime, timedelta
+
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import JSONResponse
 from sqlalchemy.exc import SQLAlchemyError
@@ -14,9 +16,49 @@ def create_wfh_request(
     arrangement: schemas.ArrangementCreate, db: Session = Depends(get_db)
 ):
     try:
-        new_arrangement = crud.create_wfh_request(db, arrangement)
-        response_data = new_arrangement.__dict__
-        response_data.pop("_sa_instance_state", None)
+        arrangement_requests = []
+        if arrangement.is_recurring:
+            missing_fields = [
+                field
+                for field in [
+                    "recurring_end_date",
+                    "recurring_frequency_number",
+                    "recurring_frequency_unit",
+                    "recurring_occurrences",
+                ]
+                if getattr(arrangement, field) is None
+            ]
+            if missing_fields:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Recurring WFH request requires the following fields to be filled: {', '.join(missing_fields)}",
+                )
+
+            for i in range(arrangement.recurring_occurrences):
+                arrangement_copy = arrangement.model_copy()
+
+                if arrangement.recurring_frequency_unit == "week":
+                    arrangement_copy.wfh_date = (
+                        datetime.strptime(arrangement.wfh_date, "%Y-%m-%d")
+                        + timedelta(weeks=i * arrangement.recurring_frequency_number)
+                    ).strftime("%Y-%m-%d")
+                else:
+                    arrangement_copy.wfh_date = (
+                        datetime.strptime(arrangement.wfh_date, "%Y-%m-%d")
+                        + timedelta(days=i * arrangement.recurring_frequency_number * 7)
+                    ).strftime("%Y-%m-%d")
+
+                arrangement_requests.append(arrangement_copy)
+        else:
+            arrangement_requests.append(arrangement)
+
+        response_data = []
+
+        created_arrangements = crud.create_bulk_wfh_request(db, arrangement_requests)
+
+        response_data = [req.__dict__ for req in created_arrangements]
+        for data in response_data:
+            data.pop("_sa_instance_state", None)
 
         # TODO: Use Pydantic to perform model validation
 
