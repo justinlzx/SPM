@@ -56,3 +56,10 @@ def create_bulk_wfh_request(
     except ValidationError as e:
         db.rollback()
         raise e
+
+
+def get_all_arrangements(db: Session):
+    try:
+        return db.query(models.ArrangementLog).all()
+    except SQLAlchemyError as e:
+        raise e
