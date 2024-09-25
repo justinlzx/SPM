@@ -27,7 +27,7 @@ export const SignUpPage = () => {
   const [email, setEmail] = useState("");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const [role, setRole] = useState<Roles>(Roles.Select);
+  const [role, setRole] = useState(0);
 
   const [showPassword, setShowPassword] = useState(true);
 
@@ -161,7 +161,12 @@ export const SignUpPage = () => {
             }}
             select
             value={role}
-            onChange={(e) => setRole(e.target.value as Roles)}
+            onChange={(e) => {
+              const selectedRole = e.target.value as Roles;
+              const roleIndex = Object.values(Roles).indexOf(selectedRole);
+              setRole(roleIndex);
+              console.log("Selected role index:", roleIndex); // You can use this index as needed
+            }}
             className="w-full p-3 rounded-md border border-gray-300"
           >
             {Object.values(Roles).map((role) => (

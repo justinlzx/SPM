@@ -7,8 +7,8 @@ import {
 import { login } from "../hooks/auth/auth.utils";
 
 export type TUser = {
-  username: string;
-  role: string;
+  email: string;
+  role: number;
 };
 
 type TAuthenticationContext = { user?: TUser } & {
@@ -28,7 +28,20 @@ type Props = {
 };
 
 export const UserContextProvider = ({ children }: Props) => {
-  const [user, setUser] = useState<TUser | undefined>();
+  const getUserInfoFromLocalStorage = () => {
+    const email = localStorage.getItem(AUTH_LOCAL_STORAGE_KEYS.EMAIL);
+    const role = Number(localStorage.getItem(AUTH_LOCAL_STORAGE_KEYS.ROLE));
+    return email && role
+      ? {
+          email,
+          role,
+        }
+      : undefined;
+  };
+
+  const [user, setUser] = useState<TUser | undefined>(
+    getUserInfoFromLocalStorage()
+  );
 
   const logout = () => {
     logoutUtil();
@@ -36,17 +49,18 @@ export const UserContextProvider = ({ children }: Props) => {
   };
 
   useEffect(() => {
-    // try {
-    //   const accessToken = localStorage.getItem(AUTH_LOCAL_STORAGE_KEYS.JWT);
-    //   const userData = getUserInfoFromLocalStorage();
+    try {
+      const accessToken = localStorage.getItem(AUTH_LOCAL_STORAGE_KEYS.JWT);
 
-    //   axios.defaults.headers.common.Authorization = `Bearer ${accessToken}`;
-    //   if (userData) {
-    //     setUser(userData);
-    //   }
-    // } catch {
-    //   setUser(undefined);
-    // }
+      const userData = getUserInfoFromLocalStorage();
+
+      axios.defaults.headers.common.Authorization = `Bearer ${accessToken}`;
+      if (userData) {
+        setUser(userData);
+      }
+    } catch {
+      setUser(undefined);
+    }
   }, []);
 
   return (

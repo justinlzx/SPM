@@ -13,13 +13,13 @@ export const HomePage = () => {
     // }
   }, [user, navigate]);
 
-  // if (!user) {
-  //   return <div>Loading...</div>;
-  // }
+  if (!user) {
+    return <div>Loading...</div>;
+  }
 
   const handleNavigate = (path: string) => {
     navigate(path);
-  }
+  };
 
   return (
     <div>
@@ -31,6 +31,12 @@ export const HomePage = () => {
       >
         Go to test
       </button>
+      <header className="App-header">
+        <img src={logo} className="App-logo" alt="logo" />
+        <p>Hello {user!.email}</p>
+        <button onClick={() => handleNavigate("/test")}>Go to test</button>
+      </header>
+      <Outlet />
     </div>
   );
 };

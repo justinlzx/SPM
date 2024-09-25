@@ -47,6 +47,14 @@ const routes: routesProps[] = [
           }
         ]
       },
+      {
+        path: "/test",
+        element: <TestPage />,
+      },
+      {
+        path: "/test",
+        element: <TestPage />,
+      },
     ],
   },
 ];
