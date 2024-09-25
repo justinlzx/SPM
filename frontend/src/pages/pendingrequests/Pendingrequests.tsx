@@ -1,60 +1,53 @@
-// export const PendingRequests = () => {
-
-//   return (
-//     <div>
-//       Pending Requests 
-      
-//     </div>
-//   );
-// };
-
-
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 
-// Define the type for employees
-type Employee = {
-  employee_id: number;
-  first_name: string;
-  last_name: string;
-  department: string;
+// Define the type for the requests, based on your API response
+type Request = {
+  requester_staff_id: number;
+  wfh_date: string;
+  wfh_type: string;
+  arrangement_id: number;
+  update_datetime: string;
+  approval_status: string;
+  reason_description: string;
+  batch_id: string | null;
 };
 
-const EmployeeList = () => {
-  const [employees, setEmployees] = useState<Employee[]>([]);
+const PendingRequests = () => {
+  const [requests, setRequests] = useState<Request[]>([]);
 
   useEffect(() => {
-    const fetchEmployees = async () => {
+    const fetchRequests = async () => {
       try {
-        const response = await axios.get("./backend/src/arrangements/crud.py");  // Call the API
-        setEmployees(response.data);  // Set employees data
+        const response = await axios.get("http://0.0.0.0:8000/arrangement/view");  // Call the API
+        setRequests(response.data);  // Set requests data
       } catch (error) {
-        console.error("Error fetching employees:", error);
+        console.error("Error fetching requests:", error);
       }
     };
 
-    fetchEmployees();  // Fetch employees when component mounts
+    fetchRequests();  // Fetch requests when component mounts
   }, []);
 
   return (
     <div>
-      <h2>Employee List</h2>
+      <h2>Pending Requests</h2>
       <table>
         <thead>
           <tr>
-            <th>Employee ID</th>
-            <th>First Name</th>
-            <th>Last Name</th>
-            <th>Department</th>
+            <th>Requester Staff ID</th>
+            <th>WFH Date</th>
+            <th>WFH Type</th>
+            <th>Approval Status</th>
           </tr>
         </thead>
         <tbody>
-          {employees.map((employee) => (
-            <tr key={employee.employee_id}>
-              <td>{employee.employee_id}</td>
-              <td>{employee.first_name}</td>
-              <td>{employee.last_name}</td>
-              <td>{employee.department}</td>
+          {requests.map((request) => (
+            <tr key={request.arrangement_id}>
+              <td>{request.requester_staff_id}</td>
+              <td>{request.wfh_date}</td>
+              <td>{request.wfh_type}</td>
+              <td>{request.approval_status}</td>
             </tr>
           ))}
         </tbody>
@@ -63,4 +56,4 @@ const EmployeeList = () => {
   );
 };
 
-export default EmployeeList;
+export default PendingRequests;
