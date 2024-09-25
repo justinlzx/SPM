@@ -110,7 +110,7 @@ async def create_wfh_request(
             f"Dear {employee_full_name},\n\n"
             f"Your WFH request has been successfully created with the following details:\n\n"
             f"{formatted_details}\n\n"
-            f"Thank you."
+            f"This email is auto-generated. Please do not reply to this email. Thank you."
         )
 
         await send_email(
@@ -133,7 +133,8 @@ async def create_wfh_request(
         content = (
             f"Dear {employee_full_name},\n\n"
             f"Unfortunately, there was an error processing your WFH request. "
-            f"Please try again later.\n\nError details: {str(e)}"
+            f"Please try again later.\n\nError details: {str(e)}\n\n"
+            f"This email is auto-generated. Please do not reply to this email. Thank you."
         )
 
         await send_email(
