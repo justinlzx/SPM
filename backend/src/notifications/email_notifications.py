@@ -41,7 +41,12 @@ async def fetch_manager_info(staff_id: int):
 
 
 async def craft_email_content(
-    employee, response_data, success=True, error_message=None, is_manager=False
+    staff,
+    response_data,
+    success=True,
+    error_message=None,
+    is_manager=False,
+    manager=None,
 ):
     """
     Helper function to format email content.
@@ -60,18 +65,18 @@ async def craft_email_content(
             ]
         )
 
-        if is_manager:
+        if is_manager and manager:
             subject = "[All-In-One] Your Staff Created a WFH Request"
             content = (
-                f"Dear {employee.staff_fname} {employee.staff_lname},\n\n"
-                f"One of your staff members has successfully created a WFH request with the following details:\n\n"
+                f"Dear {manager.staff_fname} {manager.staff_lname},\n\n"
+                f"{staff.staff_fname} {staff.staff_lname}, one of your staff members, has successfully created a WFH request with the following details:\n\n"
                 f"{formatted_details}\n\n"
                 f"This email is auto-generated. Please do not reply to this email. Thank you."
             )
         else:
             subject = "[All-In-One] Successful Creation of WFH Request"
             content = (
-                f"Dear {employee.staff_fname} {employee.staff_lname},\n\n"
+                f"Dear {staff.staff_fname} {staff.staff_lname},\n\n"
                 f"Your WFH request has been successfully created with the following details:\n\n"
                 f"{formatted_details}\n\n"
                 f"This email is auto-generated. Please do not reply to this email. Thank you."
@@ -79,7 +84,7 @@ async def craft_email_content(
     else:
         subject = "[All-In-One] Unsuccessful Creation of WFH Request"
         content = (
-            f"Dear {employee.staff_fname} {employee.staff_lname},\n\n"
+            f"Dear {staff.staff_fname} {staff.staff_lname},\n\n"
             f"Unfortunately, there was an error processing your WFH request. "
             f"Please try again later.\n\nError details: {error_message}\n\n"
             f"This email is auto-generated. Please do not reply to this email. Thank you."

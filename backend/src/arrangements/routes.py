@@ -6,26 +6,34 @@ from sqlalchemy.orm import Session
 from typing import List
 
 from ..database import get_db
-from ..notifications.email_notifications import send_email, craft_email_content, fetch_manager_info  # Import helper functions
+from ..notifications.email_notifications import (
+    send_email,
+    craft_email_content,
+    fetch_manager_info,
+)  # Import helper functions
 from ..employees.routes import read_employee  # Fetch employee info
 from . import crud, schemas
 
 router = APIRouter()
+
 
 @router.post("/request")
 async def create_wfh_request(
     arrangement: schemas.ArrangementCreate, db: Session = Depends(get_db)
 ):
     try:
-        # Fetch employee information
-        employee = read_employee(arrangement.requester_staff_id, db)
-        if not employee:
+        # Fetch employee (staff) information
+        staff = read_employee(arrangement.requester_staff_id, db)
+        if not staff:
             raise HTTPException(status_code=404, detail="Employee not found")
 
         # Fetch manager info using the helper function from notifications
-        manager_info = await fetch_manager_info(arrangement.requester_staff_id)  # Removed 'db' argument here
+        manager_info = await fetch_manager_info(arrangement.requester_staff_id)
         manager = None
-        if manager_info and manager_info["manager_id"] != arrangement.requester_staff_id:
+        if (
+            manager_info
+            and manager_info["manager_id"] != arrangement.requester_staff_id
+        ):
             manager = read_employee(manager_info["manager_id"], db)
 
         # Handle recurring requests
@@ -76,14 +84,14 @@ async def create_wfh_request(
         for data in response_data:
             data.pop("_sa_instance_state", None)
 
-        # Craft and send success notification email to the employee
-        subject, content = await craft_email_content(employee, response_data, success=True)
-        await send_email(to_email=employee.email, subject=subject, content=content)
+        # Craft and send success notification email to the employee (staff)
+        subject, content = await craft_email_content(staff, response_data, success=True)
+        await send_email(to_email=staff.email, subject=subject, content=content)
 
         # Craft and send notification email to the manager if applicable
         if manager:
             subject, content = await craft_email_content(
-                manager, response_data, success=True, is_manager=True
+                staff, response_data, success=True, is_manager=True, manager=manager
             )
             await send_email(to_email=manager.email, subject=subject, content=content)
 
@@ -96,9 +104,11 @@ async def create_wfh_request(
         )
 
     except SQLAlchemyError as e:
-        # Craft and send failure notification email to the employee
-        subject, content = await craft_email_content(employee, response_data=None, success=False, error_message=str(e))
-        await send_email(to_email=employee.email, subject=subject, content=content)
+        # Craft and send failure notification email to the employee (staff)
+        subject, content = await craft_email_content(
+            staff, response_data=None, success=False, error_message=str(e)
+        )
+        await send_email(to_email=staff.email, subject=subject, content=content)
 
         raise HTTPException(status_code=500, detail=str(e))
 
