@@ -1,21 +1,11 @@
 import React, { useEffect } from 'react';
 import { FormControl, Typography, TextField, FormHelperText, Select, MenuItem } from '@mui/material';
-import { ErrorMessage, FormikHelpers } from 'formik';
+import { ErrorMessage, useFormikContext } from 'formik';
 import DatePicker from 'react-datepicker';
 
-interface RecurringProps {
-  values: {
-    startDate: Date | null;
-    endDate: Date | null;
-    repeatInterval: number;
-    repeatIntervalUnit: string;
-    occurrences: number;
-  };
-  setFieldValue: FormikHelpers<any>['setFieldValue'];
-}
+export const Recurring: React.FC = () => {
+  const { values, errors, touched, setFieldValue } = useFormikContext<any>();
 
-export const Recurring: React.FC<RecurringProps> = ({ values, setFieldValue }) => {
-  
   useEffect(() => {
     if (values.startDate && values.occurrences > 0 && values.repeatInterval > 0) {
       let calculatedEndDate = new Date(values.startDate);
@@ -69,17 +59,6 @@ export const Recurring: React.FC<RecurringProps> = ({ values, setFieldValue }) =
       <FormControl fullWidth sx={{ mb: 2 }}>
         <Typography variant="subtitle1">Repeats Every</Typography>
         <div style={{ display: 'flex', gap: '16px' }}>
-        {/* <DatePicker
-            selected={values.endDate || null}
-            onChange={(date) => setFieldValue('endDate', date)}
-            dateFormat="dd/MM/yyyy"
-            customInput={<TextField fullWidth />}
-            required
-            minDate={values.startDate ? new Date(values.startDate.getTime() + 86400000) : new Date()} // Ensure end date is after start date
-          />
-          <FormHelperText error>
-            <ErrorMessage name="endDate" />
-          </FormHelperText> */}
           <TextField
             name="repeatInterval"
             type="number"
@@ -99,14 +78,16 @@ export const Recurring: React.FC<RecurringProps> = ({ values, setFieldValue }) =
             <MenuItem value="month">month(s)</MenuItem>
           </Select>
         </div>
-        <FormHelperText error>
-          <ErrorMessage name="repeatInterval" />
-        </FormHelperText>
+        {errors.repeatInterval && touched.repeatInterval && (
+          <FormHelperText error>
+            <ErrorMessage name="repeatInterval" />
+          </FormHelperText>
+        )}
       </FormControl>
 
       {/* Occurrences */}
       <FormControl fullWidth sx={{ mb: 2 }}>
-        <Typography variant="subtitle1">Number of Occurrences Preferred</Typography>
+        <Typography variant="subtitle1">Number of Occurrences</Typography>
         <TextField
           name="occurrences"
           type="number"
@@ -115,9 +96,11 @@ export const Recurring: React.FC<RecurringProps> = ({ values, setFieldValue }) =
           inputProps={{ min: 1 }}
           fullWidth
         />
-        <FormHelperText error>
-          <ErrorMessage name="occurrences" />
-        </FormHelperText>
+        {errors.occurrences && touched.occurrences && (
+          <FormHelperText error>
+            <ErrorMessage name="occurrences" />
+          </FormHelperText>
+        )}
       </FormControl>
     </>
   );

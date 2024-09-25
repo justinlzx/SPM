@@ -1,7 +1,6 @@
 import { useContext, useEffect } from "react";
 import { UserContext } from "../../context/UserContextProvider";
-import { useNavigate } from "react-router-dom";
-
+import { useNavigate, Outlet } from "react-router-dom";
 
 export const HomePage = () => {
   const { user } = useContext(UserContext);
@@ -32,7 +31,6 @@ export const HomePage = () => {
         Go to test
       </button>
       <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
         <p>Hello {user!.email}</p>
         <button onClick={() => handleNavigate("/test")}>Go to test</button>
       </header>

@@ -33,7 +33,10 @@ def create_wfh_request(
             if missing_fields:
                 raise HTTPException(
                     status_code=400,
-                    detail=f"Recurring WFH request requires the following fields to be filled: {', '.join(missing_fields)}",
+                    detail=(
+                        "Recurring WFH request requires the following fields to be filled: "
+                        f"{', '.join(missing_fields)}"
+                    ),
                 )
 
             for i in range(arrangement.recurring_occurrences):

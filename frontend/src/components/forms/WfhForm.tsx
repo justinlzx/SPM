@@ -12,127 +12,125 @@ import {
   MenuItem,
   FormHelperText,
   Button,
-  Snackbar,
-  Alert,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogContentText,
-  DialogTitle,
 } from '@mui/material';
-import ErrorIcon from '@mui/icons-material/Error';
-import { Recurring } from './Recurring';
 import * as Yup from 'yup';
 import DatePicker from 'react-datepicker';
+import 'react-datepicker/dist/react-datepicker.css';
 import axios from 'axios';
-import dayjs from 'dayjs';
+import { Recurring } from './Recurring';
+import { SnackBarComponent, AlertStatus } from '../../common/SnackBar'; // Assuming you have this component
 
 interface WfhFormProps {
-  reason: string;
-  startDate: Date;
-  endDate: Date | null;
-  wfhType: 'full' | 'am' | 'pm' | '';
-  repeatInterval: number;
-  repeatIntervalUnit: 'week' | 'month';
-  occurrences: number;
+  requesterStaffId: number;
 }
 
-export const WfhForm = () => {
+export const WfhForm: React.FC<WfhFormProps> = ({ requesterStaffId }) => {
   const [scheduleType, setScheduleType] = useState<'adhoc' | 'recurring'>('adhoc');
-  const [wfhDaysTaken] = useState(3); // Hardcoded number of WFH days taken
-  const [isSnackbarOpen, setIsSnackbarOpen] = useState(false); // Control Snackbar visibility
-  const [isDialogOpen, setIsDialogOpen] = useState(false); // Control dialog visibility
-  const [proceedWithSubmission, setProceedWithSubmission] = useState(false); // Control whether to proceed with form submission
-  const [isSuccessDialogOpen, setIsSuccessDialogOpen] = useState(false); // Control success dialog visibility
+  const [wfhDaysTaken] = useState(3); // Example hardcoded value, should come from actual data
+  const [showSnackbar, setShowSnackbar] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState('');
+  const [alertStatus, setAlertStatus] = useState<AlertStatus>(AlertStatus.Info);
+  const [proceedWithSubmission, setProceedWithSubmission] = useState(false); // New state to track user confirmation
+  const [submitted, setSubmitted] = useState(false); // New state to track if user has tried submitting before
   const navigate = useNavigate();
 
-  // Helper function to check if WFH days exceed the limit
-  const checkExceedLimit = (
-    startDate: Date,
-    occurrences: number,
-    repeatIntervalUnit: string,
-    repeatInterval: number,
-    wfhDaysTaken: number
-  ) => {
-    let wfhCount = wfhDaysTaken;
-    const start = dayjs(startDate);
-    const currentMonth = start.month();
-
-    if (scheduleType === 'adhoc') {
-      wfhCount += 1;
-    } else {
-      let countOccInMonth = 0;
-      for (let i = 0; i < occurrences; i++) {
-        const nextDate = start.add(i * repeatInterval, repeatIntervalUnit as 'week' | 'month');
-        if (nextDate.month() === currentMonth) {
-          countOccInMonth += 1;
-        }
-      }
-      wfhCount += countOccInMonth;
-    }
-
-    return wfhCount > 2;
+  // Function to handle Snackbar close
+  const handleCloseSnackBar = () => {
+    setShowSnackbar(false);
   };
 
   // Handle form submission
-  const handleSubmit = async (values: WfhFormProps) => {
-    const exceeded = checkExceedLimit(
-      values.startDate,
-      values.occurrences,
-      values.repeatIntervalUnit,
-      values.repeatInterval,
-      wfhDaysTaken
-    );
-
-    if (exceeded && !proceedWithSubmission) {
-      setIsSnackbarOpen(true); // Show warning Snackbar
-      setIsDialogOpen(true); // Open confirmation dialog
-      return;
+  const handleSubmit = async (values: any) => {
+    // Check if the WFH limit of 2 days has been exceeded
+    if (wfhDaysTaken >= 2 && !proceedWithSubmission) {
+      setAlertStatus(AlertStatus.Warning);
+      setSnackbarMessage('You have already used 2 WFH days this month. Are you sure you want to proceed?');
+      setShowSnackbar(true);
+      setProceedWithSubmission(true); // User has been warned, allow submission on next attempt
+      setSubmitted(true); // Mark as submitted so the user can submit again
+      return; // Stop submission and wait for user confirmation
     }
-
-    // Prepare payload
-    const payload = {
-      requester_staff_id: 12345,
-      wfh_date: values.startDate.toISOString().split('T')[0],
-      wfh_type: values.wfhType.toLowerCase(),
-      reason_description: values.reason,
-      endDate: scheduleType === 'recurring' ? values.endDate?.toISOString().split('T')[0] : null,
+  
+    // Build the payload once and conditionally add recurring fields if necessary
+    const payload: any = {
+      requester_staff_id: requesterStaffId,
+      wfh_date: values.startDate.toISOString().split('T')[0], // Extract date as 'YYYY-MM-DD'
+      wfh_type: values.wfhType.toLowerCase(), // 'full', 'am', or 'pm'
+      reason_description: values.reason, // Reason for WFH
+      is_recurring: scheduleType === 'recurring', // Boolean for recurring schedule
     };
-
+  
+    // Add recurring schedule fields only if the schedule is recurring
+    if (scheduleType === 'recurring') {
+      payload.recurring_end_date = values.endDate ? values.endDate.toISOString().split('T')[0] : null;
+      payload.recurring_frequency_number = values.repeatInterval;
+      payload.recurring_frequency_unit = values.repeatIntervalUnit;
+      payload.recurring_occurrences = values.occurrences;
+    }
+  
+    // Log the payload for debugging
+    console.log('Payload:', payload);
+  
     try {
-      const response = await axios.post('https://your-api-endpoint.com/arrangement', payload);
+      const response = await axios.post('http://localhost:8000/arrangement/request', payload);
       console.log(response.data);
-      setIsSuccessDialogOpen(true); // Open success dialog
+      setAlertStatus(AlertStatus.Success);
+      setSnackbarMessage('Your request was successfully submitted!');
+      setShowSnackbar(true);
+      setProceedWithSubmission(false); // Reset after successful submission
+      setSubmitted(false); // Reset submitted state
     } catch (error) {
-      console.error(error);
+      console.error('Error submitting the WFH arrangement:', error);
+      setAlertStatus(AlertStatus.Error);
+      setSnackbarMessage('An error occurred while submitting your request.');
+      setShowSnackbar(true);
+      setProceedWithSubmission(false); // Reset in case of error
+      setSubmitted(false); // Reset submitted state
     }
   };
 
-  // Yup form validation
+  // Yup form validation schema
   const validationSchema = Yup.object().shape({
     reason: Yup.string().required('Reason is required'),
     startDate: Yup.date().required('Start date is required'),
     wfhType: Yup.string().required('You must select AM, PM, or Full-day'),
-    endDate: Yup.date().nullable().when(() => {
-      return scheduleType === 'recurring'
-        ? Yup.date().required('End date is required for recurring schedules')
-        : Yup.date().nullable();
-    }),
-    repeatInterval: Yup.number().when(() => {
-      return scheduleType === 'recurring'
-        ? Yup.number().required('Repeat interval is required')
-        : Yup.number().nullable();
-    }),
-    occurrences: Yup.number().when(() => {
-      return scheduleType === 'recurring'
-        ? Yup.number().required('Occurrences are required')
-        : Yup.number().nullable();
-    }),
-    repeatIntervalUnit: Yup.string().when(() => {
-      return scheduleType === 'recurring'
-        ? Yup.string().required('Repeat interval unit is required')
-        : Yup.string().nullable();
-    }),
+
+    // Conditionally validate the endDate, repeatInterval, occurrences, and repeatIntervalUnit
+    endDate: Yup.date().nullable().test(
+      'is-recurring-end-date',
+      'End date is required for recurring schedules',
+      function (value) {
+        const { scheduleType } = this.parent;
+        return scheduleType === 'recurring' ? !!value : true;
+      }
+    ),
+
+    repeatInterval: Yup.number().nullable().test(
+      'is-recurring-repeat-interval',
+      'Repeat interval is required for recurring schedules',
+      function (value) {
+        const { scheduleType } = this.parent;
+        return scheduleType === 'recurring' ? !!value : true;
+      }
+    ),
+
+    occurrences: Yup.number().nullable().test(
+      'is-recurring-occurrences',
+      'Occurrences are required for recurring schedules',
+      function (value) {
+        const { scheduleType } = this.parent;
+        return scheduleType === 'recurring' ? !!value : true;
+      }
+    ),
+
+    repeatIntervalUnit: Yup.string().nullable().test(
+      'is-recurring-repeat-interval-unit',
+      'Repeat interval unit is required for recurring schedules',
+      function (value) {
+        const { scheduleType } = this.parent;
+        return scheduleType === 'recurring' ? !!value : true;
+      }
+    ),
   });
 
   return (
@@ -150,13 +148,14 @@ export const WfhForm = () => {
         validationSchema={validationSchema}
         onSubmit={handleSubmit}
       >
-        {({ values, setFieldValue }) => (
+        {({ values, setFieldValue, errors, touched }) => (
           <Form>
-            {/* Reason for WFH */}
-            <Typography variant="h4" sx={{ mb:2}}>
+            <Typography variant="h4" sx={{ mb: 2 }}>
               WFH Request Form
             </Typography>
-            <Divider sx={{mb:2}}/>
+            <Divider sx={{ mb: 2 }} />
+
+            {/* Reason */}
             <FormControl fullWidth sx={{ mb: 2 }}>
               <Typography variant="subtitle1">Reason for WFH</Typography>
               <Field name="reason" as={TextField} fullWidth required />
@@ -165,7 +164,7 @@ export const WfhForm = () => {
               </FormHelperText>
             </FormControl>
 
-            {/* AM, PM, Full-day Select */}
+            {/* WFH Type */}
             <FormControl fullWidth sx={{ mb: 2 }}>
               <Typography variant="subtitle1">WFH Type</Typography>
               <Select
@@ -186,7 +185,7 @@ export const WfhForm = () => {
               </FormHelperText>
             </FormControl>
 
-            {/* Schedule Type: Adhoc or Recurring */}
+            {/* Schedule Type */}
             <FormControl fullWidth sx={{ mb: 2 }}>
               <Typography variant="subtitle1">Schedule Type</Typography>
               <Select
@@ -203,7 +202,7 @@ export const WfhForm = () => {
               </FormHelperText>
             </FormControl>
 
-            {/* Date */}
+            {/* Date Picker */}
             {scheduleType === 'adhoc' && (
               <FormControl fullWidth sx={{ mb: 2 }}>
                 <Typography variant="subtitle1">WFH Date</Typography>
@@ -213,7 +212,7 @@ export const WfhForm = () => {
                   dateFormat="dd/MM/yyyy"
                   customInput={<TextField fullWidth />}
                   required
-                  minDate={new Date()} // Disable dates before today
+                  minDate={new Date()}
                 />
                 <FormHelperText error>
                   <ErrorMessage name="startDate" />
@@ -221,21 +220,14 @@ export const WfhForm = () => {
               </FormControl>
             )}
 
-            {/* Conditionally render recurring fields */}
-            {scheduleType === 'recurring' && (
-              <Recurring values={values} setFieldValue={setFieldValue} />
-            )}
+            {/* Recurring Fields */}
+            {scheduleType === 'recurring' && <Recurring />}
 
-            {/* Submit and Cancel Buttons */}
+            {/* Submit Button */}
             <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 4 }}>
-              <Button
-                type="button"
-                sx={{ backgroundColor: 'gray', color: 'white', mr: 2 }}
-                onClick={() => navigate('/home')}
-              >
+              <Button variant="outlined" color="primary" onClick={() => navigate(-1)} sx={{ mr: 2 }}>
                 Cancel
               </Button>
-
               <Button type="submit" variant="contained" color="primary">
                 Submit
               </Button>
@@ -244,60 +236,13 @@ export const WfhForm = () => {
         )}
       </Formik>
 
-      {/* Snackbar Warning */}
-      {/* <Snackbar
-        open={isSnackbarOpen}
-        autoHideDuration={6000}
-        onClose={() => setIsSnackbarOpen(false)}
-      >
-        <Alert onClose={() => setIsSnackbarOpen(false)} severity="warning">
-          You have exceeded the allowed 2 WFH days per month. Do you want to proceed?
-        </Alert>
-      </Snackbar> */}
-
-      {/* Dialog for user confirmation */}
-      <Dialog open={isDialogOpen} onClose={() => setIsDialogOpen(false)}>
-        <DialogTitle>
-          <Box sx={{ display: 'flex', alignItems: 'center' }}>
-            <ErrorIcon color="warning" sx={{ fontSize: 24, marginRight: 1 }} />
-            Warning
-          </Box>
-        </DialogTitle>
-        <DialogContent>
-          <DialogContentText>
-            You are about to exceed 2 WFH days for this month. Are you sure you would like to
-            proceed with this request?
-          </DialogContentText>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setIsDialogOpen(false)} color="primary">
-            Cancel
-          </Button>
-          <Button
-            onClick={() => {
-              setIsDialogOpen(false);
-              setProceedWithSubmission(true); // Allow form submission on confirmation
-            }}
-            color="primary"
-            autoFocus
-          >
-            Proceed
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* Success Dialog for successful submission */}
-      <Dialog open={isSuccessDialogOpen} onClose={() => setIsSuccessDialogOpen(false)}>
-        <DialogTitle>Success</DialogTitle>
-        <DialogContent>
-          <DialogContentText>Your request was successfully submitted.</DialogContentText>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => navigate('/home')} color="primary">
-            Back to Home
-          </Button>
-        </DialogActions>
-      </Dialog>
+      {/* Snackbar Component for Warning or Success */}
+      <SnackBarComponent
+        showSnackbar={showSnackbar}
+        handleCloseSnackBar={handleCloseSnackBar}
+        alertStatus={alertStatus}
+        snackbarMessage={snackbarMessage}
+      />
     </Container>
   );
 };
