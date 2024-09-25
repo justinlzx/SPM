@@ -27,7 +27,7 @@ export const App = () => {
 
   useEffect(() => {
     if (user === undefined) {
-      navigate("/home");
+      navigate("/login");
       return;
     }
   }, [user, navigate]);
