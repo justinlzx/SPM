@@ -33,7 +33,7 @@ export const HomePage = () => {
       <header className="App-header">
         <p>Hello {user!.email}</p>
         <button onClick={() => handleNavigate("/test")}>Go to test</button>
-        <button onClick={logout}>Go to test</button>
+        <button onClick={logout}>Logout</button>
       </header>
       <Outlet />
     </div>

@@ -10,8 +10,7 @@ import { StaffHomePage } from "../pages/staff/StaffHomePage";
 import PendingRequests from "../pages/pendingrequests/Pendingrequests";
 
 type routesProps = {
-  index?: boolean;
-  path?: string;
+  path: string;
   element: JSX.Element;
   children?: routesProps[];
 };
@@ -21,7 +20,6 @@ const routes: routesProps[] = [
     path: "/",
     element: <App />,
     children: [
-      { index: true, element: <Navigate to="/home" replace /> },
       {
         path: "/login",
         element: <LoginPage />,
