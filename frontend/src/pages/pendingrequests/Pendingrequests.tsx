@@ -13,6 +13,7 @@ import {
   Typography,
   CircularProgress,
   Box,
+  TextField,
 } from "@mui/material";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
@@ -47,6 +48,7 @@ const PendingRequests = () => {
   const [loading, setLoading] = useState(true);
   const [order, setOrder] = useState<Order>('asc');
   const [orderBy, setOrderBy] = useState<keyof Request | keyof Employee | 'full_name'>('requester_staff_id'); // Default sorting by staff ID
+  const [searchTerm, setSearchTerm] = useState(""); // New state for search term
 
   useEffect(() => {
     // Fetch the pending requests
@@ -108,7 +110,29 @@ const PendingRequests = () => {
     setOrderBy(property);
   };
 
-  const sortedRequests = requests.slice().sort((a, b) => {
+  const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchTerm(e.target.value);
+  };
+
+  const filteredRequests = requests.filter((request) => {
+    const employee = employees[request.requester_staff_id];
+    const fullName = employee
+      ? `${employee.staff_fname} ${employee.staff_lname}`
+      : "Not Available";
+    return (
+      String(request.requester_staff_id).toLowerCase().includes(searchTerm.toLowerCase()) ||
+      fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      employee?.position?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      employee?.dept?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      employee?.country?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      employee?.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      request.wfh_date.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      request.wfh_type.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      request.approval_status.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  });
+
+  const sortedRequests = filteredRequests.slice().sort((a, b) => {
     if (orderBy === 'full_name') {
       const fullNameA = employees[a.requester_staff_id]
         ? `${employees[a.requester_staff_id].staff_fname} ${employees[a.requester_staff_id].staff_lname}`
@@ -130,7 +154,7 @@ const PendingRequests = () => {
       const empB = employees[b.requester_staff_id]
         ? employees[b.requester_staff_id][orderBy as keyof Employee]
         : 'Not Available';
-  
+
       // Check if both values are strings, use localeCompare, otherwise, handle as numbers
       if (typeof empA === 'string' && typeof empB === 'string') {
         return order === 'asc'
@@ -144,7 +168,7 @@ const PendingRequests = () => {
     } else {
       const aValue = a[orderBy as keyof Request];
       const bValue = b[orderBy as keyof Request];
-  
+
       if (typeof aValue === 'string' && typeof bValue === 'string') {
         return order === 'asc'
           ? aValue.localeCompare(bValue)
@@ -154,7 +178,6 @@ const PendingRequests = () => {
       }
     }
   });
-  
 
   if (loading) {
     return (
@@ -169,6 +192,17 @@ const PendingRequests = () => {
       <Typography variant="h4" gutterBottom align="center" sx={{ marginTop: 4 }}>
         Pending Requests
       </Typography>
+
+      {/* Search bar */}
+      <TextField
+        label="Search"
+        variant="outlined"
+        fullWidth
+        margin="normal"
+        value={searchTerm}
+        onChange={handleSearch}
+      />
+
       <TableContainer component={Paper} sx={{ marginTop: 3 }}>
         <Table>
           <TableHead>
