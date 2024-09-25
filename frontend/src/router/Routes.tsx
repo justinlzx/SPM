@@ -1,4 +1,4 @@
-import { createBrowserRouter } from "react-router-dom";
+import { createBrowserRouter, Navigate } from "react-router-dom";
 import { LoginPage } from "../pages/login-signup/LoginPage";
 import { SignUpPage } from "../pages/login-signup/SignUpPage";
 import { App } from "../App";
@@ -9,9 +9,9 @@ import { TestPage } from "./TestPage";
 import { StaffHomePage } from "../pages/staff/StaffHomePage";
 import PendingRequests from "../pages/pendingrequests/Pendingrequests";
 
-
 type routesProps = {
-  path: string;
+  index?: boolean;
+  path?: string;
   element: JSX.Element;
   children?: routesProps[];
 };
@@ -21,6 +21,7 @@ const routes: routesProps[] = [
     path: "/",
     element: <App />,
     children: [
+      { index: true, element: <Navigate to="/home" replace /> },
       {
         path: "/login",
         element: <LoginPage />,
