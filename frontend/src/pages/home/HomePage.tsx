@@ -1,16 +1,15 @@
 import { useContext, useEffect } from "react";
 import { UserContext } from "../../context/UserContextProvider";
-import logo from "../../logo.svg";
-import { Outlet, useNavigate } from "react-router-dom";
+import { useNavigate, Outlet } from "react-router-dom";
 
 export const HomePage = () => {
   const { user } = useContext(UserContext);
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (user === undefined) {
-      navigate("/login");
-    }
+    // if (user === undefined) {
+    //   navigate("/login");
+    // }
   }, [user, navigate]);
 
   if (!user) {
@@ -23,8 +22,15 @@ export const HomePage = () => {
 
   return (
     <div>
+      
+      
+      <button 
+        onClick={() => handleNavigate("/test")} 
+        style={{ backgroundColor: "black", color: "white" }}
+      >
+        Go to test
+      </button>
       <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
         <p>Hello {user!.email}</p>
         <button onClick={() => handleNavigate("/test")}>Go to test</button>
       </header>
@@ -32,3 +38,5 @@ export const HomePage = () => {
     </div>
   );
 };
+
+export default HomePage; 

@@ -22,6 +22,7 @@ export const SnackBarComponent = ({
       open={showSnackbar}
       autoHideDuration={3000}
       onClose={handleCloseSnackBar}
+      anchorOrigin={{ vertical: "top", horizontal: "center" }}  // Set the position to top center
     >
       <Alert
         onClose={handleCloseSnackBar}
