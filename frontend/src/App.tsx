@@ -14,12 +14,12 @@ export const App = () => {
   const navigate = useNavigate();
   const { mutate } = useHealthCheck();
 
-  useEffect(() => {
-    if (user === undefined) {
-      navigate("/login");
-      return;
-    }
-  }, [user, navigate]);
+  // useEffect(() => {
+  //   if (user === undefined) {
+  //     navigate("/pendingrequests");
+  //     return;
+  //   }
+  // }, [user, navigate]);
 
   useEffect(() => {
     mutate();
