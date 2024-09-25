@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
+const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 
 // Define the type for the requests, based on your API response
 type Request = {
@@ -19,7 +20,7 @@ const PendingRequests = () => {
   useEffect(() => {
     const fetchRequests = async () => {
       try {
-        const response = await axios.get("http://0.0.0.0:8000/arrangement/view");  // Call the API
+        const response = await axios.get(`${BACKEND_URL}/arrangement/view`);  // Use backticks for template literal
         setRequests(response.data);  // Set requests data
       } catch (error) {
         console.error("Error fetching requests:", error);
