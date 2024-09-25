@@ -30,8 +30,11 @@ async def create_wfh_request(
         # Fetch manager info using the helper function from notifications
         manager_info = await fetch_manager_info(arrangement.requester_staff_id)
         manager = None
+
+        # Only fetch manager if manager_id is not null
         if (
             manager_info
+            and manager_info["manager_id"] is not None
             and manager_info["manager_id"] != arrangement.requester_staff_id
         ):
             manager = read_employee(manager_info["manager_id"], db)
@@ -88,7 +91,7 @@ async def create_wfh_request(
         subject, content = await craft_email_content(staff, response_data, success=True)
         await send_email(to_email=staff.email, subject=subject, content=content)
 
-        # Craft and send notification email to the manager if applicable
+        # Only send notification to the manager if the manager_id is not null
         if manager:
             subject, content = await craft_email_content(
                 staff, response_data, success=True, is_manager=True, manager=manager
