@@ -11,13 +11,16 @@ import ListItem from "@mui/material/ListItem";
 import ListItemButton from "@mui/material/ListItemButton";
 import ListItemIcon from "@mui/material/ListItemIcon";
 import ListItemText from "@mui/material/ListItemText";
-import TeamIcon from '@mui/icons-material/Group';
-import WfhScheduleIcon from '@mui/icons-material/WorkOutline';
-import SettingsIcon from '@mui/icons-material/Settings';
+import TeamIcon from "@mui/icons-material/Group";
+import WfhScheduleIcon from "@mui/icons-material/WorkOutline";
+import SettingsIcon from "@mui/icons-material/Settings";
 import MenuIcon from "@mui/icons-material/Menu";
 import Toolbar from "@mui/material/Toolbar";
 import Typography from "@mui/material/Typography";
 import "@fontsource/poppins"; // Defaults to weight 400
+import Button from "@mui/material/Button";
+import { useContext } from "react";
+import { UserContext } from "../context/UserContextProvider";
 
 const drawerWidth = 240;
 
@@ -25,16 +28,17 @@ interface Props {
   window?: () => Window;
 }
 
-export const Header = (props: Props) => {
-  const { window } = props;
+export const Header = ({ window }: Props) => {
   const [mobileOpen, setMobileOpen] = React.useState(false);
+
+  const { logout } = useContext(UserContext);
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
   };
 
   const drawer = (
-    <Box sx={{ bgcolor: "#f5f5f5", height: '100%' }}>
+    <Box sx={{ bgcolor: "#f5f5f5", height: "100%" }}>
       <Toolbar />
       <Divider />
       <List>
@@ -42,13 +46,11 @@ export const Header = (props: Props) => {
           { text: "Notifications", icon: <InboxIcon /> },
           { text: "My Team", icon: <TeamIcon /> },
           { text: "My WFH Schedule", icon: <WfhScheduleIcon /> },
-          { text: "Settings", icon: <SettingsIcon /> }
+          { text: "Settings", icon: <SettingsIcon /> },
         ].map((item) => (
           <ListItem key={item.text} disablePadding>
-            <ListItemButton sx={{ textAlign: 'left', alignItems: 'left' }}>
-              <ListItemIcon>
-                {item.icon}
-              </ListItemIcon>
+            <ListItemButton sx={{ textAlign: "left", alignItems: "left" }}>
+              <ListItemIcon>{item.icon}</ListItemIcon>
               <ListItemText primary={item.text} />
             </ListItemButton>
           </ListItem>
@@ -57,7 +59,8 @@ export const Header = (props: Props) => {
     </Box>
   );
 
-  const container = window !== undefined ? () => window().document.body : undefined;
+  const container =
+    window !== undefined ? () => window().document.body : undefined;
 
   return (
     <Box sx={{ display: "flex" }}>
@@ -66,10 +69,10 @@ export const Header = (props: Props) => {
         position="fixed"
         sx={{
           zIndex: (theme) => theme.zIndex.drawer + 1,
-          bgcolor: 'white',
-          color: 'black',
-          boxShadow: 'none',
-          borderBottom: '1px solid #e0e0e0'
+          bgcolor: "white",
+          color: "black",
+          boxShadow: "none",
+          borderBottom: "1px solid #e0e0e0",
         }}
       >
         <Toolbar>
@@ -85,25 +88,32 @@ export const Header = (props: Props) => {
           <Typography variant="h6" noWrap component="div">
             All-in-One
           </Typography>
+          <Box sx={{ flexGrow: 1 }} />
+          <Button onClick={logout} color="inherit">
+            Log Out
+          </Button>
         </Toolbar>
       </AppBar>
 
-      <Box component="nav" sx={{ width: { md: drawerWidth }, flexShrink: { md: 0 } }}>
+      <Box
+        component="nav"
+        sx={{ width: { md: drawerWidth }, flexShrink: { md: 0 } }}
+      >
         <Drawer
           container={container}
           variant="temporary"
           open={mobileOpen}
           onClose={handleDrawerToggle}
           ModalProps={{
-            keepMounted: true
+            keepMounted: true,
           }}
           sx={{
             display: { xs: "block", sm: "block", md: "none" },
             "& .MuiDrawer-paper": {
               boxSizing: "border-box",
               width: drawerWidth,
-              bgcolor: "#f5f5f5"
-            }
+              bgcolor: "#f5f5f5",
+            },
           }}
         >
           {drawer}
@@ -115,8 +125,8 @@ export const Header = (props: Props) => {
             "& .MuiDrawer-paper": {
               boxSizing: "border-box",
               width: drawerWidth,
-              bgcolor: "#f5f5f5"
-            }
+              bgcolor: "#f5f5f5",
+            },
           }}
           open
         >

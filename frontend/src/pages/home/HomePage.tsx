@@ -3,7 +3,7 @@ import { UserContext } from "../../context/UserContextProvider";
 import { useNavigate, Outlet } from "react-router-dom";
 
 export const HomePage = () => {
-  const { user } = useContext(UserContext);
+  const { user, logout } = useContext(UserContext);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -33,6 +33,7 @@ export const HomePage = () => {
       <header className="App-header">
         <p>Hello {user!.email}</p>
         <button onClick={() => handleNavigate("/test")}>Go to test</button>
+        <button onClick={logout}>Logout</button>
       </header>
       <Outlet />
     </div>
