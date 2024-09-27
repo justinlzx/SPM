@@ -46,10 +46,7 @@ const routes: routesProps[] = [
           }
         ]
       },
-      {
-        path: "/pendingRequests",
-        element: <PendingRequests />,
-      },
+     
     ],
   },
 ];
