@@ -4,4 +4,7 @@
     ],
     "eslint.format.enable": true,
     "editor.formatOnSave": true,
+    "black-formatter.args": [
+        "--config=${workspaceFolder}/config/black.toml",
+    ],
 }

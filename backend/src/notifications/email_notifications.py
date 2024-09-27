@@ -20,14 +20,11 @@ BASE_URL = getenv("BACKEND_BASE_URL", "http://localhost:8000")
 
 
 async def fetch_manager_info(staff_id: int):
-    """
-    Fetch manager information by making an HTTP request to the /employee/manager/peermanager/{staff_id} route.
-    """
+    """Fetch manager information by making an HTTP request to the
+    /employee/manager/peermanager/{staff_id} route."""
     try:
         async with httpx.AsyncClient() as client:
-            response = await client.get(
-                f"{BASE_URL}/employee/manager/peermanager/{staff_id}"
-            )
+            response = await client.get(f"{BASE_URL}/employee/manager/peermanager/{staff_id}")
 
             # Check if the response is successful
             if response.status_code != 200:
@@ -54,9 +51,7 @@ async def craft_email_content(
     is_manager=False,
     manager=None,
 ):
-    """
-    Helper function to format email content.
-    """
+    """Helper function to format email content."""
     if success:
         formatted_details = "\n".join(
             [
@@ -75,7 +70,8 @@ async def craft_email_content(
             subject = "[All-In-One] Your Staff Created a WFH Request"
             content = (
                 f"Dear {manager.staff_fname} {manager.staff_lname},\n\n"
-                f"{staff.staff_fname} {staff.staff_lname}, one of your staff members, has successfully created a WFH request with the following details:\n\n"
+                f"{staff.staff_fname} {staff.staff_lname}, one of your staff members, \
+                has successfully created a WFH request with the following details:\n\n"
                 f"{formatted_details}\n\n"
                 f"This email is auto-generated. Please do not reply to this email. Thank you."
             )
@@ -100,9 +96,7 @@ async def craft_email_content(
 
 
 async def send_email(to_email: str, subject: str, content: str):
-    """
-    Sends an email by making a POST request to the /email/sendemail route.
-    """
+    """Sends an email by making a POST request to the /email/sendemail route."""
     try:
         async with httpx.AsyncClient() as client:
             response = await client.post(
@@ -111,9 +105,7 @@ async def send_email(to_email: str, subject: str, content: str):
             )
             # Check if the response is successful
             if response.status_code != 200:
-                raise HTTPException(
-                    status_code=response.status_code, detail=response.text
-                )
+                raise HTTPException(status_code=response.status_code, detail=response.text)
 
             return response.json()
 
