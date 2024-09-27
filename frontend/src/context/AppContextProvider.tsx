@@ -14,6 +14,8 @@ export type TSnackBar = {
     event: React.SyntheticEvent | Event,
     reason?: SnackbarCloseReason
   ) => void;
+  activeTab: number;
+  setActiveTab: React.Dispatch<React.SetStateAction<number>>;
 };
 
 type TAppContext = TSnackBar;
@@ -26,6 +28,8 @@ export const AppContext = createContext<TAppContext>({
   snackbarMessage: "",
   setSnackbarMessage: () => {},
   handleCloseSnackBar: () => {},
+  activeTab: 0,
+  setActiveTab: () => {},
 });
 
 type Props = {
@@ -38,6 +42,7 @@ export const AppContextProvider = ({ children }: Props) => {
     "error" | "success" | "info" | "warning"
   >("info");
   const [snackbarMessage, setSnackbarMessage] = useState("");
+  const [activeTab, setActiveTab] = useState(0);
 
   const handleCloseSnackBar = (
     event: React.SyntheticEvent | Event,
@@ -60,6 +65,8 @@ export const AppContextProvider = ({ children }: Props) => {
         snackbarMessage,
         setSnackbarMessage,
         handleCloseSnackBar,
+        activeTab,
+        setActiveTab,
       }}
     >
       {children}
