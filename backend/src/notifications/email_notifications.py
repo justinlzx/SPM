@@ -1,13 +1,19 @@
-import smtplib
-import httpx
-
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
+# import smtplib
+# from email.mime.multipart import MIMEMultipart
+# from email.mime.text import MIMEText
 from os import getenv
+from typing import List
+
+import httpx
 from dotenv import load_dotenv
-from sqlalchemy.orm import Session
 from fastapi import HTTPException
-from ..employees.routes import read_employee
+
+from ..arrangements import schemas as arrangement_schemas
+
+# from sqlalchemy.orm import Session
+
+
+# from ..employees.routes import read_employee
 
 load_dotenv()
 BASE_URL = getenv("BACKEND_BASE_URL", "http://localhost:8000")
@@ -42,7 +48,7 @@ async def fetch_manager_info(staff_id: int):
 
 async def craft_email_content(
     staff,
-    response_data,
+    response_data: List[arrangement_schemas.ArrangementLog],
     success=True,
     error_message=None,
     is_manager=False,
@@ -54,13 +60,13 @@ async def craft_email_content(
     if success:
         formatted_details = "\n".join(
             [
-                f"Request ID: {arrangement['arrangement_id']}\n"
-                f"WFH Date: {arrangement['wfh_date']}\n"
-                f"Approval Status: {arrangement['approval_status']}\n"
-                f"Type: {arrangement['wfh_type']}\n"
-                f"Reason: {arrangement['reason_description']}\n"
-                f"Batch ID: {arrangement['batch_id']}\n"
-                f"Updated: {arrangement['update_datetime']}\n"
+                f"Request ID: {arrangement.arrangement_id}\n"
+                f"WFH Date: {arrangement.wfh_date}\n"
+                f"Approval Status: {arrangement.approval_status}\n"
+                f"Type: {arrangement.wfh_type}\n"
+                f"Reason: {arrangement.reason_description}\n"
+                f"Batch ID: {arrangement.batch_id}\n"
+                f"Updated: {arrangement.update_datetime}\n"
                 for arrangement in response_data
             ]
         )
