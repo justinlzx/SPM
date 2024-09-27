@@ -40,14 +40,16 @@ type Employee = {
   dept: string;
 };
 
-type Order = 'asc' | 'desc';
+type Order = "asc" | "desc";
 
-const PendingRequests = () => {
+export const PendingRequests = () => {
   const [requests, setRequests] = useState<Request[]>([]);
   const [employees, setEmployees] = useState<{ [key: number]: Employee }>({});
   const [loading, setLoading] = useState(true);
-  const [order, setOrder] = useState<Order>('asc');
-  const [orderBy, setOrderBy] = useState<keyof Request | keyof Employee | 'full_name'>('requester_staff_id'); // Default sorting by staff ID
+  const [order, setOrder] = useState<Order>("asc");
+  const [orderBy, setOrderBy] = useState<
+    keyof Request | keyof Employee | "full_name"
+  >("requester_staff_id"); // Default sorting by staff ID
   const [searchTerm, setSearchTerm] = useState(""); // New state for search term
 
   useEffect(() => {
@@ -73,7 +75,9 @@ const PendingRequests = () => {
   const fetchEmployeeNames = async (requests: Request[]) => {
     const employeePromises = requests.map(async (request) => {
       try {
-        const response = await axios.get(`${BACKEND_URL}/employee/${request.requester_staff_id}`);
+        const response = await axios.get(
+          `${BACKEND_URL}/employee/${request.requester_staff_id}`
+        );
         const employeeData: Employee = {
           staff_id: response.data.staff_id,
           staff_fname: response.data.staff_fname,
@@ -85,7 +89,10 @@ const PendingRequests = () => {
         };
         return employeeData;
       } catch (error) {
-        console.error(`Error fetching employee details for ID: ${request.requester_staff_id}`, error);
+        console.error(
+          `Error fetching employee details for ID: ${request.requester_staff_id}`,
+          error
+        );
         return null;
       }
     });
@@ -104,9 +111,11 @@ const PendingRequests = () => {
     setEmployees(employeesMap); // Set the employee data in state
   };
 
-  const handleSortRequest = (property: keyof Request | keyof Employee | 'full_name') => {
-    const isAsc = orderBy === property && order === 'asc';
-    setOrder(isAsc ? 'desc' : 'asc');
+  const handleSortRequest = (
+    property: keyof Request | keyof Employee | "full_name"
+  ) => {
+    const isAsc = orderBy === property && order === "asc";
+    setOrder(isAsc ? "desc" : "asc");
     setOrderBy(property);
   };
 
@@ -120,7 +129,9 @@ const PendingRequests = () => {
       ? `${employee.staff_fname} ${employee.staff_lname}`
       : "Not Available";
     return (
-      String(request.requester_staff_id).toLowerCase().includes(searchTerm.toLowerCase()) ||
+      String(request.requester_staff_id)
+        .toLowerCase()
+        .includes(searchTerm.toLowerCase()) ||
       fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       employee?.position?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       employee?.dept?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -133,35 +144,39 @@ const PendingRequests = () => {
   });
 
   const sortedRequests = filteredRequests.slice().sort((a, b) => {
-    if (orderBy === 'full_name') {
+    if (orderBy === "full_name") {
       const fullNameA = employees[a.requester_staff_id]
-        ? `${employees[a.requester_staff_id].staff_fname} ${employees[a.requester_staff_id].staff_lname}`
-        : 'Not Available';
+        ? `${employees[a.requester_staff_id].staff_fname} ${
+            employees[a.requester_staff_id].staff_lname
+          }`
+        : "Not Available";
       const fullNameB = employees[b.requester_staff_id]
-        ? `${employees[b.requester_staff_id].staff_fname} ${employees[b.requester_staff_id].staff_lname}`
-        : 'Not Available';
-      return order === 'asc'
+        ? `${employees[b.requester_staff_id].staff_fname} ${
+            employees[b.requester_staff_id].staff_lname
+          }`
+        : "Not Available";
+      return order === "asc"
         ? fullNameA.localeCompare(fullNameB)
         : fullNameB.localeCompare(fullNameA);
-    } else if (orderBy === 'wfh_date') {
+    } else if (orderBy === "wfh_date") {
       const dateA = new Date(a.wfh_date).getTime();
       const dateB = new Date(b.wfh_date).getTime();
-      return order === 'asc' ? dateA - dateB : dateB - dateA;
+      return order === "asc" ? dateA - dateB : dateB - dateA;
     } else if (orderBy in employees) {
       const empA = employees[a.requester_staff_id]
         ? employees[a.requester_staff_id][orderBy as keyof Employee]
-        : 'Not Available';
+        : "Not Available";
       const empB = employees[b.requester_staff_id]
         ? employees[b.requester_staff_id][orderBy as keyof Employee]
-        : 'Not Available';
+        : "Not Available";
 
       // Check if both values are strings, use localeCompare, otherwise, handle as numbers
-      if (typeof empA === 'string' && typeof empB === 'string') {
-        return order === 'asc'
+      if (typeof empA === "string" && typeof empB === "string") {
+        return order === "asc"
           ? empA.localeCompare(empB)
           : empB.localeCompare(empA);
       } else {
-        return order === 'asc'
+        return order === "asc"
           ? (empA as number) - (empB as number)
           : (empB as number) - (empA as number);
       }
@@ -169,19 +184,26 @@ const PendingRequests = () => {
       const aValue = a[orderBy as keyof Request];
       const bValue = b[orderBy as keyof Request];
 
-      if (typeof aValue === 'string' && typeof bValue === 'string') {
-        return order === 'asc'
+      if (typeof aValue === "string" && typeof bValue === "string") {
+        return order === "asc"
           ? aValue.localeCompare(bValue)
           : bValue.localeCompare(aValue);
       } else {
-        return order === 'asc' ? (aValue as number) - (bValue as number) : (bValue as number) - (aValue as number);
+        return order === "asc"
+          ? (aValue as number) - (bValue as number)
+          : (bValue as number) - (aValue as number);
       }
     }
   });
 
   if (loading) {
     return (
-      <Box display="flex" justifyContent="center" alignItems="center" height="100vh">
+      <Box
+        display="flex"
+        justifyContent="center"
+        alignItems="center"
+        height="100vh"
+      >
         <CircularProgress />
       </Box>
     );
@@ -189,7 +211,12 @@ const PendingRequests = () => {
 
   return (
     <Container>
-      <Typography variant="h4" gutterBottom align="center" sx={{ marginTop: 4 }}>
+      <Typography
+        variant="h4"
+        gutterBottom
+        align="center"
+        sx={{ marginTop: 4 }}
+      >
         Pending Requests
       </Typography>
 
@@ -207,83 +234,83 @@ const PendingRequests = () => {
         <Table>
           <TableHead>
             <TableRow>
-              <TableCell sx={{ fontWeight: 'bold' }}>
+              <TableCell sx={{ fontWeight: "bold" }}>
                 <TableSortLabel
-                  active={orderBy === 'requester_staff_id'}
-                  direction={orderBy === 'requester_staff_id' ? order : 'asc'}
-                  onClick={() => handleSortRequest('requester_staff_id')}
+                  active={orderBy === "requester_staff_id"}
+                  direction={orderBy === "requester_staff_id" ? order : "asc"}
+                  onClick={() => handleSortRequest("requester_staff_id")}
                 >
                   Requester Staff ID
                 </TableSortLabel>
               </TableCell>
-              <TableCell sx={{ fontWeight: 'bold' }}>
+              <TableCell sx={{ fontWeight: "bold" }}>
                 <TableSortLabel
-                  active={orderBy === 'full_name'}
-                  direction={orderBy === 'full_name' ? order : 'asc'}
-                  onClick={() => handleSortRequest('full_name')}
+                  active={orderBy === "full_name"}
+                  direction={orderBy === "full_name" ? order : "asc"}
+                  onClick={() => handleSortRequest("full_name")}
                 >
                   Full Name
                 </TableSortLabel>
               </TableCell>
-              <TableCell sx={{ fontWeight: 'bold' }}>
+              <TableCell sx={{ fontWeight: "bold" }}>
                 <TableSortLabel
-                  active={orderBy === 'position'}
-                  direction={orderBy === 'position' ? order : 'asc'}
-                  onClick={() => handleSortRequest('position')}
+                  active={orderBy === "position"}
+                  direction={orderBy === "position" ? order : "asc"}
+                  onClick={() => handleSortRequest("position")}
                 >
                   Position
                 </TableSortLabel>
               </TableCell>
-              <TableCell sx={{ fontWeight: 'bold' }}>
+              <TableCell sx={{ fontWeight: "bold" }}>
                 <TableSortLabel
-                  active={orderBy === 'dept'}
-                  direction={orderBy === 'dept' ? order : 'asc'}
-                  onClick={() => handleSortRequest('dept')}
+                  active={orderBy === "dept"}
+                  direction={orderBy === "dept" ? order : "asc"}
+                  onClick={() => handleSortRequest("dept")}
                 >
                   Dept
                 </TableSortLabel>
               </TableCell>
-              <TableCell sx={{ fontWeight: 'bold' }}>
+              <TableCell sx={{ fontWeight: "bold" }}>
                 <TableSortLabel
-                  active={orderBy === 'country'}
-                  direction={orderBy === 'country' ? order : 'asc'}
-                  onClick={() => handleSortRequest('country')}
+                  active={orderBy === "country"}
+                  direction={orderBy === "country" ? order : "asc"}
+                  onClick={() => handleSortRequest("country")}
                 >
                   Country
                 </TableSortLabel>
               </TableCell>
-              <TableCell sx={{ fontWeight: 'bold' }}>
+              <TableCell sx={{ fontWeight: "bold" }}>
                 <TableSortLabel
-                  active={orderBy === 'email'}
-                  direction={orderBy === 'email' ? order : 'asc'}
-                  onClick={() => handleSortRequest('email')}
+                  active={orderBy === "email"}
+                  direction={orderBy === "email" ? order : "asc"}
+                  onClick={() => handleSortRequest("email")}
                 >
                   Email
                 </TableSortLabel>
               </TableCell>
-              <TableCell sx={{ fontWeight: 'bold' }}>
+              <TableCell sx={{ fontWeight: "bold" }}>
                 <TableSortLabel
-                  active={orderBy === 'wfh_date'}
-                  direction={orderBy === 'wfh_date' ? order : 'asc'}
-                  onClick={() => handleSortRequest('wfh_date')}
+                  active={orderBy === "wfh_date"}
+                  direction={orderBy === "wfh_date" ? order : "asc"}
+                  onClick={() => handleSortRequest("wfh_date")}
                 >
                   WFH Date
                 </TableSortLabel>
               </TableCell>
-              <TableCell sx={{ fontWeight: 'bold' }}>
+              <TableCell sx={{ fontWeight: "bold" }}>
                 <TableSortLabel
-                  active={orderBy === 'wfh_type'}
-                  direction={orderBy === 'wfh_type' ? order : 'asc'}
-                  onClick={() => handleSortRequest('wfh_type')}
+                  active={orderBy === "wfh_type"}
+                  direction={orderBy === "wfh_type" ? order : "asc"}
+                  onClick={() => handleSortRequest("wfh_type")}
                 >
                   WFH Type
                 </TableSortLabel>
               </TableCell>
-              <TableCell sx={{ fontWeight: 'bold' }}>
+              <TableCell sx={{ fontWeight: "bold" }}>
                 <TableSortLabel
-                  active={orderBy === 'approval_status'}
-                  direction={orderBy === 'approval_status' ? order : 'asc'}
-                  onClick={() => handleSortRequest('approval_status')}
+                  active={orderBy === "approval_status"}
+                  direction={orderBy === "approval_status" ? order : "asc"}
+                  onClick={() => handleSortRequest("approval_status")}
                 >
                   Approval Status
                 </TableSortLabel>
@@ -296,13 +323,27 @@ const PendingRequests = () => {
                 <TableCell>{request.requester_staff_id}</TableCell>
                 <TableCell>
                   {employees[request.requester_staff_id]
-                    ? `${employees[request.requester_staff_id].staff_fname} ${employees[request.requester_staff_id].staff_lname}`
-                    : 'Not Available'}
+                    ? `${employees[request.requester_staff_id].staff_fname} ${
+                        employees[request.requester_staff_id].staff_lname
+                      }`
+                    : "Not Available"}
                 </TableCell>
-                <TableCell>{employees[request.requester_staff_id]?.position || 'Not Available'}</TableCell>
-                <TableCell>{employees[request.requester_staff_id]?.dept || 'Not Available'}</TableCell>
-                <TableCell>{employees[request.requester_staff_id]?.country || 'Not Available'}</TableCell>
-                <TableCell>{employees[request.requester_staff_id]?.email || 'Not Available'}</TableCell>
+                <TableCell>
+                  {employees[request.requester_staff_id]?.position ||
+                    "Not Available"}
+                </TableCell>
+                <TableCell>
+                  {employees[request.requester_staff_id]?.dept ||
+                    "Not Available"}
+                </TableCell>
+                <TableCell>
+                  {employees[request.requester_staff_id]?.country ||
+                    "Not Available"}
+                </TableCell>
+                <TableCell>
+                  {employees[request.requester_staff_id]?.email ||
+                    "Not Available"}
+                </TableCell>
                 <TableCell>{request.wfh_date}</TableCell>
                 <TableCell>{request.wfh_type}</TableCell>
                 <TableCell>{request.approval_status}</TableCell>
@@ -314,5 +355,3 @@ const PendingRequests = () => {
     </Container>
   );
 };
-
-export default PendingRequests;

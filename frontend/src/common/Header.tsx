@@ -35,7 +35,7 @@ const sideBarItems: {
   route?: string; // TODO: add route property when it is done
 }[] = [
   { text: "Submit Requests", icon: <InboxIcon />, route: "/application" },
-  { text: "My Team", icon: <TeamIcon /> },
+  { text: "My Team", icon: <TeamIcon />, route: "/team" },
   { text: "My WFH Schedule", icon: <WfhScheduleIcon /> },
   { text: "Settings", icon: <SettingsIcon /> },
 ];

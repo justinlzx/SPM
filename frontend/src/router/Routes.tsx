@@ -5,7 +5,8 @@ import { App } from "../App";
 import { Layout } from "../common/Layout";
 import { ApplicationPage } from "../pages/staff/ApplicationPage";
 import { StaffHomePage } from "../pages/staff/StaffHomePage";
-import { PendingRequests } from "../pages/team/PendingRequests";
+
+import { TeamPage } from "../pages/team/TeamPage";
 
 type routesProps = {
   path: string;
