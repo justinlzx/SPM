@@ -2,12 +2,10 @@ import { createBrowserRouter, Navigate } from "react-router-dom";
 import { LoginPage } from "../pages/login-signup/LoginPage";
 import { SignUpPage } from "../pages/login-signup/SignUpPage";
 import { App } from "../App";
-import { HomePage } from "../pages/home/HomePage";
 import { Layout } from "../common/Layout";
-import { RequestPage } from "../pages/staff/RequestPage";
-import { TestPage } from "./TestPage";
+import { ApplicationPage } from "../pages/staff/ApplicationPage";
 import { StaffHomePage } from "../pages/staff/StaffHomePage";
-import PendingRequests from "../pages/pendingrequests/Pendingrequests";
+import { PendingRequests } from "../pages/team/PendingRequests";
 
 type routesProps = {
   path: string;
@@ -37,16 +35,15 @@ const routes: routesProps[] = [
             element: <StaffHomePage />,
           },
           {
-            path: "/test",
-            element: <TestPage />,
+            path: "/application",
+            element: <ApplicationPage />,
           },
           {
-            path: "/request",
-            element: <RequestPage />,
-          }
-        ]
+            path: "/team",
+            element: <TeamPage />,
+          },
+        ],
       },
-     
     ],
   },
 ];
