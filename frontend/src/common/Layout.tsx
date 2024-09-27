@@ -32,7 +32,7 @@ export const Layout = () => {
           All-in-One
         </Typography>
         <Box mt={2}>
-          <Button fullWidth>Notifications</Button>
+          <Button fullWidth>Submit Request</Button>
           <Button fullWidth>My Team</Button>
           <Button fullWidth>My WFH Schedule</Button>
           <Button fullWidth>Settings</Button>
