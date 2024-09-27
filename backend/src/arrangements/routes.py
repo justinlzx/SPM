@@ -1,17 +1,15 @@
 from datetime import datetime, timedelta
-from fastapi import APIRouter, Depends, HTTPException
+from typing import Annotated, List
+
+from fastapi import APIRouter, Depends, Form, HTTPException
 from fastapi.responses import JSONResponse
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
-from typing import List
 
 from ..database import get_db
-from ..notifications.email_notifications import (
-    send_email,
-    craft_email_content,
-    fetch_manager_info,
-)  # Import helper functions
 from ..employees.routes import read_employee  # Fetch employee info
+from ..notifications.email_notifications import (  # Import helper functions
+    craft_email_content, fetch_manager_info, send_email)
 from . import crud, schemas
 
 router = APIRouter()
@@ -19,8 +17,9 @@ router = APIRouter()
 
 @router.post("/request")
 async def create_wfh_request(
-    arrangement: schemas.ArrangementCreate, db: Session = Depends(get_db)
-):
+    arrangement: Annotated[schemas.ArrangementCreate, Form()],
+    db: Session = Depends(get_db),
+) -> JSONResponse:
     try:
         # Fetch employee (staff) information
         staff = read_employee(arrangement.requester_staff_id, db)
@@ -87,6 +86,8 @@ async def create_wfh_request(
         for data in response_data:
             data.pop("_sa_instance_state", None)
 
+        response_data = [schemas.ArrangementLog(**data) for data in response_data]
+
         # Craft and send success notification email to the employee (staff)
         subject, content = await craft_email_content(staff, response_data, success=True)
         await send_email(to_email=staff.email, subject=subject, content=content)
@@ -102,7 +103,13 @@ async def create_wfh_request(
             status_code=201,
             content={
                 "message": "Request submitted successfully",
-                "data": response_data,
+                "data": [
+                    {
+                        **data.model_dump(),
+                        "update_datetime": (data.update_datetime.isoformat()),
+                    }
+                    for data in response_data
+                ],
             },
         )
 

@@ -1,27 +1,30 @@
-import smtplib
-import httpx
-
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
+# import smtplib
+# from email.mime.multipart import MIMEMultipart
+# from email.mime.text import MIMEText
 from os import getenv
+from typing import List
+
+import httpx
 from dotenv import load_dotenv
-from sqlalchemy.orm import Session
 from fastapi import HTTPException
-from ..employees.routes import read_employee
+
+from ..arrangements import schemas as arrangement_schemas
+
+# from sqlalchemy.orm import Session
+
+
+# from ..employees.routes import read_employee
 
 load_dotenv()
 BASE_URL = getenv("BACKEND_BASE_URL", "http://localhost:8000")
 
 
 async def fetch_manager_info(staff_id: int):
-    """
-    Fetch manager information by making an HTTP request to the /employee/manager/peermanager/{staff_id} route.
-    """
+    """Fetch manager information by making an HTTP request to the
+    /employee/manager/peermanager/{staff_id} route."""
     try:
         async with httpx.AsyncClient() as client:
-            response = await client.get(
-                f"{BASE_URL}/employee/manager/peermanager/{staff_id}"
-            )
+            response = await client.get(f"{BASE_URL}/employee/manager/peermanager/{staff_id}")
 
             # Check if the response is successful
             if response.status_code != 200:
@@ -42,25 +45,23 @@ async def fetch_manager_info(staff_id: int):
 
 async def craft_email_content(
     staff,
-    response_data,
+    response_data: List[arrangement_schemas.ArrangementLog],
     success=True,
     error_message=None,
     is_manager=False,
     manager=None,
 ):
-    """
-    Helper function to format email content.
-    """
+    """Helper function to format email content."""
     if success:
         formatted_details = "\n".join(
             [
-                f"Request ID: {arrangement['arrangement_id']}\n"
-                f"WFH Date: {arrangement['wfh_date']}\n"
-                f"Approval Status: {arrangement['approval_status']}\n"
-                f"Type: {arrangement['wfh_type']}\n"
-                f"Reason: {arrangement['reason_description']}\n"
-                f"Batch ID: {arrangement['batch_id']}\n"
-                f"Updated: {arrangement['update_datetime']}\n"
+                f"Request ID: {arrangement.arrangement_id}\n"
+                f"WFH Date: {arrangement.wfh_date}\n"
+                f"Approval Status: {arrangement.approval_status}\n"
+                f"Type: {arrangement.wfh_type}\n"
+                f"Reason: {arrangement.reason_description}\n"
+                f"Batch ID: {arrangement.batch_id}\n"
+                f"Updated: {arrangement.update_datetime}\n"
                 for arrangement in response_data
             ]
         )
@@ -69,7 +70,8 @@ async def craft_email_content(
             subject = "[All-In-One] Your Staff Created a WFH Request"
             content = (
                 f"Dear {manager.staff_fname} {manager.staff_lname},\n\n"
-                f"{staff.staff_fname} {staff.staff_lname}, one of your staff members, has successfully created a WFH request with the following details:\n\n"
+                f"{staff.staff_fname} {staff.staff_lname}, one of your staff members, \
+                has successfully created a WFH request with the following details:\n\n"
                 f"{formatted_details}\n\n"
                 f"This email is auto-generated. Please do not reply to this email. Thank you."
             )
@@ -94,9 +96,7 @@ async def craft_email_content(
 
 
 async def send_email(to_email: str, subject: str, content: str):
-    """
-    Sends an email by making a POST request to the /email/sendemail route.
-    """
+    """Sends an email by making a POST request to the /email/sendemail route."""
     try:
         async with httpx.AsyncClient() as client:
             response = await client.post(
@@ -105,9 +105,7 @@ async def send_email(to_email: str, subject: str, content: str):
             )
             # Check if the response is successful
             if response.status_code != 200:
-                raise HTTPException(
-                    status_code=response.status_code, detail=response.text
-                )
+                raise HTTPException(status_code=response.status_code, detail=response.text)
 
             return response.json()
 

@@ -7,7 +7,7 @@ source project_venv/bin/activate
 
 # Install pip dependencies
 echo -e "\nInstalling pip dependencies\n"
-pip install pre-commit black flake8
+pip install pre-commit black flake8 docformatter
 
 # Install frontend dependencies
 echo -e "\nInstalling frontend dependencies\n"
