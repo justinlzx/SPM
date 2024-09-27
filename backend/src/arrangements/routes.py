@@ -1,17 +1,15 @@
 from datetime import datetime, timedelta
-from fastapi import APIRouter, Depends, HTTPException
+from typing import Annotated, List
+
+from fastapi import APIRouter, Depends, Form, HTTPException
 from fastapi.responses import JSONResponse
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
-from typing import List
 
 from ..database import get_db
-from ..notifications.email_notifications import (
-    send_email,
-    craft_email_content,
-    fetch_manager_info,
-)  # Import helper functions
 from ..employees.routes import read_employee  # Fetch employee info
+from ..notifications.email_notifications import (  # Import helper functions
+    craft_email_content, fetch_manager_info, send_email)
 from . import crud, schemas
 
 router = APIRouter()
@@ -19,7 +17,8 @@ router = APIRouter()
 
 @router.post("/request")
 async def create_wfh_request(
-    arrangement: schemas.ArrangementCreate, db: Session = Depends(get_db)
+    arrangement: Annotated[schemas.ArrangementCreate, Form()],
+    db: Session = Depends(get_db),
 ):
     try:
         # Fetch employee (staff) information
