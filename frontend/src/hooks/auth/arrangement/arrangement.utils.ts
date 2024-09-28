@@ -13,11 +13,28 @@ export type TRequest = {
   batch_id: string | null;
 };
 
-export const getArrangementsByManager = async (manager_id: number, status: string):  Promise<TRequest[] | undefined> => {
+export type TArrangementQuery = {
+  id: number;
+  status: string;
+  page: number
+  rowsPerPage: number
+  searchTerm: string
+}
+
+export const getArrangementsByManager = async ({
+    id: manager_id,
+    status,
+    page,
+    rowsPerPage,
+    searchTerm
+}: TArrangementQuery):  Promise<TRequest[] | undefined> => {
     try {
         const response = await axios.get(`${BACKEND_URL}/arrangement/view/${manager_id}`, {
             params: {
                 status,
+                page,
+                rowsPerPage,
+                searchTerm
             },
         });
         if (response.status === 200) {

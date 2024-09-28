@@ -1,11 +1,8 @@
 import { useMutation } from "@tanstack/react-query";
-import { getArrangementsByManager, updateArrangement } from "./arrangement.utils";
+import { getArrangementsByManager, TArrangementQuery, updateArrangement } from "./arrangement.utils";
 import { TRequest } from "./arrangement.utils";
 
-type TArrangement = {
-  id: number;
-  status: string;
-}
+
 
 type TUpdateArrangement = {
     updatedStatus: "approve" | "reject";
@@ -14,8 +11,8 @@ type TUpdateArrangement = {
 
 
 export const useArrangement = () => {
-    return useMutation<TRequest[] | undefined, Error, TArrangement>({
-        mutationFn: ({ id, status }) => getArrangementsByManager(id, status),
+    return useMutation<TRequest[] | undefined, Error, TArrangementQuery>({
+        mutationFn: ({ id, status, page, rowsPerPage, searchTerm }) => getArrangementsByManager({id, status,  page, rowsPerPage, searchTerm}),
         onError: (error) => {
             throw new Error(`Failed to get arrangements: ${error.message}`);
         },

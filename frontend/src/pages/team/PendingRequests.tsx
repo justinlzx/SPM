@@ -16,6 +16,7 @@ import {
   ChipProps,
   Button,
   ButtonGroup,
+  TablePagination,
 } from "@mui/material";
 import {
   useArrangement,
@@ -64,7 +65,11 @@ export const PendingRequests = () => {
   const [orderBy, setOrderBy] = useState<
     keyof TWFHRequest | "requester_staff_id"
   >("requester_staff_id"); // Default sorting by staff ID
+
+  // table logic
   const [searchTerm, setSearchTerm] = useState(""); // New state for search term
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
 
   const { mutateAsync: arrangementMutation, isPending } = useArrangement();
   const { mutateAsync: updateArrangementMutation } = useUpdateArrangement();
@@ -76,6 +81,9 @@ export const PendingRequests = () => {
       const result = await arrangementMutation({
         id: user.id,
         status: "pending",
+        page,
+        rowsPerPage,
+        searchTerm
       });
       setRequests(result! as TWFHRequest[]);
     };
@@ -91,8 +99,6 @@ export const PendingRequests = () => {
       arrangement_id,
     });
 
-    console.log(update);
-
     if (update) {
       console.log("Request updated successfully");
     }
@@ -100,6 +106,17 @@ export const PendingRequests = () => {
 
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchTerm(e.target.value);
+  };
+
+  const handleChangePage = (event: unknown, newPage: number) => {
+    setPage(newPage);
+  };
+
+  const handleChangeRowsPerPage = (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    setRowsPerPage(parseInt(event.target.value, 10));
+    setPage(0);
   };
 
   return (
@@ -308,6 +325,15 @@ export const PendingRequests = () => {
           )}
         </Table>
       </TableContainer>
+      <TablePagination
+        component="div"
+        rowsPerPageOptions={[10, 20, 30]}
+        count={requests.length}
+        rowsPerPage={rowsPerPage}
+        page={page}
+        onPageChange={handleChangePage}
+        onRowsPerPageChange={handleChangeRowsPerPage}
+      />
     </Container>
   );
 };
