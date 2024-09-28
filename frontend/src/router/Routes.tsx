@@ -4,11 +4,7 @@ import { SignUpPage } from "../pages/login-signup/SignUpPage";
 import { App } from "../App";
 import { HomePage } from "../pages/home/HomePage";
 import { Layout } from "../common/Layout";
-<<<<<<< Updated upstream
-import  { ApplicationPage }  from "../pages/staff/ApplicationPage";
-=======
 import { RequestPage } from "../pages/staff/RequestPage";
->>>>>>> Stashed changes
 import { TestPage } from "./TestPage";
 import { StaffHomePage } from "../pages/staff/StaffHomePage";
 import PendingRequests from "../pages/pendingrequests/Pendingrequests";
@@ -45,19 +41,12 @@ const routes: routesProps[] = [
           {
             path: "/test",
             element: <TestPage />,
-          }, 
+          },
           {
-<<<<<<< Updated upstream
-            path: "/application",
-            element: <ApplicationPage />,
-          }
-        ]
-=======
             path: "/request",
             element: <RequestPage />,
-          },
-        ],
->>>>>>> Stashed changes
+          }
+        ]
       },
       {
         path: "/pendingrequests",
