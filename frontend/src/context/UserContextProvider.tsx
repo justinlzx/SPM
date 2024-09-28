@@ -9,6 +9,7 @@ import { login } from "../hooks/auth/auth.utils";
 export type TUser = {
   email: string;
   role: number;
+  id: number;
 };
 
 type TAuthenticationContext = { user?: TUser } & {
@@ -31,10 +32,12 @@ export const UserContextProvider = ({ children }: Props) => {
   const getUserInfoFromLocalStorage = () => {
     const email = localStorage.getItem(AUTH_LOCAL_STORAGE_KEYS.EMAIL);
     const role = Number(localStorage.getItem(AUTH_LOCAL_STORAGE_KEYS.ROLE));
+    const id = Number(localStorage.getItem(AUTH_LOCAL_STORAGE_KEYS.ID));
     return email && role
       ? {
           email,
           role,
+          id,
         }
       : undefined;
   };

@@ -15,6 +15,8 @@ import {
   Box,
   TextField,
 } from "@mui/material";
+import { Badge } from "@mui/icons-material";
+import { useArrangement } from "../../hooks/auth/arrangements/arrangement";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 
@@ -41,6 +43,16 @@ type Employee = {
 };
 
 type Order = "asc" | "desc";
+
+enum StatusColor {
+  Pending = "warning",
+  Approved = "success",
+  Rejected = "error",
+}
+
+const StatusBadge = (status: StatusColor, text: string) => {
+  return <Badge color={status}>{text}</Badge>;
+};
 
 export const PendingRequests = () => {
   const [requests, setRequests] = useState<Request[]>([]);
@@ -70,6 +82,14 @@ export const PendingRequests = () => {
 
     fetchRequests();
   }, []);
+
+  const { mutate } = useArrangement();
+  // const { }
+
+  useEffect(() => {
+    // manager_id =
+    mutate();
+  }, [mutate]);
 
   // Function to fetch employee details for each requester
   const fetchEmployeeNames = async (requests: Request[]) => {

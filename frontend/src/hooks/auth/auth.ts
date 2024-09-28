@@ -17,6 +17,7 @@ type TSignupCredentials = TCredentials & {
 export type TLoginResponse = {
   email: string;
   role: number;
+  id: number;
 };
 
 export const useLogin = () => {
@@ -28,10 +29,11 @@ export const useLogin = () => {
     onSuccess: (response) => {
       // Handle successful login
       console.log("Login successful");
+      console.log(response)
 
-      const { email, role } = response;
+      const { email, role, id } = response;
 
-      setUser({ email, role });
+      setUser({ email, role, id });
       // Redirect to dashboard or home page
       navigate("/home");
     },
