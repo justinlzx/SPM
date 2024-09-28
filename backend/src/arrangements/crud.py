@@ -127,15 +127,17 @@ def get_arrangements_by_manager(
     try:
         query = (
             db.query(ArrangementLog)
-            .outerjoin(Employee, ArrangementLog.requester_staff_id == Employee.staff_id)
             .filter(ArrangementLog.approving_officer == manager_id)
+            .join(
+                Employee,
+                ArrangementLog.requester_staff_id == Employee.staff_id,
+                isouter=True,
+            )
         )
 
         # if status is empty, then it will get all arrangements
         if status:
             query = query.filter(ArrangementLog.approval_status == status)
-        result = query.all()
-        print(str(query.statement))
-        return result
+        return query.all()
     except SQLAlchemyError as e:
         raise e

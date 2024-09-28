@@ -112,6 +112,7 @@ class LatestArrangement(Base):
         "Employee",
         back_populates="arrangements_requested",
         foreign_keys=[requester_staff_id],
+        lazy="immediate",
     )
     approving_officer_info = relationship(
         "Employee",

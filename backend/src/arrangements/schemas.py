@@ -1,8 +1,12 @@
 from datetime import datetime
-from typing import Literal, Optional
+from typing import List, Literal, Optional
 
 from pydantic import Field
 from pydantic.json_schema import SkipJsonSchema
+
+from ..employees.schemas import EmployeeBase
+
+from ..employees.models import Employee
 
 from ..base import BaseSchema
 
@@ -11,6 +15,7 @@ class ArrangementBase(BaseSchema):
     staff_id: int = Field(
         ..., title="Staff ID of the employee who made the request", alias="requester_staff_id"
     )
+
     wfh_date: str = Field(
         ...,
         title="Date of an adhoc WFH request or the start date of a recurring WFH request",
@@ -78,9 +83,19 @@ class ArrangementLog(ArrangementBase):
     batch_id: Optional[int] = Field(
         None, title="Unique identifier for the batch, if any"
     )  # Allow None
+    requester_info: Optional[EmployeeBase] = Field(
+        None, exclude=True, title="Information about the requester"
+    )
 
     class Config:
         from_attributes = True
+
+
+class ArrangementResponse(ArrangementLog):
+    requester_info: EmployeeBase
+
+    class Config:
+        orm_mode = True
 
 
 # class ArrangementSnapshot(ArrangementLog):

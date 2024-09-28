@@ -274,7 +274,7 @@ def get_all_arrangements(db: Session = Depends(get_db)):
 
 @router.get(
     "/view/{manager_id}",
-    response_model=List[schemas.ArrangementLog],
+    response_model=List[schemas.ArrangementResponse],
     summary="Get all Pending Arrangements by Manager",
 )
 def get_arrangements_by_manager(
@@ -284,6 +284,8 @@ def get_arrangements_by_manager(
 ):
     try:
         arrangements = crud.get_arrangements_by_manager(db, manager_id, status)
+        for arrangement in arrangements:
+            print(arrangement.requester_info)
         return arrangements
     except SQLAlchemyError as e:
         raise HTTPException(status_code=500, detail=str(e))
