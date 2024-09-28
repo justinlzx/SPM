@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta
-from typing import Annotated, List
+from typing import Annotated, List, Optional
 
-from fastapi import APIRouter, Depends, Form, HTTPException
+from fastapi import APIRouter, Depends, Form, HTTPException, Query
 from fastapi.responses import JSONResponse
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
@@ -277,9 +277,13 @@ def get_all_arrangements(db: Session = Depends(get_db)):
     response_model=List[schemas.ArrangementLog],
     summary="Get all Pending Arrangements by Manager",
 )
-def get_pending_arrangements_by_manager(manager_id: int, db: Session = Depends(get_db)):
+def get_arrangements_by_manager(
+    manager_id: int,
+    db: Session = Depends(get_db),
+    status: Optional[str] = Query(None, description="Filter by status"),
+):
     try:
-        arrangements = crud.get_arrangements_by_manager(db, manager_id)
+        arrangements = crud.get_arrangements_by_manager(db, manager_id, status)
         return arrangements
     except SQLAlchemyError as e:
         raise HTTPException(status_code=500, detail=str(e))

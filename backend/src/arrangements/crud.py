@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 
 # from pydantic import ValidationError
 from sqlalchemy.exc import SQLAlchemyError
@@ -121,12 +121,18 @@ def get_all_arrangements(db: Session) -> List[LatestArrangement]:
         raise e
 
 
-def get_arrangements_by_manager(db: Session, manager_id: int):
+def get_arrangements_by_manager(
+    db: Session, manager_id: int, status: Optional[str] = None
+):
+
     try:
-        return (
-            db.query(ArrangementLog)
-            .where(ArrangementLog.approving_officer == manager_id)
-            .all()
+        query = db.query(ArrangementLog).where(
+            ArrangementLog.approving_officer == manager_id
         )
+
+        # if status is empty, then it will get all arrangements
+        if status:
+            query = query.where(ArrangementLog.approval_status == status)
+        return query.all()
     except SQLAlchemyError as e:
         raise e
