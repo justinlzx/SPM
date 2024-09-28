@@ -2,7 +2,7 @@ import axios from "axios";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 
-export type Request = {
+export type TRequest = {
   requester_staff_id: number;
   wfh_date: string;
   wfh_type: string;
@@ -13,7 +13,7 @@ export type Request = {
   batch_id: string | null;
 };
 
-export const getArrangementsByManager = async (manager_id: number, status: string):  Promise<Request[] | undefined> => {
+export const getArrangementsByManager = async (manager_id: number, status: string):  Promise<TRequest[] | undefined> => {
     try {
         const response = await axios.get(`${BACKEND_URL}/arrangement/view/${manager_id}`, {
             params: {
@@ -21,7 +21,7 @@ export const getArrangementsByManager = async (manager_id: number, status: strin
             },
         });
         if (response.status === 200) {
-            return response.data as Request[]
+            return response.data as TRequest[]
         }
     } catch (error: any) {
         return;
