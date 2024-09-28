@@ -1,5 +1,4 @@
-import React, { useEffect, useState } from "react";
-import axios from "axios";
+import React, { useContext, useEffect, useState } from "react";
 import {
   Container,
   Table,
@@ -11,26 +10,20 @@ import {
   Paper,
   TableSortLabel,
   Typography,
-  CircularProgress,
   Box,
   TextField,
+  Chip,
+  ChipProps,
+  Button,
+  ButtonGroup,
 } from "@mui/material";
-import { Badge } from "@mui/icons-material";
 import { useArrangement } from "../../hooks/auth/arrangements/arrangement";
-
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
+import { UserContext } from "../../context/UserContextProvider";
+import { Request } from "../../hooks/auth/arrangements/arrangement.utils";
+import { LoadingSpinner } from "../../common/LoadingSpinner";
+import { capitalize } from "../../utils/utils";
 
 // Define types
-type Request = {
-  requester_staff_id: number;
-  wfh_date: string;
-  wfh_type: string;
-  arrangement_id: number;
-  update_datetime: string;
-  approval_status: string;
-  reason_description: string;
-  batch_id: string | null;
-};
 
 type Employee = {
   staff_id: number;
@@ -44,14 +37,24 @@ type Employee = {
 
 type Order = "asc" | "desc";
 
-enum StatusColor {
-  Pending = "warning",
-  Approved = "success",
-  Rejected = "error",
+enum ApprovalStatus {
+  Approved = "approved",
+  Pending = "pending",
+  Rejected = "rejected",
 }
 
-const StatusBadge = (status: StatusColor, text: string) => {
-  return <Badge color={status}>{text}</Badge>;
+// This function maps ApprovalStatus to Chip color values
+const getChipColor = (status: ApprovalStatus): ChipProps["color"] => {
+  switch (status) {
+    case ApprovalStatus.Approved:
+      return "success";
+    case ApprovalStatus.Pending:
+      return "warning";
+    case ApprovalStatus.Rejected:
+      return "error";
+    default:
+      return "default"; // Fallback if needed
+  }
 };
 
 export const PendingRequests = () => {
@@ -64,170 +67,24 @@ export const PendingRequests = () => {
   >("requester_staff_id"); // Default sorting by staff ID
   const [searchTerm, setSearchTerm] = useState(""); // New state for search term
 
+  const { mutateAsync: arrangementMutation, isPending } = useArrangement();
+  const { user } = useContext(UserContext);
+
   useEffect(() => {
-    // Fetch the pending requests
     const fetchRequests = async () => {
-      try {
-        const response = await axios.get(`${BACKEND_URL}/arrangement/view`);
-        setRequests(response.data);
-        setLoading(false);
-
-        // Fetch employee names for each requester
-        await fetchEmployeeNames(response.data);
-      } catch (error) {
-        console.error("Error fetching requests:", error);
-        setLoading(false);
-      }
+      if (!user) return;
+      const result = await arrangementMutation({
+        id: user.id,
+        status: "pending",
+      });
+      setRequests(result!);
     };
-
     fetchRequests();
-  }, []);
-
-  const { mutate } = useArrangement();
-  // const { }
-
-  useEffect(() => {
-    // manager_id =
-    mutate();
-  }, [mutate]);
-
-  // Function to fetch employee details for each requester
-  const fetchEmployeeNames = async (requests: Request[]) => {
-    const employeePromises = requests.map(async (request) => {
-      try {
-        const response = await axios.get(
-          `${BACKEND_URL}/employee/${request.requester_staff_id}`
-        );
-        const employeeData: Employee = {
-          staff_id: response.data.staff_id,
-          staff_fname: response.data.staff_fname,
-          staff_lname: response.data.staff_lname,
-          position: response.data.position,
-          country: response.data.country,
-          email: response.data.email,
-          dept: response.data.dept,
-        };
-        return employeeData;
-      } catch (error) {
-        console.error(
-          `Error fetching employee details for ID: ${request.requester_staff_id}`,
-          error
-        );
-        return null;
-      }
-    });
-
-    // Wait for all employee data to be fetched
-    const employeesData = await Promise.all(employeePromises);
-
-    // Map employee data by staff_id for quick lookup
-    const employeesMap: { [key: number]: Employee } = {};
-    employeesData.forEach((employee) => {
-      if (employee) {
-        employeesMap[employee.staff_id] = employee;
-      }
-    });
-
-    setEmployees(employeesMap); // Set the employee data in state
-  };
-
-  const handleSortRequest = (
-    property: keyof Request | keyof Employee | "full_name"
-  ) => {
-    const isAsc = orderBy === property && order === "asc";
-    setOrder(isAsc ? "desc" : "asc");
-    setOrderBy(property);
-  };
+  }, [setRequests, arrangementMutation, user]);
 
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchTerm(e.target.value);
   };
-
-  const filteredRequests = requests.filter((request) => {
-    const employee = employees[request.requester_staff_id];
-    const fullName = employee
-      ? `${employee.staff_fname} ${employee.staff_lname}`
-      : "Not Available";
-    return (
-      String(request.requester_staff_id)
-        .toLowerCase()
-        .includes(searchTerm.toLowerCase()) ||
-      fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      employee?.position?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      employee?.dept?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      employee?.country?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      employee?.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      request.wfh_date.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      request.wfh_type.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      request.approval_status.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-  });
-
-  const sortedRequests = filteredRequests.slice().sort((a, b) => {
-    if (orderBy === "full_name") {
-      const fullNameA = employees[a.requester_staff_id]
-        ? `${employees[a.requester_staff_id].staff_fname} ${
-            employees[a.requester_staff_id].staff_lname
-          }`
-        : "Not Available";
-      const fullNameB = employees[b.requester_staff_id]
-        ? `${employees[b.requester_staff_id].staff_fname} ${
-            employees[b.requester_staff_id].staff_lname
-          }`
-        : "Not Available";
-      return order === "asc"
-        ? fullNameA.localeCompare(fullNameB)
-        : fullNameB.localeCompare(fullNameA);
-    } else if (orderBy === "wfh_date") {
-      const dateA = new Date(a.wfh_date).getTime();
-      const dateB = new Date(b.wfh_date).getTime();
-      return order === "asc" ? dateA - dateB : dateB - dateA;
-    } else if (orderBy in employees) {
-      const empA = employees[a.requester_staff_id]
-        ? employees[a.requester_staff_id][orderBy as keyof Employee]
-        : "Not Available";
-      const empB = employees[b.requester_staff_id]
-        ? employees[b.requester_staff_id][orderBy as keyof Employee]
-        : "Not Available";
-
-      // Check if both values are strings, use localeCompare, otherwise, handle as numbers
-      if (typeof empA === "string" && typeof empB === "string") {
-        return order === "asc"
-          ? empA.localeCompare(empB)
-          : empB.localeCompare(empA);
-      } else {
-        return order === "asc"
-          ? (empA as number) - (empB as number)
-          : (empB as number) - (empA as number);
-      }
-    } else {
-      const aValue = a[orderBy as keyof Request];
-      const bValue = b[orderBy as keyof Request];
-
-      if (typeof aValue === "string" && typeof bValue === "string") {
-        return order === "asc"
-          ? aValue.localeCompare(bValue)
-          : bValue.localeCompare(aValue);
-      } else {
-        return order === "asc"
-          ? (aValue as number) - (bValue as number)
-          : (bValue as number) - (aValue as number);
-      }
-    }
-  });
-
-  if (loading) {
-    return (
-      <Box
-        display="flex"
-        justifyContent="center"
-        alignItems="center"
-        height="100vh"
-      >
-        <CircularProgress />
-      </Box>
-    );
-  }
 
   return (
     <Container>
@@ -250,7 +107,10 @@ export const PendingRequests = () => {
         onChange={handleSearch}
       />
 
-      <TableContainer component={Paper} sx={{ marginTop: 3 }}>
+      <TableContainer
+        component={Paper}
+        sx={{ marginTop: 3, textAlign: "center" }}
+      >
         <Table>
           <TableHead>
             <TableRow>
@@ -258,7 +118,7 @@ export const PendingRequests = () => {
                 <TableSortLabel
                   active={orderBy === "requester_staff_id"}
                   direction={orderBy === "requester_staff_id" ? order : "asc"}
-                  onClick={() => handleSortRequest("requester_staff_id")}
+                  // onClick={() => handleSortRequest("requester_staff_id")}
                 >
                   Requester Staff ID
                 </TableSortLabel>
@@ -267,7 +127,7 @@ export const PendingRequests = () => {
                 <TableSortLabel
                   active={orderBy === "full_name"}
                   direction={orderBy === "full_name" ? order : "asc"}
-                  onClick={() => handleSortRequest("full_name")}
+                  // onClick={() => handleSortRequest("full_name")}
                 >
                   Full Name
                 </TableSortLabel>
@@ -276,7 +136,7 @@ export const PendingRequests = () => {
                 <TableSortLabel
                   active={orderBy === "position"}
                   direction={orderBy === "position" ? order : "asc"}
-                  onClick={() => handleSortRequest("position")}
+                  // onClick={() => handleSortRequest("position")}
                 >
                   Position
                 </TableSortLabel>
@@ -285,7 +145,7 @@ export const PendingRequests = () => {
                 <TableSortLabel
                   active={orderBy === "dept"}
                   direction={orderBy === "dept" ? order : "asc"}
-                  onClick={() => handleSortRequest("dept")}
+                  // onClick={() => handleSortRequest("dept")}
                 >
                   Dept
                 </TableSortLabel>
@@ -294,7 +154,7 @@ export const PendingRequests = () => {
                 <TableSortLabel
                   active={orderBy === "country"}
                   direction={orderBy === "country" ? order : "asc"}
-                  onClick={() => handleSortRequest("country")}
+                  // onClick={() => handleSortRequest("country")}
                 >
                   Country
                 </TableSortLabel>
@@ -303,7 +163,7 @@ export const PendingRequests = () => {
                 <TableSortLabel
                   active={orderBy === "email"}
                   direction={orderBy === "email" ? order : "asc"}
-                  onClick={() => handleSortRequest("email")}
+                  // onClick={() => handleSortRequest("email")}
                 >
                   Email
                 </TableSortLabel>
@@ -312,7 +172,7 @@ export const PendingRequests = () => {
                 <TableSortLabel
                   active={orderBy === "wfh_date"}
                   direction={orderBy === "wfh_date" ? order : "asc"}
-                  onClick={() => handleSortRequest("wfh_date")}
+                  // onClick={() => handleSortRequest("wfh_date")}
                 >
                   WFH Date
                 </TableSortLabel>
@@ -321,7 +181,7 @@ export const PendingRequests = () => {
                 <TableSortLabel
                   active={orderBy === "wfh_type"}
                   direction={orderBy === "wfh_type" ? order : "asc"}
-                  onClick={() => handleSortRequest("wfh_type")}
+                  // onClick={() => handleSortRequest("wfh_type")}
                 >
                   WFH Type
                 </TableSortLabel>
@@ -330,46 +190,88 @@ export const PendingRequests = () => {
                 <TableSortLabel
                   active={orderBy === "approval_status"}
                   direction={orderBy === "approval_status" ? order : "asc"}
-                  onClick={() => handleSortRequest("approval_status")}
+                  // onClick={() => handleSortRequest("approval_status")}
                 >
                   Approval Status
                 </TableSortLabel>
               </TableCell>
+              <TableCell sx={{ fontWeight: "bold" }}>
+                <TableSortLabel
+                  active={orderBy === "approval_status"}
+                  // onClick={() => handleSortRequest("approval_status")}
+                >
+                  Action
+                </TableSortLabel>
+              </TableCell>
             </TableRow>
           </TableHead>
-          <TableBody>
-            {sortedRequests.map((request) => (
-              <TableRow key={request.arrangement_id}>
-                <TableCell>{request.requester_staff_id}</TableCell>
-                <TableCell>
-                  {employees[request.requester_staff_id]
-                    ? `${employees[request.requester_staff_id].staff_fname} ${
-                        employees[request.requester_staff_id].staff_lname
-                      }`
-                    : "Not Available"}
+          {isPending ? (
+            <TableBody>
+              <TableRow>
+                <TableCell colSpan={9} align="center">
+                  <Box
+                    display="flex"
+                    justifyContent="center"
+                    alignItems="center"
+                    height="100%"
+                    margin="16px"
+                  >
+                    <LoadingSpinner />
+                  </Box>
                 </TableCell>
-                <TableCell>
-                  {employees[request.requester_staff_id]?.position ||
-                    "Not Available"}
-                </TableCell>
-                <TableCell>
-                  {employees[request.requester_staff_id]?.dept ||
-                    "Not Available"}
-                </TableCell>
-                <TableCell>
-                  {employees[request.requester_staff_id]?.country ||
-                    "Not Available"}
-                </TableCell>
-                <TableCell>
-                  {employees[request.requester_staff_id]?.email ||
-                    "Not Available"}
-                </TableCell>
-                <TableCell>{request.wfh_date}</TableCell>
-                <TableCell>{request.wfh_type}</TableCell>
-                <TableCell>{request.approval_status}</TableCell>
               </TableRow>
-            ))}
-          </TableBody>
+            </TableBody>
+          ) : (
+            <TableBody>
+              {requests.map((request) => (
+                <TableRow key={request.arrangement_id}>
+                  <TableCell>{request.requester_staff_id}</TableCell>
+                  <TableCell>
+                    {employees[request.requester_staff_id]
+                      ? `${employees[request.requester_staff_id].staff_fname} ${
+                          employees[request.requester_staff_id].staff_lname
+                        }`
+                      : "Not Available"}
+                  </TableCell>
+                  <TableCell>
+                    {employees[request.requester_staff_id]?.position ||
+                      "Not Available"}
+                  </TableCell>
+                  <TableCell>
+                    {employees[request.requester_staff_id]?.dept ||
+                      "Not Available"}
+                  </TableCell>
+                  <TableCell>
+                    {employees[request.requester_staff_id]?.country ||
+                      "Not Available"}
+                  </TableCell>
+                  <TableCell>
+                    {employees[request.requester_staff_id]?.email ||
+                      "Not Available"}
+                  </TableCell>
+                  <TableCell>{request.wfh_date}</TableCell>
+                  <TableCell>{request.wfh_type}</TableCell>
+                  <TableCell>
+                    <Chip
+                      color={getChipColor(
+                        request.approval_status as ApprovalStatus
+                      )}
+                      label={capitalize(request.approval_status)}
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <ButtonGroup
+                      variant="contained"
+                      aria-label="Appprove/Reject group"
+                    >
+                      <Button color="success">Approve</Button>
+                      <Button color="error">Reject</Button>
+                    </ButtonGroup>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          )}
         </Table>
       </TableContainer>
     </Container>

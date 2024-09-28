@@ -29,7 +29,6 @@ export const useLogin = () => {
     onSuccess: (response) => {
       // Handle successful login
       console.log("Login successful");
-      console.log(response)
 
       const { email, role, id } = response;
 
