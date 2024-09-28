@@ -1,6 +1,8 @@
 from sqlalchemy import Column, String
 from sqlalchemy.orm import relationship, Session
 
+from ..employees.models import Employee
+
 from ..database import Base
 
 
@@ -22,4 +24,9 @@ def create_user(db: Session, email: str, hashed_password: str):
 
 
 def get_user_by_email(db: Session, email: str):
-    return db.query(Auth).filter(Auth.email == email).first()
+    return (
+        db.query(Auth)
+        .join(Employee, Auth.email == Employee.email, isouter=False)
+        .filter(Auth.email == email)
+        .first()
+    )
