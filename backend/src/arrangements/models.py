@@ -5,6 +5,50 @@ from ..database import Base
 
 class ArrangementLog(Base):
     __tablename__ = "arrangement_logs"
+    log_id = Column(
+        Integer,
+        primary_key=True,
+        autoincrement=True,
+        doc="Unique identifier for the log entry",
+    )
+    log_event_datetime = Column(
+        String(length=50),
+        nullable=False,
+        doc="Date and time of the log entry",
+    )
+    arrangement_id = Column(
+        Integer,
+        ForeignKey("latest_arrangements.arrangement_id"),
+        nullable=False,
+        doc="Unique identifier for the arrangement",
+    )
+    batch_id = Column(
+        Integer,
+        ForeignKey("recurring_requests.batch_id"),
+        nullable=True,
+        doc="Unique identifier for the batch, if any",
+    )
+    log_event_staff_id = Column(
+        String(length=10),
+        ForeignKey("employees.staff_id"),
+        nullable=False,
+        doc="Staff ID of the employee who performed the action",
+    )
+    log_event_type = Column(
+        String(length=50),
+        nullable=False,
+        doc="Type of the log event (request, approve, reject, withdraw, cancel)",
+    )
+    __table_args__ = (
+        CheckConstraint(
+            "log_event_type IN ('request', 'approve', 'reject', 'withdraw', 'cancel')",
+            name="check_log_event_type",
+        ),
+    )
+
+
+class LatestArrangement(Base):
+    __tablename__ = "latest_arrangements"
     arrangement_id = Column(
         Integer,
         primary_key=True,
@@ -14,7 +58,7 @@ class ArrangementLog(Base):
     update_datetime = Column(
         String(length=50),
         nullable=False,
-        doc="Date and time of the log entry",
+        doc="Date and time of the latest update",
     )
     requester_staff_id = Column(
         String(length=10),
@@ -32,10 +76,10 @@ class ArrangementLog(Base):
         nullable=False,
         doc="Type of WFH arrangement: full day, AM, or PM",
     )
-    approval_status = Column(
+    current_approval_status = Column(
         String(length=50),
         nullable=False,
-        doc="Status of the request: pending, approved, rejected, or withdrawn",
+        doc="Current status of the request: pending, approved, rejected, or withdrawn",
     )
     reason_description = Column(
         String(length=255),
@@ -44,28 +88,34 @@ class ArrangementLog(Base):
     )
     batch_id = Column(
         Integer,
-        ForeignKey("arrangement_batches.batch_id"),
+        ForeignKey("recurring_requests.batch_id"),
         nullable=True,
         doc="Unique identifier for the batch",
+    )
+    latest_log_id = Column(
+        Integer,
+        ForeignKey("arrangement_logs.log_id"),
+        nullable=True,
+        doc="Unique identifier for the latest log entry",
     )
     __table_args__ = (
         CheckConstraint("wfh_type IN ('full', 'am', 'pm')", name="check_wfh_type"),
         CheckConstraint(
-            "approval_status IN ('pending', 'approved', 'rejected', 'withdrawn')",
-            name="check_approval_status",
+            "current_approval_status IN ('pending', 'approved', 'rejected', 'withdrawn')",
+            name="check_current_approval_status",
         ),
     )
 
 
-class ArrangementBatch(Base):
-    __tablename__ = "arrangement_batches"
+class RecurringRequest(Base):
+    __tablename__ = "recurring_requests"
     batch_id = Column(
         Integer,
         primary_key=True,
         autoincrement=True,
-        doc="Unique identifier for the batch",
+        doc="Unique identifier for the recurring request batch",
     )
-    update_datetime = Column(
+    request_datetime = Column(
         String(length=50),
         nullable=False,
         doc="Date and time of the log entry",
@@ -91,11 +141,6 @@ class ArrangementBatch(Base):
         nullable=False,
         doc="Start date of the batch",
     )
-    end_date = Column(
-        String(length=50),
-        nullable=False,
-        doc="Type of the batch: full day, AM, or PM",
-    )
     recurring_frequency_number = Column(
         Integer,
         nullable=False,
@@ -112,6 +157,4 @@ class ArrangementBatch(Base):
         doc="Number of occurrences of the recurring WFH request",
     )
 
-    __table_args__ = (
-        CheckConstraint("wfh_type IN ('full', 'am', 'pm')", name="check_batch_type"),
-    )
+    __table_args__ = (CheckConstraint("wfh_type IN ('full', 'am', 'pm')", name="check_wfh_type"),)
