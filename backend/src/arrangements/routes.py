@@ -11,6 +11,8 @@ from ..employees.routes import read_employee  # Fetch employee info
 from ..notifications.email_notifications import (  # Import helper functions
     craft_email_content, fetch_manager_info, send_email)
 from . import crud, schemas
+from .exceptions import (ArrangementActionNotAllowedError,
+                         ArrangementNotFoundError)
 from .utils import fit_model_to_schema
 
 router = APIRouter()
@@ -132,10 +134,75 @@ async def create_wfh_request(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/view", response_model=List[schemas.ArrangementLog])
+@router.post("/request/approve")
+async def approve_wfh_request(
+    arrangement_id: int = Form(...),
+    reason: str = Form(...),
+    db: Session = Depends(get_db),
+) -> JSONResponse:
+    try:
+        crud.update_arrangement_approval_status(db, arrangement_id, "approve", reason)
+
+        return JSONResponse(
+            status_code=200,
+            content={"message": "Request approved successfully"},
+        )
+
+    except ArrangementNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+    except ArrangementActionNotAllowedError as e:
+        raise HTTPException(status_code=406, detail=str(e))
+
+    except SQLAlchemyError as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/request/reject")
+async def reject_wfh_request(
+    arrangement_id: int = Form(...),
+    reason: str = Form(...),
+    db: Session = Depends(get_db),
+) -> JSONResponse:
+    try:
+        crud.update_arrangement_approval_status(db, arrangement_id, "reject", reason)
+
+        return JSONResponse(
+            status_code=200,
+            content={"message": "Request rejected successfully"},
+        )
+
+    except ArrangementNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+    except ArrangementActionNotAllowedError as e:
+        raise HTTPException(status_code=406, detail=str(e))
+
+    except SQLAlchemyError as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/view", response_model=List[schemas.ArrangementCreateResponse])
 def get_all_arrangements(db: Session = Depends(get_db)):
     try:
         arrangements = crud.get_all_arrangements(db)
-        return arrangements
+        response_data = [req.__dict__ for req in arrangements]
+        for data in response_data:
+            data.pop("_sa_instance_state", None)
+        response_data = [
+            fit_model_to_schema(
+                data,
+                schemas.ArrangementCreateResponse,
+                {"requester_staff_id": "staff_id", "approval_status": "current_approval_status"},
+            )
+            for data in response_data
+        ]
+        return JSONResponse(
+            status_code=200,
+            content={
+                "message": "Arrangements retrieved successfully",
+                "data": [{**data.model_dump()} for data in response_data],
+            },
+        )
     except SQLAlchemyError as e:
         raise HTTPException(status_code=500, detail=str(e))

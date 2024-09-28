@@ -18,7 +18,7 @@ class ArrangementLog(Base):
     )
     arrangement_id = Column(
         Integer,
-        ForeignKey("latest_arrangements.arrangement_id"),
+        ForeignKey("latest_arrangements.arrangement_id", use_alter=True, name="fk_arrangement_id"),
         nullable=False,
         doc="Unique identifier for the arrangement",
     )
@@ -37,11 +37,11 @@ class ArrangementLog(Base):
     log_event_type = Column(
         String(length=50),
         nullable=False,
-        doc="Type of the log event (request, approve, reject, withdraw, cancel)",
+        doc="Type of the log event (create, approve, reject, withdraw, cancel)",
     )
     __table_args__ = (
         CheckConstraint(
-            "log_event_type IN ('request', 'approve', 'reject', 'withdraw', 'cancel')",
+            "log_event_type IN ('create', 'approve', 'reject', 'withdraw', 'cancel')",
             name="check_log_event_type",
         ),
     )
@@ -94,7 +94,7 @@ class LatestArrangement(Base):
     )
     latest_log_id = Column(
         Integer,
-        ForeignKey("arrangement_logs.log_id"),
+        ForeignKey("arrangement_logs.log_id", use_alter=True, name="fk_latest_log_id"),
         nullable=True,
         doc="Unique identifier for the latest log entry",
     )
