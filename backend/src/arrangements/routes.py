@@ -98,7 +98,10 @@ async def create_wfh_request(
             fit_model_to_schema(
                 data,
                 schemas.ArrangementCreateResponse,
-                {"requester_staff_id": "staff_id", "approval_status": "current_approval_status"},
+                {
+                    "requester_staff_id": "staff_id",
+                    "approval_status": "current_approval_status",
+                },
             )
             for data in response_data
         ]
@@ -146,7 +149,9 @@ async def approve_wfh_request(
 ) -> JSONResponse:
     try:
         # Update the arrangement status
-        arrangement = crud.update_arrangement_approval_status(db, arrangement_id, "approve", reason)
+        arrangement = crud.update_arrangement_approval_status(
+            db, arrangement_id, "approve", reason
+        )
 
         # Fetch the staff (requester) information
         staff = read_employee(arrangement.requester_staff_id, db)
@@ -160,7 +165,9 @@ async def approve_wfh_request(
             manager = read_employee(manager_info["manager_id"], db)
 
         # Prepare and send email to staff
-        subject, content = await craft_approval_email_content(staff, arrangement, reason)
+        subject, content = await craft_approval_email_content(
+            staff, arrangement, reason
+        )
         await send_email(to_email=staff.email, subject=subject, content=content)
 
         # Prepare and send email to manager
@@ -193,7 +200,9 @@ async def reject_wfh_request(
 ) -> JSONResponse:
     try:
         # Update the arrangement status
-        arrangement = crud.update_arrangement_approval_status(db, arrangement_id, "reject", reason)
+        arrangement = crud.update_arrangement_approval_status(
+            db, arrangement_id, "reject", reason
+        )
 
         # Fetch the staff (requester) information
         staff = read_employee(arrangement.requester_staff_id, db)
@@ -207,7 +216,9 @@ async def reject_wfh_request(
             manager = read_employee(manager_info["manager_id"], db)
 
         # Prepare and send email to staff
-        subject, content = await craft_rejection_email_content(staff, arrangement, reason)
+        subject, content = await craft_rejection_email_content(
+            staff, arrangement, reason
+        )
         await send_email(to_email=staff.email, subject=subject, content=content)
 
         # Prepare and send email to manager
@@ -243,7 +254,10 @@ def get_all_arrangements(db: Session = Depends(get_db)):
             fit_model_to_schema(
                 data,
                 schemas.ArrangementCreateResponse,
-                {"requester_staff_id": "staff_id", "approval_status": "current_approval_status"},
+                {
+                    "requester_staff_id": "staff_id",
+                    "approval_status": "current_approval_status",
+                },
             )
             for data in response_data
         ]
@@ -254,5 +268,18 @@ def get_all_arrangements(db: Session = Depends(get_db)):
                 "data": [{**data.model_dump()} for data in response_data],
             },
         )
+    except SQLAlchemyError as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get(
+    "/view/{manager_id}",
+    response_model=List[schemas.ArrangementLog],
+    summary="Get all Pending Arrangements by Manager",
+)
+def get_pending_arrangements_by_manager(manager_id: int, db: Session = Depends(get_db)):
+    try:
+        arrangements = crud.get_arrangements_by_manager(db, manager_id)
+        return arrangements
     except SQLAlchemyError as e:
         raise HTTPException(status_code=500, detail=str(e))

@@ -4,18 +4,19 @@ from typing import List
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
-from . import models, schemas
+from . import schemas
+from .models import LatestArrangement, RecurringRequest, ArrangementLog
 from .exceptions import ArrangementActionNotAllowedError, ArrangementNotFoundError
 from .utils import fit_model_to_model, fit_schema_to_model
 
 
 def create_recurring_request(
     db: Session, request: schemas.ArrangementCreate
-) -> models.RecurringRequest:
+) -> RecurringRequest:
     try:
         batch = fit_schema_to_model(
             request,
-            models.RecurringRequest,
+            RecurringRequest,
             {"update_datetime": "request_datetime", "wfh_date": "start_date"},
         )
         db.add(batch)
@@ -29,11 +30,11 @@ def create_recurring_request(
 
 def create_arrangements(
     db: Session, arrangements: List[schemas.ArrangementCreate]
-) -> List[models.LatestArrangement]:
+) -> List[LatestArrangement]:
     try:
         created_arrangements_list = []
         for arrangement in arrangements:
-            created_arrangement = fit_schema_to_model(arrangement, models.LatestArrangement)
+            created_arrangement = fit_schema_to_model(arrangement, LatestArrangement)
             created_arrangements_list.append(created_arrangement)
 
         db.add_all(created_arrangements_list)
@@ -56,9 +57,11 @@ def create_arrangements(
         raise e
 
 
-def update_arrangement_approval_status(db: Session, arrangement_id: int, action: str, reason: str):
+def update_arrangement_approval_status(
+    db: Session, arrangement_id: int, action: str, reason: str
+):
     try:
-        arrangement = db.query(models.LatestArrangement).get(arrangement_id)
+        arrangement = db.query(LatestArrangement).get(arrangement_id)
 
         if not arrangement:
             raise ArrangementNotFoundError(arrangement_id)
@@ -70,7 +73,10 @@ def update_arrangement_approval_status(db: Session, arrangement_id: int, action:
             "cancel": "cancelled",
         }.get(action)
 
-        if arrangement.current_approval_status != "pending" and action in ["approve", "reject"]:
+        if arrangement.current_approval_status != "pending" and action in [
+            "approve",
+            "reject",
+        ]:
             raise ArrangementActionNotAllowedError(arrangement_id, action)
 
         arrangement.current_approval_status = status
@@ -88,13 +94,16 @@ def update_arrangement_approval_status(db: Session, arrangement_id: int, action:
 
 
 def create_request_arrangement_log(
-    db: Session, arrangement: models.LatestArrangement, action: str
-) -> models.ArrangementLog:
+    db: Session, arrangement: LatestArrangement, action: str
+) -> ArrangementLog:
     try:
         arrangement_log = fit_model_to_model(
             arrangement,
-            models.ArrangementLog,
-            {"requester_staff_id": "log_event_staff_id", "update_datetime": "log_event_datetime"},
+            ArrangementLog,
+            {
+                "requester_staff_id": "log_event_staff_id",
+                "update_datetime": "log_event_datetime",
+            },
         )
         arrangement_log.log_event_type = action
         db.add(arrangement_log)
@@ -105,8 +114,19 @@ def create_request_arrangement_log(
         raise e
 
 
-def get_all_arrangements(db: Session) -> List[models.LatestArrangement]:
+def get_all_arrangements(db: Session) -> List[LatestArrangement]:
     try:
-        return db.query(models.LatestArrangement).all()
+        return db.query(LatestArrangement).all()
+    except SQLAlchemyError as e:
+        raise e
+
+
+def get_arrangements_by_manager(db: Session, manager_id: int):
+    try:
+        return (
+            db.query(ArrangementLog)
+            .where(ArrangementLog.approving_officer == manager_id)
+            .all()
+        )
     except SQLAlchemyError as e:
         raise e

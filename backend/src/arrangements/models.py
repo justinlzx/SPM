@@ -81,6 +81,12 @@ class LatestArrangement(Base):
         nullable=False,
         doc="Current status of the request: pending, approved, rejected, or withdrawn",
     )
+    approving_officer = Column(
+        Integer,
+        ForeignKey("employees.staff_id"),
+        nullable=True,
+        doc="Staff ID of the approving officer",
+    )
     reason_description = Column(
         String(length=255),
         nullable=False,
