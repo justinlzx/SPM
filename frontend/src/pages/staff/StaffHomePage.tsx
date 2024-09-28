@@ -35,7 +35,7 @@ export const StaffHomePage = () => {
         >
           Create a WFH Request
         </Button>
-        <RequestList />
+        //<RequestList />
       </Container>
     </Box>
   );

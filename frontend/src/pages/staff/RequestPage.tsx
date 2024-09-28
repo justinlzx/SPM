@@ -2,7 +2,7 @@ import React from 'react'
 import { WfhForm } from '../../components/forms/WfhForm'
 
 
-export const ApplicationPage = () => {
+export const RequestPage = () => {
   return (
     <div>
       <WfhForm requesterStaffId={12345}/>
@@ -10,4 +10,4 @@ export const ApplicationPage = () => {
   )
 }
 
-export default ApplicationPage; 
+export default RequestPage; 
