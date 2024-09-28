@@ -1,23 +1,44 @@
 from datetime import datetime, timedelta
+from typing import Annotated, List
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, Form, HTTPException
 from fastapi.responses import JSONResponse
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
-from typing import List
-
 
 from ..database import get_db
+from ..employees.routes import read_employee  # Fetch employee info
+from ..notifications.email_notifications import (  # Import helper functions
+    craft_email_content, fetch_manager_info, send_email)
 from . import crud, schemas
 
 router = APIRouter()
 
 
 @router.post("/request")
-def create_wfh_request(
-    arrangement: schemas.ArrangementCreate, db: Session = Depends(get_db)
-):
+async def create_wfh_request(
+    arrangement: Annotated[schemas.ArrangementCreate, Form()],
+    db: Session = Depends(get_db),
+) -> JSONResponse:
     try:
+        # Fetch employee (staff) information
+        staff = read_employee(arrangement.requester_staff_id, db)
+        if not staff:
+            raise HTTPException(status_code=404, detail="Employee not found")
+
+        # Fetch manager info using the helper function from notifications
+        manager_info = await fetch_manager_info(arrangement.requester_staff_id)
+        manager = None
+
+        # Only fetch manager if manager_id is not null
+        if (
+            manager_info
+            and manager_info["manager_id"] is not None
+            and manager_info["manager_id"] != arrangement.requester_staff_id
+        ):
+            manager = read_employee(manager_info["manager_id"], db)
+
+        # Handle recurring requests
         arrangement_requests = []
         if arrangement.is_recurring:
             missing_fields = [
@@ -65,17 +86,40 @@ def create_wfh_request(
         for data in response_data:
             data.pop("_sa_instance_state", None)
 
-        # TODO: Use Pydantic to perform model validation
+        response_data = [schemas.ArrangementLog(**data) for data in response_data]
+
+        # Craft and send success notification email to the employee (staff)
+        subject, content = await craft_email_content(staff, response_data, success=True)
+        await send_email(to_email=staff.email, subject=subject, content=content)
+
+        # Only send notification to the manager if the manager_id is not null
+        if manager:
+            subject, content = await craft_email_content(
+                staff, response_data, success=True, is_manager=True, manager=manager
+            )
+            await send_email(to_email=manager.email, subject=subject, content=content)
 
         return JSONResponse(
             status_code=201,
             content={
                 "message": "Request submitted successfully",
-                "data": response_data,
+                "data": [
+                    {
+                        **data.model_dump(),
+                        "update_datetime": (data.update_datetime.isoformat()),
+                    }
+                    for data in response_data
+                ],
             },
         )
 
     except SQLAlchemyError as e:
+        # Craft and send failure notification email to the employee (staff)
+        subject, content = await craft_email_content(
+            staff, response_data=None, success=False, error_message=str(e)
+        )
+        await send_email(to_email=staff.email, subject=subject, content=content)
+
         raise HTTPException(status_code=500, detail=str(e))
 
 

@@ -12,7 +12,33 @@ Before you begin, ensure you have the following installed on your system:
 ## Project Structure
 
 ```
-myapp/
+SPM/
+├── backend/
+│   ├── src/
+│   │   ├── arrangements/
+│   │   │   ├── crud.py
+│   │   │   ├── models.py
+│   │   │   ├── routes.py
+│   │   │   └── schemas.py
+│   │   ├── auth/
+│   │   │   ├── models.py
+│   │   │   ├── routes.py
+│   │   │   └── utils.py
+│   │   ├── database.py
+│   │   ├── email/
+│   │   │   ├── config.py
+│   │   │   ├── models.py
+│   │   │   ├── routes.py
+│   │   │   └── schemas.py
+│   │   ├── employees/
+│   │   │   ├── crud.py
+│   │   │   ├── models.py
+│   │   │   ├── routes.py
+│   │   │   └── schemas.py
+│   │   ├── <other services...>/
+│   │   └── app.py
+│   ├── Dockerfile
+│   └── main.py
 ├── frontend/
 │   ├── src/
 │   │   ├── common/
@@ -24,18 +50,6 @@ myapp/
 │   │   └── utils/
 │   ├── Dockerfile
 │   └── ...
-├── backend/
-│   ├── src/
-│   │   ├── employees/
-│   │   │   ├── crud.py
-│   │   │   ├── models.py
-│   │   │   ├── routes.py
-│   │   │   └── schemas.py
-│   │   ├── <other services...>/
-│   │   ├── database.py
-│   │   └── app.py
-│   ├── Dockerfile
-│   └── main.py
 ├── config/
 ├── docker-compose.yaml
 └── README.md

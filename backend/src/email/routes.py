@@ -4,19 +4,21 @@ from .models import EmailModel
 router = APIRouter()
 
 
-@router.post("/send_email")
+@router.post("/sendemail")
 async def send_email(
-    to_email: str = Form(...),
-    subject: str = Form(...),
-    content: str = Form(...)
+    to_email: str = Form(...), subject: str = Form(...), content: str = Form(...)
 ):
+    if not to_email.strip():
+        raise HTTPException(status_code=400, detail="Recipient email cannot be empty.")
+    if not subject.strip():
+        raise HTTPException(status_code=400, detail="Subject cannot be empty.")
+    if not content.strip():
+        raise HTTPException(status_code=400, detail="Content cannot be empty.")
+
     sender_email = "zarapetproject@gmail.com"
 
     email = EmailModel(
-        sender_email=sender_email,
-        to_email=to_email,
-        subject=subject,
-        content=content
+        sender_email=sender_email, to_email=to_email, subject=subject, content=content
     )
 
     result = email.send_email()
@@ -29,5 +31,5 @@ async def send_email(
         "sender_email": sender_email,
         "to_email": to_email,
         "subject": subject,
-        "content": content
+        "content": content,
     }

@@ -13,7 +13,7 @@ from .crud import get_employee, get_employee_by_email
 router = APIRouter()
 
 
-@router.get("/peer_manager/{staff_id}", response_model=EmployeePeerResponse)
+@router.get("/manager/peermanager/{staff_id}", response_model=EmployeePeerResponse)
 def get_reporting_manager(staff_id: int, db: Session = Depends(get_db)):
     try:
         emp: Employee = get_employee_by_staff_id(db, staff_id)

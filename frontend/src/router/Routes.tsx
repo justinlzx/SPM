@@ -1,4 +1,4 @@
-import { createBrowserRouter } from "react-router-dom";
+import { createBrowserRouter, Navigate } from "react-router-dom";
 import { LoginPage } from "../pages/login-signup/LoginPage";
 import { SignUpPage } from "../pages/login-signup/SignUpPage";
 import { App } from "../App";
@@ -8,7 +8,6 @@ import { RequestPage } from "../pages/staff/RequestPage";
 import { TestPage } from "./TestPage";
 import { StaffHomePage } from "../pages/staff/StaffHomePage";
 import PendingRequests from "../pages/pendingrequests/Pendingrequests";
-
 
 type routesProps = {
   path: string;
@@ -29,10 +28,9 @@ const routes: routesProps[] = [
         path: "/sign-up",
         element: <SignUpPage />,
       },
-
       {
         path: "/",
-        element: <Layout />, 
+        element: <Layout />,
         children: [
           {
             path: "/home",
@@ -49,12 +47,8 @@ const routes: routesProps[] = [
         ]
       },
       {
-        path: "/pendingrequests",
+        path: "/pendingRequests",
         element: <PendingRequests />,
-      },
-      {
-        path: "/test",
-        element: <TestPage />,
       },
     ],
   },

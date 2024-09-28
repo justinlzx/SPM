@@ -18,6 +18,7 @@ import * as Yup from 'yup';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import axios from 'axios';
+import qs from 'qs';
 import { Recurring } from './Recurring';
 import { SnackBarComponent, AlertStatus } from '../../common/SnackBar'; // Assuming you have this component
 
@@ -156,7 +157,14 @@ export const WfhForm: React.FC<WfhFormProps> = ({ requesterStaffId }) => {
     console.log('Payload:', payload);
   
     try {
-      const response = await axios.post('http://localhost:8000/arrangement/request', payload);
+      const response = await axios.post('http://localhost:8000/arrangement/request',
+        qs.stringify(payload),
+        {
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+        }
+      );
       console.log(response.data);
       setAlertStatus(AlertStatus.Success);
       setSnackbarMessage('Your request was successfully submitted!');

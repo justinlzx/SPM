@@ -20,6 +20,7 @@ repos:
     hooks:
       - id: black
         files: ^backend/
+        args: ["--config=config/black.toml"]
 
   - repo: https://github.com/PyCQA/isort
     rev: 5.13.2
@@ -33,3 +34,10 @@ repos:
       - id: flake8
         files: ^backend/
         args: ["--config=config/.flake8"]
+
+  - repo: https://github.com/pycqa/docformatter
+    rev: v1.7.2
+    hooks:
+      - id: docformatter
+        files: ^backend/
+        args: ["--wrap-summaries", "100", "--wrap-descriptions", "100", "--in-place"]
