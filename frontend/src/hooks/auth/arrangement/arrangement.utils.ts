@@ -27,3 +27,18 @@ export const getArrangementsByManager = async (manager_id: number, status: strin
         return;
     }
 };
+
+export const updateArrangement = async (request: "approve" | "reject", arrangement_id: number): Promise<any| undefined>  => {
+    // try {
+        //TODO: double check endpoint
+        // const response = await axios.put(`${BACKEND_URL}/arrangement/update`, request);
+        // if (response.status === 200) {
+        //     return response.data;
+        // }
+        console.log("updateArrangement", request);
+        return true
+    // } 
+    // catch (error: any) {
+    //     return
+    // }
+};

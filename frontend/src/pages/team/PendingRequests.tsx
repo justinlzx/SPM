@@ -17,7 +17,10 @@ import {
   Button,
   ButtonGroup,
 } from "@mui/material";
-import { useArrangement } from "../../hooks/auth/arrangement/arrangement";
+import {
+  useArrangement,
+  useUpdateArrangement,
+} from "../../hooks/auth/arrangement/arrangement";
 import { UserContext } from "../../context/UserContextProvider";
 import { TRequest } from "../../hooks/auth/arrangement/arrangement.utils";
 import { TEmployee } from "../../hooks/auth/employee/employee.utils";
@@ -28,7 +31,8 @@ import CloseIcon from "@mui/icons-material/Close";
 
 // Define types
 
-type Order = "asc" | "desc";
+type TOrder = "asc" | "desc";
+type TAction = "approve" | "reject";
 
 enum ApprovalStatus {
   Approved = "approved",
@@ -56,13 +60,14 @@ const getChipColor = (status: ApprovalStatus): ChipProps["color"] => {
 
 export const PendingRequests = () => {
   const [requests, setRequests] = useState<TWFHRequest[]>([]);
-  const [order, setOrder] = useState<Order>("asc");
+  const [order, setOrder] = useState<TOrder>("asc");
   const [orderBy, setOrderBy] = useState<
     keyof TWFHRequest | "requester_staff_id"
   >("requester_staff_id"); // Default sorting by staff ID
   const [searchTerm, setSearchTerm] = useState(""); // New state for search term
 
   const { mutateAsync: arrangementMutation, isPending } = useArrangement();
+  const { mutateAsync: updateArrangementMutation } = useUpdateArrangement();
   const { user } = useContext(UserContext);
 
   useEffect(() => {
@@ -76,6 +81,22 @@ export const PendingRequests = () => {
     };
     fetchRequests();
   }, [setRequests, arrangementMutation, user]);
+
+  const handleRequestAction = async (
+    action: TAction,
+    arrangement_id: number
+  ) => {
+    const update = await updateArrangementMutation({
+      updatedStatus: action,
+      arrangement_id,
+    });
+
+    console.log(update);
+
+    if (update) {
+      console.log("Request updated successfully");
+    }
+  };
 
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchTerm(e.target.value);
@@ -262,6 +283,9 @@ export const PendingRequests = () => {
                           // variant="contained"
                           color="success"
                           startIcon={<CheckIcon />}
+                          onClick={() =>
+                            handleRequestAction("approve", arrangement_id!)
+                          }
                         >
                           Approve
                         </Button>
@@ -269,6 +293,9 @@ export const PendingRequests = () => {
                           size="small"
                           color="error"
                           startIcon={<CloseIcon />}
+                          onClick={() =>
+                            handleRequestAction("reject", arrangement_id!)
+                          }
                         >
                           Reject
                         </Button>

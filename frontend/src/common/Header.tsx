@@ -31,7 +31,7 @@ interface Props {
 }
 
 export enum sideBarLabels {
-  SubmitRequests = "Submit Requests",
+  Requests = "Requests",
   MyTeam = "My Team",
   MyWFHSchedule = "My WFH Schedule",
   Settings = "Settings",
@@ -43,7 +43,7 @@ const sideBarItems: {
   route?: string; // TODO: add route property when it is done
 }[] = [
   {
-    text: sideBarLabels.SubmitRequests,
+    text: sideBarLabels.Requests,
     icon: <InboxIcon />,
     route: "/application",
   },
@@ -76,7 +76,14 @@ export const Header = ({ window }: Props) => {
         {sideBarItems.map((item) => (
           <ListItem key={item.text} disablePadding>
             <ListItemButton
-              sx={{ textAlign: "left", alignItems: "left", backgroundColor: activeTab === sideBarItems.indexOf(item) ? "#e0e0e0" : "white" }}
+              sx={{
+                textAlign: "left",
+                alignItems: "left",
+                backgroundColor:
+                  activeTab === sideBarItems.indexOf(item)
+                    ? "#e0e0e0"
+                    : "white",
+              }}
               onClick={() => handleButtonClick(item.route || "")}
             >
               <ListItemIcon>{item.icon}</ListItemIcon>
