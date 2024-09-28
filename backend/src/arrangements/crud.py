@@ -124,15 +124,18 @@ def get_all_arrangements(db: Session) -> List[LatestArrangement]:
 def get_arrangements_by_manager(
     db: Session, manager_id: int, status: Optional[str] = None
 ):
-
     try:
-        query = db.query(ArrangementLog).where(
-            ArrangementLog.approving_officer == manager_id
+        query = (
+            db.query(ArrangementLog)
+            .outerjoin(Employee, ArrangementLog.requester_staff_id == Employee.staff_id)
+            .filter(ArrangementLog.approving_officer == manager_id)
         )
 
         # if status is empty, then it will get all arrangements
         if status:
-            query = query.where(ArrangementLog.approval_status == status)
-        return query.all()
+            query = query.filter(ArrangementLog.approval_status == status)
+        result = query.all()
+        print(str(query.statement))
+        return result
     except SQLAlchemyError as e:
         raise e

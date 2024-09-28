@@ -1,5 +1,5 @@
 from sqlalchemy import CheckConstraint, Column, ForeignKey, Integer, String
-
+from sqlalchemy.orm import relationship
 from ..database import Base
 
 
@@ -18,7 +18,11 @@ class ArrangementLog(Base):
     )
     arrangement_id = Column(
         Integer,
-        ForeignKey("latest_arrangements.arrangement_id", use_alter=True, name="fk_arrangement_id"),
+        ForeignKey(
+            "latest_arrangements.arrangement_id",
+            use_alter=True,
+            name="fk_arrangement_id",
+        ),
         nullable=False,
         doc="Unique identifier for the arrangement",
     )
@@ -104,6 +108,16 @@ class LatestArrangement(Base):
         nullable=True,
         doc="Unique identifier for the latest log entry",
     )
+    requester_info = relationship(
+        "Employee",
+        back_populates="arrangements_requested",
+        foreign_keys=[requester_staff_id],
+    )
+    approving_officer_info = relationship(
+        "Employee",
+        back_populates="arrangements_approved",
+        foreign_keys=[approving_officer],
+    )
     __table_args__ = (
         CheckConstraint("wfh_type IN ('full', 'am', 'pm')", name="check_wfh_type"),
         CheckConstraint(
@@ -137,7 +151,7 @@ class RecurringRequest(Base):
         doc="Date and time of the log entry",
     )
     requester_staff_id = Column(
-        String(length=10),
+        Integer,
         ForeignKey("employees.staff_id"),
         nullable=False,
         doc="Staff ID of the employee who made the request",
@@ -173,4 +187,6 @@ class RecurringRequest(Base):
         doc="Number of occurrences of the recurring WFH request",
     )
 
-    __table_args__ = (CheckConstraint("wfh_type IN ('full', 'am', 'pm')", name="check_wfh_type"),)
+    __table_args__ = (
+        CheckConstraint("wfh_type IN ('full', 'am', 'pm')", name="check_wfh_type"),
+    )
