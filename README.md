@@ -13,46 +13,115 @@ Before you begin, ensure you have the following installed on your system:
 
 ```
 SPM/
-├── backend/
-│   ├── src/
-│   │   ├── arrangements/
-│   │   │   ├── crud.py
-│   │   │   ├── models.py
-│   │   │   ├── routes.py
-│   │   │   └── schemas.py
-│   │   ├── auth/
-│   │   │   ├── models.py
-│   │   │   ├── routes.py
-│   │   │   └── utils.py
-│   │   ├── database.py
-│   │   ├── email/
-│   │   │   ├── config.py
-│   │   │   ├── models.py
-│   │   │   ├── routes.py
-│   │   │   └── schemas.py
-│   │   ├── employees/
-│   │   │   ├── crud.py
-│   │   │   ├── models.py
-│   │   │   ├── routes.py
-│   │   │   └── schemas.py
-│   │   ├── <other services...>/
-│   │   └── app.py
-│   ├── Dockerfile
-│   └── main.py
-├── frontend/
-│   ├── src/
-│   │   ├── common/
-│   │   ├── contexts/
-│   │   ├── hooks/
-│   │   ├── pages/
-│   │   ├── router/
-│   │   ├── tests/
-│   │   └── utils/
-│   ├── Dockerfile
-│   └── ...
-├── config/
-├── docker-compose.yaml
-└── README.md
+├─ .gitignore
+├─ backend/
+│  ├─ Dockerfile
+│  ├─ main.py
+│  ├─ README.md
+│  ├─ requirements.txt
+│  └─ src/
+│     ├─ app.py
+│     ├─ arrangements/
+│     │  ├─ crud.py
+│     │  ├─ models.py
+│     │  ├─ routes.py
+│     │  └─ schemas.py
+│     ├─ auth/
+│     │  ├─ models.py
+│     │  ├─ routes.py
+│     │  └─ utils.py
+│     ├─ base.py
+│     ├─ database.py
+│     ├─ email/
+│     │  ├─ config.py
+│     │  ├─ models.py
+│     │  ├─ routes.py
+│     │  └─ schemas.py
+│     ├─ employees/
+│     │  ├─ crud.py
+│     │  ├─ models.py
+│     │  ├─ routes.py
+│     │  └─ schemas.py
+│     ├─ health/
+│     │  └─ health.py
+│     ├─ init_db/
+│     │  ├─ auth.csv
+│     │  ├─ employee.csv
+│     │  └─ load_data.py
+│     └─ notifications/
+│        └─ email_notifications.py
+├─ docker-compose.yaml
+├─ frontend/
+│  ├─ .env
+│  ├─ .gitignore
+│  ├─ Dockerfile
+│  ├─ nginx.conf
+│  ├─ package-lock.json
+│  ├─ package.json
+│  ├─ public/
+│  │  ├─ favicon.ico
+│  │  ├─ index.html
+│  │  ├─ logo192.png
+│  │  ├─ logo512.png
+│  │  ├─ manifest.json
+│  │  └─ robots.txt
+│  ├─ README.md
+│  ├─ src/
+│  │  ├─ App.css
+│  │  ├─ App.tsx
+│  │  ├─ common/
+│  │  │  ├─ Footer.tsx
+│  │  │  ├─ Header.tsx
+│  │  │  ├─ Layout.tsx
+│  │  │  └─ SnackBar.tsx
+│  │  ├─ components/
+│  │  │  ├─ forms/
+│  │  │  │  ├─ Recurring.tsx
+│  │  │  │  ├─ test.tsx
+│  │  │  │  └─ WfhForm.tsx
+│  │  │  └─ staffView/
+│  │  │     ├─ DashboardCards.tsx
+│  │  │     └─ RequestList.tsx
+│  │  ├─ context/
+│  │  │  ├─ AppContextProvider.tsx
+│  │  │  └─ UserContextProvider.tsx
+│  │  ├─ hooks/
+│  │  │  └─ auth/
+│  │  │     ├─ auth.ts
+│  │  │     ├─ auth.utils.ts
+│  │  │     └─ health/
+│  │  │        ├─ health.ts
+│  │  │        └─ health.utils.ts
+│  │  ├─ index.css
+│  │  ├─ index.tsx
+│  │  ├─ logo.svg
+│  │  ├─ pages/
+│  │  │  ├─ home/
+│  │  │  │  └─ HomePage.tsx
+│  │  │  ├─ login-signup/
+│  │  │  │  ├─ LoginPage.tsx
+│  │  │  │  └─ SignUpPage.tsx
+│  │  │  ├─ pendingrequests/
+│  │  │  │  └─ Pendingrequests.tsx
+│  │  │  └─ staff/
+│  │  │     ├─ RequestPage.tsx
+│  │  │     └─ StaffHomePage.tsx
+│  │  ├─ react-app-env.d.ts
+│  │  ├─ reportWebVitals.ts
+│  │  ├─ router/
+│  │  │  ├─ Routes.tsx
+│  │  │  ├─ test.tsx
+│  │  │  └─ TestPage.tsx
+│  │  ├─ setupTests.ts
+│  │  ├─ theme.js
+│  │  └─ utils/
+│  │     └─ auth.ts
+│  ├─ tailwind.config.js
+│  └─ tsconfig.json
+├─ README.md
+└─ scripts/
+   ├─ setup.bat
+   └─ setup.sh
 ```
 
 ## Getting Started
