@@ -11,36 +11,38 @@ from ..employees.routes import read_employee  # Fetch employee info
 from ..notifications.email_notifications import (  # Import helper functions
     craft_email_content, fetch_manager_info, send_email)
 from . import crud, schemas
+from .exceptions import (ArrangementActionNotAllowedError,
+                         ArrangementNotFoundError)
+from .utils import fit_model_to_schema
 
 router = APIRouter()
 
 
 @router.post("/request")
 async def create_wfh_request(
-    arrangement: Annotated[schemas.ArrangementCreate, Form()],
+    wfh_request: Annotated[schemas.ArrangementCreate, Form()],
     db: Session = Depends(get_db),
 ) -> JSONResponse:
     try:
         # Fetch employee (staff) information
-        staff = read_employee(arrangement.requester_staff_id, db)
+        staff = read_employee(wfh_request.staff_id, db)
         if not staff:
             raise HTTPException(status_code=404, detail="Employee not found")
 
         # Fetch manager info using the helper function from notifications
-        manager_info = await fetch_manager_info(arrangement.requester_staff_id)
+        manager_info = await fetch_manager_info(wfh_request.staff_id)
         manager = None
 
         # Only fetch manager if manager_id is not null
         if (
             manager_info
             and manager_info["manager_id"] is not None
-            and manager_info["manager_id"] != arrangement.requester_staff_id
+            and manager_info["manager_id"] != wfh_request.staff_id
         ):
             manager = read_employee(manager_info["manager_id"], db)
 
         # Handle recurring requests
-        arrangement_requests = []
-        if arrangement.is_recurring:
+        if wfh_request.is_recurring:
             missing_fields = [
                 field
                 for field in [
@@ -49,7 +51,7 @@ async def create_wfh_request(
                     "recurring_frequency_unit",
                     "recurring_occurrences",
                 ]
-                if getattr(arrangement, field) is None
+                if getattr(wfh_request, field) is None
             ]
             if missing_fields:
                 raise HTTPException(
@@ -60,33 +62,42 @@ async def create_wfh_request(
                     ),
                 )
 
-            for i in range(arrangement.recurring_occurrences):
-                arrangement_copy = arrangement.model_copy()
+            batch = crud.create_recurring_request(db, wfh_request)
+            wfh_request.batch_id = batch.batch_id
 
-                if arrangement.recurring_frequency_unit == "week":
+            arrangements_list = []
+
+            for i in range(wfh_request.recurring_occurrences):
+                arrangement_copy = wfh_request.model_copy()
+
+                if wfh_request.recurring_frequency_unit == "week":
                     arrangement_copy.wfh_date = (
-                        datetime.strptime(arrangement.wfh_date, "%Y-%m-%d")
-                        + timedelta(weeks=i * arrangement.recurring_frequency_number)
+                        datetime.strptime(wfh_request.wfh_date, "%Y-%m-%d")
+                        + timedelta(weeks=i * wfh_request.recurring_frequency_number)
                     ).strftime("%Y-%m-%d")
                 else:
                     arrangement_copy.wfh_date = (
-                        datetime.strptime(arrangement.wfh_date, "%Y-%m-%d")
-                        + timedelta(days=i * arrangement.recurring_frequency_number * 7)
+                        datetime.strptime(wfh_request.wfh_date, "%Y-%m-%d")
+                        + timedelta(days=i * wfh_request.recurring_frequency_number * 7)
                     ).strftime("%Y-%m-%d")
 
-                arrangement_requests.append(arrangement_copy)
+                arrangements_list.append(arrangement_copy)
         else:
-            arrangement_requests.append(arrangement)
+            arrangements_list = [wfh_request]
 
-        response_data = []
-
-        created_arrangements = crud.create_bulk_wfh_request(db, arrangement_requests)
+        created_arrangements = crud.create_arrangements(db, arrangements_list)
 
         response_data = [req.__dict__ for req in created_arrangements]
         for data in response_data:
             data.pop("_sa_instance_state", None)
-
-        response_data = [schemas.ArrangementLog(**data) for data in response_data]
+        response_data = [
+            fit_model_to_schema(
+                data,
+                schemas.ArrangementCreateResponse,
+                {"requester_staff_id": "staff_id", "approval_status": "current_approval_status"},
+            )
+            for data in response_data
+        ]
 
         # Craft and send success notification email to the employee (staff)
         subject, content = await craft_email_content(staff, response_data, success=True)
@@ -123,10 +134,75 @@ async def create_wfh_request(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/view", response_model=List[schemas.ArrangementLog])
+@router.post("/request/approve")
+async def approve_wfh_request(
+    arrangement_id: int = Form(...),
+    reason: str = Form(...),
+    db: Session = Depends(get_db),
+) -> JSONResponse:
+    try:
+        crud.update_arrangement_approval_status(db, arrangement_id, "approve", reason)
+
+        return JSONResponse(
+            status_code=200,
+            content={"message": "Request approved successfully"},
+        )
+
+    except ArrangementNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+    except ArrangementActionNotAllowedError as e:
+        raise HTTPException(status_code=406, detail=str(e))
+
+    except SQLAlchemyError as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/request/reject")
+async def reject_wfh_request(
+    arrangement_id: int = Form(...),
+    reason: str = Form(...),
+    db: Session = Depends(get_db),
+) -> JSONResponse:
+    try:
+        crud.update_arrangement_approval_status(db, arrangement_id, "reject", reason)
+
+        return JSONResponse(
+            status_code=200,
+            content={"message": "Request rejected successfully"},
+        )
+
+    except ArrangementNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+    except ArrangementActionNotAllowedError as e:
+        raise HTTPException(status_code=406, detail=str(e))
+
+    except SQLAlchemyError as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/view", response_model=List[schemas.ArrangementCreateResponse])
 def get_all_arrangements(db: Session = Depends(get_db)):
     try:
         arrangements = crud.get_all_arrangements(db)
-        return arrangements
+        response_data = [req.__dict__ for req in arrangements]
+        for data in response_data:
+            data.pop("_sa_instance_state", None)
+        response_data = [
+            fit_model_to_schema(
+                data,
+                schemas.ArrangementCreateResponse,
+                {"requester_staff_id": "staff_id", "approval_status": "current_approval_status"},
+            )
+            for data in response_data
+        ]
+        return JSONResponse(
+            status_code=200,
+            content={
+                "message": "Arrangements retrieved successfully",
+                "data": [{**data.model_dump()} for data in response_data],
+            },
+        )
     except SQLAlchemyError as e:
         raise HTTPException(status_code=500, detail=str(e))

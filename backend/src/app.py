@@ -41,6 +41,11 @@ async def lifespan(app: FastAPI):
 
     yield
 
+    # Drop all tables
+    arrangement_models.Base.metadata.drop_all(bind=engine)
+    auth_models.Base.metadata.drop_all(bind=engine)
+    employee_models.Base.metadata.drop_all(bind=engine)
+
 
 app = FastAPI(lifespan=lifespan)
 
