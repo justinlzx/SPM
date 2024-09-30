@@ -8,6 +8,7 @@ export const AUTH_LOCAL_STORAGE_KEYS = {
   JWT: "jwt_access_token",
   EMAIL: "user",
   ROLE: "role",
+  ID: "id",
 };
 
 export const signUp = async (credentials: {
@@ -46,18 +47,22 @@ export const login = async (credentials: {
       }
     );
 
-    const { access_token: accessToken } = response.data.data;
+    const { access_token: accessToken, employee_info: {
+      staff_id: id
+    } } = response.data.data;
+
     // TODO: remove this hardcode when the backend is ready
     const role = 1
     localStorage.setItem(AUTH_LOCAL_STORAGE_KEYS.JWT, accessToken);
     localStorage.setItem(AUTH_LOCAL_STORAGE_KEYS.EMAIL, email);
     localStorage.setItem(AUTH_LOCAL_STORAGE_KEYS.ROLE, role.toString());
-
+    localStorage.setItem(AUTH_LOCAL_STORAGE_KEYS.ID, id.toString());
     axios.defaults.headers.common.Authorization = `Bearer ${accessToken}`;
 
     return {
       email,
-      role: Number(role)
+      role: Number(role),
+      id: Number(id)
     };
   } catch (error) {
     throw new Error("Login failed");

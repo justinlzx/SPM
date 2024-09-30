@@ -21,6 +21,8 @@ import "@fontsource/poppins"; // Defaults to weight 400
 import Button from "@mui/material/Button";
 import { useContext } from "react";
 import { UserContext } from "../context/UserContextProvider";
+import { useNavigate } from "react-router-dom";
+import { AppContext } from "../context/AppContextProvider";
 
 const drawerWidth = 240;
 
@@ -28,10 +30,39 @@ interface Props {
   window?: () => Window;
 }
 
+export enum sideBarLabels {
+  Requests = "Requests",
+  MyTeam = "My Team",
+  MyWFHSchedule = "My WFH Schedule",
+  Settings = "Settings",
+}
+
+const sideBarItems: {
+  text: string;
+  icon: JSX.Element;
+  route?: string; // TODO: add route property when it is done
+}[] = [
+  {
+    text: sideBarLabels.Requests,
+    icon: <InboxIcon />,
+    route: "/application",
+  },
+  { text: sideBarLabels.MyTeam, icon: <TeamIcon />, route: "/team" },
+  { text: sideBarLabels.MyWFHSchedule, icon: <WfhScheduleIcon /> },
+  { text: sideBarLabels.Settings, icon: <SettingsIcon /> },
+];
+
 export const Header = ({ window }: Props) => {
   const [mobileOpen, setMobileOpen] = React.useState(false);
 
+  const { activeTab, setActiveTab } = useContext(AppContext);
   const { logout } = useContext(UserContext);
+  const navigate = useNavigate();
+
+  const handleButtonClick = (route: string) => {
+    setActiveTab(sideBarItems.findIndex((item) => item.route === route));
+    navigate(route);
+  };
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
@@ -42,14 +73,19 @@ export const Header = ({ window }: Props) => {
       <Toolbar />
       <Divider />
       <List>
-        {[
-          { text: "Notifications", icon: <InboxIcon /> },
-          { text: "My Team", icon: <TeamIcon /> },
-          { text: "My WFH Schedule", icon: <WfhScheduleIcon /> },
-          { text: "Settings", icon: <SettingsIcon /> },
-        ].map((item) => (
+        {sideBarItems.map((item) => (
           <ListItem key={item.text} disablePadding>
-            <ListItemButton sx={{ textAlign: "left", alignItems: "left" }}>
+            <ListItemButton
+              sx={{
+                textAlign: "left",
+                alignItems: "left",
+                backgroundColor:
+                  activeTab === sideBarItems.indexOf(item)
+                    ? "#e0e0e0"
+                    : "white",
+              }}
+              onClick={() => handleButtonClick(item.route || "")}
+            >
               <ListItemIcon>{item.icon}</ListItemIcon>
               <ListItemText primary={item.text} />
             </ListItemButton>

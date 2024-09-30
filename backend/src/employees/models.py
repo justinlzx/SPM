@@ -3,11 +3,6 @@ from sqlalchemy.orm import Session, relationship
 
 from ..database import Base, engine
 
-# from sqlalchemy.orm import joinedload
-
-
-# from ..auth.models import Auth
-
 
 class Employee(Base):
     __tablename__ = "employees"
@@ -24,6 +19,20 @@ class Employee(Base):
 
     manager = relationship("Employee", remote_side=[staff_id], lazy="select")
     auth_info = relationship("Auth", back_populates="employee")
+    arrangements_requested = relationship(
+        "ArrangementLog",
+        foreign_keys="[ArrangementLog.requester_staff_id]",  # Specify correct FK
+        back_populates="requester_info",
+        lazy="select",
+    )
+
+    # Relationship to arrangements where the employee is the approving officer
+    arrangements_approved = relationship(
+        "ArrangementLog",
+        foreign_keys="[ArrangementLog.approving_officer]",  # Specify correct FK
+        back_populates="approving_officer_info",
+        lazy="select",
+    )
 
 
 def get_employee_by_staff_id(db: Session, staff_id: int):
