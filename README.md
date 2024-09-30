@@ -23,9 +23,11 @@ SPM/
 │     ├─ app.py
 │     ├─ arrangements/
 │     │  ├─ crud.py
+│     │  ├─ exceptions.py
 │     │  ├─ models.py
 │     │  ├─ routes.py
-│     │  └─ schemas.py
+│     │  ├─ schemas.py
+│     │  └─ utils.py
 │     ├─ auth/
 │     │  ├─ models.py
 │     │  ├─ routes.py
