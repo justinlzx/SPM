@@ -96,11 +96,7 @@ async def craft_email_content(
 
 
 async def craft_approval_email_content(
-    staff,
-    arrangement,
-    reason: str,
-    is_manager: bool = False,
-    manager = None
+    staff, arrangement, reason: str, is_manager: bool = False, manager=None
 ):
     """Helper function to format email content for WFH request approval."""
     formatted_details = (
@@ -128,6 +124,42 @@ async def craft_approval_email_content(
         content = (
             f"Dear {staff.staff_fname} {staff.staff_lname},\n\n"
             f"Your WFH request has been approved with the following details:\n\n"
+            f"{formatted_details}\n\n"
+            f"This email is auto-generated. Please do not reply to this email. Thank you."
+        )
+
+    return subject, content
+
+
+async def craft_rejection_email_content(
+    staff, arrangement, reason: str, is_manager: bool = False, manager=None
+):
+    """Helper function to format email content for WFH request rejection."""
+    formatted_details = (
+        f"Request ID: {arrangement.arrangement_id}\n"
+        f"WFH Date: {arrangement.wfh_date}\n"
+        f"Type: {arrangement.wfh_type}\n"
+        f"Reason for Request: {arrangement.reason_description}\n"
+        f"Batch ID: {arrangement.batch_id}\n"
+        f"Updated: {arrangement.update_datetime}\n"
+        f"Rejection Status: {getattr(arrangement, 'current_approval_status', 'Rejected')}\n"
+        f"Rejection Reason: {reason}\n"
+    )
+
+    if is_manager and manager:
+        subject = "[All-In-One] You Have Rejected a WFH Request"
+        content = (
+            f"Dear {manager.staff_fname} {manager.staff_lname},\n\n"
+            f"You have rejected a WFH request for {staff.staff_fname} {staff.staff_lname} "
+            f"with the following details:\n\n"
+            f"{formatted_details}\n\n"
+            f"This email is auto-generated. Please do not reply to this email. Thank you."
+        )
+    else:
+        subject = "[All-In-One] Your WFH Request Has Been Rejected"
+        content = (
+            f"Dear {staff.staff_fname} {staff.staff_lname},\n\n"
+            f"Your WFH request has been rejected with the following details:\n\n"
             f"{formatted_details}\n\n"
             f"This email is auto-generated. Please do not reply to this email. Thank you."
         )
