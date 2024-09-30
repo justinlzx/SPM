@@ -9,10 +9,14 @@ from sqlalchemy.orm import Session
 from ..database import get_db
 from ..employees.routes import read_employee  # Fetch employee info
 from ..notifications.email_notifications import (  # Import helper functions
-    craft_email_content, fetch_manager_info, send_email)
+    craft_email_content,
+    craft_approval_email_content,
+    craft_rejection_email_content,
+    fetch_manager_info,
+    send_email,
+)
 from . import crud, schemas
-from .exceptions import (ArrangementActionNotAllowedError,
-                         ArrangementNotFoundError)
+from .exceptions import ArrangementActionNotAllowedError, ArrangementNotFoundError
 from .utils import fit_model_to_schema
 
 router = APIRouter()
@@ -141,11 +145,34 @@ async def approve_wfh_request(
     db: Session = Depends(get_db),
 ) -> JSONResponse:
     try:
-        crud.update_arrangement_approval_status(db, arrangement_id, "approve", reason)
+        # Update the arrangement status
+        arrangement = crud.update_arrangement_approval_status(db, arrangement_id, "approve", reason)
+
+        # Fetch the staff (requester) information
+        staff = read_employee(arrangement.requester_staff_id, db)
+        if not staff:
+            raise HTTPException(status_code=404, detail="Employee not found")
+
+        # Fetch manager info
+        manager_info = await fetch_manager_info(staff.staff_id)
+        manager = None
+        if manager_info and manager_info["manager_id"] is not None:
+            manager = read_employee(manager_info["manager_id"], db)
+
+        # Prepare and send email to staff
+        subject, content = await craft_approval_email_content(staff, arrangement, reason)
+        await send_email(to_email=staff.email, subject=subject, content=content)
+
+        # Prepare and send email to manager
+        if manager:
+            subject, content = await craft_approval_email_content(
+                staff, arrangement, reason, is_manager=True, manager=manager
+            )
+            await send_email(to_email=manager.email, subject=subject, content=content)
 
         return JSONResponse(
             status_code=200,
-            content={"message": "Request approved successfully"},
+            content={"message": "Request approved successfully and notifications sent"},
         )
 
     except ArrangementNotFoundError as e:
@@ -165,11 +192,34 @@ async def reject_wfh_request(
     db: Session = Depends(get_db),
 ) -> JSONResponse:
     try:
-        crud.update_arrangement_approval_status(db, arrangement_id, "reject", reason)
+        # Update the arrangement status
+        arrangement = crud.update_arrangement_approval_status(db, arrangement_id, "reject", reason)
+
+        # Fetch the staff (requester) information
+        staff = read_employee(arrangement.requester_staff_id, db)
+        if not staff:
+            raise HTTPException(status_code=404, detail="Employee not found")
+
+        # Fetch manager info
+        manager_info = await fetch_manager_info(staff.staff_id)
+        manager = None
+        if manager_info and manager_info["manager_id"] is not None:
+            manager = read_employee(manager_info["manager_id"], db)
+
+        # Prepare and send email to staff
+        subject, content = await craft_rejection_email_content(staff, arrangement, reason)
+        await send_email(to_email=staff.email, subject=subject, content=content)
+
+        # Prepare and send email to manager
+        if manager:
+            subject, content = await craft_rejection_email_content(
+                staff, arrangement, reason, is_manager=True, manager=manager
+            )
+            await send_email(to_email=manager.email, subject=subject, content=content)
 
         return JSONResponse(
             status_code=200,
-            content={"message": "Request rejected successfully"},
+            content={"message": "Request rejected successfully and notifications sent"},
         )
 
     except ArrangementNotFoundError as e:

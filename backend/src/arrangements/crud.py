@@ -5,8 +5,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from . import models, schemas
-from .exceptions import (ArrangementActionNotAllowedError,
-                         ArrangementNotFoundError)
+from .exceptions import ArrangementActionNotAllowedError, ArrangementNotFoundError
 from .utils import fit_model_to_model, fit_schema_to_model
 
 
@@ -75,12 +74,14 @@ def update_arrangement_approval_status(db: Session, arrangement_id: int, action:
             raise ArrangementActionNotAllowedError(arrangement_id, action)
 
         arrangement.current_approval_status = status
-        arrangement.reason_description = reason
+        arrangement.approval_reason = reason
 
         log = create_request_arrangement_log(db, arrangement, action)
         arrangement.latest_log_id = log.log_id
 
         db.commit()
+        db.refresh(arrangement)
+        return arrangement
     except SQLAlchemyError as e:
         db.rollback()
         raise e
