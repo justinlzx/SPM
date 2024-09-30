@@ -6,6 +6,7 @@ from ..auth.models import Auth
 from ..auth.utils import hash_password
 from ..database import SessionLocal
 from ..employees.models import Employee
+from datetime import datetime
 
 
 # Function to load employee data from employee.csv
@@ -68,30 +69,32 @@ def load_auth_data_from_csv(file_path: str):
 
 # Function to load auth data from arrangements.csv
 def load_arrangement_data_from_csv(file_path: str):
-    # Read the CSV file for authentication data
-    df = pd.read_csv(file_path)
+    from ..database import SessionLocal
 
-    # Create a new database session
-    db: Session = SessionLocal()
+    db = SessionLocal()
+    try:
+        with open(file_path, "r") as csvfile:
+            csv_reader = csv.DictReader(csvfile)
+            for row in csv_reader:
+                # Convert the update_datetime string to a datetime object
+                update_datetime = datetime.strptime(row["update_datetime"], "%Y-%m-%d %H:%M:%S")
 
-    # Iterate over the DataFrame and insert arrangement data into the database
-    for _, row in df.iterrows():
-        arrangement_log = ArrangementLog(
-            update_datetime=row["update_datetime"],
-            requester_staff_id=row["requester_staff_id"],
-            wfh_date=row["wfh_date"],
-            wfh_type=row["wfh_type"],
-            approval_status=row["approval_status"],
-            approving_officer=row.get(
-                "approving_officer"
-            ),  # Use .get() to handle NaN values
-            reason_description=row["reason_description"],
-            batch_id=row.get("batch_id"),  # Use .get() to handle NaN values
-        )
-        db.add(arrangement_log)
-
-    # Commit the transaction
-    db.commit()
-
-    # Close the session
-    db.close()
+                arrangement_log = ArrangementLog(
+                    wfh_date=row["wfh_date"],
+                    wfh_type=row["wfh_type"],
+                    reason_description=row["reason_description"],
+                    requester_staff_id=int(row["requester_staff_id"]),
+                    approval_status=row["approval_status"],
+                    approving_officer=(
+                        int(row["approving_officer"]) if row["approving_officer"] else None
+                    ),
+                    update_datetime=update_datetime,  # Use the converted datetime object
+                    batch_id=int(row["batch_id"]) if row["batch_id"] else None,
+                )
+                db.add(arrangement_log)
+        db.commit()
+    except Exception as e:
+        print(f"An error occurred: {str(e)}")
+        db.rollback()
+    finally:
+        db.close()
