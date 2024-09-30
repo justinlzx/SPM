@@ -95,6 +95,46 @@ async def craft_email_content(
     return subject, content
 
 
+async def craft_approval_email_content(
+    staff,
+    arrangement,
+    reason: str,
+    is_manager: bool = False,
+    manager = None
+):
+    """Helper function to format email content for WFH request approval."""
+    formatted_details = (
+        f"Request ID: {arrangement.arrangement_id}\n"
+        f"WFH Date: {arrangement.wfh_date}\n"
+        f"Type: {arrangement.wfh_type}\n"
+        f"Reason: {arrangement.reason_description}\n"
+        f"Batch ID: {arrangement.batch_id}\n"
+        f"Updated: {arrangement.update_datetime}\n"
+        f"Approval Status: {getattr(arrangement, 'current_approval_status', 'Approved')}\n"
+        f"Approval Reason: {reason}\n"
+    )
+
+    if is_manager and manager:
+        subject = "[All-In-One] You Have Approved a WFH Request"
+        content = (
+            f"Dear {manager.staff_fname} {manager.staff_lname},\n\n"
+            f"You have successfully approved a WFH request for {staff.staff_fname} {staff.staff_lname} "
+            f"with the following details:\n\n"
+            f"{formatted_details}\n\n"
+            f"This email is auto-generated. Please do not reply to this email. Thank you."
+        )
+    else:
+        subject = "[All-In-One] Your WFH Request Has Been Approved"
+        content = (
+            f"Dear {staff.staff_fname} {staff.staff_lname},\n\n"
+            f"Your WFH request has been approved with the following details:\n\n"
+            f"{formatted_details}\n\n"
+            f"This email is auto-generated. Please do not reply to this email. Thank you."
+        )
+
+    return subject, content
+
+
 async def send_email(to_email: str, subject: str, content: str):
     """Sends an email by making a POST request to the /email/sendemail route."""
     try:
