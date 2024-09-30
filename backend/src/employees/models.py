@@ -19,17 +19,28 @@ class Employee(Base):
 
     manager = relationship("Employee", remote_side=[staff_id], lazy="select")
     auth_info = relationship("Auth", back_populates="employee")
-    arrangements_requested = relationship(
+
+    arrangement_logs_requested = relationship(
         "ArrangementLog",
-        foreign_keys="[ArrangementLog.requester_staff_id]",  # Specify correct FK
+        foreign_keys="[ArrangementLog.requester_staff_id]",
         back_populates="requester_info",
         lazy="select",
     )
-
-    # Relationship to arrangements where the employee is the approving officer
-    arrangements_approved = relationship(
+    arrangement_logs_approved = relationship(
         "ArrangementLog",
-        foreign_keys="[ArrangementLog.approving_officer]",  # Specify correct FK
+        foreign_keys="[ArrangementLog.approving_officer]",
+        back_populates="approving_officer_info",
+        lazy="select",
+    )
+    latest_arrangements_requested = relationship(
+        "LatestArrangement",
+        foreign_keys="[LatestArrangement.requester_staff_id]",
+        back_populates="requester_info",
+        lazy="select",
+    )
+    latest_arrangements_approved = relationship(
+        "LatestArrangement",
+        foreign_keys="[LatestArrangement.approving_officer]",
         back_populates="approving_officer_info",
         lazy="select",
     )
@@ -40,11 +51,7 @@ def get_employee_by_staff_id(db: Session, staff_id: int):
 
 
 def get_employees_by_manager_id(db: Session, manager_id: int):
-    return (
-        db.query(Employee)
-        # .options(joinedload(Employee.manager))
-        .filter(Employee.reporting_manager == manager_id).all()
-    )
+    return db.query(Employee).filter(Employee.reporting_manager == manager_id).all()
 
 
 if __name__ == "__main__":

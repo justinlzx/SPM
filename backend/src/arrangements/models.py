@@ -1,4 +1,4 @@
-from sqlalchemy import CheckConstraint, Column, ForeignKey, Integer, String
+from sqlalchemy import CheckConstraint, Column, ForeignKey, Integer, String, DateTime
 from sqlalchemy.orm import relationship
 from ..database import Base
 
@@ -11,42 +11,66 @@ class ArrangementLog(Base):
         autoincrement=True,
         doc="Unique identifier for the log entry",
     )
-    log_event_datetime = Column(
+    update_datetime = Column(
+        DateTime,
+        nullable=False,
+        doc="Date and time of the update",
+    )
+    requester_staff_id = Column(
+        Integer,
+        ForeignKey("employees.staff_id"),
+        nullable=False,
+        doc="Staff ID of the employee who made the request",
+    )
+    wfh_date = Column(
         String(length=50),
         nullable=False,
-        doc="Date and time of the log entry",
+        doc="Date of the WFH arrangement",
     )
-    arrangement_id = Column(
-        Integer,
-        ForeignKey(
-            "latest_arrangements.arrangement_id",
-            use_alter=True,
-            name="fk_arrangement_id",
-        ),
+    wfh_type = Column(
+        String(length=50),
         nullable=False,
-        doc="Unique identifier for the arrangement",
+        doc="Type of WFH arrangement: full day, AM, or PM",
+    )
+    approval_status = Column(
+        String(length=50),
+        nullable=False,
+        default="pending",
+        doc="Current status of the request: pending, approved, rejected, or withdrawn",
+    )
+    approving_officer = Column(
+        Integer,
+        ForeignKey("employees.staff_id"),
+        nullable=True,
+        doc="Staff ID of the approving officer",
+    )
+    reason_description = Column(
+        String(length=255),
+        nullable=True,
+        doc="Reason for the WFH request",
     )
     batch_id = Column(
         Integer,
-        ForeignKey("recurring_requests.batch_id"),
         nullable=True,
         doc="Unique identifier for the batch, if any",
     )
-    log_event_staff_id = Column(
-        String(length=10),
-        ForeignKey("employees.staff_id"),
-        nullable=False,
-        doc="Staff ID of the employee who performed the action",
+
+    requester_info = relationship(
+        "Employee",
+        foreign_keys=[requester_staff_id],
+        back_populates="arrangement_logs_requested",
     )
-    log_event_type = Column(
-        String(length=50),
-        nullable=False,
-        doc="Type of the log event (create, approve, reject, withdraw, cancel)",
+    approving_officer_info = relationship(
+        "Employee",
+        foreign_keys=[approving_officer],
+        back_populates="arrangement_logs_approved",
     )
+
     __table_args__ = (
+        CheckConstraint("wfh_type IN ('full', 'am', 'pm')", name="check_wfh_type"),
         CheckConstraint(
-            "log_event_type IN ('create', 'approve', 'reject', 'withdraw', 'cancel')",
-            name="check_log_event_type",
+            "approval_status IN ('pending', 'approved', 'rejected', 'withdrawn')",
+            name="check_approval_status",
         ),
     )
 
@@ -110,14 +134,15 @@ class LatestArrangement(Base):
     )
     requester_info = relationship(
         "Employee",
-        back_populates="arrangements_requested",
+        back_populates="latest_arrangements_requested",
         foreign_keys=[requester_staff_id],
-        lazy="immediate",
+        lazy="select",
     )
     approving_officer_info = relationship(
         "Employee",
-        back_populates="arrangements_approved",
+        back_populates="latest_arrangements_approved",
         foreign_keys=[approving_officer],
+        lazy="select",
     )
     __table_args__ = (
         CheckConstraint("wfh_type IN ('full', 'am', 'pm')", name="check_wfh_type"),
@@ -125,11 +150,6 @@ class LatestArrangement(Base):
             "current_approval_status IN ('pending', 'approved', 'rejected', 'withdrawn')",
             name="check_current_approval_status",
         ),
-    )
-    reason_description = Column(
-        String(length=255),
-        nullable=False,
-        doc="Reason for the WFH request",
     )
     approval_reason = Column(
         String(length=255),
@@ -188,6 +208,4 @@ class RecurringRequest(Base):
         doc="Number of occurrences of the recurring WFH request",
     )
 
-    __table_args__ = (
-        CheckConstraint("wfh_type IN ('full', 'am', 'pm')", name="check_wfh_type"),
-    )
+    __table_args__ = (CheckConstraint("wfh_type IN ('full', 'am', 'pm')", name="check_wfh_type"),)

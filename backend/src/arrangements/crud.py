@@ -6,13 +6,13 @@ from sqlalchemy.orm import Session
 
 from . import schemas
 from .models import LatestArrangement, RecurringRequest, ArrangementLog
+from ..employees.models import Employee
 from .exceptions import ArrangementActionNotAllowedError, ArrangementNotFoundError
 from .utils import fit_model_to_model, fit_schema_to_model
+from datetime import datetime
 
 
-def create_recurring_request(
-    db: Session, request: schemas.ArrangementCreate
-) -> RecurringRequest:
+def create_recurring_request(db: Session, request: schemas.ArrangementCreate) -> RecurringRequest:
     try:
         batch = fit_schema_to_model(
             request,
@@ -57,9 +57,7 @@ def create_arrangements(
         raise e
 
 
-def update_arrangement_approval_status(
-    db: Session, arrangement_id: int, action: str, reason: str
-):
+def update_arrangement_approval_status(db: Session, arrangement_id: int, action: str, reason: str):
     try:
         arrangement = db.query(LatestArrangement).get(arrangement_id)
 
@@ -101,11 +99,11 @@ def create_request_arrangement_log(
             arrangement,
             ArrangementLog,
             {
-                "requester_staff_id": "log_event_staff_id",
-                "update_datetime": "log_event_datetime",
+                "current_approval_status": "approval_status",
             },
         )
-        arrangement_log.log_event_type = action
+        arrangement_log.update_datetime = datetime.utcnow()
+        arrangement_log.approval_status = arrangement.current_approval_status
         db.add(arrangement_log)
         db.flush()
         return arrangement_log
@@ -121,9 +119,7 @@ def get_all_arrangements(db: Session) -> List[LatestArrangement]:
         raise e
 
 
-def get_arrangements_by_manager(
-    db: Session, manager_id: int, status: Optional[str] = None
-):
+def get_arrangements_by_manager(db: Session, manager_id: int, status: Optional[str] = None):
     try:
         query = (
             db.query(ArrangementLog)
