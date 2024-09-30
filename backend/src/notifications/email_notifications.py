@@ -70,8 +70,7 @@ async def craft_email_content(
             subject = "[All-In-One] Your Staff Created a WFH Request"
             content = (
                 f"Dear {manager.staff_fname} {manager.staff_lname},\n\n"
-                f"{staff.staff_fname} {staff.staff_lname}, one of your staff members, \
-                has successfully created a WFH request with the following details:\n\n"
+                f"{staff.staff_fname} {staff.staff_lname}, one of your staff members, has successfully created a WFH request with the following details:\n\n"
                 f"{formatted_details}\n\n"
                 f"This email is auto-generated. Please do not reply to this email. Thank you."
             )
@@ -103,11 +102,11 @@ async def craft_approval_email_content(
         f"Request ID: {arrangement.arrangement_id}\n"
         f"WFH Date: {arrangement.wfh_date}\n"
         f"Type: {arrangement.wfh_type}\n"
-        f"Reason: {arrangement.reason_description}\n"
+        f"Reason for WFH Request: {arrangement.reason_description}\n"
         f"Batch ID: {arrangement.batch_id}\n"
         f"Updated: {arrangement.update_datetime}\n"
         f"Approval Status: {getattr(arrangement, 'current_approval_status', 'Approved')}\n"
-        f"Approval Reason: {reason}\n"
+        f"Approval Reason: {getattr(arrangement, 'approval_reason', reason)}\n"
     )
 
     if is_manager and manager:
@@ -139,11 +138,11 @@ async def craft_rejection_email_content(
         f"Request ID: {arrangement.arrangement_id}\n"
         f"WFH Date: {arrangement.wfh_date}\n"
         f"Type: {arrangement.wfh_type}\n"
-        f"Reason for Request: {arrangement.reason_description}\n"
+        f"Reason for WFH Request: {arrangement.reason_description}\n"
         f"Batch ID: {arrangement.batch_id}\n"
         f"Updated: {arrangement.update_datetime}\n"
         f"Rejection Status: {getattr(arrangement, 'current_approval_status', 'Rejected')}\n"
-        f"Rejection Reason: {reason}\n"
+        f"Rejection Reason: {getattr(arrangement, 'approval_reason', reason)}\n"
     )
 
     if is_manager and manager:

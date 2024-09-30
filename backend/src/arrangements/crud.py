@@ -74,14 +74,14 @@ def update_arrangement_approval_status(db: Session, arrangement_id: int, action:
             raise ArrangementActionNotAllowedError(arrangement_id, action)
 
         arrangement.current_approval_status = status
-        arrangement.reason_description = reason
+        arrangement.approval_reason = reason
 
         log = create_request_arrangement_log(db, arrangement, action)
         arrangement.latest_log_id = log.log_id
 
         db.commit()
-        db.refresh(arrangement)  # Refresh the arrangement object
-        return arrangement  # Return the updated arrangement
+        db.refresh(arrangement)
+        return arrangement
     except SQLAlchemyError as e:
         db.rollback()
         raise e

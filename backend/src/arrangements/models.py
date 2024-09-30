@@ -105,6 +105,16 @@ class LatestArrangement(Base):
             name="check_current_approval_status",
         ),
     )
+    reason_description = Column(
+        String(length=255),
+        nullable=False,
+        doc="Reason for the WFH request",
+    )
+    approval_reason = Column(
+        String(length=255),
+        nullable=True,
+        doc="Reason for approval or rejection",
+    )
 
 
 class RecurringRequest(Base):
