@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List
 
 # from pydantic import ValidationError
 from sqlalchemy.exc import SQLAlchemyError
@@ -6,7 +6,6 @@ from sqlalchemy.orm import Session
 
 from . import schemas
 from .models import LatestArrangement, RecurringRequest, ArrangementLog
-from ..employees.models import Employee
 from .exceptions import ArrangementActionNotAllowedError, ArrangementNotFoundError
 from .utils import fit_model_to_model, fit_schema_to_model
 from datetime import datetime
@@ -119,21 +118,19 @@ def get_all_arrangements(db: Session) -> List[LatestArrangement]:
         raise e
 
 
-def get_arrangements_by_manager(db: Session, manager_id: int, status: Optional[str] = None):
+def get_pending_requests_by_staff_ids(db: Session, staff_ids: List[int]):
+    """
+    Fetch the pending WFH requests for a list of staff IDs.
+    """
     try:
-        query = (
-            db.query(ArrangementLog)
-            .filter(ArrangementLog.approving_officer == manager_id)
-            .join(
-                Employee,
-                ArrangementLog.requester_staff_id == Employee.staff_id,
-                isouter=True,
-            )
+        print(f"Fetching pending requests for staff IDs: {staff_ids}")
+        results = (
+            db.query(LatestArrangement)
+            .filter(LatestArrangement.requester_staff_id.in_(staff_ids))
+            .all()
         )
-
-        # if status is empty, then it will get all arrangements
-        if status:
-            query = query.filter(ArrangementLog.approval_status == status)
-        return query.all()
+        print(f"Retrieved pending requests: {results}")
+        return results
     except SQLAlchemyError as e:
-        raise e
+        print(f"Error fetching pending requests: {str(e)}")  # Log the error
+        return []  # Return an empty list on error

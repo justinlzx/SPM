@@ -1,4 +1,5 @@
 import React, { useContext, useEffect, useState } from "react";
+import axios from 'axios'; // Import axios
 import {
   Container,
   Table,
@@ -18,20 +19,15 @@ import {
   ButtonGroup,
   TablePagination,
 } from "@mui/material";
-import {
-  useArrangement,
-  useUpdateArrangement,
-} from "../../hooks/auth/arrangement/arrangement";
 import { UserContext } from "../../context/UserContextProvider";
 import { TRequest } from "../../hooks/auth/arrangement/arrangement.utils";
-import { TEmployee } from "../../hooks/auth/employee/employee.utils";
 import { LoadingSpinner } from "../../common/LoadingSpinner";
 import { capitalize } from "../../utils/utils";
 import CheckIcon from "@mui/icons-material/Check";
 import CloseIcon from "@mui/icons-material/Close";
+const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 
 // Define types
-
 type TOrder = "asc" | "desc";
 type TAction = "approve" | "reject";
 
@@ -41,11 +37,14 @@ enum ApprovalStatus {
   Rejected = "rejected",
 }
 
-type TWFHRequest = Partial<TRequest> & {
-  requester_info: TEmployee;
+type TWFHRequest = {
+  staff_id: number;
+  wfh_date: string;
+  wfh_type: string;
+  arrangement_id: number;
+  approval_status: ApprovalStatus;
 };
 
-// This function maps ApprovalStatus to Chip color values
 const getChipColor = (status: ApprovalStatus): ChipProps["color"] => {
   switch (status) {
     case ApprovalStatus.Approved:
@@ -62,45 +61,63 @@ const getChipColor = (status: ApprovalStatus): ChipProps["color"] => {
 export const PendingRequests = () => {
   const [requests, setRequests] = useState<TWFHRequest[]>([]);
   const [order, setOrder] = useState<TOrder>("asc");
-  const [orderBy, setOrderBy] = useState<
-    keyof TWFHRequest | "requester_staff_id"
-  >("requester_staff_id"); // Default sorting by staff ID
-
-  // table logic
-  const [searchTerm, setSearchTerm] = useState(""); // New state for search term
+  const [orderBy, setOrderBy] = useState<keyof TWFHRequest | "staff_id">("staff_id");
+  const [searchTerm, setSearchTerm] = useState("");
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [userId, setUserId] = useState<number | null>(null); // State to hold staff ID
 
-  const { mutateAsync: arrangementMutation, isPending } = useArrangement();
-  const { mutateAsync: updateArrangementMutation } = useUpdateArrangement();
   const { user } = useContext(UserContext);
+
+  // Retrieve user's email from local storage
+  const storedUser = localStorage.getItem("user");
+
+  useEffect(() => {
+    const fetchUserId = async () => {
+      if (storedUser) {
+        try {
+          const response = await axios.get(`${BACKEND_URL}/employee/get_staff_id/email?email=${storedUser}`);
+          setUserId(response.data.staff_id); // Set the staff ID in state
+          localStorage.setItem("id",response.data.staff_id)
+        } catch (error) {
+          console.error("Failed to fetch user ID:", error);
+        }
+      }
+    };
+
+    fetchUserId();
+  }, [storedUser]);
+
+    // Retrieve user's id from local storage
+    const storedId = localStorage.getItem("id");
 
   useEffect(() => {
     const fetchRequests = async () => {
-      if (!user) return;
-      const result = await arrangementMutation({
-        id: user.id,
-        status: "pending",
-        page,
-        rowsPerPage,
-        searchTerm
-      });
-      setRequests(result! as TWFHRequest[]);
+      if (!user || userId === null) return; // Ensure userId is available
+      try {
+        const response = await axios.get(`${BACKEND_URL}/arrangement/view/pending-requests/${storedId}`); // Call your /view endpoint
+        const allRequests: TWFHRequest[] = response.data.data; // Adjust according to your response structure
+        const filteredRequests = allRequests.filter((request: TWFHRequest) => request.approval_status === ApprovalStatus.Pending); // Filter for pending requests
+        setRequests(filteredRequests);
+      } catch (error) {
+        console.error("Failed to fetch requests:", error);
+      }
     };
     fetchRequests();
-  }, [setRequests, arrangementMutation, user]);
+  }, [user, userId]); // Removed page and rowsPerPage as dependencies for fetching all requests
 
   const handleRequestAction = async (
     action: TAction,
     arrangement_id: number
   ) => {
-    const update = await updateArrangementMutation({
-      updatedStatus: action,
-      arrangement_id,
-    });
-
-    if (update) {
+    // Make sure to implement this action in your backend
+    try {
+      await axios.post(`${BACKEND_URL}/update`, { action, arrangement_id }); // Adjust as per your update endpoint
       console.log("Request updated successfully");
+      // Optionally, refetch requests after action
+      // fetchRequests();
+    } catch (error) {
+      console.error("Error updating request:", error);
     }
   };
 
@@ -127,7 +144,7 @@ export const PendingRequests = () => {
         align="center"
         sx={{ marginTop: 4 }}
       >
-        Pending Requests
+        Pending Requests for {storedUser} (Staff ID: {userId})
       </Typography>
 
       {/* Search bar */}
@@ -149,141 +166,38 @@ export const PendingRequests = () => {
             <TableRow>
               <TableCell sx={{ fontWeight: "bold" }}>
                 <TableSortLabel
-                  active={orderBy === "requester_staff_id"}
-                  direction={orderBy === "requester_staff_id" ? order : "asc"}
-                  // onClick={() => handleSortRequest("requester_staff_id")}
+                  active={orderBy === "staff_id"}
+                  direction={orderBy === "staff_id" ? order : "asc"}
                 >
                   Requester Staff ID
                 </TableSortLabel>
               </TableCell>
-              <TableCell sx={{ fontWeight: "bold" }}>
-                <TableSortLabel
-                // active={orderBy === "full_name"}
-                // direction={orderBy === "full_name" ? order : "asc"}
-                // onClick={() => handleSortRequest("full_name")}
-                >
-                  Full Name
-                </TableSortLabel>
-              </TableCell>
-              <TableCell sx={{ fontWeight: "bold" }}>
-                <TableSortLabel
-                // active={orderBy === "position"}
-                // direction={orderBy === "position" ? order : "asc"}
-                // onClick={() => handleSortRequest("position")}
-                >
-                  Position
-                </TableSortLabel>
-              </TableCell>
-              <TableCell sx={{ fontWeight: "bold" }}>
-                <TableSortLabel
-                // active={orderBy === "dept"}
-                // direction={orderBy === "dept" ? order : "asc"}
-                // onClick={() => handleSortRequest("dept")}
-                >
-                  Dept
-                </TableSortLabel>
-              </TableCell>
-              <TableCell sx={{ fontWeight: "bold" }}>
-                <TableSortLabel
-                // active={orderBy === "country"}
-                // direction={orderBy === "country" ? order : "asc"}
-                // onClick={() => handleSortRequest("country")}
-                >
-                  Country
-                </TableSortLabel>
-              </TableCell>
-              <TableCell sx={{ fontWeight: "bold" }}>
-                <TableSortLabel
-                // active={orderBy === "email"}
-                // direction={orderBy === "email" ? order : "asc"}
-                // onClick={() => handleSortRequest("email")}
-                >
-                  Email
-                </TableSortLabel>
-              </TableCell>
-              <TableCell sx={{ fontWeight: "bold" }}>
-                <TableSortLabel
-                  active={orderBy === "wfh_date"}
-                  direction={orderBy === "wfh_date" ? order : "asc"}
-                  // onClick={() => handleSortRequest("wfh_date")}
-                >
-                  WFH Date
-                </TableSortLabel>
-              </TableCell>
-              <TableCell sx={{ fontWeight: "bold" }}>
-                <TableSortLabel
-                  active={orderBy === "wfh_type"}
-                  direction={orderBy === "wfh_type" ? order : "asc"}
-                  // onClick={() => handleSortRequest("wfh_type")}
-                >
-                  WFH Type
-                </TableSortLabel>
-              </TableCell>
-              <TableCell sx={{ fontWeight: "bold" }}>
-                <TableSortLabel
-                  active={orderBy === "approval_status"}
-                  direction={orderBy === "approval_status" ? order : "asc"}
-                  // onClick={() => handleSortRequest("approval_status")}
-                >
-                  Approval Status
-                </TableSortLabel>
-              </TableCell>
-              <TableCell sx={{ fontWeight: "bold" }}>
-                <TableSortLabel
-                  active={orderBy === "approval_status"}
-                  // onClick={() => handleSortRequest("approval_status")}
-                >
-                  Action
-                </TableSortLabel>
-              </TableCell>
+              <TableCell sx={{ fontWeight: "bold" }}>WFH Date</TableCell>
+              <TableCell sx={{ fontWeight: "bold" }}>WFH Type</TableCell>
+              <TableCell sx={{ fontWeight: "bold" }}>Approval Status</TableCell>
+              <TableCell sx={{ fontWeight: "bold" }}>Action</TableCell>
             </TableRow>
           </TableHead>
-          {isPending ? (
-            <TableBody>
+          <TableBody>
+            {requests.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={9} align="center">
-                  <Box
-                    display="flex"
-                    justifyContent="center"
-                    alignItems="center"
-                    height="100%"
-                    margin="16px"
-                  >
-                    <LoadingSpinner />
-                  </Box>
-                </TableCell>
+                <TableCell colSpan={5} align="center">No pending requests</TableCell>
               </TableRow>
-            </TableBody>
-          ) : (
-            <TableBody>
-              {requests.map((request: TWFHRequest) => {
-                console.log(request);
+            ) : (
+              requests.map((request) => {
                 const {
                   arrangement_id,
                   wfh_date,
                   wfh_type,
                   approval_status,
-                  requester_info: {
-                    staff_id,
-                    staff_fname,
-                    staff_lname,
-                    country,
-                    email,
-                    dept,
-                    position,
-                  },
-                } = request;
+                  staff_id,
+                } = request; // Access properties directly
 
                 return (
                   <TableRow key={arrangement_id}>
                     <TableCell>{staff_id}</TableCell>
-                    <TableCell>{staff_fname + " " + staff_lname}</TableCell>
-                    <TableCell>{position}</TableCell>
-                    <TableCell>{dept || "Not Available"}</TableCell>
-                    <TableCell>{country || "Not Available"}</TableCell>
-                    <TableCell>{email || "Not Available"}</TableCell>
                     <TableCell>{wfh_date}</TableCell>
-                    <TableCell>{wfh_type!.toUpperCase()}</TableCell>
+                    <TableCell>{wfh_type?.toUpperCase()}</TableCell>
                     <TableCell>
                       <Chip
                         color={getChipColor(approval_status as ApprovalStatus)}
@@ -297,7 +211,6 @@ export const PendingRequests = () => {
                       >
                         <Button
                           size="small"
-                          // variant="contained"
                           color="success"
                           startIcon={<CheckIcon />}
                           onClick={() =>
@@ -320,9 +233,9 @@ export const PendingRequests = () => {
                     </TableCell>
                   </TableRow>
                 );
-              })}
-            </TableBody>
-          )}
+              })
+            )}
+          </TableBody>
         </Table>
       </TableContainer>
       <TablePagination
