@@ -15,6 +15,9 @@ import TeamIcon from "@mui/icons-material/Group";
 import WfhScheduleIcon from "@mui/icons-material/WorkOutline";
 import SettingsIcon from "@mui/icons-material/Settings";
 import MenuIcon from "@mui/icons-material/Menu";
+import DashboardIcon from "@mui/icons-material/Dashboard";
+import DepartmentOverviewIcon from "@mui/icons-material/AccountTree";
+import ReviewRequestsIcon from "@mui/icons-material/Assignment";
 import Toolbar from "@mui/material/Toolbar";
 import Typography from "@mui/material/Typography";
 import "@fontsource/poppins"; // Defaults to weight 400
@@ -35,6 +38,8 @@ export enum sideBarLabels {
   MyTeam = "My Team",
   MyWFHSchedule = "My WFH Schedule",
   Settings = "Settings",
+  DepartmentOverview = "Department Overview",
+  ReviewRequests = "Review Requests",
 }
 
 const sideBarItems: {
@@ -54,10 +59,38 @@ const sideBarItems: {
 
 export const Header = ({ window }: Props) => {
   const [mobileOpen, setMobileOpen] = React.useState(false);
-
   const { activeTab, setActiveTab } = useContext(AppContext);
-  const { logout } = useContext(UserContext);
+  const { user, logout } = useContext(UserContext);
   const navigate = useNavigate();
+
+  const commonItems = [
+    {
+      text: sideBarLabels.Requests,
+      icon: <InboxIcon />,
+      route: "/application",
+    },
+    { text: sideBarLabels.MyTeam, icon: <TeamIcon />, route: "/team" },
+    { text: sideBarLabels.MyWFHSchedule, icon: <WfhScheduleIcon /> },
+    { text: sideBarLabels.Settings, icon: <SettingsIcon /> },
+  ]
+
+  //HR - Specific Items 
+  // const hrItems = {
+  //   {
+  //     text: sideBarLabels.DepartmentOverview,
+  //     icon: <DepartmentOverviewIcon />,
+  //     //route: "/department-overview",
+  //   },
+  //   { text: sideBarLabels.ReviewRequests, 
+  //     icon: <ReviewRequestsIcon />, 
+  //     //route: "/review-requests" },
+  //   },
+  // };
+
+  // let sideBarItems = [...commonItems];
+  // if (user?role === 2){
+  //   side
+  // }
 
   const handleButtonClick = (route: string) => {
     setActiveTab(sideBarItems.findIndex((item) => item.route === route));

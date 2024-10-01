@@ -14,7 +14,7 @@ type Request = {
   status: string;
 };
 
-export const StaffHomePage = () => {
+export const HomePage = () => {
   const { user } = useContext(UserContext);
   const navigate = useNavigate();
 
@@ -35,10 +35,10 @@ export const StaffHomePage = () => {
         >
           Create a WFH Request
         </Button>
-        //<RequestList />
+        <RequestList />
       </Container>
     </Box>
   );
 };
 
-export default StaffHomePage;
+export default HomePage;

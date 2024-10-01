@@ -4,19 +4,18 @@ import { IconButton, Input, InputAdornment, InputLabel } from "@mui/material";
 import { Link } from "react-router-dom";
 import { useLogin } from "../../hooks/auth/auth";
 import { VisibilityOff, Visibility } from "@mui/icons-material";
+import { useNavigate } from "react-router-dom";
 
 export const LoginPage = () => {
   const [email, setUsername] = useState("");
   const [password, setPassword] = useState("");
-
   const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const navigage = useNavigate();
 
   const { mutate } = useLogin();
 
   const [showPassword, setShowPassword] = useState(false);
-
   const handleClickShowPassword = () => setShowPassword((show) => !show);
-
   const handleMouseDownPassword = (
     event: React.MouseEvent<HTMLButtonElement>
   ) => {
@@ -31,16 +30,25 @@ export const LoginPage = () => {
 
   const handleLogin = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    mutate({ email, password });
+    setIsLoggingIn(true);
+    mutate({ email, password },
+      { 
+        onSuccess: () => {
+          navigage("/home");
+        },
+        onError: () => {
+          setIsLoggingIn(false);
+        }
+      }
+    );
     setIsLoggingIn(false);
   };
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-white">
       <div className="w-full max-w-sm bg-transparent p-8">
-        {/* TODO: replace with product logo */}
         <div className="mb-6 flex justify-center py-5">
-          <img src={logo} alt="login-logo" className="App-logo" />
+          <img src={logo} alt="login-logo"/>
         </div>
 
         {/* Form */}
