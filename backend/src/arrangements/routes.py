@@ -343,6 +343,7 @@ def get_pending_requests_for_manager_and_team(staff_id: int, db: Session = Depen
         raise HTTPException(status_code=500, detail="Internal Server Error")
 
 
+# OLD VERSION WHEREBY PEOPLE CAN VIEW THEIR OWN PENDING ARRANGEMENTS
 # @router.get(
 #     "/view/pending-requests/{staff_id}",
 #     response_model=List[schemas.ArrangementCreateResponse],
