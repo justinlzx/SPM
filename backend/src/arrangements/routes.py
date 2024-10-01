@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 
 from ..database import get_db
 from ..employees.routes import read_employee  # Fetch employee info
+from ..employees.models import Employee, get_employees_by_manager_id
 from ..notifications.email_notifications import (  # Import helper functions
     craft_email_content,
     craft_approval_email_content,
@@ -149,9 +150,7 @@ async def approve_wfh_request(
 ) -> JSONResponse:
     try:
         # Update the arrangement status
-        arrangement = crud.update_arrangement_approval_status(
-            db, arrangement_id, "approve", reason
-        )
+        arrangement = crud.update_arrangement_approval_status(db, arrangement_id, "approve", reason)
 
         # Fetch the staff (requester) information
         staff = read_employee(arrangement.requester_staff_id, db)
@@ -165,9 +164,7 @@ async def approve_wfh_request(
             manager = read_employee(manager_info["manager_id"], db)
 
         # Prepare and send email to staff
-        subject, content = await craft_approval_email_content(
-            staff, arrangement, reason
-        )
+        subject, content = await craft_approval_email_content(staff, arrangement, reason)
         await send_email(to_email=staff.email, subject=subject, content=content)
 
         # Prepare and send email to manager
@@ -200,9 +197,7 @@ async def reject_wfh_request(
 ) -> JSONResponse:
     try:
         # Update the arrangement status
-        arrangement = crud.update_arrangement_approval_status(
-            db, arrangement_id, "reject", reason
-        )
+        arrangement = crud.update_arrangement_approval_status(db, arrangement_id, "reject", reason)
 
         # Fetch the staff (requester) information
         staff = read_employee(arrangement.requester_staff_id, db)
@@ -216,9 +211,7 @@ async def reject_wfh_request(
             manager = read_employee(manager_info["manager_id"], db)
 
         # Prepare and send email to staff
-        subject, content = await craft_rejection_email_content(
-            staff, arrangement, reason
-        )
+        subject, content = await craft_rejection_email_content(staff, arrangement, reason)
         await send_email(to_email=staff.email, subject=subject, content=content)
 
         # Prepare and send email to manager
@@ -289,3 +282,119 @@ def get_arrangements_by_manager(
         return arrangements
     except SQLAlchemyError as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get(
+    "/view/pending-requests/{staff_id}",
+    response_model=List[schemas.ArrangementCreateResponse],
+)
+def get_pending_requests_for_manager_and_team(staff_id: int, db: Session = Depends(get_db)):
+    """
+    Get the pending WFH requests for the manager and their employees.
+    """
+    try:
+        currentList = []
+        # Check if the employee is a manager
+        employees_under_manager: List[Employee] = get_employees_by_manager_id(db, staff_id)
+
+        if not employees_under_manager:
+            # If the employee is not a manager, return a message indicating no pending requests
+            return JSONResponse(
+                status_code=200, content={"message": "No pending requests at this time", "data": []}
+            )
+
+        # # If employee is manager
+        # currentList.append(staff_id)
+        for employee in employees_under_manager:
+            currentList.append(employee.staff_id)  # Access staff_id as an attribute
+
+        # Debug: Log the contents of currentList
+        print("Current List of Staff IDs:", currentList)
+
+        # Fetch all pending requests for these staff_ids
+        pending_requests = crud.get_pending_requests_by_staff_ids(db, currentList)
+
+        response_data = [req.__dict__ for req in pending_requests]
+        for data in response_data:
+            data.pop("_sa_instance_state", None)
+
+        response_data = [
+            fit_model_to_schema(
+                data,
+                schemas.ArrangementCreateResponse,
+                {
+                    "requester_staff_id": "staff_id",
+                    "approval_status": "current_approval_status",
+                },
+            )
+            for data in response_data
+        ]
+
+        return JSONResponse(
+            status_code=200,
+            content={
+                "message": "Arrangements retrieved successfully",
+                "data": [data.model_dump() for data in response_data],  # Convert to dict
+            },
+        )
+
+    except Exception as e:
+        print(f"An error occurred: {str(e)}")  # Log the error for debugging
+        raise HTTPException(status_code=500, detail="Internal Server Error")
+
+
+# OLD VERSION WHEREBY PEOPLE CAN VIEW THEIR OWN PENDING ARRANGEMENTS
+# @router.get(
+#     "/view/pending-requests/{staff_id}",
+#     response_model=List[schemas.ArrangementCreateResponse],
+# )
+# def get_pending_requests_for_manager_and_team(staff_id: int, db: Session = Depends(get_db)):
+#     """
+#     Get the pending WFH requests for the manager and their employees.
+#     """
+#     try:
+#         currentList = []
+#         # Check if the employee is a manager
+#         employees_under_manager: List[Employee] = get_employees_by_manager_id(db, staff_id)
+
+#         # if not employees_under_manager:
+#         #     currentList.append(staff_id)
+
+#         # If employee is manager
+#         currentList.append(staff_id)
+#         for employee in employees_under_manager:
+#             currentList.append(employee.staff_id)  # Access staff_id as an attribute
+
+#         # Debug: Log the contents of currentList
+#         print("Current List of Staff IDs:", currentList)
+
+#         # Fetch all pending requests for these staff_ids
+#         pending_requests = crud.get_pending_requests_by_staff_ids(db, currentList)
+
+#         response_data = [req.__dict__ for req in pending_requests]
+#         for data in response_data:
+#             data.pop("_sa_instance_state", None)
+
+#         response_data = [
+#             fit_model_to_schema(
+#                 data,
+#                 schemas.ArrangementCreateResponse,
+#                 {
+#                     "requester_staff_id": "staff_id",
+#                     "approval_status": "current_approval_status",
+#                 },
+#             )
+#             for data in response_data
+#         ]
+
+#         return JSONResponse(
+#             status_code=200,
+#             content={
+#                 "message": "Arrangements retrieved successfully",
+#                 "data": [data.model_dump() for data in response_data],  # Convert to dict
+#             },
+#         )
+
+#     except Exception as e:
+#         print(f"An error occurred: {str(e)}")  # Log the error for debugging
+#         raise HTTPException(status_code=500, detail="Internal Server Error")

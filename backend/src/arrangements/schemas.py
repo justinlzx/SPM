@@ -7,6 +7,7 @@ from pydantic.json_schema import SkipJsonSchema
 from ..employees.schemas import EmployeeBase
 
 from ..employees.models import Employee
+from pydantic import BaseModel
 
 from ..base import BaseSchema
 
@@ -32,9 +33,7 @@ class ArrangementCreate(ArrangementBase):
     current_approval_status: SkipJsonSchema[str] = Field(
         default="pending", exclude=True, title="Approval status of the request"
     )
-    approving_officer: int = Field(
-        default=None, title="Staff ID of the approving officer"
-    )
+    approving_officer: int = Field(default=None, title="Staff ID of the approving officer")
     reason_description: str = Field(..., title="Reason for requesting the WFH")
     is_recurring: bool = Field(default=False, title="Flag to indicate if the request is recurring")
     recurring_end_date: str = Field(default=None, title="End date of a recurring WFH request")
@@ -96,6 +95,11 @@ class ArrangementResponse(ArrangementLog):
 
     class Config:
         orm_mode = True
+
+
+class ManagerPendingRequestsResponse(BaseModel):
+    employee: EmployeeBase
+    pending_arrangements: List[ArrangementCreateResponse]
 
 
 # class ArrangementSnapshot(ArrangementLog):
