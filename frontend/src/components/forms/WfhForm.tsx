@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useContext, useState, useEffect } from 'react';
+import { UserContext } from '../../context/UserContextProvider';
 import { useNavigate } from 'react-router-dom';
 import { Formik, Form, Field, ErrorMessage } from 'formik';
 import { addWeeks, addMonths, isAfter, isWeekend } from 'date-fns';
@@ -22,13 +23,12 @@ import qs from 'qs';
 import { Recurring } from './Recurring';
 import { SnackBarComponent, AlertStatus } from '../../common/SnackBar'; // Assuming you have this component
 
-interface WfhFormProps {
-  requesterStaffId: number;
-}
 
-export const WfhForm: React.FC<WfhFormProps> = ({ requesterStaffId }) => {
+
+export const WfhForm: React.FC = () => {
+  const { user } = useContext(UserContext);
   const [scheduleType, setScheduleType] = useState<'adhoc' | 'recurring'>('adhoc');
-  const [wfhDaysTaken] = useState(3); 
+  const [wfhDaysTaken] = useState(1); 
   const [showSnackbar, setShowSnackbar] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('');
   const [alertStatus, setAlertStatus] = useState<AlertStatus>(AlertStatus.Info);
@@ -36,9 +36,15 @@ export const WfhForm: React.FC<WfhFormProps> = ({ requesterStaffId }) => {
   const [submitted, setSubmitted] = useState(false); 
   const navigate = useNavigate();
 
+  if (!user){
+    return <Typography variant="h4">Please log in to access this page</Typography>
+  }
+
+  const requesterStaffId = user.id; 
+
   const isWeekend = (date: Date) => {
     const day = date.getDay();
-    return day === 0 || day === 6; // Sunday = 0, Saturday = 6
+    return day === 0 || day === 6; 
   };
 
   // Function to handle Snackbar close

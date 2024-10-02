@@ -3,10 +3,10 @@ import { LoginPage } from "../pages/login-signup/LoginPage";
 import { SignUpPage } from "../pages/login-signup/SignUpPage";
 import { App } from "../App";
 import { Layout } from "../common/Layout";
-// import { ApplicationPage } from "../pages/staff/ApplicationPage";
-import { StaffHomePage } from "../pages/staff/StaffHomePage";
-
+import { RequestPage } from "../pages/staff/RequestPage";
+import { HomePage } from "../pages/staff/HomePage";
 import { TeamPage } from "../pages/team/TeamPage";
+
 
 type routesProps = {
   path: string;
@@ -33,16 +33,20 @@ const routes: routesProps[] = [
         children: [
           {
             path: "/home",
-            element: <StaffHomePage />,
+            element: <HomePage />,
           },
-          // {
-          //   path: "/application",
-          //   element: <ApplicationPage />,
-          // },
+          {
+            path: "/request",
+            element: <RequestPage />,
+          },
           {
             path: "/team",
             element: <TeamPage />,
           },
+          {
+            path: "/requests", 
+            element: <RequestPage />
+          }
         ],
       },
     ],
