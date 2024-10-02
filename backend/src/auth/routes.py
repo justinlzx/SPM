@@ -27,8 +27,8 @@ def login(email: EmailStr = Form(...), password: str = Form(...), db: Session = 
 
     # Step 2: Verify the password
     stored_hash = user.hashed_password
-    # Use the original email as salt
-    salt = user.email.lower()  # This should be the original email stored in the database
+    # Use the lowercase email as salt
+    salt = email.lower()  # This uses the input email, converted to lowercase
 
     if not verify_password(password, stored_hash, salt):
         raise HTTPException(status_code=400, detail="Invalid email or password")
