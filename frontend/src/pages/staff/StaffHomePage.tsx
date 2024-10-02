@@ -31,11 +31,11 @@ export const StaffHomePage = () => {
           variant="contained"
           color="primary"
           startIcon={<AddIcon />}
-          onClick={() => handleCreateApplication('/application')}
+          onClick={() => handleCreateApplication('/request')}
         >
           Create a WFH Request
         </Button>
-        //<RequestList />
+        {/* <RequestList /> */}
       </Container>
     </Box>
   );

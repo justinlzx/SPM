@@ -5,7 +5,7 @@ import { WfhForm } from '../../components/forms/WfhForm'
 export const RequestPage = () => {
   return (
     <div>
-      <WfhForm requesterStaffId={12345}/>
+      <WfhForm/>
     </div>
   )
 }

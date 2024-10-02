@@ -3,7 +3,7 @@ import { LoginPage } from "../pages/login-signup/LoginPage";
 import { SignUpPage } from "../pages/login-signup/SignUpPage";
 import { App } from "../App";
 import { Layout } from "../common/Layout";
-import { ApplicationPage } from "../pages/staff/ApplicationPage";
+import { RequestPage } from "../pages/staff/RequestPage";
 import { StaffHomePage } from "../pages/staff/StaffHomePage";
 
 import { TeamPage } from "../pages/team/TeamPage";
@@ -36,8 +36,8 @@ const routes: routesProps[] = [
             element: <StaffHomePage />,
           },
           {
-            path: "/application",
-            element: <ApplicationPage />,
+            path: "/request",
+            element: <RequestPage />,
           },
           {
             path: "/team",
