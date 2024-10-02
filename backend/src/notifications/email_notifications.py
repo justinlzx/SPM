@@ -106,7 +106,7 @@ async def craft_approval_email_content(
         f"Batch ID: {arrangement.batch_id}\n"
         f"Updated: {arrangement.update_datetime}\n"
         f"Approval Status: {getattr(arrangement, 'current_approval_status', 'Approved')}\n"
-        f"Approval Reason: {getattr(arrangement, 'approval_reason', reason)}\n"
+        f"Approval Reason: {getattr(arrangement, 'status_reason', reason)}\n"
     )
 
     if is_manager and manager:
@@ -142,7 +142,7 @@ async def craft_rejection_email_content(
         f"Batch ID: {arrangement.batch_id}\n"
         f"Updated: {arrangement.update_datetime}\n"
         f"Rejection Status: {getattr(arrangement, 'current_approval_status', 'Rejected')}\n"
-        f"Rejection Reason: {getattr(arrangement, 'approval_reason', reason)}\n"
+        f"Rejection Reason: {getattr(arrangement, 'status_reason', reason)}\n"
     )
 
     if is_manager and manager:

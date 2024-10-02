@@ -51,7 +51,7 @@ def load_auth_data_from_csv(file_path: str):
     # Iterate over the DataFrame and insert data into the 'auth' table
     for _, row in df.iterrows():
         # Hash the password using email as the salt
-        salt = str(row["email"])
+        salt = str(row["email"]).lower()
         hashed_password = hash_password(row["unhashed_password"], salt)
 
         # Create a Auth entry in the database
