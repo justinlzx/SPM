@@ -6,9 +6,10 @@ import { Layout } from "../common/Layout";
 import { HomePage } from "../pages/staff/HomePage";
 
 //import RoleBasedRedirect from "./RoleBasedRedirect";
-import ProtectedRoute from "./ProtectedRoute";
+//import ProtectedRoute from "./ProtectedRoute";
 
 import { TeamPage } from "../pages/team/TeamPage";
+import { RequestPage } from "../pages/staff/RequestPage";
 
 type routesProps = {
   path: string;
@@ -41,6 +42,10 @@ const routes: routesProps[] = [
             path: "/team",
             element: <TeamPage />,
           },
+          {
+            path: "/requests", 
+            element: <RequestPage />
+          }
         ],
       },
     ],
