@@ -3,12 +3,14 @@ from typing import List
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.exc import NoResultFound
 from sqlalchemy.orm import Session
+from fastapi.responses import JSONResponse
 
 from ..database import get_db
-from ..employees.models import (Employee, get_employee_by_staff_id,
-                                get_employees_by_manager_id)
+from ..employees.models import Employee, get_employee_by_staff_id, get_employees_by_manager_id
 from ..employees.schemas import EmployeeBase, EmployeePeerResponse
 from .crud import get_employee, get_employee_by_email
+import pandas as pd
+import os
 
 router = APIRouter()
 
@@ -27,9 +29,7 @@ def get_reporting_manager(staff_id: int, db: Session = Depends(get_db)):
 
         # Get peer employees and convert them to Pydantic models
         peer_list: List[Employee] = (
-            get_employees_by_manager_id(db, emp.reporting_manager)
-            if emp.reporting_manager
-            else []
+            get_employees_by_manager_id(db, emp.reporting_manager) if emp.reporting_manager else []
         )
 
         peer_employees = [EmployeeBase.model_validate(peer) for peer in peer_list]
@@ -65,3 +65,40 @@ def read_employee_by_email(email: str, db: Session = Depends(get_db)):
     if not employee:
         raise HTTPException(status_code=404, detail="Employee not found")
     return employee  # Pydantic model (EmployeeBase) will handle serialization
+
+
+@router.get("/manager/employees/{staff_id}", response_model=List[EmployeeBase])
+def get_employees_under_manager(staff_id: int, db: Session = Depends(get_db)):
+    """
+    Get a list of employees under a specific manager by their staff_id.
+    """
+    # Check if the employee is a manager
+    employees_under_manager: List[Employee] = get_employees_by_manager_id(db, staff_id)
+
+    if not employees_under_manager:
+        raise HTTPException(status_code=404, detail="No employees found under this manager")
+
+    # Convert to Pydantic models
+    return [EmployeeBase.model_validate(employee) for employee in employees_under_manager]
+
+
+# Load the employee data from CSV
+CSV_FILE_PATH = os.path.join("src", "init_db", "employee.csv")  # Adjust the path as necessary
+employee_df = pd.read_csv(CSV_FILE_PATH)
+
+
+@router.get("/get_staff_id/email")
+async def get_staff_id(email: str) -> JSONResponse:
+    try:
+        # Find the staff ID for the given email
+        employee_record = employee_df[employee_df["Email"] == email]  # Use the correct column name
+
+        if not employee_record.empty:
+            # Convert the staff_id to a native Python int
+            staff_id = int(employee_record["Staff_ID"].values[0])  # Convert to int
+            return JSONResponse(content={"staff_id": staff_id})
+        else:
+            raise HTTPException(status_code=404, detail="Employee not found")
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

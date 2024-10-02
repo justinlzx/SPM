@@ -7,6 +7,7 @@ import { RequestPage } from "../pages/staff/RequestPage";
 import { StaffHomePage } from "../pages/staff/StaffHomePage";
 
 import { TeamPage } from "../pages/team/TeamPage";
+import { RequestPage } from "../pages/staff/RequestPage";
 
 type routesProps = {
   path: string;
@@ -43,6 +44,10 @@ const routes: routesProps[] = [
             path: "/team",
             element: <TeamPage />,
           },
+          {
+            path: "/requests", 
+            element: <RequestPage />
+          }
         ],
       },
     ],

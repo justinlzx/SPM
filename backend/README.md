@@ -40,12 +40,12 @@ pip install -r requirements.txt
 If you're **not** already in the backend directory:
 ```bash
 cd backend
-python -B -m uvicorn main:app --reload
+python -B -m uvicorn src.app:app --reload
 ```
 
 If you're already in the backend directory:
 ```bash
-python -B -m uvicorn main:app --reload
+python -B -m uvicorn src.app:app --reload
 ```
 
 ## Accessing API Documentation

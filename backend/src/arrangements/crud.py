@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List
 
 # from pydantic import ValidationError
 from sqlalchemy.exc import SQLAlchemyError
@@ -8,11 +8,10 @@ from . import schemas
 from .models import LatestArrangement, RecurringRequest, ArrangementLog
 from .exceptions import ArrangementActionNotAllowedError, ArrangementNotFoundError
 from .utils import fit_model_to_model, fit_schema_to_model
+from datetime import datetime
 
 
-def create_recurring_request(
-    db: Session, request: schemas.ArrangementCreate
-) -> RecurringRequest:
+def create_recurring_request(db: Session, request: schemas.ArrangementCreate) -> RecurringRequest:
     try:
         batch = fit_schema_to_model(
             request,
@@ -57,9 +56,7 @@ def create_arrangements(
         raise e
 
 
-def update_arrangement_approval_status(
-    db: Session, arrangement_id: int, action: str, reason: str
-):
+def update_arrangement_approval_status(db: Session, arrangement_id: int, action: str, reason: str):
     try:
         arrangement = db.query(LatestArrangement).get(arrangement_id)
 
@@ -101,11 +98,11 @@ def create_request_arrangement_log(
             arrangement,
             ArrangementLog,
             {
-                "requester_staff_id": "log_event_staff_id",
-                "update_datetime": "log_event_datetime",
+                "current_approval_status": "approval_status",
             },
         )
-        arrangement_log.log_event_type = action
+        arrangement_log.update_datetime = datetime.utcnow()
+        arrangement_log.approval_status = arrangement.current_approval_status
         db.add(arrangement_log)
         db.flush()
         return arrangement_log
@@ -121,23 +118,19 @@ def get_all_arrangements(db: Session) -> List[LatestArrangement]:
         raise e
 
 
-def get_arrangements_by_manager(
-    db: Session, manager_id: int, status: Optional[str] = None
-):
+def get_pending_requests_by_staff_ids(db: Session, staff_ids: List[int]):
+    """
+    Fetch the pending WFH requests for a list of staff IDs.
+    """
     try:
-        query = (
-            db.query(ArrangementLog)
-            .filter(ArrangementLog.approving_officer == manager_id)
-            .join(
-                Employee,
-                ArrangementLog.requester_staff_id == Employee.staff_id,
-                isouter=True,
-            )
+        print(f"Fetching pending requests for staff IDs: {staff_ids}")
+        results = (
+            db.query(LatestArrangement)
+            .filter(LatestArrangement.requester_staff_id.in_(staff_ids))
+            .all()
         )
-
-        # if status is empty, then it will get all arrangements
-        if status:
-            query = query.filter(ArrangementLog.approval_status == status)
-        return query.all()
+        print(f"Retrieved pending requests: {results}")
+        return results
     except SQLAlchemyError as e:
-        raise e
+        print(f"Error fetching pending requests: {str(e)}")  # Log the error
+        return []  # Return an empty list on error

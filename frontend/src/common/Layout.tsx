@@ -1,50 +1,43 @@
-import { useContext, useEffect } from "react";
+import { useContext, useEffect, useState } from "react";
 import { Outlet, useNavigate } from "react-router-dom";
 import { UserContext } from "../context/UserContextProvider";
 import { Header } from "./Header";
+import { Sidebar } from "./Sidebar";
 import Box from "@mui/material/Box";
-import Typography from "@mui/material/Typography";
-import Button from "@mui/material/Button";
+import CssBaseline from "@mui/material/CssBaseline";
+
+const drawerWidth = 240;
 
 export const Layout = () => {
   const { user } = useContext(UserContext);
   const navigate = useNavigate();
+  const [mobileOpen, setMobileOpen] = useState(false);
 
-  // Authentication check for all pages using this layout
   useEffect(() => {
     if (!user) {
       navigate("/login");
     }
   }, [user, navigate]);
 
+  const handleDrawerToggle = () => {
+    setMobileOpen(!mobileOpen);
+  };
+
   return (
-    <Box sx={{ display: "flex", height: "100vh" }}>
-      {/* Sidebar */}
+    <Box sx={{ display: "flex" }}>
+      <CssBaseline />
+      
+      <Header/>
+      <Sidebar mobileOpen={mobileOpen} handleDrawerToggle={handleDrawerToggle} />
+
       <Box
+        component="main"
         sx={{
-          width: 250,
-          backgroundColor: "#f5f5f5",
-          padding: 2,
-          boxShadow: "2px 0 5px rgba(0,0,0,0.1)",
+          flexGrow: 1,   
+          mt: '64px', 
         }}
       >
-        <Typography variant="h6" gutterBottom>
-          All-in-One
-        </Typography>
-        <Box mt={2}>
-          <Button fullWidth>Submit Request</Button>
-          <Button fullWidth>My Team</Button>
-          <Button fullWidth>My WFH Schedule</Button>
-          <Button fullWidth>Settings</Button>
-        </Box>
-      </Box>
-
-      {/* Main Content */}
-      <Box sx={{ flexGrow: 1, display: "flex", flexDirection: "column" }}>
-        <Header />
-        <Box sx={{ flexGrow: 1, p: 3, overflowY: "auto" }}>
-          <Outlet /> {/* Render the child content here */}
-        </Box>
+        <Outlet />
       </Box>
     </Box>
   );
