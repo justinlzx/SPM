@@ -290,7 +290,7 @@ def get_arrangements_by_manager(
 )
 def get_pending_requests_for_manager_and_team(staff_id: int, db: Session = Depends(get_db)):
     """
-    Get the pending WFH requests for the manager and their employees.
+    Get the pending WFH requests for the manager's employees.
     """
     try:
         currentList = []
