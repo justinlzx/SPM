@@ -151,7 +151,7 @@ class LatestArrangement(Base):
             name="check_current_approval_status",
         ),
     )
-    approval_reason = Column(
+    status_reason = Column(
         String(length=255),
         nullable=True,
         doc="Reason for approval or rejection",
