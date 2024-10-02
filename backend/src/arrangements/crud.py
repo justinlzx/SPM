@@ -77,7 +77,7 @@ def update_arrangement_approval_status(db: Session, arrangement_id: int, action:
             raise ArrangementActionNotAllowedError(arrangement_id, action)
 
         arrangement.current_approval_status = status
-        arrangement.approval_reason = reason
+        arrangement.status_reason = reason
 
         log = create_request_arrangement_log(db, arrangement, action)
         arrangement.latest_log_id = log.log_id
