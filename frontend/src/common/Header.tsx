@@ -8,6 +8,7 @@ import MenuIcon from "@mui/icons-material/Menu";
 import Toolbar from "@mui/material/Toolbar";
 import Typography from "@mui/material/Typography";
 import Button from "@mui/material/Button";
+import { Link } from "react-router-dom";
 import { useContext } from "react";
 import { UserContext } from "../context/UserContextProvider";
 import { Sidebar } from "./Sidebar";
@@ -53,10 +54,12 @@ export const Header = ({ window }: Props) => {
           >
             <MenuIcon />
           </IconButton>
-          <img src={logo} alt="logo" style={{ height: "40px", width: "40px" }} />
-          <Typography variant="h6" noWrap component="div">
-            All-in-One
-          </Typography>
+            <Link to="/home" style={{ display: "flex", alignItems: "center", textDecoration: "none", color: "inherit" }}>
+              <img src={logo} alt="logo" style={{ height: "40px", width: "40px", marginRight: "8px" }} />
+              <Typography variant="h6" noWrap component="div">
+                All-in-One
+              </Typography>
+            </Link>
           <Box sx={{ flexGrow: 1 }} />
           <Button onClick={logout} color="inherit">
             Log Out
@@ -67,7 +70,7 @@ export const Header = ({ window }: Props) => {
       <Box component="nav" sx={{ width: { md: drawerWidth }, flexShrink: { md: 0 } }}>
         <Sidebar mobileOpen={mobileOpen} handleDrawerToggle={handleDrawerToggle} container={container} />
         <Toolbar />
-        {/* Content goes here */}
+        {/* Content goes here ## THIS IS CONFIGURED IN LAYOUT ##*/}
       </Box>
     </Box>
   );

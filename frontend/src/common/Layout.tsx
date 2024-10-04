@@ -26,7 +26,6 @@ export const Layout = () => {
   return (
     <Box sx={{ display: "flex" }}>
       <CssBaseline />
-      
       <Header/>
       <Sidebar mobileOpen={mobileOpen} handleDrawerToggle={handleDrawerToggle} />
 
@@ -34,7 +33,8 @@ export const Layout = () => {
         component="main"
         sx={{
           flexGrow: 1,   
-          mt: '64px', 
+          mt: '100px', 
+          px: 2
         }}
       >
         <Outlet />
