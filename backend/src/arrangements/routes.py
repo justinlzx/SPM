@@ -33,6 +33,38 @@ async def create_wfh_request(
         staff = read_employee(wfh_request.staff_id, db)
         if not staff:
             raise HTTPException(status_code=404, detail="Employee not found")
+        
+        # Jack Sim Logic - Bypass the pending & approval process 
+        if staff.staff_id == 130002:  
+            wfh_request.current_approval_status = "approved"
+            
+            # Create arrangement and prepare response data
+            created_arrangements = crud.create_arrangements(db, [wfh_request])
+            response_data = [
+                fit_model_to_schema(
+                    {k: v for k, v in req.__dict__.items() if k != "_sa_instance_state"},
+                    schemas.ArrangementCreateResponse,
+                    {"requester_staff_id": "staff_id", "approval_status": "current_approval_status"},
+                )
+                for req in created_arrangements
+            ]
+
+            # Send success notification email to the employee (staff)
+            subject, content = await craft_email_content(staff, response_data, success=True)
+            await send_email(to_email=staff.email, subject=subject, content=content)
+
+            # Return response with status approved
+            return JSONResponse(
+                status_code=201,
+                content={
+                    "message": "Request submitted and approved successfully",
+                    "data": [
+                        {**data.model_dump(), "update_datetime": data.update_datetime.isoformat()}
+                        for data in response_data
+                    ],
+                },
+            )
+        
 
         # Fetch manager info using the helper function from notifications
         manager_info = await fetch_manager_info(wfh_request.staff_id)
