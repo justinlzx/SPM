@@ -23,7 +23,7 @@ import qs from 'qs';
 import { Recurring } from './Recurring';
 import { SnackBarComponent, AlertStatus } from '../../common/SnackBar';
 
-export const WfhForm: React.FC = () => {
+export const CreateWfhRequest: React.FC = () => {
   const { user } = useContext(UserContext);
   const [scheduleType, setScheduleType] = useState<'adhoc' | 'recurring'>('adhoc');
   const [wfhDaysTaken] = useState(1); // hardcoded for now
@@ -222,8 +222,8 @@ export const WfhForm: React.FC = () => {
       >
         {({ values, setFieldValue }) => (
           <Form>
-            <Typography variant="h4" sx={{ mb: 2 }}>
-              WFH Request Form
+             <Typography variant="h4" sx={{ mb: 2 }}>
+              {user?.id === 130002 ? 'Log WFH Entry' : 'WFH Request Form'}
             </Typography>
             <Divider sx={{ mb: 2 }} />
 
@@ -316,4 +316,4 @@ export const WfhForm: React.FC = () => {
   );
 };
 
-export default WfhForm;
+export default CreateWfhRequest;
