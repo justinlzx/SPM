@@ -125,7 +125,7 @@ async def upload_file(staff_id, update_datetime, file_obj, s3_client=None):
     # Upload the file
     s3_client = boto3.client("s3")
     try:
-        s3_client.upload_fileobj(
+        response = s3_client.upload_fileobj(
             file_obj,
             S3_BUCKET_NAME,
             OBJECT_NAME,
@@ -136,6 +136,8 @@ async def upload_file(staff_id, update_datetime, file_obj, s3_client=None):
                 }
             },
         )
+
+        print(response)
 
         file_url = f"https://{S3_BUCKET_NAME}.s3.amazonaws.com/{OBJECT_NAME}"
 
