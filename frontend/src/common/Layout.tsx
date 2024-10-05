@@ -26,15 +26,18 @@ export const Layout = () => {
   return (
     <Box sx={{ display: "flex" }}>
       <CssBaseline />
-      <Header/>
-      <Sidebar mobileOpen={mobileOpen} handleDrawerToggle={handleDrawerToggle} />
+      <Header />
+      <Sidebar
+        mobileOpen={mobileOpen}
+        handleDrawerToggle={handleDrawerToggle}
+      />
 
       <Box
         component="main"
         sx={{
-          flexGrow: 1,   
-          mt: '100px', 
-          px: 2
+          flexGrow: 1,
+          mt: "100px",
+          px: 2,
         }}
       >
         <Outlet />
