@@ -7,7 +7,7 @@ from src.init_db.load_data import (
     load_auth_data_from_csv,
     load_arrangement_data_from_csv,
 )
-from ..auth.utils import hash_password
+from ...auth.utils import hash_password
 from datetime import datetime
 import os
 from unittest.mock import mock_open
@@ -27,9 +27,9 @@ def mock_db_session(mocker):
 
 
 def test_load_employee_data_from_csv(mock_db_session):
-    load_employee_data_from_csv("src/tests/test_employee.csv")
+    load_employee_data_from_csv("src/tests/init_db/test_employee.csv")
     assert mock_db_session.add.call_count == 554
-    df = pd.read_csv("src/tests/test_employee.csv")
+    df = pd.read_csv("src/tests/init_db/test_employee.csv")
     actual_employees = [call[0][0] for call in mock_db_session.add.call_args_list]
 
     for i, row in df.iterrows():
@@ -54,17 +54,17 @@ def test_load_employee_data_from_csv(mock_db_session):
 
 
 def test_load_employee_data_file_not_found(mock_db_session, capsys):
-    load_employee_data_from_csv("src/tests/non_existent_file.csv")
+    load_employee_data_from_csv("src/tests/init_db/non_existent_file.csv")
     captured = capsys.readouterr()
-    assert "Error: The file 'src/tests/non_existent_file.csv' was not found." in captured.out
+    assert "Error: The file 'src/tests/init_db/non_existent_file.csv' was not found." in captured.out
 
 
 def test_load_employee_data_empty_file(mock_db_session, mocker, capsys):
     # Mock pandas to simulate an empty CSV file
     mocker.patch("pandas.read_csv", side_effect=pd.errors.EmptyDataError)
-    load_employee_data_from_csv("src/tests/empty.csv")
+    load_employee_data_from_csv("src/tests/init_db/empty.csv")
     captured = capsys.readouterr()
-    assert "Error: The file 'src/tests/empty.csv' is empty." in captured.out
+    assert "Error: The file 'src/tests/init_db/empty.csv' is empty." in captured.out
 
 
 def test_load_employee_data_from_csv_exception(mock_db_session, mocker, capsys):
@@ -74,7 +74,7 @@ def test_load_employee_data_from_csv_exception(mock_db_session, mocker, capsys):
     )
 
     # Call the function with a mock CSV path
-    load_employee_data_from_csv("src/tests/test_employee.csv")
+    load_employee_data_from_csv("src/tests/init_db/test_employee.csv")
 
     # Capture the stdout to check for the error message
     captured = capsys.readouterr()
@@ -96,13 +96,13 @@ def test_load_employee_data_from_csv_exception(mock_db_session, mocker, capsys):
 
 def test_load_auth_data_from_csv(mock_db_session):
     # Call the function to load auth data from the CSV
-    load_auth_data_from_csv("src/tests/test_auth.csv")
+    load_auth_data_from_csv("src/tests/init_db/test_auth.csv")
 
     # Check that the correct number of records have been added to the database
     assert mock_db_session.add.call_count == 554
 
     # Read the CSV file to verify data
-    df = pd.read_csv("src/tests/test_auth.csv")
+    df = pd.read_csv("src/tests/init_db/test_auth.csv")
     actual_auths = [call[0][0] for call in mock_db_session.add.call_args_list]
 
     for i, row in df.iterrows():
@@ -122,17 +122,17 @@ def test_load_auth_data_from_csv(mock_db_session):
 
 
 def test_load_auth_data_file_not_found(mock_db_session, capsys):
-    load_auth_data_from_csv("src/tests/non_existent_file.csv")
+    load_auth_data_from_csv("src/tests/init_db/non_existent_file.csv")
     captured = capsys.readouterr()
-    assert "Error: The file 'src/tests/non_existent_file.csv' was not found." in captured.out
+    assert "Error: The file 'src/tests/init_db/non_existent_file.csv' was not found." in captured.out
 
 
 def test_load_auth_data_empty_file(mock_db_session, mocker, capsys):
     # Mock pandas to simulate an empty CSV file
     mocker.patch("pandas.read_csv", side_effect=pd.errors.EmptyDataError)
-    load_auth_data_from_csv("src/tests/empty.csv")
+    load_auth_data_from_csv("src/tests/init_db/empty.csv")
     captured = capsys.readouterr()
-    assert "Error: The file 'src/tests/empty.csv' is empty." in captured.out
+    assert "Error: The file 'src/tests/init_db/empty.csv' is empty." in captured.out
 
 
 def test_load_auth_data_from_csv_exception(mock_db_session, mocker, capsys):
@@ -140,7 +140,7 @@ def test_load_auth_data_from_csv_exception(mock_db_session, mocker, capsys):
     mocker.patch("src.init_db.load_data.Auth", side_effect=Exception("Test Exception for Auth"))
 
     # Call the function with a mock CSV path
-    load_auth_data_from_csv("src/tests/test_auth.csv")
+    load_auth_data_from_csv("src/tests/init_db/test_auth.csv")
 
     # Capture the stdout to check for the error message
     captured = capsys.readouterr()
@@ -203,9 +203,9 @@ def test_load_arrangement_data_from_csv(mock_db_session, mocker):
 
 
 def test_load_arrangement_data_file_not_found(mock_db_session, capsys):
-    load_arrangement_data_from_csv("src/tests/non_existent_file.csv")
+    load_arrangement_data_from_csv("src/tests/init_db/non_existent_file.csv")
     captured = capsys.readouterr()
-    assert "Error: The file 'src/tests/non_existent_file.csv' was not found." in captured.out
+    assert "Error: The file 'src/tests/init_db/non_existent_file.csv' was not found." in captured.out
 
 
 def test_load_arrangement_data_csv_error(mock_db_session, mocker, capsys):
@@ -223,11 +223,11 @@ def test_load_arrangement_data_csv_error(mock_db_session, mocker, capsys):
     # Mock CSV reader to simulate a CSV error
     mocker.patch("csv.DictReader", side_effect=csv.Error("Test CSV error"))
 
-    load_arrangement_data_from_csv("src/tests/corrupt.csv")
+    load_arrangement_data_from_csv("src/tests/init_db/corrupt.csv")
 
     # Capture the stdout to check for the error message
     captured = capsys.readouterr()
-    assert "Error reading CSV file 'src/tests/corrupt.csv': Test CSV error" in captured.out
+    assert "Error reading CSV file 'src/tests/init_db/corrupt.csv': Test CSV error" in captured.out
 
 
 def test_load_arrangement_data_from_csv_exception(mock_db_session, mocker, capsys):
@@ -235,7 +235,7 @@ def test_load_arrangement_data_from_csv_exception(mock_db_session, mocker, capsy
     mocker.patch("src.init_db.load_data.ArrangementLog", side_effect=Exception("Test Exception"))
 
     # Call the function with a mock CSV path
-    load_arrangement_data_from_csv("src/tests/test_arrangement.csv")
+    load_arrangement_data_from_csv("src/tests/init_db/test_arrangement.csv")
 
     # Capture the stdout to check for the error message
     captured = capsys.readouterr()
