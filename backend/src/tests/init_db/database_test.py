@@ -12,16 +12,7 @@ from datetime import datetime
 import os
 from unittest.mock import mock_open
 import csv
-
-
-# Fixture for mocking the database session
-@pytest.fixture
-def mock_db_session(mocker):
-    # Mock the session to avoid real database writes
-    session = MagicMock(spec=Session)
-    mocker.patch("src.init_db.load_data.SessionLocal", return_value=session)
-    return session
-
+from src.tests.test_utils import mock_db_session
 
 # -------------------------------- Employee Data Tests --------------------------------
 
@@ -56,7 +47,9 @@ def test_load_employee_data_from_csv(mock_db_session):
 def test_load_employee_data_file_not_found(mock_db_session, capsys):
     load_employee_data_from_csv("src/tests/init_db/non_existent_file.csv")
     captured = capsys.readouterr()
-    assert "Error: The file 'src/tests/init_db/non_existent_file.csv' was not found." in captured.out
+    assert (
+        "Error: The file 'src/tests/init_db/non_existent_file.csv' was not found." in captured.out
+    )
 
 
 def test_load_employee_data_empty_file(mock_db_session, mocker, capsys):
@@ -124,7 +117,9 @@ def test_load_auth_data_from_csv(mock_db_session):
 def test_load_auth_data_file_not_found(mock_db_session, capsys):
     load_auth_data_from_csv("src/tests/init_db/non_existent_file.csv")
     captured = capsys.readouterr()
-    assert "Error: The file 'src/tests/init_db/non_existent_file.csv' was not found." in captured.out
+    assert (
+        "Error: The file 'src/tests/init_db/non_existent_file.csv' was not found." in captured.out
+    )
 
 
 def test_load_auth_data_empty_file(mock_db_session, mocker, capsys):
@@ -205,7 +200,9 @@ def test_load_arrangement_data_from_csv(mock_db_session, mocker):
 def test_load_arrangement_data_file_not_found(mock_db_session, capsys):
     load_arrangement_data_from_csv("src/tests/init_db/non_existent_file.csv")
     captured = capsys.readouterr()
-    assert "Error: The file 'src/tests/init_db/non_existent_file.csv' was not found." in captured.out
+    assert (
+        "Error: The file 'src/tests/init_db/non_existent_file.csv' was not found." in captured.out
+    )
 
 
 def test_load_arrangement_data_csv_error(mock_db_session, mocker, capsys):
