@@ -70,13 +70,13 @@ def load_auth_data_from_csv(file_path: str):
 
 # Function to load auth data from arrangements.csv
 def load_arrangement_data_from_csv(file_path: str):
-    from ..database import SessionLocal
 
     db = SessionLocal()
     try:
         with open(file_path, "r") as csvfile:
             csv_reader = csv.DictReader(csvfile)
             for row in csv_reader:
+                # print(f"Row data: {row}")
                 # Convert the update_datetime string to a datetime object
                 update_datetime = datetime.strptime(row["update_datetime"], "%Y-%m-%d %H:%M:%S")
 
