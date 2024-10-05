@@ -6,6 +6,9 @@ import { Layout } from "../common/Layout";
 import { RequestPage } from "../pages/staff/RequestPage";
 import { HomePage } from "../pages/staff/HomePage";
 import { TeamPage } from "../pages/team/TeamPage";
+import { Settings } from "../pages/staff/Settings";
+import { WfhSchedulePage } from "../pages/staff/WfhSchedulePage";
+
 
 
 type routesProps = {
@@ -44,8 +47,12 @@ const routes: routesProps[] = [
             element: <TeamPage />,
           },
           {
-            path: "/requests", 
-            element: <RequestPage />
+            path: "/wfh-schedule",
+            element: <WfhSchedulePage />,
+          },
+          {
+            path: "/settings",
+            element: <Settings />,
           }
         ],
       },
