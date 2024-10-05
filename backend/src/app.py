@@ -66,6 +66,7 @@ app.add_middleware(
     expose_headers=["*"],
 )
 
+
 # Include the auth and user routes
 app.include_router(auth_router, prefix="/auth", tags=["Authentication"])
 # app.include_router(users_router, prefix="/users", tags=["Users"])

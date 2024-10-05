@@ -1,6 +1,6 @@
 from typing import Annotated, Dict, List, Literal, Optional
 
-from fastapi import APIRouter, Depends, Form, HTTPException, Query
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
 from fastapi.responses import JSONResponse
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
@@ -11,8 +11,7 @@ from ..employees import models as employee_models
 from ..employees import services as employee_services
 from ..notifications.email_notifications import craft_and_send_email
 from . import schemas, services
-from .exceptions import (ArrangementActionNotAllowedError,
-                         ArrangementNotFoundError)
+from .exceptions import ArrangementActionNotAllowedError, ArrangementNotFoundError
 
 router = APIRouter()
 
@@ -40,7 +39,10 @@ def get_arrangement_by_id(arrangement_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/personal/{staff_id}", summary="Get personal arrangements by an employee's staff_id")
+@router.get(
+    "/personal/{staff_id}",
+    summary="Get personal arrangements by an employee's staff_id",
+)
 def get_personal_arrangements_by_filter(
     staff_id: int,
     current_approval_status: List[
@@ -50,7 +52,9 @@ def get_personal_arrangements_by_filter(
 ):
     try:
         arrangements: List[schemas.ArrangementResponse] = (
-            services.get_personal_arrangements_by_filter(db, staff_id, current_approval_status)
+            services.get_personal_arrangements_by_filter(
+                db, staff_id, current_approval_status
+            )
         )
 
         return JSONResponse(
@@ -58,7 +62,10 @@ def get_personal_arrangements_by_filter(
             content={
                 "message": "Personal arrangements retrieved successfully",
                 "data": [
-                    {**data.model_dump(), "update_datetime": (data.update_datetime.isoformat())}
+                    {
+                        **data.model_dump(),
+                        "update_datetime": (data.update_datetime.isoformat()),
+                    }
                     for data in arrangements
                 ],
             },
@@ -79,8 +86,10 @@ def get_subordinates_arrangements(
     db: Session = Depends(get_db),
 ):
     try:
-        arrangements: List[schemas.ArrangementResponse] = services.get_subordinates_arrangements(
-            db, manager_id, current_approval_status
+        arrangements: List[schemas.ArrangementResponse] = (
+            services.get_subordinates_arrangements(
+                db, manager_id, current_approval_status
+            )
         )
 
         return JSONResponse(
@@ -89,7 +98,10 @@ def get_subordinates_arrangements(
                 "message": "Arrangements for employees under manager retrieved successfully",
                 "manager_id": manager_id,
                 "data": [
-                    {**data.model_dump(), "update_datetime": (data.update_datetime.isoformat())}
+                    {
+                        **data.model_dump(),
+                        "update_datetime": (data.update_datetime.isoformat()),
+                    }
                     for data in arrangements
                 ],
             },
@@ -112,8 +124,8 @@ def get_team_arrangements(
     db: Session = Depends(get_db),
 ):
     try:
-        arrangements: Dict[str, List[schemas.ArrangementResponse]] = services.get_team_arrangements(
-            db, staff_id, current_approval_status
+        arrangements: Dict[str, List[schemas.ArrangementResponse]] = (
+            services.get_team_arrangements(db, staff_id, current_approval_status)
         )
         return JSONResponse(
             status_code=200,
@@ -122,7 +134,10 @@ def get_team_arrangements(
                 "staff_id": staff_id,
                 "data": {
                     key: [
-                        {**data.model_dump(), "update_datetime": (data.update_datetime.isoformat())}
+                        {
+                            **data.model_dump(),
+                            "update_datetime": (data.update_datetime.isoformat()),
+                        }
                         for data in value
                     ]
                     for key, value in arrangements.items()
@@ -140,13 +155,13 @@ async def create_wfh_request(
 ) -> JSONResponse:
     try:
         # Check that employee exists
-        requester_employee: employee_models.Employee = employee_services.get_employee_by_id(
-            db, wfh_request.staff_id
+        requester_employee: employee_models.Employee = (
+            employee_services.get_employee_by_id(db, wfh_request.staff_id)
         )
 
         # Fetch manager info using the helper function from notifications
-        manager: employee_models.Employee = employee_services.get_manager_by_subordinate_id(
-            db, wfh_request.staff_id
+        manager: employee_models.Employee = (
+            employee_services.get_manager_by_subordinate_id(db, wfh_request.staff_id)
         )
 
         # Create the arrangements
@@ -156,14 +171,16 @@ async def create_wfh_request(
 
         # Craft and send email
         await craft_and_send_email(
-            requester_employee, created_arrangements, "create", success=True, manager=manager
+            requester_employee,
+            created_arrangements,
+            "create",
+            success=True,
+            manager=manager,
         )
 
-        #auto_approved = wfh_request.current_approval_status == "approved"
+        # auto_approved = wfh_request.current_approval_status == "approved"
         auto_approved = wfh_request.staff_id == 130002
-        response_message = (
-            f"Request submitted{' and auto-approved ' if auto_approved else ' '}successfully"
-        )
+        response_message = f"Request submitted{' and auto-approved ' if auto_approved else ' '}successfully"
 
         return JSONResponse(
             status_code=201,
@@ -187,7 +204,11 @@ async def create_wfh_request(
     except SQLAlchemyError as e:
         # Craft and send failure notification email to the employee (staff)
         craft_and_send_email(
-            requester_employee, created_arrangements, "create", success=False, error_message=str(e)
+            requester_employee,
+            created_arrangements,
+            "create",
+            success=False,
+            error_message=str(e),
         )
 
         raise HTTPException(status_code=500, detail=str(e))
@@ -203,16 +224,20 @@ async def update_wfh_request(
         wfh_update.arrangement_id = arrangement_id
 
         # Update the arrangement status
-        updated_arrangement = services.update_arrangement_approval_status(db, wfh_update)
+        updated_arrangement = services.update_arrangement_approval_status(
+            db, wfh_update
+        )
 
         # Fetch the staff (requester) information
-        requester_employee: employee_models.Employee = employee_services.get_employee_by_id(
-            db, updated_arrangement.staff_id
+        requester_employee: employee_models.Employee = (
+            employee_services.get_employee_by_id(db, updated_arrangement.staff_id)
         )
 
         # Fetch manager info
-        approving_officer: employee_models.Employee = employee_services.get_employee_by_id(
-            db, updated_arrangement.approving_officer
+        approving_officer: employee_models.Employee = (
+            employee_services.get_employee_by_id(
+                db, updated_arrangement.approving_officer
+            )
         )
 
         # Prepare and send email to staff and approving officer
@@ -230,7 +255,10 @@ async def update_wfh_request(
             "rejected": "Request rejected successfully",
             "withdrawn": "Request withdrawn successfully",
             "cancelled": "Request cancelled successfully",
-        }.get(updated_arrangement.current_approval_status, "Request processed successfully")
+        }.get(
+            updated_arrangement.current_approval_status,
+            "Request processed successfully",
+        )
 
         return JSONResponse(
             status_code=201,
@@ -238,7 +266,9 @@ async def update_wfh_request(
                 "message": f"{action_message} and notifications sent",
                 "data": {
                     **updated_arrangement.model_dump(),
-                    "update_datetime": (updated_arrangement.update_datetime.isoformat()),
+                    "update_datetime": (
+                        updated_arrangement.update_datetime.isoformat()
+                    ),
                 },
             },
         )

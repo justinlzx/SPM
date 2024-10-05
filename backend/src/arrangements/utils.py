@@ -1,7 +1,17 @@
+from io import BytesIO
 from typing import Dict
 
+from fastapi import HTTPException
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from sqlalchemy.ext.declarative import DeclarativeMeta
+
+import logging
+from botocore.exceptions import ClientError
+
+# from ..s3 import s3_client
+import boto3
+import os
 
 
 def fit_schema_to_model(
@@ -65,7 +75,9 @@ def fit_model_to_schema(
 
 
 def fit_model_to_model(
-    model_data: DeclarativeMeta, model_type: DeclarativeMeta, field_mapping: Dict[str, str] = None
+    model_data: DeclarativeMeta,
+    model_type: DeclarativeMeta,
+    field_mapping: Dict[str, str] = None,
 ):
     if field_mapping is None:
         field_mapping = {}
@@ -78,3 +90,52 @@ def fit_model_to_model(
     }
     model_data = model_type(**valid_fields)
     return model_data
+
+
+async def upload_file(staff_id, arrangement_id, file_obj):
+    """Upload a file to an S3 bucket
+
+    :param file_name: File to upload
+    :param bucket: Bucket to upload to
+    :param object_name: S3 object name. If not specified then file_name is used
+    :return: True if file was uploaded, else False
+    """
+
+    # TODO: change this to get the staff_id and arrangement_id from the request
+    staff_id = 1
+    arrangement_id = 1
+
+    # Read the file content and convert to BytesIO
+    file_content = await file_obj.read()
+    file_obj = BytesIO(file_content)
+
+    S3_BUCKET_NAME = os.getenv("AWS_S3_BUCKET_NAME")
+    OBJECT_NAME = f"{staff_id}/{arrangement_id}/{file_obj}"
+
+    # Upload the file
+    s3_client = boto3.client("s3")
+    try:
+        response = s3_client.upload_fileobj(
+            file_obj,
+            S3_BUCKET_NAME,
+            OBJECT_NAME,
+            ExtraArgs={
+                "Metadata": {
+                    "staff_id": str(staff_id),
+                    "arrangement_id": str(arrangement_id),
+                }
+            },
+        )
+        if not response:
+            raise HTTPException(status_code=500, detail="File upload failed")
+
+        return JSONResponse(
+            status_code=200,
+            content={
+                "message": "File uploaded successfully",
+                "filename": file_obj.filename,
+            },
+        )
+    except Exception as e:
+        print(f"An error occurred: {str(e)}")  # Log the error for debugging
+        raise HTTPException(status_code=500, detail=str(e))
