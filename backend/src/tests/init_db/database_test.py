@@ -84,6 +84,17 @@ def test_load_employee_data_from_csv_exception(mock_db_session, mocker, capsys):
     mock_db_session.close.assert_called_once()
 
 
+def test_load_employee_data_generic_exception(mock_db_session, mocker, capsys):
+    mocker.patch("pandas.read_csv", side_effect=Exception("Generic read exception"))
+
+    load_employee_data_from_csv("src/tests/init_db/test_employee.csv")
+    captured = capsys.readouterr()
+    assert (
+        "An unexpected error occurred while reading 'src/tests/init_db/test_employee.csv': Generic read exception"
+        in captured.out
+    )
+
+
 # -------------------------------- Auth Data Tests --------------------------------
 
 
@@ -150,6 +161,30 @@ def test_load_auth_data_from_csv_exception(mock_db_session, mocker, capsys):
     mock_db_session.close.assert_called_once()
 
 
+def test_load_auth_data_generic_exception(mock_db_session, mocker, capsys):
+    mocker.patch("pandas.read_csv", side_effect=Exception("Generic read exception"))
+
+    load_auth_data_from_csv("src/tests/init_db/test_auth.csv")
+    captured = capsys.readouterr()
+    assert (
+        "An unexpected error occurred while reading 'src/tests/init_db/test_auth.csv': Generic read exception"
+        in captured.out
+    )
+
+
+# -------------------------------- Arrangement Data Tests --------------------------------
+
+
+import pytest
+from unittest.mock import MagicMock
+import pandas as pd
+from sqlalchemy.orm import Session
+from src.init_db.load_data import load_arrangement_data_from_csv
+from datetime import datetime
+import os
+from unittest.mock import mock_open
+import csv
+
 # -------------------------------- Arrangement Data Tests --------------------------------
 
 
@@ -186,10 +221,10 @@ def test_load_arrangement_data_from_csv(mock_db_session, mocker):
             wfh_type=row["wfh_type"],
             approval_status=row["approval_status"],
             approving_officer=(
-                row["approving_officer"] if pd.notna(row["approving_officer"]) else None
+                int(row["approving_officer"]) if pd.notna(row["approving_officer"]) else None
             ),
             reason_description=row["reason_description"],
-            batch_id=row["batch_id"] if pd.notna(row["batch_id"]) else None,
+            batch_id=int(row["batch_id"]) if pd.notna(row["batch_id"]) else None,
         )
 
     # Verify that commit and close were called on the session
@@ -205,36 +240,117 @@ def test_load_arrangement_data_file_not_found(mock_db_session, capsys):
     )
 
 
-def test_load_arrangement_data_csv_error(mock_db_session, mocker, capsys):
-    # Mock os.path.exists to return True to simulate the file existing
-    mocker.patch("os.path.exists", return_value=True)
-
-    # Mock the open function to ensure no FileNotFoundError is raised
-    mocker.patch(
-        "builtins.open",
-        mock_open(
-            read_data="wfh_date,wfh_type,reason_description,requester_staff_id,approval_status,approving_officer,update_datetime,batch_id"
-        ),
-    )
-
-    # Mock CSV reader to simulate a CSV error
-    mocker.patch("csv.DictReader", side_effect=csv.Error("Test CSV error"))
-
-    load_arrangement_data_from_csv("src/tests/init_db/corrupt.csv")
-
-    # Capture the stdout to check for the error message
+def test_load_arrangement_data_empty_file(mock_db_session, mocker, capsys):
+    # Mock pandas to simulate an empty CSV file
+    mocker.patch("pandas.read_csv", side_effect=pd.errors.EmptyDataError)
+    load_arrangement_data_from_csv("src/tests/init_db/empty.csv")
     captured = capsys.readouterr()
-    assert "Error reading CSV file 'src/tests/init_db/corrupt.csv': Test CSV error" in captured.out
+    assert "Error: The file 'src/tests/init_db/empty.csv' is empty." in captured.out
+
+
+def test_load_arrangement_data_key_error(mock_db_session, mocker, capsys):
+    # Mock the ArrangementLog model to raise a KeyError during instantiation
+    mocker.patch("src.init_db.load_data.ArrangementLog", side_effect=KeyError("Test KeyError"))
+
+    load_arrangement_data_from_csv("src/tests/init_db/test_arrangement.csv")
+    captured = capsys.readouterr()
+    assert "Missing expected column in CSV: 'Test KeyError'" in captured.out
+
+
+def test_load_arrangement_data_value_error(mock_db_session, mocker, capsys):
+    # Mock the ArrangementLog model to raise a ValueError during instantiation
+    mocker.patch("src.init_db.load_data.ArrangementLog", side_effect=ValueError("Test ValueError"))
+
+    load_arrangement_data_from_csv("src/tests/init_db/test_arrangement.csv")
+    captured = capsys.readouterr()
+    assert "Data conversion error: Test ValueError" in captured.out
 
 
 def test_load_arrangement_data_from_csv_exception(mock_db_session, mocker, capsys):
-    # Mock the ArrangementLog model to raise an exception during instantiation
-    mocker.patch("src.init_db.load_data.ArrangementLog", side_effect=Exception("Test Exception"))
+    # Mock pandas.read_csv to raise an exception to trigger the rollback logic
+    mocker.patch("pandas.read_csv", side_effect=Exception("Test Exception"))
 
     # Call the function with a mock CSV path
-    load_arrangement_data_from_csv("src/tests/init_db/test_arrangement.csv")
+    try:
+        load_arrangement_data_from_csv("src/tests/init_db/test_arrangement.csv")
+    except Exception:
+        # This is expected because we are forcing an exception
+        pass
 
     # Capture the stdout to check for the error message
     captured = capsys.readouterr()
-    # Assert the correct message is printed for multiple rows
-    assert "An unexpected error occurred while processing row: Test Exception" in captured.out
+    # Assert the correct message is printed
+    assert "An unexpected error occurred: Test Exception" in captured.out
+
+    # Ensure rollback is called due to exception
+    mock_db_session.rollback.assert_called_once()
+    # Ensure commit is not called
+    mock_db_session.commit.assert_not_called()
+    # Ensure the session is closed after exception
+    mock_db_session.close.assert_called_once()
+
+
+def test_load_arrangement_data_generic_exception(mock_db_session, mocker, capsys):
+    # Mock pandas read_csv to raise a generic exception
+    mocker.patch("pandas.read_csv", side_effect=Exception("Generic read exception"))
+
+    # Call the function to trigger the exception
+    load_arrangement_data_from_csv("src/tests/init_db/test_arrangement.csv")
+
+    # Capture the stdout and stderr
+    captured = capsys.readouterr()
+
+    # Assert the expected error message is present in the output
+    assert (
+        "An unexpected error occurred: Generic read exception" in captured.out
+    ), f"Captured output: {captured.out}"
+
+
+# Test when the arrangement data CSV is empty after reading
+def test_load_arrangement_data_empty_dataframe(mock_db_session, mocker, capsys):
+    # Mock pandas to return an empty DataFrame
+    mocker.patch("pandas.read_csv", return_value=pd.DataFrame())
+
+    load_arrangement_data_from_csv("src/tests/init_db/empty.csv")
+    captured = capsys.readouterr()
+    assert "Error: The file 'src/tests/init_db/empty.csv' is empty." in captured.out
+
+    # Ensure that commit and rollback are not called
+    mock_db_session.commit.assert_not_called()
+    mock_db_session.rollback.assert_not_called()
+    mock_db_session.close.assert_called_once()
+
+
+# Test when an exception is raised while processing a row in the arrangement data CSV
+def test_load_arrangement_data_row_exception(mock_db_session, mocker, capsys):
+    # Mock the csv.DictReader to return valid rows
+    mock_csv_reader = mocker.patch(
+        "csv.DictReader",
+        return_value=[
+            {
+                "update_datetime": "2024-10-05 23:00:00",
+                "wfh_date": "2024-10-05",
+                "wfh_type": "WFH",
+                "reason_description": "Reason",
+                "requester_staff_id": "1",
+                "approval_status": "approved",
+                "approving_officer": "2",
+                "batch_id": "100",
+            }
+        ],
+    )
+
+    # Mock ArrangementLog to raise a generic exception during instantiation
+    mocker.patch(
+        "src.init_db.load_data.ArrangementLog", side_effect=Exception("Test Row Exception")
+    )
+
+    # Call the function with a mock CSV path
+    load_arrangement_data_from_csv("src/tests/init_db/test_arrangement.csv")
+    captured = capsys.readouterr()
+
+    # Assert the correct message is printed when an exception occurs in row processing
+    assert "An unexpected error occurred while processing row: Test Row Exception" in captured.out
+
+    # Ensure that the database session is closed properly
+    mock_db_session.close.assert_called_once()
