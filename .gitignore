@@ -7,3 +7,4 @@ __pycache__/
 backend/*.env
 .pytest_cache/
 htmlcov/
+.coverage
