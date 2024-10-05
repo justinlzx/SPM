@@ -5,3 +5,4 @@ __pycache__/
 *.db
 .DS_Store
 backend/*.env
+.pytest_cache/
