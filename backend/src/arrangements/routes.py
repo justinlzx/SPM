@@ -34,11 +34,11 @@ async def create_wfh_request(
         if not staff:
             raise HTTPException(status_code=404, detail="Employee not found")
         
-        # Jack Sim Logic - Bypass the pending & approval process 
-        if staff.staff_id == 130002:  
+        # Auto Approve for Jack Sim 
+        if wfh_request.staff_id == 130002:
             wfh_request.current_approval_status = "approved"
             
-            # Create arrangement and prepare response data
+            #Create Arrangement and Prepare Response Data
             created_arrangements = crud.create_arrangements(db, [wfh_request])
             response_data = [
                 fit_model_to_schema(
@@ -48,7 +48,7 @@ async def create_wfh_request(
                 )
                 for req in created_arrangements
             ]
-
+            
             # Send success notification email to the employee (staff)
             subject, content = await craft_email_content(staff, response_data, success=True)
             await send_email(to_email=staff.email, subject=subject, content=content)
@@ -181,6 +181,9 @@ async def approve_wfh_request(
     db: Session = Depends(get_db),
 ) -> JSONResponse:
     try:
+        if reason is None: 
+            reason = "Approved by Manager"
+            
         # Update the arrangement status
         arrangement = crud.update_arrangement_approval_status(db, arrangement_id, "approve", reason)
 

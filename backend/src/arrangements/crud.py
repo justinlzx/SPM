@@ -33,6 +33,11 @@ def create_arrangements(
     try:
         created_arrangements_list = []
         for arrangement in arrangements:
+            #Auto Approve for Jack Sim 
+            if arrangement.staff_id == 130002:
+                arrangement.current_approval_status = "approved"
+                
+                
             created_arrangement = fit_schema_to_model(arrangement, LatestArrangement)
             created_arrangements_list.append(created_arrangement)
 
@@ -62,6 +67,10 @@ def update_arrangement_approval_status(db: Session, arrangement_id: int, action:
 
         if not arrangement:
             raise ArrangementNotFoundError(arrangement_id)
+        
+        #Auto Approve for Jack Sim
+        if arrangement.requester_staff_id == 130002:
+            raise ArrangementActionNotAllowedError(arrangement_id, action)
 
         status = {
             "approve": "approved",
@@ -102,7 +111,14 @@ def create_request_arrangement_log(
             },
         )
         arrangement_log.update_datetime = datetime.utcnow()
-        arrangement_log.approval_status = arrangement.current_approval_status
+        
+        #Auto Approve for Jack Sim
+        if arrangement.requester_staff_id == 130002:
+            arrangement_log.approval_status = "approved"
+        else:
+            arrangement_log.approval_status = arrangement.current_approval_status
+            
+        #arrangement_log.approval_status = arrangement.current_approval_status
         db.add(arrangement_log)
         db.flush()
         return arrangement_log
