@@ -14,12 +14,16 @@ from unittest.mock import mock_open
 import csv
 
 
+# Fixture for mocking the database session
 @pytest.fixture
 def mock_db_session(mocker):
     # Mock the session to avoid real database writes
     session = MagicMock(spec=Session)
     mocker.patch("src.init_db.load_data.SessionLocal", return_value=session)
     return session
+
+
+# -------------------------------- Employee Data Tests --------------------------------
 
 
 def test_load_employee_data_from_csv(mock_db_session):
@@ -29,8 +33,7 @@ def test_load_employee_data_from_csv(mock_db_session):
     actual_employees = [call[0][0] for call in mock_db_session.add.call_args_list]
 
     for i, row in df.iterrows():
-        # compare each attribute in actual_employees
-        # the key is different
+        # Compare each attribute in actual_employees
         assert any(
             [
                 employee.staff_id == row["Staff_ID"]
@@ -48,6 +51,47 @@ def test_load_employee_data_from_csv(mock_db_session):
 
     mock_db_session.commit.assert_called_once()
     mock_db_session.close.assert_called_once()
+
+
+def test_load_employee_data_file_not_found(mock_db_session, capsys):
+    load_employee_data_from_csv("src/tests/non_existent_file.csv")
+    captured = capsys.readouterr()
+    assert "Error: The file 'src/tests/non_existent_file.csv' was not found." in captured.out
+
+
+def test_load_employee_data_empty_file(mock_db_session, mocker, capsys):
+    # Mock pandas to simulate an empty CSV file
+    mocker.patch("pandas.read_csv", side_effect=pd.errors.EmptyDataError)
+    load_employee_data_from_csv("src/tests/empty.csv")
+    captured = capsys.readouterr()
+    assert "Error: The file 'src/tests/empty.csv' is empty." in captured.out
+
+
+def test_load_employee_data_from_csv_exception(mock_db_session, mocker, capsys):
+    # Mock the Employee model to raise an exception during instantiation
+    mocker.patch(
+        "src.init_db.load_data.Employee", side_effect=Exception("Test Exception for Employee")
+    )
+
+    # Call the function with a mock CSV path
+    load_employee_data_from_csv("src/tests/test_employee.csv")
+
+    # Capture the stdout to check for the error message
+    captured = capsys.readouterr()
+    # Assert that the exception message is logged correctly
+    assert (
+        "An error occurred while loading employee data: Test Exception for Employee" in captured.out
+    )
+
+    # Ensure rollback is called due to exception
+    mock_db_session.rollback.assert_called_once()
+    # Ensure commit is not called
+    mock_db_session.commit.assert_not_called()
+    # Ensure the session is closed after exception
+    mock_db_session.close.assert_called_once()
+
+
+# -------------------------------- Auth Data Tests --------------------------------
 
 
 def test_load_auth_data_from_csv(mock_db_session):
@@ -75,6 +119,43 @@ def test_load_auth_data_from_csv(mock_db_session):
     # Ensure commit and close are called
     mock_db_session.commit.assert_called_once()
     mock_db_session.close.assert_called_once()
+
+
+def test_load_auth_data_file_not_found(mock_db_session, capsys):
+    load_auth_data_from_csv("src/tests/non_existent_file.csv")
+    captured = capsys.readouterr()
+    assert "Error: The file 'src/tests/non_existent_file.csv' was not found." in captured.out
+
+
+def test_load_auth_data_empty_file(mock_db_session, mocker, capsys):
+    # Mock pandas to simulate an empty CSV file
+    mocker.patch("pandas.read_csv", side_effect=pd.errors.EmptyDataError)
+    load_auth_data_from_csv("src/tests/empty.csv")
+    captured = capsys.readouterr()
+    assert "Error: The file 'src/tests/empty.csv' is empty." in captured.out
+
+
+def test_load_auth_data_from_csv_exception(mock_db_session, mocker, capsys):
+    # Mock the Auth model to raise an exception during instantiation
+    mocker.patch("src.init_db.load_data.Auth", side_effect=Exception("Test Exception for Auth"))
+
+    # Call the function with a mock CSV path
+    load_auth_data_from_csv("src/tests/test_auth.csv")
+
+    # Capture the stdout to check for the error message
+    captured = capsys.readouterr()
+    # Assert that the exception message is logged correctly
+    assert "An error occurred while loading auth data: Test Exception for Auth" in captured.out
+
+    # Ensure rollback is called due to exception
+    mock_db_session.rollback.assert_called_once()
+    # Ensure commit is not called
+    mock_db_session.commit.assert_not_called()
+    # Ensure the session is closed after exception
+    mock_db_session.close.assert_called_once()
+
+
+# -------------------------------- Arrangement Data Tests --------------------------------
 
 
 def test_load_arrangement_data_from_csv(mock_db_session, mocker):
@@ -121,6 +202,34 @@ def test_load_arrangement_data_from_csv(mock_db_session, mocker):
     mock_db_session.close.assert_called_once()
 
 
+def test_load_arrangement_data_file_not_found(mock_db_session, capsys):
+    load_arrangement_data_from_csv("src/tests/non_existent_file.csv")
+    captured = capsys.readouterr()
+    assert "Error: The file 'src/tests/non_existent_file.csv' was not found." in captured.out
+
+
+def test_load_arrangement_data_csv_error(mock_db_session, mocker, capsys):
+    # Mock os.path.exists to return True to simulate the file existing
+    mocker.patch("os.path.exists", return_value=True)
+
+    # Mock the open function to ensure no FileNotFoundError is raised
+    mocker.patch(
+        "builtins.open",
+        mock_open(
+            read_data="wfh_date,wfh_type,reason_description,requester_staff_id,approval_status,approving_officer,update_datetime,batch_id"
+        ),
+    )
+
+    # Mock CSV reader to simulate a CSV error
+    mocker.patch("csv.DictReader", side_effect=csv.Error("Test CSV error"))
+
+    load_arrangement_data_from_csv("src/tests/corrupt.csv")
+
+    # Capture the stdout to check for the error message
+    captured = capsys.readouterr()
+    assert "Error reading CSV file 'src/tests/corrupt.csv': Test CSV error" in captured.out
+
+
 def test_load_arrangement_data_from_csv_exception(mock_db_session, mocker, capsys):
     # Mock the ArrangementLog model to raise an exception during instantiation
     mocker.patch("src.init_db.load_data.ArrangementLog", side_effect=Exception("Test Exception"))
@@ -130,11 +239,5 @@ def test_load_arrangement_data_from_csv_exception(mock_db_session, mocker, capsy
 
     # Capture the stdout to check for the error message
     captured = capsys.readouterr()
-    assert "An error occurred: Test Exception" in captured.out
-
-    # Ensure rollback is called due to exception
-    mock_db_session.rollback.assert_called_once()
-    # Ensure commit is not called
-    mock_db_session.commit.assert_not_called()
-    # Ensure the session is closed after exception
-    mock_db_session.close.assert_called_once()
+    # Assert the correct message is printed for multiple rows
+    assert "An unexpected error occurred while processing row: Test Exception" in captured.out
