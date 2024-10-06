@@ -1,11 +1,11 @@
 import React from 'react'
-import { WfhForm } from '../../components/forms/WfhForm'
+import { CreateWfhRequest } from '../../components/forms/CreateWfhRequest'
 
 
 export const RequestPage = () => {
   return (
     <div>
-      <WfhForm/>
+      <CreateWfhRequest />
     </div>
   )
 }
