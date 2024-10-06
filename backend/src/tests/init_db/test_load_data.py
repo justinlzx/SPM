@@ -1,7 +1,4 @@
-import pytest
-from unittest.mock import MagicMock
 import pandas as pd
-from sqlalchemy.orm import Session
 from src.init_db.load_data import (
     load_employee_data_from_csv,
     load_auth_data_from_csv,
@@ -10,8 +7,6 @@ from src.init_db.load_data import (
 from ...auth.utils import hash_password
 from datetime import datetime
 import os
-from unittest.mock import mock_open
-import csv
 from src.tests.test_utils import mock_db_session
 
 # -------------------------------- Employee Data Tests --------------------------------
