@@ -192,22 +192,22 @@ async def approve_wfh_request(
         if not staff:
             raise HTTPException(status_code=404, detail="Employee not found")
 
-        # Fetch manager info
-        manager_info = await fetch_manager_info(staff.staff_id)
-        manager = None
-        if manager_info and manager_info["manager_id"] is not None:
-            manager = read_employee(manager_info["manager_id"], db)
+        # # Fetch manager info
+        # manager_info = await fetch_manager_info(staff.staff_id)
+        # manager = None
+        # if manager_info and manager_info["manager_id"] is not None:
+        #     manager = read_employee(manager_info["manager_id"], db)
 
-        # Prepare and send email to staff
-        subject, content = await craft_approval_email_content(staff, arrangement, reason)
-        await send_email(to_email=staff.email, subject=subject, content=content)
+        # # Prepare and send email to staff
+        # subject, content = await craft_approval_email_content(staff, arrangement, reason)
+        # await send_email(to_email=staff.email, subject=subject, content=content)
 
-        # Prepare and send email to manager
-        if manager:
-            subject, content = await craft_approval_email_content(
-                staff, arrangement, reason, is_manager=True, manager=manager
-            )
-            await send_email(to_email=manager.email, subject=subject, content=content)
+        # # Prepare and send email to manager
+        # if manager:
+        #     subject, content = await craft_approval_email_content(
+        #         staff, arrangement, reason, is_manager=True, manager=manager
+        #     )
+        #     await send_email(to_email=manager.email, subject=subject, content=content)
 
         return JSONResponse(
             status_code=200,
@@ -221,7 +221,12 @@ async def approve_wfh_request(
         raise HTTPException(status_code=406, detail=str(e))
 
     except SQLAlchemyError as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        print(f"Database error occurred: {str(e)}")  # Log the database error
+        raise HTTPException(status_code=500, detail="Database error")
+
+    except Exception as e:
+        print(f"An unexpected error occurred: {str(e)}")  # Log any other unexpected error
+        raise HTTPException(status_code=500, detail="An unexpected error occurred")
 
 
 @router.post("/request/reject")
@@ -231,6 +236,9 @@ async def reject_wfh_request(
     db: Session = Depends(get_db),
 ) -> JSONResponse:
     try:
+        # Debugging: print the received payload
+        # print(f"Received payload: arrangement_id={arrangement_id}, reason={reason}")
+
         # Update the arrangement status
         arrangement = crud.update_arrangement_approval_status(db, arrangement_id, "reject", reason)
 
@@ -239,22 +247,26 @@ async def reject_wfh_request(
         if not staff:
             raise HTTPException(status_code=404, detail="Employee not found")
 
-        # Fetch manager info
-        manager_info = await fetch_manager_info(staff.staff_id)
-        manager = None
-        if manager_info and manager_info["manager_id"] is not None:
-            manager = read_employee(manager_info["manager_id"], db)
+        # print("The staff is found")
 
-        # Prepare and send email to staff
-        subject, content = await craft_rejection_email_content(staff, arrangement, reason)
-        await send_email(to_email=staff.email, subject=subject, content=content)
+        # EMAIL FUNCTION THROWING ERROR 500
+        # # Fetch manager info
+        # manager_info = await fetch_manager_info(staff.staff_id)
+        # manager = None
+        # if manager_info and manager_info["manager_id"] is not None:
+        #     manager = read_employee(manager_info["manager_id"], db)
+        #     print("The manager is found")
 
-        # Prepare and send email to manager
-        if manager:
-            subject, content = await craft_rejection_email_content(
-                staff, arrangement, reason, is_manager=True, manager=manager
-            )
-            await send_email(to_email=manager.email, subject=subject, content=content)
+        # # Prepare and send email to staff
+        # subject, content = await craft_rejection_email_content(staff, arrangement, reason)
+        # await send_email(to_email=staff.email, subject=subject, content=content)
+
+        # # Prepare and send email to manager
+        # if manager:
+        #     subject, content = await craft_rejection_email_content(
+        #         staff, arrangement, reason, is_manager=True, manager=manager
+        #     )
+        #     await send_email(to_email=manager.email, subject=subject, content=content)
 
         return JSONResponse(
             status_code=200,
@@ -268,7 +280,12 @@ async def reject_wfh_request(
         raise HTTPException(status_code=406, detail=str(e))
 
     except SQLAlchemyError as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        print(f"Database error occurred: {str(e)}")  # Log the database error
+        raise HTTPException(status_code=500, detail="Database error")
+
+    except Exception as e:
+        print(f"An unexpected error occurred: {str(e)}")  # Log any other unexpected error
+        raise HTTPException(status_code=500, detail="An unexpected error occurred")
 
 
 @router.get("/view", response_model=List[schemas.ArrangementCreateResponse])

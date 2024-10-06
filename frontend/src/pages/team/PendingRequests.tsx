@@ -42,6 +42,7 @@ type TWFHRequest = {
   wfh_date: string;
   wfh_type: string;
   arrangement_id: number;
+  reason_description: string; // Include reason_description here
   approval_status: ApprovalStatus;
 };
 
@@ -78,7 +79,7 @@ export const PendingRequests = () => {
         try {
           const response = await axios.get(`${BACKEND_URL}/employee/get_staff_id/email?email=${storedUser}`);
           setUserId(response.data.staff_id); // Set the staff ID in state
-          localStorage.setItem("id",response.data.staff_id)
+          localStorage.setItem("id", response.data.staff_id)
         } catch (error) {
           console.error("Failed to fetch user ID:", error);
         }
@@ -88,8 +89,8 @@ export const PendingRequests = () => {
     fetchUserId();
   }, [storedUser]);
 
-    // Retrieve user's id from local storage
-    const storedId = localStorage.getItem("id");
+  // Retrieve user's id from local storage
+  const storedId = localStorage.getItem("id");
 
   useEffect(() => {
     const fetchRequests = async () => {
@@ -108,16 +109,29 @@ export const PendingRequests = () => {
 
   const handleRequestAction = async (
     action: TAction,
-    arrangement_id: number
+    arrangement_id: number,
+    reason_description: string
   ) => {
-    // Make sure to implement this action in your backend
     try {
-      await axios.post(`${BACKEND_URL}/update`, { action, arrangement_id }); // Adjust as per your update endpoint
-      console.log("Request updated successfully");
-      // Optionally, refetch requests after action
-      // fetchRequests();
+      const formData = new FormData();
+      formData.append('arrangement_id', arrangement_id.toString());
+      formData.append('reason', reason_description);
+  
+      // Log the payload before sending it
+      console.log('Payload being sent:', {
+        arrangement_id: arrangement_id,
+        reason: reason_description,
+      });
+  
+      await axios.post(`${BACKEND_URL}/arrangement/request/${action}`, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+  
+      console.log(`Request ${action}d successfully`);
     } catch (error) {
-      console.error("Error updating request:", error);
+      console.error(`Error ${action}ing request:`, error);
     }
   };
 
@@ -174,6 +188,7 @@ export const PendingRequests = () => {
               </TableCell>
               <TableCell sx={{ fontWeight: "bold" }}>WFH Date</TableCell>
               <TableCell sx={{ fontWeight: "bold" }}>WFH Type</TableCell>
+              <TableCell sx={{ fontWeight: "bold" }}>Reason</TableCell> {/* New Column */}
               <TableCell sx={{ fontWeight: "bold" }}>Approval Status</TableCell>
               <TableCell sx={{ fontWeight: "bold" }}>Action</TableCell>
             </TableRow>
@@ -181,7 +196,7 @@ export const PendingRequests = () => {
           <TableBody>
             {requests.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={5} align="center">No pending requests</TableCell>
+                <TableCell colSpan={6} align="center">No pending requests</TableCell>
               </TableRow>
             ) : (
               requests.map((request) => {
@@ -190,6 +205,7 @@ export const PendingRequests = () => {
                   wfh_date,
                   wfh_type,
                   approval_status,
+                  reason_description, // Ensure this is included
                   staff_id,
                 } = request; // Access properties directly
 
@@ -198,6 +214,7 @@ export const PendingRequests = () => {
                     <TableCell>{staff_id}</TableCell>
                     <TableCell>{wfh_date}</TableCell>
                     <TableCell>{wfh_type?.toUpperCase()}</TableCell>
+                    <TableCell>{reason_description}</TableCell> {/* Display Reason Description */}
                     <TableCell>
                       <Chip
                         color={getChipColor(approval_status as ApprovalStatus)}
@@ -214,7 +231,7 @@ export const PendingRequests = () => {
                           color="success"
                           startIcon={<CheckIcon />}
                           onClick={() =>
-                            handleRequestAction("approve", arrangement_id!)
+                            handleRequestAction("approve", arrangement_id!, reason_description!)
                           }
                         >
                           Approve
@@ -224,7 +241,7 @@ export const PendingRequests = () => {
                           color="error"
                           startIcon={<CloseIcon />}
                           onClick={() =>
-                            handleRequestAction("reject", arrangement_id!)
+                            handleRequestAction("reject", arrangement_id!, reason_description!)
                           }
                         >
                           Reject

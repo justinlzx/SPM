@@ -87,6 +87,8 @@ def update_arrangement_approval_status(db: Session, arrangement_id: int, action:
 
         arrangement.current_approval_status = status
         arrangement.status_reason = reason
+        # print("Arrangmenet reason is " + arrangement.status_reason)
+        print("Current status is " + arrangement.current_approval_status)
 
         log = create_request_arrangement_log(db, arrangement, action)
         arrangement.latest_log_id = log.log_id
