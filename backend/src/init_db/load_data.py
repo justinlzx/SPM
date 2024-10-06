@@ -96,10 +96,20 @@ def load_auth_data_from_csv(file_path: str):
         db.close()
 
 
-# Function to load arrangement data from arrangements.csv
 def load_arrangement_data_from_csv(file_path: str):
     db = SessionLocal()
     try:
+        # Check for empty file using pandas before processing the CSV
+        try:
+            df = pd.read_csv(file_path)
+            if df.empty:
+                print(f"Error: The file '{file_path}' is empty.")
+                return
+        except pd.errors.EmptyDataError:
+            print(f"Error: The file '{file_path}' is empty.")
+            return
+
+        # Process CSV data as expected
         with open(file_path, "r") as csvfile:
             csv_reader = csv.DictReader(csvfile)
             for row in csv_reader:
@@ -116,7 +126,7 @@ def load_arrangement_data_from_csv(file_path: str):
                         approving_officer=(
                             int(row["approving_officer"]) if row["approving_officer"] else None
                         ),
-                        update_datetime=update_datetime,  # Use the converted datetime object
+                        update_datetime=update_datetime,
                         batch_id=int(row["batch_id"]) if row["batch_id"] else None,
                     )
                     db.add(arrangement_log)
@@ -126,15 +136,15 @@ def load_arrangement_data_from_csv(file_path: str):
                     print(f"Data conversion error: {str(ve)}")
                 except Exception as e:
                     print(f"An unexpected error occurred while processing row: {str(e)}")
+                    # Handle errors for specific rows without rolling back the entire transaction
+                    continue
 
+        # Commit all valid rows after processing
         db.commit()
     except FileNotFoundError:
         print(f"Error: The file '{file_path}' was not found.")
-    except csv.Error as ce:
-        print(f"Error reading CSV file '{file_path}': {str(ce)}")
     except Exception as e:
         print(f"An unexpected error occurred: {str(e)}")
-        db.rollback()
+        db.rollback()  # Rollback if there's a major issue
     finally:
-        # Close the session
         db.close()

@@ -13,5 +13,6 @@ pip install pre-commit black flake8 docformatter
 echo -e "\nInstalling frontend dependencies\n"
 cd frontend
 npm install
+cd ..
 
 echo -e "\nSetup complete. Run 'source project_venv/bin/activate' to activate the virtual environment\n"
