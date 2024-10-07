@@ -33,22 +33,25 @@ async def create_wfh_request(
         staff = read_employee(wfh_request.staff_id, db)
         if not staff:
             raise HTTPException(status_code=404, detail="Employee not found")
-        
-        # Auto Approve for Jack Sim 
+
+        # Auto Approve for Jack Sim
         if wfh_request.staff_id == 130002:
             wfh_request.current_approval_status = "approved"
-            
-            #Create Arrangement and Prepare Response Data
+
+            # Create Arrangement and Prepare Response Data
             created_arrangements = crud.create_arrangements(db, [wfh_request])
             response_data = [
                 fit_model_to_schema(
                     {k: v for k, v in req.__dict__.items() if k != "_sa_instance_state"},
                     schemas.ArrangementCreateResponse,
-                    {"requester_staff_id": "staff_id", "approval_status": "current_approval_status"},
+                    {
+                        "requester_staff_id": "staff_id",
+                        "approval_status": "current_approval_status",
+                    },
                 )
                 for req in created_arrangements
             ]
-            
+
             # Send success notification email to the employee (staff)
             subject, content = await craft_email_content(staff, response_data, success=True)
             await send_email(to_email=staff.email, subject=subject, content=content)
@@ -64,7 +67,6 @@ async def create_wfh_request(
                     ],
                 },
             )
-        
 
         # Fetch manager info using the helper function from notifications
         manager_info = await fetch_manager_info(wfh_request.staff_id)
@@ -181,9 +183,9 @@ async def approve_wfh_request(
     db: Session = Depends(get_db),
 ) -> JSONResponse:
     try:
-        if reason is None: 
+        if reason is None:
             reason = "Approved by Manager"
-            
+
         # Update the arrangement status
         arrangement = crud.update_arrangement_approval_status(db, arrangement_id, "approve", reason)
 
@@ -192,22 +194,22 @@ async def approve_wfh_request(
         if not staff:
             raise HTTPException(status_code=404, detail="Employee not found")
 
-        # # Fetch manager info
-        # manager_info = await fetch_manager_info(staff.staff_id)
-        # manager = None
-        # if manager_info and manager_info["manager_id"] is not None:
-        #     manager = read_employee(manager_info["manager_id"], db)
+        # Fetch manager info
+        manager_info = await fetch_manager_info(staff.staff_id)
+        manager = None
+        if manager_info and manager_info["manager_id"] is not None:
+            manager = read_employee(manager_info["manager_id"], db)
 
-        # # Prepare and send email to staff
-        # subject, content = await craft_approval_email_content(staff, arrangement, reason)
-        # await send_email(to_email=staff.email, subject=subject, content=content)
+        # Prepare and send email to staff
+        subject, content = await craft_approval_email_content(staff, arrangement, reason)
+        await send_email(to_email=staff.email, subject=subject, content=content)
 
-        # # Prepare and send email to manager
-        # if manager:
-        #     subject, content = await craft_approval_email_content(
-        #         staff, arrangement, reason, is_manager=True, manager=manager
-        #     )
-        #     await send_email(to_email=manager.email, subject=subject, content=content)
+        # Prepare and send email to manager
+        if manager:
+            subject, content = await craft_approval_email_content(
+                staff, arrangement, reason, is_manager=True, manager=manager
+            )
+            await send_email(to_email=manager.email, subject=subject, content=content)
 
         return JSONResponse(
             status_code=200,
@@ -247,26 +249,25 @@ async def reject_wfh_request(
         if not staff:
             raise HTTPException(status_code=404, detail="Employee not found")
 
-        # print("The staff is found")
+        print("The staff is found")
 
-        # EMAIL FUNCTION THROWING ERROR 500
-        # # Fetch manager info
-        # manager_info = await fetch_manager_info(staff.staff_id)
-        # manager = None
-        # if manager_info and manager_info["manager_id"] is not None:
-        #     manager = read_employee(manager_info["manager_id"], db)
-        #     print("The manager is found")
+        # Fetch manager info
+        manager_info = await fetch_manager_info(staff.staff_id)
+        manager = None
+        if manager_info and manager_info["manager_id"] is not None:
+            manager = read_employee(manager_info["manager_id"], db)
+            print("The manager is found")
 
-        # # Prepare and send email to staff
-        # subject, content = await craft_rejection_email_content(staff, arrangement, reason)
-        # await send_email(to_email=staff.email, subject=subject, content=content)
+        # Prepare and send email to staff
+        subject, content = await craft_rejection_email_content(staff, arrangement, reason)
+        await send_email(to_email=staff.email, subject=subject, content=content)
 
-        # # Prepare and send email to manager
-        # if manager:
-        #     subject, content = await craft_rejection_email_content(
-        #         staff, arrangement, reason, is_manager=True, manager=manager
-        #     )
-        #     await send_email(to_email=manager.email, subject=subject, content=content)
+        # Prepare and send email to manager
+        if manager:
+            subject, content = await craft_rejection_email_content(
+                staff, arrangement, reason, is_manager=True, manager=manager
+            )
+            await send_email(to_email=manager.email, subject=subject, content=content)
 
         return JSONResponse(
             status_code=200,
