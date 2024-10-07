@@ -87,7 +87,8 @@ export const WfhSchedulePage = () => {
     const fetchUserId = async () => {
       if (storedUser) {
         try {
-          const response = await axios.get(`${BACKEND_URL}/employee/email?email=${storedUser}`);
+            const response = await axios.get(`${BACKEND_URL}/employee/email/${storedUser}`, {
+            });
           setUserId(response.data.staff_id);
           localStorage.setItem("id", response.data.staff_id);
         } catch (error) {

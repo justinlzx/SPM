@@ -77,7 +77,7 @@ export const PendingRequests = () => {
     const fetchUserId = async () => {
       if (storedUser) {
         try {
-          const response = await axios.get(`${BACKEND_URL}/employee/email?email=${storedUser}`);
+          const response = await axios.get(`${BACKEND_URL}/employee/email/${storedUser}`); // Call your /email endpoint
           setUserId(response.data.staff_id); // Set the staff ID in state
           localStorage.setItem("id", response.data.staff_id)
         } catch (error) {

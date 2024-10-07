@@ -26,8 +26,8 @@ def get_employee_by_staff_id(db: Session, staff_id: int) -> models.Employee:
     return employee
 
 
-def get_employee_by_email() -> models.Employee:
-    employee: models.Employee = crud.get_employee_by_email()
+def get_employee_by_email(db: Session, email: str) -> models.Employee:
+    employee: models.Employee = crud.get_employee_by_email(db, email)
 
     if not employee:
         raise exceptions.EmployeeNotFound()
