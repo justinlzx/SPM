@@ -1,104 +1,107 @@
+import os
 from typing import List
 
-from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.exc import NoResultFound
-from sqlalchemy.orm import Session
-from fastapi.responses import JSONResponse
-
-from ..database import get_db
-from ..employees.models import Employee, get_employee_by_staff_id, get_employees_by_manager_id
-from ..employees.schemas import EmployeeBase, EmployeePeerResponse
-from .crud import get_employee, get_employee_by_email
 import pandas as pd
-import os
+from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import JSONResponse
+from sqlalchemy.orm import Session
+
+from .. import utils
+from ..database import get_db
+from ..employees.models import Employee
+from ..employees.schemas import EmployeeBase, EmployeePeerResponse
+from . import exceptions, models, schemas, services
 
 router = APIRouter()
 
 
 @router.get("/manager/peermanager/{staff_id}", response_model=EmployeePeerResponse)
-def get_reporting_manager(staff_id: int, db: Session = Depends(get_db)):
+def get_reporting_manager_and_peer_employees(staff_id: int, db: Session = Depends(get_db)):
+    """Get the reporting manager and peer employees of an employee by their staff_id.
+
+    If the employee reports to themselves, the manager will be set to None.
+    """
     try:
-        emp: Employee = get_employee_by_staff_id(db, staff_id)
+        # Get manager
+        manager: models.Employee = services.get_manager_by_employee_staff_id(db, staff_id)
 
-        print(f"staff id: {emp.staff_id}")
-        manager: Employee = emp.manager
-
-        # If employee reports to themselves, set manager to None
-        if manager and manager.staff_id == emp.staff_id:
-            manager = None
-
-        # Get peer employees and convert them to Pydantic models
-        peer_list: List[Employee] = (
-            get_employees_by_manager_id(db, emp.reporting_manager) if emp.reporting_manager else []
+        # Get list of peer employees
+        peer_employees: List[models.Employee] = services.get_employees_by_manager_id(
+            db, manager.staff_id
         )
 
-        peer_employees = [EmployeeBase.model_validate(peer) for peer in peer_list]
+        # Convert peer employees to Pydantic model
+        peer_employees_pydantic: List[schemas.EmployeeBase] = (
+            utils.convert_model_to_pydantic_schema(peer_employees, schemas.EmployeeBase)
+        )
 
-        print(f"num results: {len(peer_employees)}")
+        print(f"Num results: {len(peer_employees)}")
 
-        return {
-            "manager_id": manager.staff_id if manager else None,
-            "peer_employees": peer_employees,
-        }
+        # Format to response model
+        response = schemas.EmployeePeerResponse(
+            manager_id=manager.staff_id, peer_employees=peer_employees_pydantic
+        )
 
-    except NoResultFound:
-        raise HTTPException(status_code=404, detail="Employee not found")
+        return response
+    except exceptions.EmployeeNotFound as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except exceptions.ManagerNotFound as e:
+        raise HTTPException(status_code=404, detail=str(e))
 
 
 @router.get("/{staff_id}", response_model=EmployeeBase)
-def read_employee(staff_id: int, db: Session = Depends(get_db)):
-    """
-    Get an employee by staff_id.
-    """
-    employee = get_employee(db, staff_id)
-    if not employee:
-        raise HTTPException(status_code=404, detail="Employee not found")
-    return employee  # Pydantic model (EmployeeBase) will handle serialization
+def get_employee_by_staff_id(staff_id: int, db: Session = Depends(get_db)):
+    """Get an employee by staff_id."""
+    try:
+        employee = services.get_employee_by_staff_id(db, staff_id)
+        return employee  # Pydantic model (EmployeeBase) will handle serialization
+    except exceptions.EmployeeNotFound as e:
+        raise HTTPException(status_code=404, detail=str(e))
 
 
 @router.get("/email/{email}", response_model=EmployeeBase)
-def read_employee_by_email(email: str, db: Session = Depends(get_db)):
-    """
-    Get an employee by email.
-    """
-    employee = get_employee_by_email(db, email)
-    if not employee:
-        raise HTTPException(status_code=404, detail="Employee not found")
-    return employee  # Pydantic model (EmployeeBase) will handle serialization
+def get_employee_by_email(email: str, db: Session = Depends(get_db)):
+    """Get an employee by email."""
+    try:
+        employee = services.get_employee_by_email(db, email)
+        return employee  # Pydantic model (EmployeeBase) will handle serialization
+    except exceptions.EmployeeNotFound as e:
+        raise HTTPException(status_code=404, detail=str(e))
 
 
 @router.get("/manager/employees/{staff_id}", response_model=List[EmployeeBase])
 def get_employees_under_manager(staff_id: int, db: Session = Depends(get_db)):
-    """
-    Get a list of employees under a specific manager by their staff_id.
-    """
-    # Check if the employee is a manager
-    employees_under_manager: List[Employee] = get_employees_by_manager_id(db, staff_id)
+    """Get a list of employees under a specific manager by their staff_id."""
+    try:
+        # Get employees that report to the given employee
+        employees_under_manager: List[Employee] = services.get_employees_by_manager_id(db, staff_id)
 
-    if not employees_under_manager:
-        raise HTTPException(status_code=404, detail="No employees found under this manager")
+        # Convert the list of employees to Pydantic model
+        employees_under_manager_pydantic = utils.convert_model_to_pydantic_schema(
+            employees_under_manager, EmployeeBase
+        )
 
-    # Convert to Pydantic models
-    return [EmployeeBase.model_validate(employee) for employee in employees_under_manager]
+        return employees_under_manager_pydantic  # Pydantic model (EmployeeBase) will handle serialization
+    except exceptions.ManagerNotFound as e:
+        raise HTTPException(status_code=404, detail=str(e))
 
 
 # Load the employee data from CSV
-CSV_FILE_PATH = os.path.join("src", "init_db", "employee.csv")  # Adjust the path as necessary
-employee_df = pd.read_csv(CSV_FILE_PATH)
+# CSV_FILE_PATH = os.path.join("src", "init_db", "employee.csv")  # Adjust the path as necessary
+# employee_df = pd.read_csv(CSV_FILE_PATH)
 
+# @router.get("/get_staff_id/email")
+# async def get_staff_id(email: str) -> JSONResponse:
+#     try:
+#         # Find the staff ID for the given email
+#         employee_record = employee_df[employee_df["Email"] == email]  # Use the correct column name
 
-@router.get("/get_staff_id/email")
-async def get_staff_id(email: str) -> JSONResponse:
-    try:
-        # Find the staff ID for the given email
-        employee_record = employee_df[employee_df["Email"] == email]  # Use the correct column name
+#         if not employee_record.empty:
+#             # Convert the staff_id to a native Python int
+#             staff_id = int(employee_record["Staff_ID"].values[0])  # Convert to int
+#             return JSONResponse(content={"staff_id": staff_id})
+#         else:
+#             raise HTTPException(status_code=404, detail="Employee not found")
 
-        if not employee_record.empty:
-            # Convert the staff_id to a native Python int
-            staff_id = int(employee_record["Staff_ID"].values[0])  # Convert to int
-            return JSONResponse(content={"staff_id": staff_id})
-        else:
-            raise HTTPException(status_code=404, detail="Employee not found")
-
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+#     except Exception as e:
+#         raise HTTPException(status_code=500, detail=str(e))

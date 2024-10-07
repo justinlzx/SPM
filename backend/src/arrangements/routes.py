@@ -7,8 +7,9 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from ..database import get_db
-from ..employees.models import Employee, get_employees_by_manager_id
-from ..employees.routes import read_employee  # Fetch employee info
+from ..employees.models import Employee
+from ..employees.routes import get_employee_by_staff_id  # Fetch employee info
+from ..employees.services import get_employees_by_manager_id
 from ..notifications.email_notifications import (  # Import helper functions
     craft_approval_email_content, craft_email_content,
     craft_rejection_email_content, fetch_manager_info, send_email)
@@ -27,7 +28,7 @@ async def create_wfh_request(
 ) -> JSONResponse:
     try:
         # Fetch employee (staff) information
-        staff = read_employee(wfh_request.staff_id, db)
+        staff = get_employee_by_staff_id(wfh_request.staff_id, db)
         if not staff:
             raise HTTPException(status_code=404, detail="Employee not found")
 
@@ -75,7 +76,7 @@ async def create_wfh_request(
             and manager_info["manager_id"] is not None
             and manager_info["manager_id"] != wfh_request.staff_id
         ):
-            manager = read_employee(manager_info["manager_id"], db)
+            manager = get_employee_by_staff_id(manager_info["manager_id"], db)
 
         # Handle recurring requests
         if wfh_request.is_recurring:
@@ -187,7 +188,7 @@ async def approve_wfh_request(
         arrangement = crud.update_arrangement_approval_status(db, arrangement_id, "approve", reason)
 
         # Fetch the staff (requester) information
-        staff = read_employee(arrangement.requester_staff_id, db)
+        staff = get_employee_by_staff_id(arrangement.requester_staff_id, db)
         if not staff:
             raise HTTPException(status_code=404, detail="Employee not found")
 
@@ -195,7 +196,7 @@ async def approve_wfh_request(
         manager_info = await fetch_manager_info(staff.staff_id)
         manager = None
         if manager_info and manager_info["manager_id"] is not None:
-            manager = read_employee(manager_info["manager_id"], db)
+            manager = get_employee_by_staff_id(manager_info["manager_id"], db)
 
         # Prepare and send email to staff
         subject, content = await craft_approval_email_content(staff, arrangement, reason)
@@ -242,7 +243,7 @@ async def reject_wfh_request(
         arrangement = crud.update_arrangement_approval_status(db, arrangement_id, "reject", reason)
 
         # Fetch the staff (requester) information
-        staff = read_employee(arrangement.requester_staff_id, db)
+        staff = get_employee_by_staff_id(arrangement.requester_staff_id, db)
         if not staff:
             raise HTTPException(status_code=404, detail="Employee not found")
 
@@ -252,7 +253,7 @@ async def reject_wfh_request(
         manager_info = await fetch_manager_info(staff.staff_id)
         manager = None
         if manager_info and manager_info["manager_id"] is not None:
-            manager = read_employee(manager_info["manager_id"], db)
+            manager = get_employee_by_staff_id(manager_info["manager_id"], db)
             print("The manager is found")
 
         # Prepare and send email to staff
