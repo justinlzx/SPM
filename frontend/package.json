@@ -36,6 +36,7 @@
     "react-date-picker": "^11.0.0",
     "react-datepicker": "^7.4.0",
     "react-dom": "^18.3.1",
+    "react-dropzone": "^14.2.9",
     "react-router-dom": "^6.26.2",
     "react-scripts": "5.0.1",
     "rollup": ">=2.79.2",
