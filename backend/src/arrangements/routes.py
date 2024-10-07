@@ -7,17 +7,14 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from ..database import get_db
-from ..employees.routes import read_employee  # Fetch employee info
 from ..employees.models import Employee, get_employees_by_manager_id
+from ..employees.routes import read_employee  # Fetch employee info
 from ..notifications.email_notifications import (  # Import helper functions
-    craft_email_content,
-    craft_approval_email_content,
-    craft_rejection_email_content,
-    fetch_manager_info,
-    send_email,
-)
+    craft_approval_email_content, craft_email_content,
+    craft_rejection_email_content, fetch_manager_info, send_email)
 from . import crud, schemas
-from .exceptions import ArrangementActionNotAllowedError, ArrangementNotFoundError
+from .exceptions import (ArrangementActionNotAllowedError,
+                         ArrangementNotFoundError)
 from .utils import fit_model_to_schema
 
 router = APIRouter()
@@ -46,7 +43,7 @@ async def create_wfh_request(
                     schemas.ArrangementCreateResponse,
                     {
                         "requester_staff_id": "staff_id",
-                        "approval_status": "current_approval_status",
+                        "current_approval_status": "approval_status",
                     },
                 )
                 for req in created_arrangements
@@ -135,7 +132,7 @@ async def create_wfh_request(
                 schemas.ArrangementCreateResponse,
                 {
                     "requester_staff_id": "staff_id",
-                    "approval_status": "current_approval_status",
+                    "current_approval_status": "approval_status",
                 },
             )
             for data in response_data
@@ -302,7 +299,7 @@ def get_all_arrangements(db: Session = Depends(get_db)):
                 schemas.ArrangementCreateResponse,
                 {
                     "requester_staff_id": "staff_id",
-                    "approval_status": "current_approval_status",
+                    "current_approval_status": "approval_status",
                 },
             )
             for data in response_data
@@ -342,9 +339,7 @@ def get_arrangements_by_manager(
     response_model=List[schemas.ArrangementCreateResponse],
 )
 def get_pending_requests_for_manager_and_team(staff_id: int, db: Session = Depends(get_db)):
-    """
-    Get the pending WFH requests for the manager's employees.
-    """
+    """Get the pending WFH requests for the manager's employees."""
     try:
         currentList = []
         # Check if the employee is a manager
@@ -377,7 +372,7 @@ def get_pending_requests_for_manager_and_team(staff_id: int, db: Session = Depen
                 schemas.ArrangementCreateResponse,
                 {
                     "requester_staff_id": "staff_id",
-                    "approval_status": "current_approval_status",
+                    "current_approval_status": "approval_status",
                 },
             )
             for data in response_data
