@@ -44,7 +44,7 @@ async def create_wfh_request(
                     schemas.ArrangementCreateResponse,
                     {
                         "requester_staff_id": "staff_id",
-                        "approval_status": "current_approval_status",
+                        "current_approval_status": "approval_status",
                     },
                 )
                 for req in created_arrangements
@@ -133,7 +133,7 @@ async def create_wfh_request(
                 schemas.ArrangementCreateResponse,
                 {
                     "requester_staff_id": "staff_id",
-                    "approval_status": "current_approval_status",
+                    "current_approval_status": "approval_status",
                 },
             )
             for data in response_data
@@ -300,7 +300,7 @@ def get_all_arrangements(db: Session = Depends(get_db)):
                 schemas.ArrangementCreateResponse,
                 {
                     "requester_staff_id": "staff_id",
-                    "approval_status": "current_approval_status",
+                    "current_approval_status": "approval_status",
                 },
             )
             for data in response_data
@@ -373,7 +373,7 @@ def get_pending_requests_for_manager_and_team(staff_id: int, db: Session = Depen
                 schemas.ArrangementCreateResponse,
                 {
                     "requester_staff_id": "staff_id",
-                    "approval_status": "current_approval_status",
+                    "current_approval_status": "approval_status",
                 },
             )
             for data in response_data
