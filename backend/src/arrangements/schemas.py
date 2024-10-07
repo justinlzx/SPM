@@ -43,7 +43,6 @@ class ArrangementCreate(ArrangementBase):
     current_approval_status: SkipJsonSchema[str] = Field(
         default="pending", exclude=True, title="Approval status of the request"
     )
-    approving_officer: int = Field(default=None, title="Staff ID of the approving officer")
     reason_description: str = Field(..., title="Reason for requesting the WFH")
     is_recurring: bool = Field(default=False, title="Flag to indicate if the request is recurring")
     recurring_end_date: str = Field(default=None, title="End date of a recurring WFH request")
@@ -83,6 +82,13 @@ class ArrangementCreateResponse(ArrangementBase):
 
 
 class ArrangementUpdate(ArrangementBase):
+    arrangement_id: int = Field(..., title="Unique identifier for the arrangement")
+
+    action: Literal["approve", "reject", "withdraw"] = Field(
+        exclude=True, title="Action to be taken on the WFH request"
+    )
+    reason_description: str = Field(..., title="Reason for the status update")
+    approving_officer: int = Field(exclude=True, title="Staff ID of the approving officer")
     staff_id: SkipJsonSchema[int] = Field(
         None, title="Staff ID of the employee who made the request", alias="requester_staff_id"
     )
@@ -96,17 +102,11 @@ class ArrangementUpdate(ArrangementBase):
     batch_id: SkipJsonSchema[Optional[int]] = Field(
         None, title="Unique identifier for the batch, if any"
     )  # Allow None
-    arrangement_id: int = Field(..., title="Unique identifier for the arrangement")
     update_datetime: SkipJsonSchema[datetime] = Field(
         default_factory=datetime.now,
         exclude=True,
         title="Datetime that the arrangement was updated",
     )
-    action: Literal["approve", "reject", "withdraw"] = Field(
-        exclude=True, title="Action to be taken on the WFH request"
-    )
-    reason_description: str = Field(..., title="Reason for the status update")
-    approving_officer: int = Field(exclude=True, title="Staff ID of the approving officer")
     current_approval_status: SkipJsonSchema[str] = Field(
         None, title="Approval status of the request"
     )
@@ -131,7 +131,25 @@ class ArrangementLog(ArrangementBase):
 
 
 class ArrangementResponse(ArrangementLog):
-    requester_info: EmployeeBase
+    arrangement_id: int = Field(..., title="Unique identifier for the arrangement")
+    update_datetime: datetime = Field(exclude=True, title="Datetime of the arrangement update")
+    requester_staff_id: int = Field(
+        ..., title="Staff ID of the employee who made the request", alias="requester_staff_id"
+    )
+    approval_status: Literal["pending", "approved", "rejected", "withdrawn"] = Field(
+        ..., title="Current status of the WFH request", alias="current_approval_status"
+    )
+    approving_officer: Optional[int] = Field(
+        None, title="Staff ID of the approving officer"
+    )  # Allow None
+    reason_description: str = Field(..., title="Reason for the status update")
+    batch_id: Optional[int] = Field(
+        None, title="Unique identifier for the batch, if any"
+    )  # Allow None
+    latest_log_id: int = Field(
+        None, title="Unique identifier for the latest log entry"
+    )  # Allow None
+    # requester_info: EmployeeBase
 
     class Config:
         orm_mode = True

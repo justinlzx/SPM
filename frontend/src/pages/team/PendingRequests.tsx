@@ -121,9 +121,11 @@ export const PendingRequests = () => {
       console.log('Payload being sent:', {
         arrangement_id: arrangement_id,
         reason: reason_description,
+        action: action,
+        approving_officer: userId,
       });
   
-      await axios.post(`${BACKEND_URL}/arrangement/request/${action}`, formData, {
+      await axios.put(`${BACKEND_URL}/arrangement/request`, formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
