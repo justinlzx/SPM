@@ -1,4 +1,3 @@
-from datetime import datetime, timedelta
 from typing import Annotated, List, Optional
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Query
@@ -7,13 +6,13 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from ..database import get_db
+from ..employees import exceptions as employee_exceptions
+from ..employees import models as employee_models
+from ..employees import services as employee_services
 from ..employees.models import Employee
-from ..employees.routes import get_employee_by_staff_id  # Fetch employee info
 from ..employees.services import get_employees_by_manager_id
-from ..notifications.email_notifications import (  # Import helper functions
-    craft_approval_email_content, craft_email_content,
-    craft_rejection_email_content, fetch_manager_info, send_email)
-from . import crud, schemas
+from ..notifications.email_notifications import craft_and_send_email
+from . import crud, schemas, services
 from .exceptions import (ArrangementActionNotAllowedError,
                          ArrangementNotFoundError)
 from .utils import fit_model_to_schema
@@ -27,191 +26,101 @@ async def create_wfh_request(
     db: Session = Depends(get_db),
 ) -> JSONResponse:
     try:
-        # Fetch employee (staff) information
-        staff = get_employee_by_staff_id(wfh_request.staff_id, db)
-        if not staff:
-            raise HTTPException(status_code=404, detail="Employee not found")
-
-        # Auto Approve for Jack Sim
-        if wfh_request.staff_id == 130002:
-            wfh_request.current_approval_status = "approved"
-
-            # Create Arrangement and Prepare Response Data
-            created_arrangements = crud.create_arrangements(db, [wfh_request])
-            response_data = [
-                fit_model_to_schema(
-                    {k: v for k, v in req.__dict__.items() if k != "_sa_instance_state"},
-                    schemas.ArrangementCreateResponse,
-                    {
-                        "requester_staff_id": "staff_id",
-                        "current_approval_status": "approval_status",
-                    },
-                )
-                for req in created_arrangements
-            ]
-
-            # Send success notification email to the employee (staff)
-            subject, content = await craft_email_content(staff, response_data, success=True)
-            await send_email(to_email=staff.email, subject=subject, content=content)
-
-            # Return response with status approved
-            return JSONResponse(
-                status_code=201,
-                content={
-                    "message": "Request submitted and approved successfully",
-                    "data": [
-                        {**data.model_dump(), "update_datetime": data.update_datetime.isoformat()}
-                        for data in response_data
-                    ],
-                },
-            )
+        # Check that employee exists
+        requester_employee: employee_models.Employee = employee_services.get_employee_by_staff_id(
+            db, wfh_request.staff_id
+        )
 
         # Fetch manager info using the helper function from notifications
-        manager_info = await fetch_manager_info(wfh_request.staff_id)
-        manager = None
+        # manager_info = await fetch_manager_info(wfh_request.staff_id)
+        manager: employee_models.Employee = employee_services.get_manager_by_employee_staff_id(
+            db, wfh_request.staff_id
+        )
 
-        # Only fetch manager if manager_id is not null
-        if (
-            manager_info
-            and manager_info["manager_id"] is not None
-            and manager_info["manager_id"] != wfh_request.staff_id
-        ):
-            manager = get_employee_by_staff_id(manager_info["manager_id"], db)
+        created_arrangements: List[schemas.ArrangementCreateResponse] = (
+            services.create_arrangements_from_request(db, wfh_request)
+        )
 
-        # Handle recurring requests
-        if wfh_request.is_recurring:
-            missing_fields = [
-                field
-                for field in [
-                    "recurring_end_date",
-                    "recurring_frequency_number",
-                    "recurring_frequency_unit",
-                    "recurring_occurrences",
-                ]
-                if getattr(wfh_request, field) is None
-            ]
-            if missing_fields:
-                raise HTTPException(
-                    status_code=400,
-                    detail=(
-                        "Recurring WFH request requires the following fields to be filled: "
-                        f"{', '.join(missing_fields)}"
-                    ),
-                )
+        # Craft and send email
+        await craft_and_send_email(
+            requester_employee, created_arrangements, "create", success=True, manager=manager
+        )
 
-            batch = crud.create_recurring_request(db, wfh_request)
-            wfh_request.batch_id = batch.batch_id
-
-            arrangements_list = []
-
-            for i in range(wfh_request.recurring_occurrences):
-                arrangement_copy = wfh_request.model_copy()
-
-                if wfh_request.recurring_frequency_unit == "week":
-                    arrangement_copy.wfh_date = (
-                        datetime.strptime(wfh_request.wfh_date, "%Y-%m-%d")
-                        + timedelta(weeks=i * wfh_request.recurring_frequency_number)
-                    ).strftime("%Y-%m-%d")
-                else:
-                    arrangement_copy.wfh_date = (
-                        datetime.strptime(wfh_request.wfh_date, "%Y-%m-%d")
-                        + timedelta(days=i * wfh_request.recurring_frequency_number * 7)
-                    ).strftime("%Y-%m-%d")
-
-                arrangements_list.append(arrangement_copy)
-        else:
-            arrangements_list = [wfh_request]
-
-        created_arrangements = crud.create_arrangements(db, arrangements_list)
-
-        response_data = [req.__dict__ for req in created_arrangements]
-        for data in response_data:
-            data.pop("_sa_instance_state", None)
-        response_data = [
-            fit_model_to_schema(
-                data,
-                schemas.ArrangementCreateResponse,
-                {
-                    "requester_staff_id": "staff_id",
-                    "current_approval_status": "approval_status",
-                },
-            )
-            for data in response_data
-        ]
-
-        # Craft and send success notification email to the employee (staff)
-        subject, content = await craft_email_content(staff, response_data, success=True)
-        await send_email(to_email=staff.email, subject=subject, content=content)
-
-        # Only send notification to the manager if the manager_id is not null
-        if manager:
-            subject, content = await craft_email_content(
-                staff, response_data, success=True, is_manager=True, manager=manager
-            )
-            await send_email(to_email=manager.email, subject=subject, content=content)
+        response_message = f"Request submitted{' and auto-approved ' if wfh_request.current_approval_status == 'approved' else ' '}successfully"
 
         return JSONResponse(
             status_code=201,
             content={
-                "message": "Request submitted successfully",
+                "message": response_message,
                 "data": [
                     {
-                        **data.model_dump(),
-                        "update_datetime": (data.update_datetime.isoformat()),
+                        **arrangement.model_dump(),
+                        "update_datetime": (arrangement.update_datetime.isoformat()),
                     }
-                    for data in response_data
+                    for arrangement in created_arrangements
                 ],
             },
         )
 
+    except employee_exceptions.EmployeeNotFound as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+    # TODO: Custom exception handling for Pydantic validation errors
+
     except SQLAlchemyError as e:
         # Craft and send failure notification email to the employee (staff)
-        subject, content = await craft_email_content(
-            staff, response_data=None, success=False, error_message=str(e)
+        craft_and_send_email(
+            requester_employee, created_arrangements, "create", success=False, error_message=str(e)
         )
-        await send_email(to_email=staff.email, subject=subject, content=content)
 
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/request/approve")
+@router.put("/request")
 async def approve_wfh_request(
-    arrangement_id: int = Form(...),
-    reason: str = Form(...),
+    wfh_update: Annotated[schemas.ArrangementUpdate, Form()],
     db: Session = Depends(get_db),
 ) -> JSONResponse:
     try:
-        if reason is None:
-            reason = "Approved by Manager"
-
         # Update the arrangement status
-        arrangement = crud.update_arrangement_approval_status(db, arrangement_id, "approve", reason)
+        updated_arrangement = services.update_arrangement_approval_status(db, wfh_update)
 
         # Fetch the staff (requester) information
-        staff = get_employee_by_staff_id(arrangement.requester_staff_id, db)
-        if not staff:
-            raise HTTPException(status_code=404, detail="Employee not found")
+        requester_employee: employee_models.Employee = employee_services.get_employee_by_staff_id(
+            db, updated_arrangement.staff_id
+        )
 
         # Fetch manager info
-        manager_info = await fetch_manager_info(staff.staff_id)
-        manager = None
-        if manager_info and manager_info["manager_id"] is not None:
-            manager = get_employee_by_staff_id(manager_info["manager_id"], db)
+        approving_officer: employee_models.Employee = employee_services.get_employee_by_staff_id(
+            db, updated_arrangement.approving_officer
+        )
 
-        # Prepare and send email to staff
-        subject, content = await craft_approval_email_content(staff, arrangement, reason)
-        await send_email(to_email=staff.email, subject=subject, content=content)
+        # Prepare and send email to staff and approving officer
+        await craft_and_send_email(
+            requester_employee,
+            [updated_arrangement],
+            "approve",
+            success=True,
+            manager=approving_officer,
+        )
 
-        # Prepare and send email to manager
-        if manager:
-            subject, content = await craft_approval_email_content(
-                staff, arrangement, reason, is_manager=True, manager=manager
-            )
-            await send_email(to_email=manager.email, subject=subject, content=content)
+        # Custom message based on the action performed
+        action_message = {
+            "approved": "Request approved successfully",
+            "rejected": "Request rejected successfully",
+            "withdrawn": "Request withdrawn successfully",
+            "cancelled": "Request cancelled successfully",
+        }.get(updated_arrangement.current_approval_status, "Request processed successfully")
 
         return JSONResponse(
-            status_code=200,
-            content={"message": "Request approved successfully and notifications sent"},
+            status_code=201,
+            content={
+                "message": f"{action_message} and notifications sent",
+                "data": {
+                    **updated_arrangement.model_dump(),
+                    "update_datetime": (updated_arrangement.update_datetime.isoformat()),
+                },
+            },
         )
 
     except ArrangementNotFoundError as e:
@@ -224,67 +133,9 @@ async def approve_wfh_request(
         print(f"Database error occurred: {str(e)}")  # Log the database error
         raise HTTPException(status_code=500, detail="Database error")
 
-    except Exception as e:
-        print(f"An unexpected error occurred: {str(e)}")  # Log any other unexpected error
-        raise HTTPException(status_code=500, detail="An unexpected error occurred")
-
-
-@router.post("/request/reject")
-async def reject_wfh_request(
-    arrangement_id: int = Form(...),
-    reason: str = Form(...),
-    db: Session = Depends(get_db),
-) -> JSONResponse:
-    try:
-        # Debugging: print the received payload
-        # print(f"Received payload: arrangement_id={arrangement_id}, reason={reason}")
-
-        # Update the arrangement status
-        arrangement = crud.update_arrangement_approval_status(db, arrangement_id, "reject", reason)
-
-        # Fetch the staff (requester) information
-        staff = get_employee_by_staff_id(arrangement.requester_staff_id, db)
-        if not staff:
-            raise HTTPException(status_code=404, detail="Employee not found")
-
-        print("The staff is found")
-
-        # Fetch manager info
-        manager_info = await fetch_manager_info(staff.staff_id)
-        manager = None
-        if manager_info and manager_info["manager_id"] is not None:
-            manager = get_employee_by_staff_id(manager_info["manager_id"], db)
-            print("The manager is found")
-
-        # Prepare and send email to staff
-        subject, content = await craft_rejection_email_content(staff, arrangement, reason)
-        await send_email(to_email=staff.email, subject=subject, content=content)
-
-        # Prepare and send email to manager
-        if manager:
-            subject, content = await craft_rejection_email_content(
-                staff, arrangement, reason, is_manager=True, manager=manager
-            )
-            await send_email(to_email=manager.email, subject=subject, content=content)
-
-        return JSONResponse(
-            status_code=200,
-            content={"message": "Request rejected successfully and notifications sent"},
-        )
-
-    except ArrangementNotFoundError as e:
-        raise HTTPException(status_code=404, detail=str(e))
-
-    except ArrangementActionNotAllowedError as e:
-        raise HTTPException(status_code=406, detail=str(e))
-
-    except SQLAlchemyError as e:
-        print(f"Database error occurred: {str(e)}")  # Log the database error
-        raise HTTPException(status_code=500, detail="Database error")
-
-    except Exception as e:
-        print(f"An unexpected error occurred: {str(e)}")  # Log any other unexpected error
-        raise HTTPException(status_code=500, detail="An unexpected error occurred")
+    # except Exception as e:
+    #     print(f"An unexpected error occurred: {str(e)}")  # Log any other unexpected error
+    #     raise HTTPException(status_code=500, detail="An unexpected error occurred")
 
 
 @router.get("/view", response_model=List[schemas.ArrangementCreateResponse])

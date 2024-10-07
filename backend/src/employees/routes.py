@@ -1,9 +1,6 @@
-import os
 from typing import List
 
-import pandas as pd
 from fastapi import APIRouter, Depends, HTTPException
-from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
 from .. import utils
@@ -81,7 +78,7 @@ def get_employees_under_manager(staff_id: int, db: Session = Depends(get_db)):
             employees_under_manager, EmployeeBase
         )
 
-        return employees_under_manager_pydantic  # Pydantic model (EmployeeBase) will handle serialization
+        return employees_under_manager_pydantic
     except exceptions.ManagerNotFound as e:
         raise HTTPException(status_code=404, detail=str(e))
 
@@ -94,7 +91,7 @@ def get_employees_under_manager(staff_id: int, db: Session = Depends(get_db)):
 # async def get_staff_id(email: str) -> JSONResponse:
 #     try:
 #         # Find the staff ID for the given email
-#         employee_record = employee_df[employee_df["Email"] == email]  # Use the correct column name
+#         employee_record = employee_df[employee_df["Email"] == email]  # Use the correct column
 
 #         if not employee_record.empty:
 #             # Convert the staff_id to a native Python int

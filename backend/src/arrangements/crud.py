@@ -1,21 +1,21 @@
+from datetime import datetime
 from typing import List
 
 # from pydantic import ValidationError
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
-from . import schemas
-from .models import LatestArrangement, RecurringRequest, ArrangementLog
-from .exceptions import ArrangementActionNotAllowedError, ArrangementNotFoundError
+from . import exceptions, models, schemas
 from .utils import fit_model_to_model, fit_schema_to_model
-from datetime import datetime
 
 
-def create_recurring_request(db: Session, request: schemas.ArrangementCreate) -> RecurringRequest:
+def create_recurring_request(
+    db: Session, request: schemas.ArrangementCreate
+) -> models.RecurringRequest:
     try:
         batch = fit_schema_to_model(
             request,
-            RecurringRequest,
+            models.RecurringRequest,
             {"update_datetime": "request_datetime", "wfh_date": "start_date"},
         )
         db.add(batch)
@@ -28,69 +28,35 @@ def create_recurring_request(db: Session, request: schemas.ArrangementCreate) ->
 
 
 def create_arrangements(
-    db: Session, arrangements: List[schemas.ArrangementCreate]
-) -> List[LatestArrangement]:
+    db: Session, arrangements: List[models.LatestArrangement]
+) -> List[models.LatestArrangement]:
     try:
-        created_arrangements_list = []
+        created_arrangements = []
         for arrangement in arrangements:
-            #Auto Approve for Jack Sim 
-            if arrangement.staff_id == 130002:
-                arrangement.current_approval_status = "approved"
-                
-                
-            created_arrangement = fit_schema_to_model(arrangement, LatestArrangement)
-            created_arrangements_list.append(created_arrangement)
+            db.add(arrangement)
+            db.flush()
+            created_arrangements.append(arrangement)
+            created_arrangement_log = create_arrangement_log(db, arrangement, "create")
+            arrangement.latest_log_id = created_arrangement_log.log_id
+            db.add(created_arrangement_log)
+            db.flush()
 
-        db.add_all(created_arrangements_list)
-        db.flush()
+        db.commit()
 
-        # Create logs for each arrangement and update arrangement with log ID
-        for arrangement in created_arrangements_list:
-            log = create_request_arrangement_log(db, arrangement, "create")
-            arrangement.latest_log_id = log.log_id  # Update arrangement with log ID
-            db.add(arrangement)  # Re-add the updated arrangement to the session
+        for created_arrangement in created_arrangements:
+            db.refresh(created_arrangement)
 
-        db.commit()  # Commit both arrangements and logs
-
-        # Refresh all arrangements after commit
-        for arrangement in created_arrangements_list:
-            db.refresh(arrangement)
-        return created_arrangements_list
+        return created_arrangements
     except SQLAlchemyError as e:
         db.rollback()
         raise e
 
 
-def update_arrangement_approval_status(db: Session, arrangement_id: int, action: str, reason: str):
+def update_arrangement_approval_status(
+    db: Session, arrangement: models.LatestArrangement, action: str
+) -> models.LatestArrangement:
     try:
-        arrangement = db.query(LatestArrangement).get(arrangement_id)
-
-        if not arrangement:
-            raise ArrangementNotFoundError(arrangement_id)
-        
-        #Auto Approve for Jack Sim
-        if arrangement.requester_staff_id == 130002:
-            raise ArrangementActionNotAllowedError(arrangement_id, action)
-
-        status = {
-            "approve": "approved",
-            "reject": "rejected",
-            "withdraw": "withdrawn",
-            "cancel": "cancelled",
-        }.get(action)
-
-        if arrangement.current_approval_status != "pending" and action in [
-            "approve",
-            "reject",
-        ]:
-            raise ArrangementActionNotAllowedError(arrangement_id, action)
-
-        arrangement.current_approval_status = status
-        arrangement.status_reason = reason
-        # print("Arrangmenet reason is " + arrangement.status_reason)
-        print("Current status is " + arrangement.current_approval_status)
-
-        log = create_request_arrangement_log(db, arrangement, action)
+        log = create_arrangement_log(db, arrangement, action)
         arrangement.latest_log_id = log.log_id
 
         db.commit()
@@ -101,26 +67,20 @@ def update_arrangement_approval_status(db: Session, arrangement_id: int, action:
         raise e
 
 
-def create_request_arrangement_log(
-    db: Session, arrangement: LatestArrangement, action: str
-) -> ArrangementLog:
+def create_arrangement_log(
+    db: Session, arrangement: models.LatestArrangement, action: str
+) -> models.ArrangementLog:
     try:
-        arrangement_log = fit_model_to_model(
+        arrangement_log: models.ArrangementLog = fit_model_to_model(
             arrangement,
-            ArrangementLog,
+            models.ArrangementLog,
             {
                 "current_approval_status": "approval_status",
             },
         )
         arrangement_log.update_datetime = datetime.utcnow()
-        
-        #Auto Approve for Jack Sim
-        if arrangement.requester_staff_id == 130002:
-            arrangement_log.approval_status = "approved"
-        else:
-            arrangement_log.approval_status = arrangement.current_approval_status
-            
-        #arrangement_log.approval_status = arrangement.current_approval_status
+
+        # arrangement_log.approval_status = arrangement.current_approval_status
         db.add(arrangement_log)
         db.flush()
         return arrangement_log
@@ -129,22 +89,24 @@ def create_request_arrangement_log(
         raise e
 
 
-def get_all_arrangements(db: Session) -> List[LatestArrangement]:
+def get_all_arrangements(db: Session) -> List[models.LatestArrangement]:
     try:
-        return db.query(LatestArrangement).all()
+        return db.query(models.LatestArrangement).all()
     except SQLAlchemyError as e:
         raise e
 
 
+def get_arrangement_by_id(db: Session, arrangement_id: int) -> models.LatestArrangement:
+    return db.query(models.LatestArrangement).get(arrangement_id)
+
+
 def get_pending_requests_by_staff_ids(db: Session, staff_ids: List[int]):
-    """
-    Fetch the pending WFH requests for a list of staff IDs.
-    """
+    """Fetch the pending WFH requests for a list of staff IDs."""
     try:
         print(f"Fetching pending requests for staff IDs: {staff_ids}")
         results = (
-            db.query(LatestArrangement)
-            .filter(LatestArrangement.requester_staff_id.in_(staff_ids))
+            db.query(models.LatestArrangement)
+            .filter(models.LatestArrangement.requester_staff_id.in_(staff_ids))
             .all()
         )
         print(f"Retrieved pending requests: {results}")
