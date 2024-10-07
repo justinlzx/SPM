@@ -90,18 +90,6 @@ def fit_model_to_model(
 
 
 async def upload_file(staff_id, update_datetime, file_obj, s3_client=None):
-    """Upload a file to an S3 bucket
-
-    :param file_name: File to upload
-    :param bucket: Bucket to upload to
-    :param object_name: S3 object name. If not specified then file_name is used
-    :return: True if file was uploaded, else False
-    """
-
-    # TODO: change this to get the staff_id and update_datetime from the request
-    staff_id = 1
-    update_datetime = 1
-
     FILE_TYPE = ["image/jpeg", "image/png", "application/pdf"]
     if file_obj.content_type not in FILE_TYPE:
         raise HTTPException(
@@ -109,26 +97,23 @@ async def upload_file(staff_id, update_datetime, file_obj, s3_client=None):
             detail="Invalid file type. Supported file types are JPEG, PNG, and PDF",
         )
 
-    # Read the file content and convert to BytesIO
-    file_content = await file_obj.read()
-    file_obj = BytesIO(file_content)
-
-    # validate file size and file type
+    # Check file size before reading content
     MB = 1000000
-
-    if len(file_content) > 5 * MB:
+    if file_obj.size > 5 * MB:  # Assuming file_obj has a 'size' attribute
         raise HTTPException(status_code=400, detail="File size exceeds 5MB")
 
     S3_BUCKET_NAME = os.getenv("AWS_S3_BUCKET_NAME")
-    OBJECT_NAME = f"{staff_id}/{update_datetime}/{file_obj}"
+    object_name = (
+        f"{staff_id}/{update_datetime}/{file_obj.filename}"  # Use the original filename
+    )
 
     # Upload the file
     s3_client = boto3.client("s3")
     try:
-        response = s3_client.upload_fileobj(
-            file_obj,
+        s3_client.upload_fileobj(
+            file_obj.file,  # Use the file-like object directly
             S3_BUCKET_NAME,
-            OBJECT_NAME,
+            object_name,
             ExtraArgs={
                 "Metadata": {
                     "staff_id": str(staff_id),
@@ -137,14 +122,12 @@ async def upload_file(staff_id, update_datetime, file_obj, s3_client=None):
             },
         )
 
-        print(response)
+        # file_url = f"https://{S3_BUCKET_NAME}.s3.amazonaws.com/{OBJECT_NAME}"
 
-        file_url = f"https://{S3_BUCKET_NAME}.s3.amazonaws.com/{OBJECT_NAME}"
-
-        logger.info(f"File uploaded successfully: {file_url}")
+        logger.info(f"File uploaded successfully: {object_name}")
         return {
             "message": "File uploaded successfully",
-            "file_url": file_url,
+            "file_url": object_name,
         }
     except Exception as e:
         print(f"An error occurred: {str(e)}")  # Log the error for debugging
@@ -160,6 +143,7 @@ async def delete_file(staff_id, update_datetime, s3_client=None):
 
     S3_BUCKET_NAME = os.getenv("AWS_S3_BUCKET_NAME")
     FILE_PATH = f"{staff_id}/{update_datetime}"
+    logger.info(f"Deleting file: {FILE_PATH}")
     try:
         s3_client.delete_object(Bucket=S3_BUCKET_NAME, Key=FILE_PATH)
 

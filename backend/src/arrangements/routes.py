@@ -1,5 +1,6 @@
+from datetime import datetime
 import json
-from typing import Annotated, List, Optional
+from typing import Annotated, List, Literal, Optional
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
 from fastapi.responses import JSONResponse
@@ -158,28 +159,59 @@ def get_team_arrangements(
 
 @router.post("/request")
 async def create_wfh_request(
-    wfh_request: Annotated[str, Form(...)],
-    supporting_docs: Annotated[List[UploadFile], File(upload_multiple=True)],
+    requester_staff_id: int = Form(..., title="Staff ID of the requester"),
+    wfh_date: str = Form(..., title="Date of the WFH request"),
+    wfh_type: Literal["full", "am", "pm"] = Form(..., title="Type of WFH arrangement"),
+    approving_officer: int = Form(..., title="Staff ID of the approving officer"),
+    reason_description: str = Form(..., title="Reason for requesting the WFH"),
+    is_recurring: Optional[bool] = Form(
+        False, title="Flag to indicate if the request is recurring"
+    ),
+    recurring_end_date: Optional[str] = Form(
+        None, title="End date of a recurring WFH request"
+    ),
+    recurring_frequency_number: Optional[int] = Form(
+        None, title="Numerical frequency of the recurring WFH request"
+    ),
+    recurring_frequency_unit: Optional[Literal["week", "month"]] = Form(
+        None, title="Unit of the frequency of the recurring WFH request"
+    ),
+    recurring_occurrences: Optional[int] = Form(
+        None, title="Number of occurrences of the recurring WFH request"
+    ),
+    batch_id: Optional[int] = Form(
+        None, title="Unique identifier for the batch, if any"
+    ),
+    supporting_docs: Annotated[
+        Optional[list[UploadFile]], File(upload_multiple=True)
+    ] = None,
     db: Session = Depends(get_db),
 ):
-    try:
-        wfh_request_data = json.loads(wfh_request)
-    except json.JSONDecodeError:
-        raise HTTPException(
-            status_code=400, detail="Invalid JSON in Field: wfh_request"
-        )
 
-    # Rename the field if necessary
-    if "requester_staff_id" in wfh_request_data:
-        wfh_request_data["staff_id"] = wfh_request_data.pop("requester_staff_id")
+    update_datetime = datetime.now()
+    current_approval_status = "pending"
 
-    # Validate and create the ArrangementCreate model
-    try:
-        wfh_request_model = ArrangementCreate(**wfh_request_data)
-    except ValidationError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+    # # Rename the field if necessary
+    # if "requester_staff_id" in wfh_request_data:
+    #     wfh_request_data["staff_id"] = wfh_request_data.pop("requester_staff_id")
 
-    return await create_wfh_request_service(wfh_request_model, supporting_docs, db)
+    wfh_request: ArrangementCreate = {
+        "approving_officer": approving_officer,
+        "reason_description": reason_description,
+        "is_recurring": is_recurring,
+        "recurring_end_date": recurring_end_date,
+        "recurring_frequency_number": recurring_frequency_number,
+        "recurring_frequency_unit": recurring_frequency_unit,
+        "recurring_occurrences": recurring_occurrences,
+        "batch_id": batch_id,
+        "update_datetime": update_datetime,
+        "current_approval_status": current_approval_status,
+        "wfh_date": wfh_date,
+        "wfh_type": wfh_type,
+        "staff_id": requester_staff_id,
+    }
+
+    return await create_wfh_request_service(wfh_request, supporting_docs, db)
 
 
 @router.put("/{arrangement_id}/status", summary="Update the status of a WFH request")

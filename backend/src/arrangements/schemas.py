@@ -67,6 +67,19 @@ class ArrangementCreate(ArrangementBase):
     batch_id: Optional[int] = Field(
         default=None, title="Unique identifier for the batch, if any"
     )
+
+    def model_dump(self, **kwargs):
+        data = super().model_dump(**kwargs)
+        # Include excluded fields in the dump
+        data["update_datetime"] = self.update_datetime
+        data["current_approval_status"] = self.current_approval_status
+        return data
+
+    class Config:
+        arbitrary_types_allowed = True
+
+
+class ArrangementCreateWithFile(ArrangementCreate):
     supporting_doc_1: Optional[str] = Field(
         default=None, title="URL of the first supporting document"
     )
@@ -83,9 +96,6 @@ class ArrangementCreate(ArrangementBase):
         data["update_datetime"] = self.update_datetime
         data["current_approval_status"] = self.current_approval_status
         return data
-
-    class Config:
-        arbitrary_types_allowed = True
 
 
 class ArrangementCreateResponse(ArrangementBase):
