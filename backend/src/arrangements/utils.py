@@ -140,13 +140,10 @@ async def upload_file(staff_id, update_datetime, file_obj, s3_client=None):
         file_url = f"https://{S3_BUCKET_NAME}.s3.amazonaws.com/{OBJECT_NAME}"
 
         logger.info(f"File uploaded successfully: {file_url}")
-        return JSONResponse(
-            status_code=200,
-            content={
-                "message": "File uploaded successfully",
-                "file_url": file_url,
-            },
-        )
+        return {
+            "message": "File uploaded successfully",
+            "file_url": file_url,
+        }
     except Exception as e:
         print(f"An error occurred: {str(e)}")  # Log the error for debugging
         raise HTTPException(status_code=500, detail=str(e))
@@ -167,9 +164,7 @@ async def delete_file(staff_id, update_datetime, s3_client=None):
         logger.info(f"File deleted successfully: {FILE_PATH}")
         return JSONResponse(
             status_code=200,
-            content={
-                "message": "File deleted successfully"
-            },
+            content={"message": "File deleted successfully"},
         )
     except Exception as e:
         return JSONResponse(

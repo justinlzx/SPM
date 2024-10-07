@@ -67,6 +67,15 @@ class ArrangementCreate(ArrangementBase):
     batch_id: Optional[int] = Field(
         default=None, title="Unique identifier for the batch, if any"
     )
+    supporting_doc_1: Optional[str] = Field(
+        default=None, title="URL of the first supporting document"
+    )
+    supporting_doc_2: Optional[str] = Field(
+        default=None, title="URL of the second supporting document"
+    )
+    supporting_doc_3: Optional[str] = Field(
+        default=None, title="URL of the third supporting document"
+    )
 
     def model_dump(self, **kwargs):
         data = super().model_dump(**kwargs)

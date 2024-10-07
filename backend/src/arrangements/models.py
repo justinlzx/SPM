@@ -54,6 +54,21 @@ class ArrangementLog(Base):
         nullable=True,
         doc="Unique identifier for the batch, if any",
     )
+    supporting_doc_1 = Column(
+        String(length=255),
+        nullable=True,
+        doc="URL of the first supporting document",
+    )
+    supporting_doc_2 = Column(
+        String(length=255),
+        nullable=True,
+        doc="URL of the second supporting document",
+    )
+    supporting_doc_3 = Column(
+        String(length=255),
+        nullable=True,
+        doc="URL of the third supporting document",
+    )
 
     requester_info = relationship(
         "Employee",
@@ -120,12 +135,12 @@ class LatestArrangement(Base):
         nullable=False,
         doc="Reason for the status update",
     )
-    # batch_id = Column(
-    #     Integer,
-    #     ForeignKey("recurring_requests.batch_id"),
-    #     nullable=True,
-    #     doc="Unique identifier for the batch",
-    # )
+    batch_id = Column(
+        Integer,
+        ForeignKey("recurring_requests.batch_id"),
+        nullable=True,
+        doc="Unique identifier for the batch",
+    )
     latest_log_id = Column(
         Integer,
         ForeignKey("arrangement_logs.log_id", use_alter=True, name="fk_latest_log_id"),
@@ -144,6 +159,22 @@ class LatestArrangement(Base):
         foreign_keys=[approving_officer],
         lazy="select",
     )
+    supporting_doc_1 = Column(
+        String(length=255),
+        nullable=True,
+        doc="URL of the first supporting document",
+    )
+    supporting_doc_2 = Column(
+        String(length=255),
+        nullable=True,
+        doc="URL of the second supporting document",
+    )
+    supporting_doc_3 = Column(
+        String(length=255),
+        nullable=True,
+        doc="URL of the third supporting document",
+    )
+
     __table_args__ = (
         CheckConstraint("wfh_type IN ('full', 'am', 'pm')", name="check_wfh_type"),
         CheckConstraint(
