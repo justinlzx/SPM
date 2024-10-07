@@ -41,7 +41,7 @@ class ArrangementLog(Base):
     approving_officer = Column(
         Integer,
         ForeignKey("employees.staff_id"),
-        nullable=True,
+        nullable=False,
         doc="Staff ID of the approving officer",
     )
     reason_description = Column(
@@ -112,7 +112,7 @@ class LatestArrangement(Base):
     approving_officer = Column(
         Integer,
         ForeignKey("employees.staff_id"),
-        nullable=True,
+        nullable=False,
         doc="Staff ID of the approving officer",
     )
     reason_description = Column(
@@ -120,12 +120,12 @@ class LatestArrangement(Base):
         nullable=False,
         doc="Reason for the status update",
     )
-    batch_id = Column(
-        Integer,
-        ForeignKey("recurring_requests.batch_id"),
-        nullable=True,
-        doc="Unique identifier for the batch",
-    )
+    # batch_id = Column(
+    #     Integer,
+    #     ForeignKey("recurring_requests.batch_id"),
+    #     nullable=True,
+    #     doc="Unique identifier for the batch",
+    # )
     latest_log_id = Column(
         Integer,
         ForeignKey("arrangement_logs.log_id", use_alter=True, name="fk_latest_log_id"),
@@ -208,4 +208,6 @@ class RecurringRequest(Base):
         doc="Number of occurrences of the recurring WFH request",
     )
 
-    __table_args__ = (CheckConstraint("wfh_type IN ('full', 'am', 'pm')", name="check_wfh_type"),)
+    __table_args__ = (
+        CheckConstraint("wfh_type IN ('full', 'am', 'pm')", name="check_wfh_type"),
+    )

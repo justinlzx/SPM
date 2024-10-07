@@ -2,14 +2,21 @@ from typing import Annotated, Dict, List, Literal, Optional
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
 from fastapi.responses import JSONResponse
+from pydantic import ValidationError
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
+
 
 from ..database import get_db
 from ..employees import exceptions as employee_exceptions
 from ..employees import models as employee_models
 from ..employees import services as employee_services
 from ..notifications.email_notifications import craft_and_send_email
+from .schemas import (
+    ArrangementCreate,
+    ArrangementResponse,
+    ArrangementUpdate,
+)
 from . import schemas, services
 from .exceptions import ArrangementActionNotAllowedError, ArrangementNotFoundError
 
@@ -19,7 +26,7 @@ router = APIRouter()
 @router.get("/{arrangement_id}", summary="Get an arrangement by its arrangement_id")
 def get_arrangement_by_id(arrangement_id: int, db: Session = Depends(get_db)):
     try:
-        arrangement: schemas.ArrangementResponse = services.get_arrangement_by_id(
+        arrangement: ArrangementResponse = services.get_arrangement_by_id(
             db, arrangement_id
         )
 
@@ -86,7 +93,7 @@ def get_subordinates_arrangements(
     db: Session = Depends(get_db),
 ):
     try:
-        arrangements: List[schemas.ArrangementResponse] = (
+        arrangements: List[ArrangementResponse] = (
             services.get_subordinates_arrangements(
                 db, manager_id, current_approval_status
             )
@@ -124,7 +131,7 @@ def get_team_arrangements(
     db: Session = Depends(get_db),
 ):
     try:
-        arrangements: Dict[str, List[schemas.ArrangementResponse]] = (
+        arrangements: Dict[str, List[ArrangementResponse]] = (
             services.get_team_arrangements(db, staff_id, current_approval_status)
         )
         return JSONResponse(
@@ -148,76 +155,36 @@ def get_team_arrangements(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/", summary="Create a new WFH request")
+@router.post("/request")
 async def create_wfh_request(
-    wfh_request: Annotated[schemas.ArrangementCreate, Form()],
+    wfh_request: Annotated[str, Form(...)],
+    supporting_docs: Annotated[List[UploadFile], File(upload_multiple=True)],
     db: Session = Depends(get_db),
-) -> JSONResponse:
+):
     try:
-        # Check that employee exists
-        requester_employee: employee_models.Employee = (
-            employee_services.get_employee_by_id(db, wfh_request.staff_id)
+        wfh_request_data = json.loads(wfh_request)
+    except json.JSONDecodeError:
+        raise HTTPException(
+            status_code=400, detail="Invalid JSON in Field: wfh_request"
         )
 
-        # Fetch manager info using the helper function from notifications
-        manager: employee_models.Employee = (
-            employee_services.get_manager_by_subordinate_id(db, wfh_request.staff_id)
-        )
+    # Rename the field if necessary
+    if "requester_staff_id" in wfh_request_data:
+        wfh_request_data["staff_id"] = wfh_request_data.pop("requester_staff_id")
 
-        # Create the arrangements
-        created_arrangements: List[schemas.ArrangementCreateResponse] = (
-            services.create_arrangements_from_request(db, wfh_request)
-        )
+    # Validate and create the ArrangementCreate model
+    try:
+        wfh_request_model = ArrangementCreate(**wfh_request_data)
+    except ValidationError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
-        # Craft and send email
-        await craft_and_send_email(
-            requester_employee,
-            created_arrangements,
-            "create",
-            success=True,
-            manager=manager,
-        )
-
-        # auto_approved = wfh_request.current_approval_status == "approved"
-        auto_approved = wfh_request.staff_id == 130002
-        response_message = f"Request submitted{' and auto-approved ' if auto_approved else ' '}successfully"
-
-        return JSONResponse(
-            status_code=201,
-            content={
-                "message": response_message,
-                "data": [
-                    {
-                        **arrangement.model_dump(),
-                        "update_datetime": (arrangement.update_datetime.isoformat()),
-                    }
-                    for arrangement in created_arrangements
-                ],
-            },
-        )
-
-    except employee_exceptions.EmployeeNotFoundException as e:
-        raise HTTPException(status_code=404, detail=str(e))
-
-    # TODO: Custom exception handling for Pydantic validation errors
-
-    except SQLAlchemyError as e:
-        # Craft and send failure notification email to the employee (staff)
-        craft_and_send_email(
-            requester_employee,
-            created_arrangements,
-            "create",
-            success=False,
-            error_message=str(e),
-        )
-
-        raise HTTPException(status_code=500, detail=str(e))
+    return await create_wfh_request_service(wfh_request_model, supporting_docs, db)
 
 
 @router.put("/{arrangement_id}/status", summary="Update the status of a WFH request")
 async def update_wfh_request(
     arrangement_id: int,
-    wfh_update: Annotated[schemas.ArrangementUpdate, Form()],
+    wfh_update: Annotated[ArrangementUpdate, Form()],
     db: Session = Depends(get_db),
 ) -> JSONResponse:
     try:
@@ -288,7 +255,7 @@ async def update_wfh_request(
 
 # @router.get(
 #     "/view/{manager_id}",
-#     response_model=List[schemas.ArrangementResponse],
+#     response_model=List[ArrangementResponse],
 #     summary="Get all Pending Arrangements by Manager",
 # )
 # def get_arrangements_by_manager(
@@ -306,7 +273,7 @@ async def update_wfh_request(
 
 # @router.get(
 #     "/view/pending-requests/{staff_id}",
-#     response_model=List[schemas.ArrangementCreateResponse],
+#     response_model=List[ArrangementCreateResponse],
 # )
 # def get_pending_requests_for_manager_and_team(staff_id: int, db: Session = Depends(get_db)):
 #     """Get the pending WFH requests for the manager's employees."""
@@ -340,7 +307,7 @@ async def update_wfh_request(
 #         response_data = [
 #             fit_model_to_schema(
 #                 data,
-#                 schemas.ArrangementCreateResponse,
+#                 ArrangementCreateResponse,
 #                 {
 #                     "requester_staff_id": "staff_id",
 #                     "current_approval_status": "approval_status",
@@ -365,7 +332,7 @@ async def update_wfh_request(
 # OLD VERSION WHEREBY PEOPLE CAN VIEW THEIR OWN PENDING ARRANGEMENTS
 # @router.get(
 #     "/view/pending-requests/{staff_id}",
-#     response_model=List[schemas.ArrangementCreateResponse],
+#     response_model=List[ArrangementCreateResponse],
 # )
 # def get_pending_requests_for_manager_and_team(staff_id: int, db: Session = Depends(get_db)):
 #     """
@@ -397,7 +364,7 @@ async def update_wfh_request(
 #         response_data = [
 #             fit_model_to_schema(
 #                 data,
-#                 schemas.ArrangementCreateResponse,
+#                 ArrangementCreateResponse,
 #                 {
 #                     "requester_staff_id": "staff_id",
 #                     "approval_status": "current_approval_status",
