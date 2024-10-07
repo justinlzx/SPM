@@ -46,14 +46,6 @@ class Employee(Base):
     )
 
 
-def get_employee_by_staff_id(db: Session, staff_id: int):
-    return db.query(Employee).filter(Employee.staff_id == staff_id).first()
-
-
-def get_employees_by_manager_id(db: Session, manager_id: int):
-    return db.query(Employee).filter(Employee.reporting_manager == manager_id).all()
-
-
 if __name__ == "__main__":
 
     session = Session(bind=engine)
