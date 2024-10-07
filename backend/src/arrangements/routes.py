@@ -162,7 +162,6 @@ async def create_wfh_request(
     requester_staff_id: int = Form(..., title="Staff ID of the requester"),
     wfh_date: str = Form(..., title="Date of the WFH request"),
     wfh_type: Literal["full", "am", "pm"] = Form(..., title="Type of WFH arrangement"),
-    approving_officer: int = Form(..., title="Staff ID of the approving officer"),
     reason_description: str = Form(..., title="Reason for requesting the WFH"),
     is_recurring: Optional[bool] = Form(
         False, title="Flag to indicate if the request is recurring"
@@ -184,19 +183,14 @@ async def create_wfh_request(
     ),
     supporting_docs: Annotated[
         Optional[list[UploadFile]], File(upload_multiple=True)
-    ] = None,
+    ] = [],
     db: Session = Depends(get_db),
 ):
 
     update_datetime = datetime.now()
     current_approval_status = "pending"
 
-    # # Rename the field if necessary
-    # if "requester_staff_id" in wfh_request_data:
-    #     wfh_request_data["staff_id"] = wfh_request_data.pop("requester_staff_id")
-
     wfh_request: ArrangementCreate = {
-        "approving_officer": approving_officer,
         "reason_description": reason_description,
         "is_recurring": is_recurring,
         "recurring_end_date": recurring_end_date,
@@ -210,6 +204,8 @@ async def create_wfh_request(
         "wfh_type": wfh_type,
         "staff_id": requester_staff_id,
     }
+
+    print("route", supporting_docs)
 
     return await create_wfh_request_service(wfh_request, supporting_docs, db)
 

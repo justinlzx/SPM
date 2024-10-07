@@ -90,7 +90,7 @@ def fit_model_to_model(
 
 
 async def upload_file(staff_id, update_datetime, file_obj, s3_client=None):
-    FILE_TYPE = ["image/jpeg", "image/png", "application/pdf"]
+    FILE_TYPE = ["image/jpeg", "image/png", "image/jpg", "application/pdf"]
     if file_obj.content_type not in FILE_TYPE:
         raise HTTPException(
             status_code=400,
@@ -98,7 +98,7 @@ async def upload_file(staff_id, update_datetime, file_obj, s3_client=None):
         )
 
     # Check file size before reading content
-    MB = 1000000
+    MB = 1000 * 1000
     if file_obj.size > 5 * MB:  # Assuming file_obj has a 'size' attribute
         raise HTTPException(status_code=400, detail="File size exceeds 5MB")
 

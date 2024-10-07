@@ -48,6 +48,8 @@ export const CreateWfhRequest: React.FC = () => {
 
   const requesterStaffId = user.id;
 
+  const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
+
   // Function to handle Snackbar close
   const handleCloseSnackBar = () => {
     setShowSnackbar(false);
@@ -163,7 +165,17 @@ export const CreateWfhRequest: React.FC = () => {
     }
 
     // Build the payload
-    const payload = {
+    const payload: {
+      recurring_end_date?: any;
+      recurring_frequency_number?: any;
+      recurring_frequency_unit?: any;
+      recurring_occurrences?: any;
+      requester_staff_id: number;
+      wfh_date: any;
+      wfh_type: any;
+      reason_description: any;
+      is_recurring: boolean;
+    } = {
       requester_staff_id: requesterStaffId,
       wfh_date: values.startDate.toISOString().split("T")[0],
       wfh_type: values.wfhType.toLowerCase(),
@@ -180,15 +192,21 @@ export const CreateWfhRequest: React.FC = () => {
     };
 
     try {
-      await axios.post(
-        "http://localhost:8000/arrangement/request",
-        qs.stringify(payload),
-        {
-          headers: {
-            "Content-Type": "application/x-www-form-urlencoded",
-          },
-        }
-      );
+      const form = new FormData();
+
+      Object.keys(payload).forEach((key) => {
+        form.append(key, (payload as any)[key]);
+      });
+
+      supportingDocs.forEach((file) => {
+        form.append("supporting_docs", file);
+      });
+
+      await axios.post(`${BACKEND_URL}/arrangement/request`, form, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
       setAlertStatus(AlertStatus.Success);
       setSnackbarMessage("Your request was successfully submitted!");
       setShowSnackbar(true);
@@ -276,6 +294,7 @@ export const CreateWfhRequest: React.FC = () => {
           repeatInterval: 1,
           repeatIntervalUnit: "week",
           occurrences: 1,
+          supportingDocs: [],
         }}
         validationSchema={validationSchema}
         onSubmit={handleSubmit}
@@ -371,7 +390,9 @@ export const CreateWfhRequest: React.FC = () => {
                 maxFileSize={5 * 1000 * 1000}
                 maxFiles={3}
                 multiple={true}
-                onFileAccepted={(files: File[]) => setSupportingDocs(files)}
+                onFileAccepted={(files: File[]) => {
+                  setSupportingDocs(files);
+                }}
               />
             </FormControl>
 

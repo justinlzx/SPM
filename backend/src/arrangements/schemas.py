@@ -163,15 +163,15 @@ class ArrangementLog(ArrangementBase):
     requester_info: Optional[employee_schemas.EmployeeBase] = Field(
         None, exclude=True, title="Information about the requester"
     )
-    # supporting_doc_1: Optional[str] = Field(
-    #     None, title="URL of the first supporting document"
-    # )
-    # supporting_doc_2: Optional[str] = Field(
-    #     None, title="URL of the second supporting document"
-    # )
-    # supporting_doc_3: Optional[str] = Field(
-    #     None, title="URL of the third supporting document"
-    # )
+    supporting_doc_1: Optional[str] = Field(
+        None, title="URL of the first supporting document"
+    )
+    supporting_doc_2: Optional[str] = Field(
+        None, title="URL of the second supporting document"
+    )
+    supporting_doc_3: Optional[str] = Field(
+        None, title="URL of the third supporting document"
+    )
 
     class Config:
         from_attributes = True
