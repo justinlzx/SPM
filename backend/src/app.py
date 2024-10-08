@@ -70,6 +70,6 @@ app.add_middleware(
 app.include_router(auth_router, prefix="/auth", tags=["Authentication"])
 # app.include_router(users_router, prefix="/users", tags=["Users"])
 app.include_router(health_router, prefix="/health", tags=["Health"])
-app.include_router(employee_router, prefix="/employee", tags=["Employees"])
+app.include_router(employee_router, prefix="/employees", tags=["Employees"])
 app.include_router(email_router, prefix="/email", tags=["Email"])
-app.include_router(arrangement_router, prefix="/arrangement", tags=["Arrangements"])
+app.include_router(arrangement_router, prefix="/arrangements", tags=["Arrangements"])

@@ -1,15 +1,13 @@
+from unittest.mock import MagicMock, patch
+
 import pytest
-from unittest.mock import patch, MagicMock
-from httpx import Response, RequestError  # Add RequestError for exception handling
 from fastapi import HTTPException
-from src.notifications.email_notifications import (
-    fetch_manager_info,
-    craft_email_content,
-    craft_approval_email_content,
-    craft_rejection_email_content,
-    send_email,
-)
+from httpx import RequestError  # Add RequestError for exception handling
+from httpx import Response
 from src.arrangements.schemas import ArrangementLog
+from src.notifications.email_notifications import (
+    craft_approval_email_content, craft_email_content,
+    craft_rejection_email_content, fetch_manager_info, send_email)
 
 
 @pytest.mark.asyncio
@@ -99,7 +97,7 @@ async def test_craft_email_content():
     )
 
     subject, content = await craft_email_content(
-        staff=mock_staff, response_data=[mock_arrangement], success=True
+        employee=mock_staff, response_data=[mock_arrangement], success=True
     )
 
     # Assertions for content
@@ -125,7 +123,7 @@ async def test_craft_approval_email_content():
     )
 
     subject, content = await craft_approval_email_content(
-        staff=mock_staff, arrangement=mock_arrangement, reason="Approved by manager"
+        employee=mock_staff, arrangement=mock_arrangement, reason="Approved by manager"
     )
 
     # Assertions for content
@@ -151,7 +149,7 @@ async def test_craft_rejection_email_content():
     )
 
     subject, content = await craft_rejection_email_content(
-        staff=mock_staff, arrangement=mock_arrangement, reason="Not enough reason provided"
+        employee=mock_staff, arrangement=mock_arrangement, reason="Not enough reason provided"
     )
 
     # Assertions for content
@@ -180,7 +178,7 @@ async def test_craft_email_content_failure():
     error_message = "Some error occurred"
 
     subject, content = await craft_email_content(
-        staff=mock_staff, response_data=[], success=False, error_message=error_message
+        employee=mock_staff, response_data=[], success=False, error_message=error_message
     )
 
     assert subject == "[All-In-One] Unsuccessful Creation of WFH Request"
@@ -203,7 +201,7 @@ async def test_craft_email_content_for_manager():
     )
 
     subject, content = await craft_email_content(
-        staff=mock_staff, response_data=[mock_arrangement], is_manager=True, manager=mock_manager
+        employee=mock_staff, response_data=[mock_arrangement], is_manager=True, manager=mock_manager
     )
 
     assert subject == "[All-In-One] Your Staff Created a WFH Request"
@@ -227,7 +225,7 @@ async def test_craft_approval_email_content_for_manager():
     )
 
     subject, content = await craft_approval_email_content(
-        staff=mock_staff,
+        employee=mock_staff,
         arrangement=mock_arrangement,
         reason="Approved",
         is_manager=True,
@@ -256,7 +254,7 @@ async def test_craft_rejection_email_content_for_manager():
     )
 
     subject, content = await craft_rejection_email_content(
-        staff=mock_staff,
+        employee=mock_staff,
         arrangement=mock_arrangement,
         reason="Rejected",
         is_manager=True,

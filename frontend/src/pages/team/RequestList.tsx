@@ -80,14 +80,11 @@ export const RequestList = () => {
   useEffect(() => {
     const fetchAllRequests = async () => {
       try {
-        const response = await axios.get(`${BACKEND_URL}/arrangement/view`);
-        const allRequests: TWFHRequest[] = response.data.data;
-
-        // Filter requests to only include those submitted by the logged-in user
         if (user) {
-          const userRequests = allRequests.filter(
-            (request) => request.requester_staff_id === user.id
-          );
+          const response = await axios.get(`${BACKEND_URL}/arrangements/personal/${user.id}`);
+          const userRequests: TWFHRequest[] = response.data.data;
+
+          // Filter requests to only include those submitted by the logged-in user
           setRequests(userRequests);
         }
       } catch (error) {

@@ -8,6 +8,36 @@ def convert_model_to_pydantic_schema(model_data: List[DeclarativeMeta], schema: 
     return [schema.model_validate(model) for model in model_data]
 
 
+def fit_schema_to_model(
+    schema_data: BaseModel,
+    model_type: DeclarativeMeta,
+    field_mapping: Dict[str, str] = None,
+):
+    """Transforms a Pydantic schema instance into a SQLAlchemy model instance.
+
+    Args:
+        schema_data (BaseModel): An instance of a Pydantic schema.
+        model_type (DeclarativeMeta): The SQLAlchemy model class to transform the schema into.
+        field_mapping (Dict[str, str], optional): A dictionary mapping schema field names to model
+        field names. Defaults to None.
+
+    Returns:
+        model_type: An instance of the SQLAlchemy model populated with data from the schema.
+    """
+    if field_mapping is None:
+        field_mapping = {}
+
+    data_dict = schema_data.model_dump(by_alias=True)
+    # Remove invalid fields
+    valid_fields = {
+        field_mapping.get(key, key): value
+        for key, value in data_dict.items()
+        if field_mapping.get(key, key) in model_type.__table__.columns
+    }
+    model_data = model_type(**valid_fields)
+    return model_data
+
+
 def fit_model_to_schema(
     model_data: DeclarativeMeta,
     schema_type: BaseModel,

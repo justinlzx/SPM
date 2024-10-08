@@ -1,9 +1,6 @@
-import os
 from typing import List
 
-import pandas as pd
 from fastapi import APIRouter, Depends, HTTPException
-from fastapi.responses import JSONResponse
 from pydantic import EmailStr
 from sqlalchemy.orm import Session
 
@@ -24,10 +21,10 @@ def get_reporting_manager_and_peer_employees(staff_id: int, db: Session = Depend
     """
     try:
         # Get manager
-        manager: models.Employee = services.get_manager_by_employee_staff_id(db, staff_id)
+        manager: models.Employee = services.get_manager_by_subordinate_id(db, staff_id)
 
         # Get list of peer employees
-        peer_employees: List[models.Employee] = services.get_employees_by_manager_id(
+        peer_employees: List[models.Employee] = services.get_subordinates_by_manager_id(
             db, manager.staff_id
         )
 
@@ -44,9 +41,9 @@ def get_reporting_manager_and_peer_employees(staff_id: int, db: Session = Depend
         )
 
         return response
-    except exceptions.EmployeeNotFound as e:
+    except exceptions.EmployeeNotFoundException as e:
         raise HTTPException(status_code=404, detail=str(e))
-    except exceptions.ManagerNotFound as e:
+    except exceptions.ManagerNotFoundException as e:
         raise HTTPException(status_code=404, detail=str(e))
 
 
@@ -54,9 +51,9 @@ def get_reporting_manager_and_peer_employees(staff_id: int, db: Session = Depend
 def get_employee_by_staff_id(staff_id: int, db: Session = Depends(get_db)):
     """Get an employee by staff_id."""
     try:
-        employee = services.get_employee_by_staff_id(db, staff_id)
+        employee = services.get_employee_by_id(db, staff_id)
         return employee  # Pydantic model (EmployeeBase) will handle serialization
-    except exceptions.EmployeeNotFound as e:
+    except exceptions.EmployeeNotFoundException as e:
         raise HTTPException(status_code=404, detail=str(e))
 
 
@@ -66,24 +63,26 @@ def get_employee_by_email(email: EmailStr, db: Session = Depends(get_db)):
     try:
         employee = services.get_employee_by_email(db, email)
         return employee  # Pydantic model (EmployeeBase) will handle serialization
-    except exceptions.EmployeeNotFound as e:
+    except exceptions.EmployeeNotFoundException as e:
         raise HTTPException(status_code=404, detail=str(e))
 
 
 @router.get("/manager/employees/{staff_id}", response_model=List[EmployeeBase])
-def get_employees_under_manager(staff_id: int, db: Session = Depends(get_db)):
+def get_subordinates_by_manager_id(staff_id: int, db: Session = Depends(get_db)):
     """Get a list of employees under a specific manager by their staff_id."""
     try:
         # Get employees that report to the given employee
-        employees_under_manager: List[Employee] = services.get_employees_by_manager_id(db, staff_id)
+        employees_under_manager: List[Employee] = services.get_subordinates_by_manager_id(
+            db, staff_id
+        )
 
         # Convert the list of employees to Pydantic model
         employees_under_manager_pydantic = utils.convert_model_to_pydantic_schema(
             employees_under_manager, EmployeeBase
         )
 
-        return employees_under_manager_pydantic  # Pydantic model (EmployeeBase) will handle serialization
-    except exceptions.ManagerNotFound as e:
+        return employees_under_manager_pydantic
+    except exceptions.ManagerNotFoundException as e:
         raise HTTPException(status_code=404, detail=str(e))
 
 
@@ -95,7 +94,7 @@ def get_employees_under_manager(staff_id: int, db: Session = Depends(get_db)):
 # async def get_staff_id(email: str) -> JSONResponse:
 #     try:
 #         # Find the staff ID for the given email
-#         employee_record = employee_df[employee_df["Email"] == email]  # Use the correct column name
+#         employee_record = employee_df[employee_df["Email"] == email]  # Use the correct column
 
 #         if not employee_record.empty:
 #             # Convert the staff_id to a native Python int

@@ -1,9 +1,9 @@
-import pytest
 from unittest.mock import patch
-from fastapi.testclient import TestClient
 
+import pytest
+from fastapi.testclient import TestClient
 from src.app import app
-from src.employees import models, exceptions
+from src.employees import exceptions, models
 from src.tests.test_utils import mock_db_session
 
 # Create a TestClient instance

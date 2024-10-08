@@ -1,7 +1,7 @@
 from sqlalchemy import CheckConstraint, Column, ForeignKey, Integer, String
-from sqlalchemy.orm import Session, relationship
+from sqlalchemy.orm import relationship
 
-from ..database import Base, engine
+from ..database import Base
 
 
 class Employee(Base):

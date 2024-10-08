@@ -77,7 +77,7 @@ export const PendingRequests = () => {
     const fetchUserId = async () => {
       if (storedUser) {
         try {
-          const response = await axios.get(`${BACKEND_URL}/employee/email/${storedUser}`); // Call your /email endpoint
+          const response = await axios.get(`${BACKEND_URL}/employees/email/${storedUser}`); // Call your /email endpoint
           setUserId(response.data.staff_id); // Set the staff ID in state
           localStorage.setItem("id", response.data.staff_id)
         } catch (error) {
@@ -96,10 +96,15 @@ export const PendingRequests = () => {
     const fetchRequests = async () => {
       if (!user || userId === null) return; // Ensure userId is available
       try {
-        const response = await axios.get(`${BACKEND_URL}/arrangement/view/pending-requests/${storedId}`); // Call your /view endpoint
-        const allRequests: TWFHRequest[] = response.data.data; // Adjust according to your response structure
-        const filteredRequests = allRequests.filter((request: TWFHRequest) => request.approval_status === ApprovalStatus.Pending); // Filter for pending requests
-        setRequests(filteredRequests);
+        const response = await axios.get(`${BACKEND_URL}/arrangements/team/${storedId}`, {
+          params: {
+            // "current_approval_status": ["pending"],
+          }
+        }); // Call your endpoint
+        // NOTE: API response separates the arrangements of peers and subordinates (see FastAPI docs), you can choose to handle them separately
+        const allRequests: TWFHRequest[] = response.data.data.peers.concat(response.data.data.subordinates); // 
+        // const filteredRequests = allRequests.filter((request: TWFHRequest) => request.approval_status === ApprovalStatus.Pending); // Filter for pending requests
+        setRequests(allRequests);
       } catch (error) {
         console.error("Failed to fetch requests:", error);
       }
@@ -114,16 +119,18 @@ export const PendingRequests = () => {
   ) => {
     try {
       const formData = new FormData();
-      formData.append('arrangement_id', arrangement_id.toString());
-      formData.append('reason', reason_description);
+      formData.append('action', action);
+      formData.append('reason_description', reason_description);
+      formData.append('approving_officer', userId?.toString() || '');
   
       // Log the payload before sending it
       console.log('Payload being sent:', {
-        arrangement_id: arrangement_id,
-        reason: reason_description,
+        reason_description: reason_description,
+        action: action,
+        approving_officer: userId,
       });
   
-      await axios.post(`${BACKEND_URL}/arrangement/request/${action}`, formData, {
+      await axios.put(`${BACKEND_URL}/arrangements/${arrangement_id}/status`, formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },

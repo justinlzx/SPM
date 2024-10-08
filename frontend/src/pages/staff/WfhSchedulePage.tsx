@@ -87,7 +87,7 @@ export const WfhSchedulePage = () => {
     const fetchUserId = async () => {
       if (storedUser) {
         try {
-            const response = await axios.get(`${BACKEND_URL}/employee/email/${storedUser}`, {
+            const response = await axios.get(`${BACKEND_URL}/employees/email/${storedUser}`, {
             });
           setUserId(response.data.staff_id);
           localStorage.setItem("id", response.data.staff_id);
@@ -107,7 +107,7 @@ export const WfhSchedulePage = () => {
     const fetchRequests = async () => {
       if (!user || userId === null) return; // Ensure userId is available
       try {
-        const response = await axios.get(`${BACKEND_URL}/arrangement/view/all-requests/${storedId}`);
+        const response = await axios.get(`${BACKEND_URL}/arrangements/personal/${userId}`);
         const allRequests: TWFHRequest[] = response.data.data;
         setRequests(allRequests);
       } catch (error) {

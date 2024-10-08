@@ -1,6 +1,7 @@
+from unittest.mock import MagicMock, patch
+
 import pytest
-from unittest.mock import patch, MagicMock
-from src.employees import services, models, exceptions
+from src.employees import exceptions, models, services
 from src.tests.test_utils import mock_db_session
 
 

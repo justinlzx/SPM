@@ -1,5 +1,6 @@
-import pytest
 from unittest.mock import MagicMock
+
+import pytest
 from src.employees.models import Employee
 from src.tests.test_utils import mock_db_session
 

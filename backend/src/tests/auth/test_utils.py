@@ -1,9 +1,10 @@
-import pytest
-from unittest.mock import patch
-from datetime import timedelta, datetime, timezone
 import hashlib
+from datetime import datetime, timedelta, timezone
+from unittest.mock import patch
+
 import jwt
-from src.auth.utils import hash_password, verify_password, generate_JWT
+# import pytest
+from src.auth.utils import generate_JWT, hash_password, verify_password
 
 
 # Test for hash_password function
