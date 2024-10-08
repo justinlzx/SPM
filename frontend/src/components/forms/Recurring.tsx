@@ -3,7 +3,11 @@ import { FormControl, Typography, TextField, FormHelperText, Select, MenuItem } 
 import { ErrorMessage, useFormikContext } from 'formik';
 import DatePicker from 'react-datepicker';
 
-export const Recurring: React.FC = () => {
+interface RecurringProps {
+  disabled: boolean; // Add disabled prop to control the form state
+}
+
+export const Recurring: React.FC<RecurringProps> = ({ disabled }) => {
   const { values, errors, touched, setFieldValue } = useFormikContext<any>();
 
   useEffect(() => {
@@ -32,9 +36,10 @@ export const Recurring: React.FC = () => {
             selected={values.startDate}
             onChange={(date) => setFieldValue('startDate', date)}
             dateFormat="dd/MM/yyyy"
-            customInput={<TextField fullWidth />}
+            customInput={<TextField fullWidth disabled={disabled} />}
             required
             minDate={new Date()}
+            disabled={disabled} // Disable date picker while loading
           />
           <FormHelperText error>
             <ErrorMessage name="startDate" />
@@ -47,7 +52,7 @@ export const Recurring: React.FC = () => {
           <TextField
             value={values.endDate ? new Intl.DateTimeFormat('en-GB').format(values.endDate) : ''}
             fullWidth
-            disabled
+            disabled // Always disabled as it's a read-only field
           />
           <FormHelperText>
             End date is automatically calculated based on the recurrence pattern.
@@ -67,12 +72,14 @@ export const Recurring: React.FC = () => {
             inputProps={{ min: 1 }}
             fullWidth
             sx={{ flex: 1 }}
+            disabled={disabled} // Disable while loading
           />
           <Select
             name="repeatIntervalUnit"
             value={values.repeatIntervalUnit}
             onChange={(e) => setFieldValue('repeatIntervalUnit', e.target.value)}
             sx={{ flex: 1 }}
+            disabled={disabled} // Disable while loading
           >
             <MenuItem value="week">week(s)</MenuItem>
             <MenuItem value="month">month(s)</MenuItem>
@@ -95,6 +102,7 @@ export const Recurring: React.FC = () => {
           onChange={(e) => setFieldValue('occurrences', e.target.value)}
           inputProps={{ min: 1 }}
           fullWidth
+          disabled={disabled} // Disable while loading
         />
         {errors.occurrences && touched.occurrences && (
           <FormHelperText error>

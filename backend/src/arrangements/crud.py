@@ -101,6 +101,10 @@ def create_arrangements(
     try:
         created_arrangements = []
         for arrangement in arrangements:
+            #Auto-approve Jack Sim's requests
+            if arrangement.requester_staff_id == 130002:
+                arrangement.current_approval_status = "approved"
+            
             db.add(arrangement)
             db.flush()
             created_arrangements.append(arrangement)
