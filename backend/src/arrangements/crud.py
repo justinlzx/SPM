@@ -14,20 +14,27 @@ def get_arrangement_by_id(db: Session, arrangement_id: int) -> models.LatestArra
 
 
 def get_arrangements_by_filter(
-    db: Session, requester_staff_id: int = None, current_approval_status: List[str] = None
+    db: Session,
+    requester_staff_id: int = None,
+    current_approval_status: List[str] = None,
 ) -> List[models.LatestArrangement]:
     query = db.query(models.LatestArrangement)
 
     if requester_staff_id:
-        query = query.filter(models.LatestArrangement.requester_staff_id == requester_staff_id)
+        query = query.filter(
+            models.LatestArrangement.requester_staff_id == requester_staff_id
+        )
     if current_approval_status:
         if len(current_approval_status) > 1:
             query = query.filter(
-                models.LatestArrangement.current_approval_status.in_(current_approval_status)
+                models.LatestArrangement.current_approval_status.in_(
+                    current_approval_status
+                )
             )
         else:
             query = query.filter(
-                models.LatestArrangement.current_approval_status == current_approval_status[0]
+                models.LatestArrangement.current_approval_status
+                == current_approval_status[0]
             )
 
     return query.all()
@@ -44,11 +51,14 @@ def get_arrangements_by_staff_ids(
     if current_approval_status:
         if len(current_approval_status) > 1:
             query = query.filter(
-                models.LatestArrangement.current_approval_status.in_(current_approval_status)
+                models.LatestArrangement.current_approval_status.in_(
+                    current_approval_status
+                )
             )
         else:
             query = query.filter(
-                models.LatestArrangement.current_approval_status == current_approval_status[0]
+                models.LatestArrangement.current_approval_status
+                == current_approval_status[0]
             )
 
     # print(f"Retrieved pending requests: {results}")
@@ -101,10 +111,10 @@ def create_arrangements(
     try:
         created_arrangements = []
         for arrangement in arrangements:
-            #Auto-approve Jack Sim's requests
+            # Auto-approve Jack Sim's requests
             if arrangement.requester_staff_id == 130002:
                 arrangement.current_approval_status = "approved"
-            
+
             db.add(arrangement)
             db.flush()
             created_arrangements.append(arrangement)

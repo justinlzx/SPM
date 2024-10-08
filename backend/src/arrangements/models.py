@@ -41,7 +41,7 @@ class ArrangementLog(Base):
     approving_officer = Column(
         Integer,
         ForeignKey("employees.staff_id"),
-        nullable=True,
+        nullable=False,
         doc="Staff ID of the approving officer",
     )
     reason_description = Column(
@@ -53,6 +53,21 @@ class ArrangementLog(Base):
         Integer,
         nullable=True,
         doc="Unique identifier for the batch, if any",
+    )
+    supporting_doc_1 = Column(
+        String(length=255),
+        nullable=True,
+        doc="URL of the first supporting document",
+    )
+    supporting_doc_2 = Column(
+        String(length=255),
+        nullable=True,
+        doc="URL of the second supporting document",
+    )
+    supporting_doc_3 = Column(
+        String(length=255),
+        nullable=True,
+        doc="URL of the third supporting document",
     )
 
     requester_info = relationship(
@@ -112,7 +127,7 @@ class LatestArrangement(Base):
     approving_officer = Column(
         Integer,
         ForeignKey("employees.staff_id"),
-        nullable=True,
+        nullable=False,
         doc="Staff ID of the approving officer",
     )
     reason_description = Column(
@@ -144,6 +159,22 @@ class LatestArrangement(Base):
         foreign_keys=[approving_officer],
         lazy="select",
     )
+    supporting_doc_1 = Column(
+        String(length=255),
+        nullable=True,
+        doc="URL of the first supporting document",
+    )
+    supporting_doc_2 = Column(
+        String(length=255),
+        nullable=True,
+        doc="URL of the second supporting document",
+    )
+    supporting_doc_3 = Column(
+        String(length=255),
+        nullable=True,
+        doc="URL of the third supporting document",
+    )
+
     __table_args__ = (
         CheckConstraint("wfh_type IN ('full', 'am', 'pm')", name="check_wfh_type"),
         CheckConstraint(
@@ -208,4 +239,6 @@ class RecurringRequest(Base):
         doc="Number of occurrences of the recurring WFH request",
     )
 
-    __table_args__ = (CheckConstraint("wfh_type IN ('full', 'am', 'pm')", name="check_wfh_type"),)
+    __table_args__ = (
+        CheckConstraint("wfh_type IN ('full', 'am', 'pm')", name="check_wfh_type"),
+    )

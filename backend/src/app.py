@@ -1,7 +1,11 @@
 from contextlib import asynccontextmanager
+import logging
 
 from fastapi import FastAPI
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
+
+from .utils import validation_exception_handler
 
 from .arrangements import models as arrangement_models
 from .arrangements.routes import router as arrangement_router
@@ -13,6 +17,7 @@ from .employees import models as employee_models
 from .employees.routes import router as employee_router
 from .health.health import router as health_router
 from .init_db import load_data
+
 
 """
 Create a context manager to handle the lifespan of the FastAPI application
@@ -66,7 +71,13 @@ app.add_middleware(
     expose_headers=["*"],
 )
 
+
 # Include the auth and user routes
+@app.exception_handler(RequestValidationError)
+async def handle_validation_error(request, exc):
+    return await validation_exception_handler(request, exc)
+
+
 app.include_router(auth_router, prefix="/auth", tags=["Authentication"])
 # app.include_router(users_router, prefix="/users", tags=["Users"])
 app.include_router(health_router, prefix="/health", tags=["Health"])
