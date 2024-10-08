@@ -46,58 +46,58 @@ class Employee(Base):
     )
 
 
-if __name__ == "__main__":
+# if __name__ == "__main__":
 
-    session = Session(bind=engine)
+#     session = Session(bind=engine)
 
-    director = Employee(
-        staff_id=3,
-        staff_fname="Johnson",
-        staff_lname="Doe",
-        email="johnson.doe@test.com",
-        dept="IT",
-        position="Director",
-        country="USA",
-        role=2,
-    )
+#     director = Employee(
+#         staff_id=3,
+#         staff_fname="Johnson",
+#         staff_lname="Doe",
+#         email="johnson.doe@test.com",
+#         dept="IT",
+#         position="Director",
+#         country="USA",
+#         role=2,
+#     )
 
-    session.add(director)
-    session.commit()
+#     session.add(director)
+#     session.commit()
 
-    manager = Employee(
-        staff_id=1,
-        staff_fname="Jane",
-        staff_lname="Smith",
-        email="jane.smith@test.com",
-        dept="IT",
-        position="Manager",
-        country="USA",
-        role=2,
-        reporting_manager=3,
-    )
+#     manager = Employee(
+#         staff_id=1,
+#         staff_fname="Jane",
+#         staff_lname="Smith",
+#         email="jane.smith@test.com",
+#         dept="IT",
+#         position="Manager",
+#         country="USA",
+#         role=2,
+#         reporting_manager=3,
+#     )
 
-    session.add(manager)
-    session.commit()
+#     session.add(manager)
+#     session.commit()
 
-    employee = Employee(
-        staff_fname="John",
-        staff_lname="Doe",
-        email="john.doe@test.com",
-        dept="IT",
-        position="Manager",
-        country="USA",
-        reporting_manager=1,
-        role=3,
-    )
+#     employee = Employee(
+#         staff_fname="John",
+#         staff_lname="Doe",
+#         email="john.doe@test.com",
+#         dept="IT",
+#         position="Manager",
+#         country="USA",
+#         reporting_manager=1,
+#         role=3,
+#     )
 
-    session.add(employee)
-    session.commit()
+#     session.add(employee)
+#     session.commit()
 
-    session.refresh(employee)
+#     session.refresh(employee)
 
-    # Print the manager object
-    print(employee.manager.staff_fname)
-    print(manager.manager.staff_fname)
+#     # Print the manager object
+#     print(employee.manager.staff_fname)
+#     print(manager.manager.staff_fname)
 
-    # Close the session
-    session.close()
+#     # Close the session
+#     session.close()
