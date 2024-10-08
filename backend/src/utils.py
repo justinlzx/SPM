@@ -66,26 +66,3 @@ def fit_model_to_schema(
 
     schema_data = schema_type(**valid_fields)
     return schema_data
-from fastapi import Request
-from fastapi.responses import JSONResponse
-from starlette.status import HTTP_422_UNPROCESSABLE_ENTITY
-from fastapi.exceptions import RequestValidationError
-from .logger import logger
-
-
-async def validation_exception_handler(request: Request, exc: RequestValidationError):
-    errors = []
-    for error in exc.errors():
-        errors.append(
-            {
-                "field": error["loc"][
-                    -1
-                ],  # Gets the specific field that caused the issue
-                "message": error["msg"],  # Gets the error message
-            }
-        )
-    logger.error(f"Validation error: {errors}")
-    return JSONResponse(
-        status_code=HTTP_422_UNPROCESSABLE_ENTITY,
-        content={"error": "Validation error", "details": errors},
-    )
