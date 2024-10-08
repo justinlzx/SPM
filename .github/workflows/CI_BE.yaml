@@ -1,13 +1,13 @@
 name: Backend CI
 
 on:
+  workflow_dispatch:  # This can be triggered manually, or you can uncomment the 'push' or 'pull_request' if needed.
 #   push:
 #     branches:
 #       - main
 #   pull_request:
 #     branches:
 #       - main
-    workflow_dispatch:
 
 jobs:
   build:
@@ -28,11 +28,12 @@ jobs:
         pip install -r backend/requirements.txt
       working-directory: backend
 
-    - name: Run tests
+    - name: Run tests with coverage
       run: |
-        # Assuming you use pytest for testing
-        pip install pytest
-        pytest backend
+        # Run tests with coverage and omit certain files
+        pip install pytest coverage  # Ensure coverage is installed
+        python -m coverage run --branch --omit="*/test_*.py,*/__init__.py,*/health.py,*/database.py,*/base.py,*/app.py" -m pytest src -vvv
+        python -m coverage report  # To show coverage report in the logs
       working-directory: backend
 
     - name: Check code formatting
