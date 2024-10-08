@@ -4,6 +4,7 @@ from fastapi.testclient import TestClient
 
 from src.app import app
 from src.employees import models, exceptions
+from src.tests.test_utils import mock_db_session
 
 # Create a TestClient instance
 client = TestClient(app)
@@ -69,7 +70,9 @@ def mock_peer_employees():
 
 
 # Test: Get Reporting Manager and Peer Employees
-def test_get_reporting_manager_and_peer_employees(mock_employee, mock_manager, mock_peer_employees):
+def test_get_reporting_manager_and_peer_employees(
+    mock_employee, mock_manager, mock_peer_employees, mock_db_session
+):
     with patch(
         "src.employees.services.get_manager_by_employee_staff_id", return_value=mock_manager
     ):
@@ -87,7 +90,7 @@ def test_get_reporting_manager_and_peer_employees(mock_employee, mock_manager, m
 
 
 # Test: Get Reporting Manager and Peer Employees - Employee Not Found
-def test_get_reporting_manager_and_peer_employees_employee_not_found():
+def test_get_reporting_manager_and_peer_employees_employee_not_found(mock_db_session):
     with patch(
         "src.employees.services.get_manager_by_employee_staff_id",
         side_effect=exceptions.EmployeeNotFound,  # No additional argument
@@ -98,7 +101,7 @@ def test_get_reporting_manager_and_peer_employees_employee_not_found():
 
 
 # Test: Get Employee by Staff ID
-def test_get_employee_by_staff_id(mock_employee):
+def test_get_employee_by_staff_id(mock_employee, mock_db_session):
     with patch("src.employees.services.get_employee_by_staff_id", return_value=mock_employee):
         response = client.get(f"/employee/{mock_employee.staff_id}")
         assert response.status_code == 200
@@ -108,7 +111,7 @@ def test_get_employee_by_staff_id(mock_employee):
 
 
 # Test: Get Employee by Staff ID - Not Found
-def test_get_employee_by_staff_id_not_found():
+def test_get_employee_by_staff_id_not_found(mock_db_session):
     with patch(
         "src.employees.services.get_employee_by_staff_id",
         side_effect=exceptions.EmployeeNotFound,  # No additional argument
@@ -119,7 +122,7 @@ def test_get_employee_by_staff_id_not_found():
 
 
 # Test: Get Employee by Email
-def test_get_employee_by_email(mock_employee):
+def test_get_employee_by_email(mock_employee, mock_db_session):
     with patch("src.employees.services.get_employee_by_email", return_value=mock_employee):
         response = client.get(f"/employee/email/{mock_employee.email}")
         assert response.status_code == 200
@@ -129,7 +132,7 @@ def test_get_employee_by_email(mock_employee):
 
 
 # Test: Get Employee by Email - Not Found
-def test_get_employee_by_email_not_found():
+def test_get_employee_by_email_not_found(mock_db_session):
     with patch(
         "src.employees.services.get_employee_by_email",
         side_effect=exceptions.EmployeeNotFound,  # No additional argument
@@ -140,7 +143,7 @@ def test_get_employee_by_email_not_found():
 
 
 # Test: Get Employees Under Manager
-def test_get_employees_under_manager(mock_peer_employees):
+def test_get_employees_under_manager(mock_peer_employees, mock_db_session):
     manager_id = 101
     with patch(
         "src.employees.services.get_employees_by_manager_id", return_value=mock_peer_employees
@@ -155,7 +158,7 @@ def test_get_employees_under_manager(mock_peer_employees):
 
 
 # Test: Get Employees Under Manager - Not Found
-def test_get_employees_under_manager_not_found():
+def test_get_employees_under_manager_not_found(mock_db_session):
     with patch(
         "src.employees.services.get_employees_by_manager_id",
         side_effect=exceptions.ManagerNotFound,  # No additional argument
@@ -163,3 +166,55 @@ def test_get_employees_under_manager_not_found():
         response = client.get("/employee/manager/employees/999")
         assert response.status_code == 404
         assert response.json()["detail"] == "Manager not found"
+
+
+# Test: Get Employee by Email - Invalid Email Format
+def test_get_employee_by_email_invalid_format(mock_db_session):
+    invalid_email = "invalid-email-format"
+
+    # Mock the database response for get_employee_by_email
+    with patch("src.employees.crud.get_employee_by_email", return_value=None):
+        response = client.get(f"/employee/email/{invalid_email}")
+
+        # Ensure that FastAPI detects the invalid format and returns a 422 error
+        assert response.status_code == 422
+        assert (
+            response.json()["detail"][0]["msg"]
+            == "value is not a valid email address: An email address must have an @-sign."
+        )
+
+
+# Test: Get Employee by Staff ID - Invalid ID Format
+def test_get_employee_by_staff_id_invalid_id(mock_db_session):
+    invalid_staff_id = "abc"  # Invalid staff_id (should be an integer)
+
+    # Mock the database response for get_employee_by_staff_id
+    with patch("src.employees.crud.get_employee_by_staff_id", return_value=None):
+        response = client.get(f"/employee/{invalid_staff_id}")
+
+        assert response.status_code == 422  # Unprocessable Entity
+        assert (
+            response.json()["detail"][0]["msg"]
+            == "Input should be a valid integer, unable to parse string as an integer"
+        )
+
+
+# Test: Get Reporting Manager and Peer Employees - Manager Not Found
+def test_get_reporting_manager_and_peer_employees_manager_not_found(mock_db_session):
+    with patch(
+        "src.employees.services.get_manager_by_employee_staff_id",
+        side_effect=exceptions.ManagerNotFound,  # Simulate manager not found by raising the exception
+    ):
+        response = client.get("/employee/manager/peermanager/1")
+        assert response.status_code == 404
+        assert response.json()["detail"] == "Manager not found"
+
+
+# Test: Get Employees Under Manager - No Employees Found
+def test_get_employees_under_manager_no_employees(mock_db_session):
+    manager_id = 101
+    # Simulate a case where no employees are found under the manager
+    with patch("src.employees.services.get_employees_by_manager_id", return_value=[]):
+        response = client.get(f"/employee/manager/employees/{manager_id}")
+        assert response.status_code == 200
+        assert response.json() == []  # Ensure an empty list is returned

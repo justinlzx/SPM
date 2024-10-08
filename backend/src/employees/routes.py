@@ -4,6 +4,7 @@ from typing import List
 import pandas as pd
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import JSONResponse
+from pydantic import EmailStr
 from sqlalchemy.orm import Session
 
 from .. import utils
@@ -60,7 +61,7 @@ def get_employee_by_staff_id(staff_id: int, db: Session = Depends(get_db)):
 
 
 @router.get("/email/{email}", response_model=EmployeeBase)
-def get_employee_by_email(email: str, db: Session = Depends(get_db)):
+def get_employee_by_email(email: EmailStr, db: Session = Depends(get_db)):
     """Get an employee by email."""
     try:
         employee = services.get_employee_by_email(db, email)
