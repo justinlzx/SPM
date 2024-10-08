@@ -19,7 +19,7 @@ from ..notifications.email_notifications import (
 )
 
 from ..database import get_db
-from ..employees.routes import read_employee  # Fetch employee info
+from ..employees.routes import get_employee_by_staff_id  # Fetch employee info
 
 from . import crud
 import boto3
@@ -33,7 +33,7 @@ async def create_wfh_request(
     try:
         wfh_request = ArrangementCreateWithFile.model_validate(wfh_request)
         # Fetch employee (staff) information
-        staff = read_employee(wfh_request.staff_id, db)
+        staff = get_employee_by_staff_id(wfh_request.staff_id, db)
         if not staff:
             raise HTTPException(status_code=404, detail="Employee not found")
 
@@ -47,7 +47,7 @@ async def create_wfh_request(
             and manager_info["manager_id"] is not None
             and manager_info["manager_id"] != wfh_request.staff_id
         ):
-            manager = read_employee(manager_info["manager_id"], db)
+            manager = get_employee_by_staff_id(manager_info["manager_id"], db)
 
         # Upload supporting documents to S3 bucket
         s3_client = boto3.client("s3")

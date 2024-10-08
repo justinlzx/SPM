@@ -22,7 +22,6 @@ import * as Yup from "yup";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import axios from "axios";
-import qs from "qs";
 import { Recurring } from "./Recurring";
 import { DragAndDrop } from "../../common/DragAndDrop";
 
@@ -202,7 +201,7 @@ export const CreateWfhRequest: React.FC = () => {
         form.append("supporting_docs", file);
       });
 
-      await axios.post(`${BACKEND_URL}/arrangement/request`, form, {
+      await axios.post(`${BACKEND_URL}/arrangements/request`, form, {
         headers: {
           "Content-Type": "multipart/form-data",
         },
