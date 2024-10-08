@@ -2,7 +2,7 @@ import pytest
 from unittest.mock import patch
 from fastapi.testclient import TestClient
 
-from src.app import app  # Ensure the app is imported from the correct location
+from src.app import app
 from src.employees import models, exceptions
 
 # Create a TestClient instance
