@@ -106,6 +106,7 @@ def create_arrangements_from_request(
     db: Session, wfh_request: schemas.ArrangementCreate
 ) -> List[schemas.ArrangementCreateResponse]:
 
+    #Auto Approve Jack Sim's requests
     if wfh_request.staff_id == 130002:
         wfh_request.current_approval_status = "approved"
 
@@ -174,6 +175,10 @@ def expand_recurring_arrangement(
             ).strftime("%Y-%m-%d")
 
         arrangement_copy.batch_id = batch_id
+        
+        #Auto Approve Jack Sim's requests
+        if arrangement_copy.staff_id == 130002:
+            arrangement_copy.current_approval_status = "approved"
 
         arrangements_list.append(arrangement_copy)
 

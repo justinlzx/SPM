@@ -10,7 +10,6 @@ import {
   TableRow,
   Paper,
   Typography,
-  Box,
   Button,
   TextField,
   InputAdornment,
@@ -21,10 +20,8 @@ import {
 import SearchIcon from '@mui/icons-material/Search';
 import { Filters } from "../../components/Filters";
 import { UserContext } from "../../context/UserContextProvider";
-import { TRequest } from "../../hooks/auth/arrangement/arrangement.utils";
 import { LoadingSpinner } from "../../common/LoadingSpinner";
 import { capitalize } from "../../utils/utils";
-import { Filter } from "@mui/icons-material";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 
@@ -42,7 +39,7 @@ type TWFHRequest = {
   wfh_date: string;
   wfh_type: string;
   arrangement_id: number;
-  approval_status: ApprovalStatus;
+  approval_status: string; // Changed from enum to string for flexibility
 };
 
 // Type for the filter values
@@ -55,8 +52,9 @@ type FilterValues = {
   workType: string;
 };
 
-const getChipColor = (status: ApprovalStatus): ChipProps["color"] => {
-  switch (status) {
+const getChipColor = (status: string): ChipProps["color"] => {
+  const normalizedStatus = status.toLowerCase();
+  switch (normalizedStatus) {
     case ApprovalStatus.Approved:
       return "success";
     case ApprovalStatus.Pending:
@@ -130,7 +128,6 @@ export const WfhSchedulePage = () => {
     setPage(0);
   };
 
-  // Add explicit type for selectedFilters
   const handleApplyFilters = (selectedFilters: FilterValues) => {
     setFilters(selectedFilters);
     console.log("Applied Filters:", selectedFilters);
@@ -199,6 +196,8 @@ export const WfhSchedulePage = () => {
                     approval_status,
                   } = request;
 
+                  const normalizedStatus = approval_status.toLowerCase();
+
                   return (
                     <TableRow key={arrangement_id}>
                       <TableCell>{wfh_date}</TableCell>
@@ -207,12 +206,12 @@ export const WfhSchedulePage = () => {
                       <TableCell>{wfh_date}</TableCell> {/* Placeholder for 'Date Submitted' */}
                       <TableCell>
                         <Chip
-                          color={getChipColor(approval_status as ApprovalStatus)}
-                          label={capitalize(approval_status)}
+                          color={getChipColor(normalizedStatus)}
+                          label={capitalize(normalizedStatus)}
                         />
                       </TableCell>
                       <TableCell>
-                        {approval_status === ApprovalStatus.Rejected && (
+                        {normalizedStatus === ApprovalStatus.Rejected && (
                           <Button
                             size="small"
                             color="error"
@@ -221,16 +220,16 @@ export const WfhSchedulePage = () => {
                             View Reason
                           </Button>
                         )}
-                        {approval_status === ApprovalStatus.Pending && (
+                        {normalizedStatus === ApprovalStatus.Pending && (
                           <Button
                             size="small"
                             variant="contained"
-                            disabled
+                            sx={{ backgroundColor: 'grey.500', color: 'white' }}
                           >
                             Withdraw
                           </Button>
                         )}
-                        {approval_status === ApprovalStatus.Approved && (
+                        {normalizedStatus === ApprovalStatus.Approved && (
                           <Button
                             size="small"
                             variant="outlined"

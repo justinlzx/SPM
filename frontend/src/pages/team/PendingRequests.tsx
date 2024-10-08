@@ -1,5 +1,5 @@
 import React, { useContext, useEffect, useState } from "react";
-import axios from 'axios'; // Import axios
+import axios from 'axios';
 import {
   Container,
   Table,
@@ -9,9 +9,7 @@ import {
   TableHead,
   TableRow,
   Paper,
-  TableSortLabel,
   Typography,
-  Box,
   TextField,
   Chip,
   ChipProps,
@@ -20,15 +18,14 @@ import {
   TablePagination,
 } from "@mui/material";
 import { UserContext } from "../../context/UserContextProvider";
-import { TRequest } from "../../hooks/auth/arrangement/arrangement.utils";
-import { LoadingSpinner } from "../../common/LoadingSpinner";
 import { capitalize } from "../../utils/utils";
 import CheckIcon from "@mui/icons-material/Check";
 import CloseIcon from "@mui/icons-material/Close";
+import qs from 'qs';
+
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 
 // Define types
-type TOrder = "asc" | "desc";
 type TAction = "approve" | "reject";
 
 enum ApprovalStatus {
@@ -61,16 +58,12 @@ const getChipColor = (status: ApprovalStatus): ChipProps["color"] => {
 
 export const PendingRequests = () => {
   const [requests, setRequests] = useState<TWFHRequest[]>([]);
-  const [order, setOrder] = useState<TOrder>("asc");
-  const [orderBy, setOrderBy] = useState<keyof TWFHRequest | "staff_id">("staff_id");
   const [searchTerm, setSearchTerm] = useState("");
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
-  const [userId, setUserId] = useState<number | null>(null); // State to hold staff ID
 
   const { user } = useContext(UserContext);
-
-  // Retrieve user's email from local storage
+  const [userId, setUserId] = useState<number | null>(null);
   const storedUser = localStorage.getItem("user");
 
   useEffect(() => {
@@ -94,23 +87,26 @@ export const PendingRequests = () => {
 
   useEffect(() => {
     const fetchRequests = async () => {
-      if (!user || userId === null) return; // Ensure userId is available
+      if (!user || !storedId) return;
       try {
-        const response = await axios.get(`${BACKEND_URL}/arrangements/team/${storedId}`, {
-          params: {
-            // "current_approval_status": ["pending"],
+        const response = await axios.get(`${BACKEND_URL}/arrangement/view/pending-requests/${storedId}`);
+        const allRequests: TWFHRequest[] = response.data.data;
+
+        // Filter for pending requests, excluding Jack Sim's approved requests
+        const filteredRequests = allRequests.filter((request: TWFHRequest) => {
+          if (request.staff_id === 130002 && request.approval_status === ApprovalStatus.Approved) {
+            return false;
           }
-        }); // Call your endpoint
-        // NOTE: API response separates the arrangements of peers and subordinates (see FastAPI docs), you can choose to handle them separately
-        const allRequests: TWFHRequest[] = response.data.data.peers.concat(response.data.data.subordinates); // 
-        // const filteredRequests = allRequests.filter((request: TWFHRequest) => request.approval_status === ApprovalStatus.Pending); // Filter for pending requests
-        setRequests(allRequests);
+          return request.approval_status === ApprovalStatus.Pending;
+        });
+
+        setRequests(filteredRequests);
       } catch (error) {
         console.error("Failed to fetch requests:", error);
       }
     };
     fetchRequests();
-  }, [user, userId]); // Removed page and rowsPerPage as dependencies for fetching all requests
+  }, [user, storedId]);
 
   const handleRequestAction = async (
     action: TAction,
@@ -146,29 +142,19 @@ export const PendingRequests = () => {
     setSearchTerm(e.target.value);
   };
 
-  const handleChangePage = (event: unknown, newPage: number) => {
-    setPage(newPage);
-  };
-
-  const handleChangeRowsPerPage = (
-    event: React.ChangeEvent<HTMLInputElement>
-  ) => {
-    setRowsPerPage(parseInt(event.target.value, 10));
-    setPage(0);
-  };
+  const filteredRequests = requests.filter(
+    (request) =>
+      request.staff_id.toString().includes(searchTerm) ||
+      request.wfh_date.includes(searchTerm) ||
+      request.wfh_type.toLowerCase().includes(searchTerm) ||
+      request.approval_status.toLowerCase().includes(searchTerm)
+  );
 
   return (
     <Container>
-      <Typography
-        variant="h4"
-        gutterBottom
-        align="center"
-        sx={{ marginTop: 4 }}
-      >
-        Pending Requests for {storedUser} (Staff ID: {userId})
-      </Typography>
-
-      {/* Search bar */}
+      {/* <Typography variant="h4" gutterBottom align="center" sx={{ marginTop: 4 }}>
+        Pending Requests for {userName}
+      </Typography> */}
       <TextField
         label="Search"
         variant="outlined"
@@ -177,22 +163,11 @@ export const PendingRequests = () => {
         value={searchTerm}
         onChange={handleSearch}
       />
-
-      <TableContainer
-        component={Paper}
-        sx={{ marginTop: 3, textAlign: "center" }}
-      >
+      <TableContainer component={Paper} sx={{ marginTop: 3, textAlign: "center" }}>
         <Table>
           <TableHead>
             <TableRow>
-              <TableCell sx={{ fontWeight: "bold" }}>
-                <TableSortLabel
-                  active={orderBy === "staff_id"}
-                  direction={orderBy === "staff_id" ? order : "asc"}
-                >
-                  Requester Staff ID
-                </TableSortLabel>
-              </TableCell>
+              <TableCell sx={{ fontWeight: "bold" }}>Requester Staff ID</TableCell>
               <TableCell sx={{ fontWeight: "bold" }}>WFH Date</TableCell>
               <TableCell sx={{ fontWeight: "bold" }}>WFH Type</TableCell>
               <TableCell sx={{ fontWeight: "bold" }}>Reason</TableCell> {/* New Column */}
@@ -201,7 +176,7 @@ export const PendingRequests = () => {
             </TableRow>
           </TableHead>
           <TableBody>
-            {requests.length === 0 ? (
+            {filteredRequests.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={6} align="center">No pending requests</TableCell>
               </TableRow>
@@ -223,16 +198,10 @@ export const PendingRequests = () => {
                     <TableCell>{wfh_type?.toUpperCase()}</TableCell>
                     <TableCell>{reason_description}</TableCell> {/* Display Reason Description */}
                     <TableCell>
-                      <Chip
-                        color={getChipColor(approval_status as ApprovalStatus)}
-                        label={capitalize(approval_status!)}
-                      />
+                      <Chip color={getChipColor(approval_status)} label={capitalize(approval_status)} />
                     </TableCell>
                     <TableCell>
-                      <ButtonGroup
-                        variant="contained"
-                        aria-label="Approve/Reject Button group"
-                      >
+                      <ButtonGroup variant="contained" aria-label="Approve/Reject Button group">
                         <Button
                           size="small"
                           color="success"
@@ -265,11 +234,11 @@ export const PendingRequests = () => {
       <TablePagination
         component="div"
         rowsPerPageOptions={[10, 20, 30]}
-        count={requests.length}
+        count={filteredRequests.length}
         rowsPerPage={rowsPerPage}
         page={page}
-        onPageChange={handleChangePage}
-        onRowsPerPageChange={handleChangeRowsPerPage}
+        onPageChange={(event, newPage) => setPage(newPage)}
+        onRowsPerPageChange={(event) => setRowsPerPage(parseInt(event.target.value, 10))}
       />
     </Container>
   );

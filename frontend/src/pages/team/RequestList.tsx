@@ -80,6 +80,14 @@ export const RequestList = () => {
   useEffect(() => {
     const fetchAllRequests = async () => {
       try {
+        const response = await axios.get(`${BACKEND_URL}/arrangement/view`);
+        const allRequests: TWFHRequest[] = response.data.data;
+  
+        // Temporarily disabling filtering by user
+        setRequests(allRequests);
+  
+        // If needed, re-enable this by uncommenting the following lines:
+        /*
         if (user) {
           const response = await axios.get(`${BACKEND_URL}/arrangements/personal/${user.id}`);
           const userRequests: TWFHRequest[] = response.data.data;
@@ -87,6 +95,7 @@ export const RequestList = () => {
           // Filter requests to only include those submitted by the logged-in user
           setRequests(userRequests);
         }
+        */
       } catch (error) {
         console.error("Failed to fetch all requests:", error);
       }

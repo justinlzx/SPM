@@ -243,7 +243,7 @@ export const CreateWfhRequest: React.FC = () => {
             {/* Reason */}
             <FormControl fullWidth sx={{ mb: 2 }}>
               <Typography variant="subtitle1">Reason for WFH</Typography>
-              <Field name="reason" as={TextField} fullWidth required />
+              <Field name="reason" as={TextField} fullWidth required disabled={loading} />
               <FormHelperText error>
                 <ErrorMessage name="reason" />
               </FormHelperText>
@@ -257,6 +257,7 @@ export const CreateWfhRequest: React.FC = () => {
                 value={values.wfhType}
                 onChange={(e) => setFieldValue('wfhType', e.target.value)}
                 fullWidth
+                disabled={loading}
               >
                 <MenuItem value="" disabled>
                   Select WFH Type
@@ -278,6 +279,7 @@ export const CreateWfhRequest: React.FC = () => {
                 value={scheduleType}
                 onChange={(e) => setScheduleType(e.target.value as 'adhoc' | 'recurring')}
                 fullWidth
+                disabled={loading}
               >
                 <MenuItem value="adhoc">Ad-hoc</MenuItem>
                 <MenuItem value="recurring">Recurring</MenuItem>
@@ -295,6 +297,7 @@ export const CreateWfhRequest: React.FC = () => {
                   customInput={<TextField fullWidth />}
                   required
                   minDate={new Date()}
+                  disabled={loading}
                 />
                 <FormHelperText error>
                   <ErrorMessage name="startDate" />
@@ -303,11 +306,14 @@ export const CreateWfhRequest: React.FC = () => {
             )}
 
             {/* Recurring Fields */}
-            {scheduleType === 'recurring' && <Recurring />}
+            {scheduleType === 'recurring' && 
+            <Recurring 
+              disabled={loading} 
+            />}
 
             {/* Submit Button */}
             <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 4 }}>
-              <Button variant="outlined" color="primary" onClick={() => navigate(-1)} sx={{ mr: 2 }}>
+              <Button variant="outlined" color="primary" onClick={() => navigate(-1)} sx={{ mr: 2 }} disabled={loading}>
                 Cancel
               </Button>
               <Button type="submit" variant="contained" color="primary" disabled={loading}>
@@ -320,47 +326,47 @@ export const CreateWfhRequest: React.FC = () => {
 
       {/* Snackbar Component for Warning or Success */}
       <Snackbar
-          open={showSnackbar}
+        open={showSnackbar}
+        onClose={handleCloseSnackBar}
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+        autoHideDuration={alertStatus === AlertStatus.Success && snackbarMessage.includes('successfully submitted') ? null : 6000}
+      >
+        <Alert
           onClose={handleCloseSnackBar}
-          anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
-          autoHideDuration={alertStatus === AlertStatus.Success && snackbarMessage.includes('successfully submitted') ? null : 6000}
+          severity={alertStatus}
+          sx={{ 
+            width: '100%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+          }}
+          action={
+            alertStatus === AlertStatus.Success && snackbarMessage.includes('successfully submitted') && (
+              <Button
+                color="inherit"
+                size="small"
+                variant="contained"
+                onClick={() => navigate('/home')}
+                sx={{
+                  backgroundColor: '#006400',
+                  color: '#FFFFFF',
+                  textTransform: 'none',
+                  lineHeight: '1.5',
+                  whiteSpace: 'nowrap',
+                  '&:hover': {
+                    backgroundColor: '#004d00',
+                  },
+                  marginLeft: 'auto',
+                }}
+              >
+                Back to Home
+              </Button>
+            )
+          }
         >
-          <Alert
-            onClose={handleCloseSnackBar}
-            severity={alertStatus}
-            sx={{ 
-              width: '100%',
-              display: 'flex', // Use flexbox for alignment
-              alignItems: 'center', // Center items vertically
-              justifyContent: 'space-between', // Spread content evenly
-            }}
-            action={
-              alertStatus === AlertStatus.Success && snackbarMessage.includes('successfully submitted') && (
-                <Button
-                  color="inherit"
-                  size="small"
-                  variant="contained"
-                  onClick={() => navigate('/home')}
-                  sx={{
-                    backgroundColor: '#006400', // Dark green fill color
-                    color: '#FFFFFF', // White text
-                    textTransform: 'none', // Keep text case as-is
-                    lineHeight: '1.5', // Adjust line height for better alignment
-                    whiteSpace: 'nowrap', // Prevent the text from wrapping to a new line
-                    '&:hover': {
-                      backgroundColor: '#004d00', // Slightly darker shade for hover effect
-                    },
-                    marginLeft: 'auto', // Align button to the right
-                  }}
-                >
-                  Back to Home
-                </Button>
-              )
-            }
-          >
-            {snackbarMessage}
-          </Alert>
-        </Snackbar>
+          {snackbarMessage}
+        </Alert>
+      </Snackbar>
     </Container>
   );
 };
