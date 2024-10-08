@@ -157,7 +157,7 @@ export const CreateWfhRequest: React.FC = () => {
     };
 
     try {
-      await axios.post('http://localhost:8000/arrangement/request', qs.stringify(payload), {
+      await axios.post('http://localhost:8000/arrangements/', qs.stringify(payload), {
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
         },

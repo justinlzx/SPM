@@ -14,5 +14,5 @@ def get_employee_by_email(db: Session, email: str) -> models.Employee:
     return db.query(models.Employee).filter(func.lower(models.Employee.email) == email).first()
 
 
-def get_employees_by_manager_id(db: Session, manager_id: int) -> List[models.Employee]:
+def get_subordinates_by_manager_id(db: Session, manager_id: int) -> List[models.Employee]:
     return db.query(models.Employee).filter(models.Employee.reporting_manager == manager_id).all()

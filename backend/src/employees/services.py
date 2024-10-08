@@ -5,8 +5,8 @@ from sqlalchemy.orm import Session
 from . import crud, exceptions, models
 
 
-def get_manager_by_employee_staff_id(db: Session, staff_id: int) -> models.Employee:
-    emp: models.Employee = get_employee_by_staff_id(db, staff_id)
+def get_manager_by_subordinate_id(db: Session, staff_id: int) -> models.Employee:
+    emp: models.Employee = get_employee_by_id(db, staff_id)
     print(f"staff id: {emp.staff_id}")
     manager: models.Employee = emp.manager
 
@@ -17,11 +17,11 @@ def get_manager_by_employee_staff_id(db: Session, staff_id: int) -> models.Emplo
     return manager
 
 
-def get_employee_by_staff_id(db: Session, staff_id: int) -> models.Employee:
+def get_employee_by_id(db: Session, staff_id: int) -> models.Employee:
     employee: models.Employee = crud.get_employee_by_staff_id(db, staff_id)
 
     if not employee:
-        raise exceptions.EmployeeNotFound()
+        raise exceptions.EmployeeNotFoundException()
 
     return employee
 
@@ -30,15 +30,24 @@ def get_employee_by_email(db: Session, email: str) -> models.Employee:
     employee: models.Employee = crud.get_employee_by_email(db, email)
 
     if not employee:
-        raise exceptions.EmployeeNotFound()
+        raise exceptions.EmployeeNotFoundException()
 
     return employee
 
 
-def get_employees_by_manager_id(db: Session, manager_id: int) -> List[models.Employee]:
-    employees: List[models.Employee] = crud.get_employees_by_manager_id(db, manager_id)
+def get_subordinates_by_manager_id(db: Session, manager_id: int) -> List[models.Employee]:
+    employees: List[models.Employee] = crud.get_subordinates_by_manager_id(db, manager_id)
 
     if not employees:
-        raise exceptions.ManagerNotFound()
+        raise exceptions.ManagerNotFoundException()
 
     return employees
+
+
+def get_peers_by_staff_id(db: Session, staff_id: int) -> List[models.Employee]:
+    employee: models.Employee = get_employee_by_id(db, staff_id)
+    peer_employees: List[models.Employee] = get_subordinates_by_manager_id(
+        db, employee.reporting_manager
+    )
+
+    return peer_employees

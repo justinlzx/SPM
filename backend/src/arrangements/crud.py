@@ -5,8 +5,76 @@ from typing import List
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
-from . import exceptions, models, schemas
+from . import models, schemas
 from .utils import fit_model_to_model, fit_schema_to_model
+
+
+def get_arrangement_by_id(db: Session, arrangement_id: int) -> models.LatestArrangement:
+    return db.query(models.LatestArrangement).get(arrangement_id)
+
+
+def get_arrangements_by_filter(
+    db: Session, requester_staff_id: int = None, current_approval_status: List[str] = None
+) -> List[models.LatestArrangement]:
+    query = db.query(models.LatestArrangement)
+
+    if requester_staff_id:
+        query = query.filter(models.LatestArrangement.requester_staff_id == requester_staff_id)
+    if current_approval_status:
+        if len(current_approval_status) > 1:
+            query = query.filter(
+                models.LatestArrangement.current_approval_status.in_(current_approval_status)
+            )
+        else:
+            query = query.filter(
+                models.LatestArrangement.current_approval_status == current_approval_status[0]
+            )
+
+    return query.all()
+
+
+def get_arrangements_by_staff_ids(
+    db: Session, staff_ids: List[int], current_approval_status: List[str] = None
+) -> List[models.LatestArrangement]:
+    """Fetch the WFH requests for a list of staff IDs."""
+    print(f"Fetching pending requests for staff IDs: {staff_ids}")
+    query = db.query(models.LatestArrangement)
+    query = query.filter(models.LatestArrangement.requester_staff_id.in_(staff_ids))
+
+    if current_approval_status:
+        if len(current_approval_status) > 1:
+            query = query.filter(
+                models.LatestArrangement.current_approval_status.in_(current_approval_status)
+            )
+        else:
+            query = query.filter(
+                models.LatestArrangement.current_approval_status == current_approval_status[0]
+            )
+
+    # print(f"Retrieved pending requests: {results}")
+    return query.all()
+
+
+def create_arrangement_log(
+    db: Session, arrangement: models.LatestArrangement, action: str
+) -> models.ArrangementLog:
+    try:
+        arrangement_log: models.ArrangementLog = fit_model_to_model(
+            arrangement,
+            models.ArrangementLog,
+            {
+                "current_approval_status": "approval_status",
+            },
+        )
+        arrangement_log.update_datetime = datetime.utcnow()
+
+        # arrangement_log.approval_status = arrangement.current_approval_status
+        db.add(arrangement_log)
+        db.flush()
+        return arrangement_log
+    except SQLAlchemyError as e:
+        db.rollback()
+        raise e
 
 
 def create_recurring_request(
@@ -65,52 +133,3 @@ def update_arrangement_approval_status(
     except SQLAlchemyError as e:
         db.rollback()
         raise e
-
-
-def create_arrangement_log(
-    db: Session, arrangement: models.LatestArrangement, action: str
-) -> models.ArrangementLog:
-    try:
-        arrangement_log: models.ArrangementLog = fit_model_to_model(
-            arrangement,
-            models.ArrangementLog,
-            {
-                "current_approval_status": "approval_status",
-            },
-        )
-        arrangement_log.update_datetime = datetime.utcnow()
-
-        # arrangement_log.approval_status = arrangement.current_approval_status
-        db.add(arrangement_log)
-        db.flush()
-        return arrangement_log
-    except SQLAlchemyError as e:
-        db.rollback()
-        raise e
-
-
-def get_all_arrangements(db: Session) -> List[models.LatestArrangement]:
-    try:
-        return db.query(models.LatestArrangement).all()
-    except SQLAlchemyError as e:
-        raise e
-
-
-def get_arrangement_by_id(db: Session, arrangement_id: int) -> models.LatestArrangement:
-    return db.query(models.LatestArrangement).get(arrangement_id)
-
-
-def get_pending_requests_by_staff_ids(db: Session, staff_ids: List[int]):
-    """Fetch the pending WFH requests for a list of staff IDs."""
-    try:
-        print(f"Fetching pending requests for staff IDs: {staff_ids}")
-        results = (
-            db.query(models.LatestArrangement)
-            .filter(models.LatestArrangement.requester_staff_id.in_(staff_ids))
-            .all()
-        )
-        print(f"Retrieved pending requests: {results}")
-        return results
-    except SQLAlchemyError as e:
-        print(f"Error fetching pending requests: {str(e)}")  # Log the error
-        return []  # Return an empty list on error

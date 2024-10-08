@@ -29,7 +29,7 @@ export const getArrangementsByManager = async ({
     searchTerm
 }: TArrangementQuery):  Promise<TRequest[] | undefined> => {
     try {
-        const response = await axios.get(`${BACKEND_URL}/arrangement/view/${manager_id}`, {
+        const response = await axios.get(`${BACKEND_URL}/arrangements/subordinates/${manager_id}`, {
             params: {
                 status,
                 page,

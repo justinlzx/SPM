@@ -5,12 +5,14 @@ from pydantic import BaseModel, Field, ValidationInfo, field_validator
 from pydantic.json_schema import SkipJsonSchema
 
 from ..base import BaseSchema
-from ..employees.schemas import EmployeeBase
+from ..employees import schemas as employee_schemas
 
 
 class ArrangementBase(BaseSchema):
     staff_id: int = Field(
-        ..., title="Staff ID of the employee who made the request", alias="requester_staff_id"
+        ...,
+        title="Staff ID of the employee who made the request",
+        alias="requester_staff_id",
     )
 
     wfh_date: str = Field(
@@ -82,13 +84,12 @@ class ArrangementCreateResponse(ArrangementBase):
 
 
 class ArrangementUpdate(ArrangementBase):
-    arrangement_id: int = Field(..., title="Unique identifier for the arrangement")
-
-    action: Literal["approve", "reject", "withdraw"] = Field(
+    action: Literal["approve", "reject", "withdraw", "cancel"] = Field(
         exclude=True, title="Action to be taken on the WFH request"
     )
-    reason_description: str = Field(..., title="Reason for the status update")
     approving_officer: int = Field(exclude=True, title="Staff ID of the approving officer")
+    reason_description: Optional[str] = Field(None, title="Reason for the status update")
+    arrangement_id: SkipJsonSchema[int] = Field(None, title="Unique identifier for the arrangement")
     staff_id: SkipJsonSchema[int] = Field(
         None, title="Staff ID of the employee who made the request", alias="requester_staff_id"
     )
@@ -122,7 +123,7 @@ class ArrangementLog(ArrangementBase):
     batch_id: Optional[int] = Field(
         None, title="Unique identifier for the batch, if any"
     )  # Allow None
-    requester_info: Optional[EmployeeBase] = Field(
+    requester_info: Optional[employee_schemas.EmployeeBase] = Field(
         None, exclude=True, title="Information about the requester"
     )
 
@@ -130,12 +131,16 @@ class ArrangementLog(ArrangementBase):
         from_attributes = True
 
 
-class ArrangementResponse(ArrangementLog):
+class ArrangementQueryParams(BaseModel):
+    current_approval_status: Optional[
+        List[Literal["pending", "approved", "rejected", "withdrawn"]]
+    ] = Field([], title="Filter by the current approval status")
+    requester_staff_id: Optional[int] = Field(None, title="Filter by the staff ID of the requester")
+
+
+class ArrangementResponse(ArrangementBase):
     arrangement_id: int = Field(..., title="Unique identifier for the arrangement")
     update_datetime: datetime = Field(exclude=True, title="Datetime of the arrangement update")
-    requester_staff_id: int = Field(
-        ..., title="Staff ID of the employee who made the request", alias="requester_staff_id"
-    )
     approval_status: Literal["pending", "approved", "rejected", "withdrawn"] = Field(
         ..., title="Current status of the WFH request", alias="current_approval_status"
     )
@@ -149,12 +154,11 @@ class ArrangementResponse(ArrangementLog):
     latest_log_id: int = Field(
         None, title="Unique identifier for the latest log entry"
     )  # Allow None
-    # requester_info: EmployeeBase
-
-    class Config:
-        orm_mode = True
+    requester_info: Optional[employee_schemas.EmployeeBase] = Field(
+        None, title="Information about the requester"
+    )
 
 
 class ManagerPendingRequestsResponse(BaseModel):
-    employee: EmployeeBase
+    employee: Optional[employee_schemas.EmployeeBase]
     pending_arrangements: List[ArrangementCreateResponse]
