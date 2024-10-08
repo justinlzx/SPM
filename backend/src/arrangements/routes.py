@@ -10,7 +10,7 @@ from ..employees import exceptions as employee_exceptions
 from ..employees import models as employee_models
 from ..employees import services as employee_services
 from ..notifications.email_notifications import craft_and_send_email
-from . import crud, schemas, services
+from . import schemas, services
 from .exceptions import (ArrangementActionNotAllowedError,
                          ArrangementNotFoundError)
 

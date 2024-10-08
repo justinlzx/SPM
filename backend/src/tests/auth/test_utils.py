@@ -1,9 +1,10 @@
-import pytest
-from unittest.mock import patch
-from datetime import timedelta, datetime, timezone
 import hashlib
+from datetime import datetime, timedelta, timezone
+from unittest.mock import patch
+
 import jwt
-from src.auth.utils import hash_password, verify_password, generate_JWT
+# import pytest
+from src.auth.utils import generate_JWT, hash_password, verify_password
 
 
 # Test for hash_password function
@@ -36,7 +37,6 @@ def test_verify_password():
     assert not verify_password("wrongpassword", stored_hash, salt)
 
 
-# Test for generate_JWT function
 @patch("src.auth.utils.TOKEN_SECRET", "test_secret")
 def test_generate_JWT():
     # Set up test data
@@ -53,18 +53,24 @@ def test_generate_JWT():
         # Generate JWT token
         token = generate_JWT(data, expires_delta)
 
-        # Decode the JWT token to verify its content
-        decoded_data = jwt.decode(token, "test_secret", algorithms=["HS256"])
+        # Mock datetime during decoding to ensure consistent "now" time
+        with patch("jwt.api_jwt.datetime") as mock_jwt_datetime:
+            mock_jwt_datetime.now.return_value = mock_now
 
-        # Verify the token data
-        assert decoded_data["sub"] == data["sub"]
-        assert "exp" in decoded_data
+            # Decode the JWT token to verify its content
+            decoded_data = jwt.decode(token, "test_secret", algorithms=["HS256"])
 
-        # Expected expiration time based on the fixed datetime
-        expected_expiration = mock_now + expires_delta
+            # Verify the token data
+            assert decoded_data["sub"] == data["sub"]
+            assert "exp" in decoded_data
 
-        # Compare the expiration times as UTC
-        assert datetime.fromtimestamp(decoded_data["exp"], tz=timezone.utc) == expected_expiration
+            # Expected expiration time based on the fixed datetime
+            expected_expiration = mock_now + expires_delta
+
+            # Compare the expiration times as UTC
+            assert (
+                datetime.fromtimestamp(decoded_data["exp"], tz=timezone.utc) == expected_expiration
+            )
 
     # Test default expiration (15 minutes)
     with patch("src.auth.utils.datetime") as mock_datetime:
@@ -74,11 +80,15 @@ def test_generate_JWT():
 
         # Generate JWT token with default expiration
         default_token = generate_JWT(data)
-        default_decoded_data = jwt.decode(default_token, "test_secret", algorithms=["HS256"])
 
-        # Default expiration is 15 minutes
-        default_expected_expiration = mock_now + timedelta(minutes=15)
-        assert (
-            datetime.fromtimestamp(default_decoded_data["exp"], tz=timezone.utc)
-            == default_expected_expiration
-        )
+        # Mock datetime during decoding
+        with patch("jwt.api_jwt.datetime") as mock_jwt_datetime:
+            mock_jwt_datetime.now.return_value = mock_now
+            default_decoded_data = jwt.decode(default_token, "test_secret", algorithms=["HS256"])
+
+            # Default expiration is 15 minutes
+            default_expected_expiration = mock_now + timedelta(minutes=15)
+            assert (
+                datetime.fromtimestamp(default_decoded_data["exp"], tz=timezone.utc)
+                == default_expected_expiration
+            )
