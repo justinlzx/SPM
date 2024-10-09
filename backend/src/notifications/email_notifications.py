@@ -22,11 +22,11 @@ BASE_URL = getenv("BACKEND_BASE_URL", "http://localhost:8000")
 
 async def fetch_manager_info(staff_id: int):
     """Fetch manager information by making an HTTP request to the
-    /employee/manager/peermanager/{staff_id} route."""
+    /employees/manager/peermanager/{staff_id} route."""
     try:
         async with httpx.AsyncClient() as client:
             response = await client.get(
-                f"{BASE_URL}/employee/manager/peermanager/{staff_id}"
+                f"{BASE_URL}/employees/manager/peermanager/{staff_id}"
             )
 
             # Check if the response is successful

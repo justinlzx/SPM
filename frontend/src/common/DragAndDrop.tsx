@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useState, useEffect } from "react";
 import Dropzone from "react-dropzone";
 import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 import { Button, List, ListItem } from "@mui/material";
@@ -10,6 +10,7 @@ type TDragAndDrop = {
   maxFiles: number;
   multiple?: boolean;
   onFileAccepted: (files: File[]) => void;
+  supportingDocs: File[];
 };
 
 export const DragAndDrop = ({
@@ -17,8 +18,13 @@ export const DragAndDrop = ({
   maxFiles,
   multiple,
   onFileAccepted,
+  supportingDocs,
 }: TDragAndDrop) => {
-  const [files, setFiles] = useState<File[]>([]);
+  const [files, setFiles] = useState<File[]>(supportingDocs);
+
+  useEffect(() => {
+    setFiles(supportingDocs);
+  }, [supportingDocs]);
 
   const onDrop = useCallback(
     (acceptedFiles: File[]) => {

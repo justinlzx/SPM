@@ -104,7 +104,7 @@ class LatestArrangement(Base):
         doc="Date and time of the latest update",
     )
     requester_staff_id = Column(
-        String(length=10),
+        Integer,
         ForeignKey("employees.staff_id"),
         nullable=False,
         doc="Staff ID of the employee who made the request",

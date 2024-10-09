@@ -17,7 +17,7 @@ from .schemas import (
     ArrangementResponse,
     ArrangementUpdate,
 )
-from . import schemas, service
+from . import schemas, services
 from .exceptions import ArrangementActionNotAllowedError, ArrangementNotFoundError
 
 router = APIRouter()
@@ -26,7 +26,7 @@ router = APIRouter()
 @router.get("/{arrangement_id}", summary="Get an arrangement by its arrangement_id")
 def get_arrangement_by_id(arrangement_id: int, db: Session = Depends(get_db)):
     try:
-        arrangement: ArrangementResponse = service.get_arrangement_by_id(
+        arrangement: ArrangementResponse = services.get_arrangement_by_id(
             db, arrangement_id
         )
 
@@ -59,7 +59,7 @@ def get_personal_arrangements_by_filter(
 ):
     try:
         arrangements: List[schemas.ArrangementResponse] = (
-            service.get_personal_arrangements_by_filter(
+            services.get_personal_arrangements_by_filter(
                 db, staff_id, current_approval_status
             )
         )
@@ -93,8 +93,10 @@ def get_subordinates_arrangements(
     db: Session = Depends(get_db),
 ):
     try:
-        arrangements: List[ArrangementResponse] = service.get_subordinates_arrangements(
-            db, manager_id, current_approval_status
+        arrangements: List[ArrangementResponse] = (
+            services.get_subordinates_arrangements(
+                db, manager_id, current_approval_status
+            )
         )
 
         return JSONResponse(
@@ -130,7 +132,7 @@ def get_team_arrangements(
 ):
     try:
         arrangements: Dict[str, List[ArrangementResponse]] = (
-            service.get_team_arrangements(db, staff_id, current_approval_status)
+            services.get_team_arrangements(db, staff_id, current_approval_status)
         )
         return JSONResponse(
             status_code=200,
@@ -199,11 +201,12 @@ async def create_wfh_request(
         "wfh_date": wfh_date,
         "wfh_type": wfh_type,
         "staff_id": requester_staff_id,
+        "approving_officer": None,
     }
 
-    print("route", supporting_docs)
-
-    return await service.create_wfh_request(wfh_request, supporting_docs, db)
+    return await services.create_arrangements_from_request(
+        db, wfh_request, supporting_docs
+    )
 
 
 @router.put("/{arrangement_id}/status", summary="Update the status of a WFH request")
@@ -216,7 +219,9 @@ async def update_wfh_request(
         wfh_update.arrangement_id = arrangement_id
 
         # Update the arrangement status
-        updated_arrangement = service.update_arrangement_approval_status(db, wfh_update)
+        updated_arrangement = services.update_arrangement_approval_status(
+            db, wfh_update
+        )
 
         # Fetch the staff (requester) information
         requester_employee: employee_models.Employee = (

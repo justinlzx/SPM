@@ -38,7 +38,9 @@ class ArrangementCreate(ArrangementBase):
                 )
         return v
 
-    approving_officer: int = Field(..., title="Staff ID of the approving officer")
+    approving_officer: Optional[int] = Field(
+        ..., title="Staff ID of the approving officer"
+    )
     reason_description: str = Field(..., title="Reason for requesting the WFH")
 
     update_datetime: SkipJsonSchema[datetime] = Field(
