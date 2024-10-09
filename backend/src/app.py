@@ -54,6 +54,7 @@ app = FastAPI(lifespan=lifespan)
 
 origins = [
     "http://localhost:3000",
+    "http://localhost:3001",
 ]
 
 # Add CORS middleware to allow requests from the frontend

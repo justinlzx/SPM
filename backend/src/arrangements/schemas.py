@@ -100,18 +100,8 @@ class ArrangementCreateWithFile(ArrangementCreate):
         return data
 
 
-class ArrangementCreateResponse(ArrangementBase):
-    arrangement_id: int = Field(..., title="Unique identifier for the arrangement")
-    update_datetime: SkipJsonSchema[datetime] = Field(
-        default_factory=datetime.now,
-        exclude=True,
-        title="Datetime that the request was created",
-    )
-    reason_description: str = Field(..., title="Reason for requesting the WFH")
-    batch_id: Optional[int] = Field(
-        default=None, title="Unique identifier for the batch, if any"
-    )  # Allow None
-    current_approval_status: str = Field(title="Approval status of the request")
+class ArrangementCreateResponse(ArrangementCreateWithFile):
+    requester_info: Optional[employee_schemas.EmployeeBase]
 
 
 class ArrangementUpdate(ArrangementBase):
@@ -188,7 +178,7 @@ class ArrangementQueryParams(BaseModel):
     )
 
 
-class ArrangementResponse(ArrangementBase):
+class ArrangementResponse(ArrangementCreateWithFile):
     arrangement_id: int = Field(..., title="Unique identifier for the arrangement")
     update_datetime: datetime = Field(
         exclude=True, title="Datetime of the arrangement update"
@@ -211,6 +201,10 @@ class ArrangementResponse(ArrangementBase):
     )
 
 
-class ManagerPendingRequestsResponse(BaseModel):
-    employee: Optional[employee_schemas.EmployeeBase]
-    pending_arrangements: List[ArrangementCreateResponse]
+class ManagerPendingRequests(BaseModel):
+    employee: employee_schemas.EmployeeBase
+    pending_arrangements: List[ArrangementCreate]
+
+
+class ManagerPendingRequestResponse(ManagerPendingRequests):
+    pass

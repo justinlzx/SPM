@@ -17,6 +17,7 @@ from .schemas import (
     ArrangementResponse,
     ArrangementUpdate,
 )
+from ..logger import logger
 from . import schemas, services
 from .exceptions import ArrangementActionNotAllowedError, ArrangementNotFoundError
 
@@ -58,6 +59,7 @@ def get_personal_arrangements_by_filter(
     db: Session = Depends(get_db),
 ):
     try:
+        logger.info(f"Fetching personal arrangements for staff ID: {staff_id}")
         arrangements: List[schemas.ArrangementResponse] = (
             services.get_personal_arrangements_by_filter(
                 db, staff_id, current_approval_status
@@ -93,6 +95,7 @@ def get_subordinates_arrangements(
     db: Session = Depends(get_db),
 ):
     try:
+        logger.info(f"Fetching arrangements for employees under manager ID: {manager_id}")
         arrangements: List[ArrangementResponse] = (
             services.get_subordinates_arrangements(
                 db, manager_id, current_approval_status
@@ -107,7 +110,7 @@ def get_subordinates_arrangements(
                 "data": [
                     {
                         **data.model_dump(),
-                        "update_datetime": (data.update_datetime.isoformat()),
+                        # "update_datetime": (data.update_datetime.isoformat()),
                     }
                     for data in arrangements
                 ],
@@ -275,7 +278,7 @@ async def update_wfh_request(
         raise HTTPException(status_code=406, detail=str(e))
 
     except SQLAlchemyError as e:
-        print(f"Database error occurred: {str(e)}")  # Log the database error
+        logger.error(f"Database error occurred: {str(e)}")  # Log the database error
         raise HTTPException(status_code=500, detail="Database error")
 
 
