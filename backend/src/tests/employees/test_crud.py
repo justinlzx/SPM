@@ -39,10 +39,10 @@ def test_get_employee_by_email(mock_db_session, mock_employee):
     )
 
 
-def test_get_employees_by_manager_id(mock_db_session, mock_employee):
+def test_get_subordinates_by_manager_id(mock_db_session, mock_employee):
     mock_db_session.query.return_value.filter.return_value.all.return_value = [mock_employee]
 
-    result = crud.get_employees_by_manager_id(mock_db_session, 101)
+    result = crud.get_subordinates_by_manager_id(mock_db_session, 101)
 
     assert result == [mock_employee]
     mock_db_session.query.assert_called_once()
