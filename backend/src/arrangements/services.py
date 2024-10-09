@@ -1,13 +1,31 @@
 from datetime import datetime, timedelta
+from fastapi import HTTPException
 from typing import Dict, List
 
+import boto3
+from fastapi import File
 from sqlalchemy.orm import Session
+from ..logger import logger
+
+from src.arrangements.utils import delete_file, upload_file
+from src.employees.crud import get_employee_by_staff_id
+from src.notifications.email_notifications import fetch_manager_info
 
 from .. import utils
 from ..employees import exceptions as employee_exceptions
 from ..employees import models as employee_models
 from ..employees import services as employee_services
-from . import crud, exceptions, models, schemas
+from . import crud, exceptions, models
+
+from .schemas import (
+    ArrangementCreate,
+    ArrangementCreateResponse,
+    ArrangementCreateWithFile,
+    ArrangementResponse,
+    ArrangementUpdate,
+)
+
+from .models import LatestArrangement
 
 STATUS = {
     "approve": "approved",
@@ -17,8 +35,8 @@ STATUS = {
 }
 
 
-def get_arrangement_by_id(db: Session, arrangement_id: int) -> models.LatestArrangement:
-    arrangement: models.LatestArrangement = crud.get_arrangement_by_id(db, arrangement_id)
+def get_arrangement_by_id(db: Session, arrangement_id: int) -> LatestArrangement:
+    arrangement: LatestArrangement = crud.get_arrangement_by_id(db, arrangement_id)
 
     if not arrangement:
         raise exceptions.ArrangementNotFoundError(arrangement_id)
@@ -28,13 +46,13 @@ def get_arrangement_by_id(db: Session, arrangement_id: int) -> models.LatestArra
 
 def get_personal_arrangements_by_filter(
     db: Session, staff_id: int, current_approval_status: List[str]
-) -> List[schemas.ArrangementResponse]:
+) -> List[ArrangementResponse]:
 
     arrangements: List[models.LatestArrangement] = crud.get_arrangements_by_filter(
         db, staff_id, current_approval_status
     )
-    arrangements_schema: List[schemas.ArrangementResponse] = utils.convert_model_to_pydantic_schema(
-        arrangements, schemas.ArrangementResponse
+    arrangements_schema: List[ArrangementResponse] = (
+        utils.convert_model_to_pydantic_schema(arrangements, ArrangementResponse)
     )
 
     return arrangements_schema
@@ -42,7 +60,7 @@ def get_personal_arrangements_by_filter(
 
 def get_subordinates_arrangements(
     db: Session, manager_id: int, current_approval_status: List[str]
-) -> List[schemas.ArrangementResponse]:
+) -> List[ArrangementResponse]:
 
     # Check if the employee is a manager
     employees_under_manager: List[employee_models.Employee] = (
@@ -52,14 +70,16 @@ def get_subordinates_arrangements(
     if not employees_under_manager:
         raise employee_exceptions.ManagerNotFoundException(manager_id)
 
-    employees_under_manager_ids = [employee.staff_id for employee in employees_under_manager]
+    employees_under_manager_ids = [
+        employee.staff_id for employee in employees_under_manager
+    ]
 
     arrangements = crud.get_arrangements_by_staff_ids(
         db, employees_under_manager_ids, current_approval_status
     )
 
-    arrangements_schema: List[schemas.ArrangementResponse] = utils.convert_model_to_pydantic_schema(
-        arrangements, schemas.ArrangementResponse
+    arrangements_schema: List[ArrangementResponse] = (
+        utils.convert_model_to_pydantic_schema(arrangements, ArrangementResponse)
     )
 
     return arrangements_schema
@@ -67,33 +87,35 @@ def get_subordinates_arrangements(
 
 def get_team_arrangements(
     db: Session, staff_id: int, current_approval_status: List[str]
-) -> Dict[str, List[schemas.ArrangementResponse]]:
+) -> Dict[str, List[ArrangementResponse]]:
 
-    arrangements: Dict[str, List[schemas.ArrangementResponse]] = {}
+    arrangements: Dict[str, List[ArrangementResponse]] = {}
 
     # Get arrangements of peer employees
     # TODO: Exception handling and testing
-    peer_employees: List[employee_models.Employee] = employee_services.get_peers_by_staff_id(
-        db, staff_id
+    peer_employees: List[employee_models.Employee] = (
+        employee_services.get_peers_by_staff_id(db, staff_id)
     )
-    peer_arrangements: List[models.LatestArrangement] = crud.get_arrangements_by_staff_ids(
-        db, [peer.staff_id for peer in peer_employees], current_approval_status
+    peer_arrangements: List[models.LatestArrangement] = (
+        crud.get_arrangements_by_staff_ids(
+            db, [peer.staff_id for peer in peer_employees], current_approval_status
+        )
     )
-    peer_arrangements: List[schemas.ArrangementResponse] = utils.convert_model_to_pydantic_schema(
-        peer_arrangements, schemas.ArrangementResponse
+    peer_arrangements: List[ArrangementResponse] = (
+        utils.convert_model_to_pydantic_schema(peer_arrangements, ArrangementResponse)
     )
 
     arrangements["peers"] = peer_arrangements
 
     try:
         # If employee is manager, get arrangements of subordinates
-        subordinates_arrangements: List[models.LatestArrangement] = get_subordinates_arrangements(
-            db, staff_id, current_approval_status
+        subordinates_arrangements: List[models.LatestArrangement] = (
+            get_subordinates_arrangements(db, staff_id, current_approval_status)
         )
 
-        subordinates_arrangements: List[schemas.ArrangementResponse] = (
+        subordinates_arrangements: List[ArrangementResponse] = (
             utils.convert_model_to_pydantic_schema(
-                subordinates_arrangements, schemas.ArrangementResponse
+                subordinates_arrangements, ArrangementResponse
             )
         )
         arrangements["subordinates"] = subordinates_arrangements
@@ -102,66 +124,112 @@ def get_team_arrangements(
     return arrangements
 
 
-def create_arrangements_from_request(
-    db: Session, wfh_request: schemas.ArrangementCreate
-) -> List[schemas.ArrangementCreateResponse]:
+async def create_arrangements_from_request(
+    db: Session,
+    wfh_request: ArrangementCreate,
+    supporting_docs: List[File] = File(None),
+) -> List[ArrangementCreateResponse]:
 
-    #Auto Approve Jack Sim's requests
-    if wfh_request.staff_id == 130002:
-        wfh_request.current_approval_status = "approved"
+    s3_client = boto3.client("s3")
+    file_paths = []
+    created_arrangements = []
 
-    arrangements: List[schemas.ArrangementCreate] = []
+    try:
+        # Auto Approve Jack Sim's requests
+        wfh_request = ArrangementCreateWithFile.model_validate(wfh_request)
 
-    if wfh_request.is_recurring:
-        batch: models.RecurringRequest = crud.create_recurring_request(db, wfh_request)
-        arrangements: List[schemas.ArrangementCreate] = expand_recurring_arrangement(
-            wfh_request, batch.batch_id
+        if wfh_request.staff_id == 130002:
+            wfh_request.current_approval_status = "approved"
+
+        # Fetch employee (staff) information
+        staff = get_employee_by_staff_id(db, wfh_request.staff_id)
+        if not staff:
+            raise HTTPException(status_code=404, detail="Employee not found")
+
+        # Fetch manager info using the helper function from notifications
+        manager_info = await fetch_manager_info(wfh_request.staff_id)
+        manager = None
+
+        # Only fetch manager if manager_id is not null
+        if (
+            manager_info
+            and manager_info["manager_id"] is not None
+            and manager_info["manager_id"] != wfh_request.staff_id
+        ):
+            manager = get_employee_by_staff_id(db, manager_info["manager_id"])
+
+        wfh_request.approving_officer = manager.staff_id if manager else None
+        # Upload supporting documents to S3 bucket
+        for file in supporting_docs:
+            response = await upload_file(
+                wfh_request.staff_id,
+                str(wfh_request.update_datetime),
+                file,
+                s3_client,
+            )
+
+            if not response:
+                raise Exception(f"Failed to upload supporting document: {file}")
+
+            file_paths.append(response["file_url"])
+
+        wfh_request.supporting_doc_1 = file_paths[0] if file_paths else None
+        wfh_request.supporting_doc_2 = file_paths[1] if len(file_paths) > 1 else None
+        wfh_request.supporting_doc_3 = file_paths[2] if len(file_paths) > 2 else None
+
+        arrangements: List[ArrangementCreateWithFile] = []
+
+        if wfh_request.is_recurring:
+            batch: models.RecurringRequest = crud.create_recurring_request(
+                db, wfh_request
+            )
+            arrangements: List[ArrangementCreateWithFile] = (
+                expand_recurring_arrangement(wfh_request, batch.batch_id)
+            )
+        else:
+            arrangements.append(wfh_request)
+
+        arrangements_model: List[models.LatestArrangement] = [
+            utils.fit_schema_to_model(arrangement, models.LatestArrangement)
+            for arrangement in arrangements
+        ]
+
+        created_arrangements: List[models.LatestArrangement] = crud.create_arrangements(
+            db, arrangements_model
         )
-    else:
-        arrangements.append(wfh_request)
 
-    arrangements_model: List[models.LatestArrangement] = [
-        utils.fit_schema_to_model(arrangement, models.LatestArrangement)
-        for arrangement in arrangements
-    ]
-
-    created_arrangements: List[models.LatestArrangement] = crud.create_arrangements(
-        db, arrangements_model
-    )
-
-    # Convert to Pydantic model
-    # created_arrangements = [req.__dict__ for req in created_arrangements]
-    # for data in created_arrangements:
-    #     data.pop("_sa_instance_state", None)
-    # created_arrangements_schema: schemas.ArrangementCreateResponse = [
-    #     utils.fit_model_to_schema(
-    #         data,
-    #         schemas.ArrangementCreateResponse,
-    #         {
-    #             "requester_staff_id": "staff_id",
-    #             "current_approval_status": "approval_status",
-    #         },
-    #     )
-    #     for data in created_arrangements
-    # ]
-
-    # Convert to Pydantic schema
-    created_arrangements_schema: List[schemas.ArrangementCreateResponse] = (
-        utils.convert_model_to_pydantic_schema(
-            created_arrangements, schemas.ArrangementCreateResponse
+        # Convert to Pydantic schema
+        created_arrangements_schema: List[ArrangementCreateResponse] = (
+            utils.convert_model_to_pydantic_schema(
+                created_arrangements, ArrangementCreateResponse
+            )
         )
-    )
 
-    return created_arrangements_schema
+        return created_arrangements_schema
+
+    except Exception as upload_error:
+        # If any error occurs, delete uploaded files from S3
+        logger.info(f"Deleting files due to error: {str(upload_error)}")
+        if file_paths:
+            for path in file_paths:
+                try:
+                    await delete_file(path, s3_client)
+                except Exception as e:
+                    # Log deletion error, but do not raise to avoid overriding the main exception
+                    logger.info(f"Error deleting file {path} from S3: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error uploading files: {str(upload_error)}",
+        )
 
 
 def expand_recurring_arrangement(
-    wfh_request: schemas.ArrangementCreate, batch_id: int
-) -> List[schemas.ArrangementCreate]:
-    arrangements_list: List[schemas.ArrangementCreate] = []
+    wfh_request: ArrangementCreateWithFile, batch_id: int
+) -> List[ArrangementCreateWithFile]:
+    arrangements_list: List[ArrangementCreateWithFile] = []
 
     for i in range(wfh_request.recurring_occurrences):
-        arrangement_copy: schemas.ArrangementCreate = wfh_request.model_copy()
+        arrangement_copy: ArrangementCreateWithFile = wfh_request.model_copy()
 
         if wfh_request.recurring_frequency_unit == "week":
             arrangement_copy.wfh_date = (
@@ -175,8 +243,8 @@ def expand_recurring_arrangement(
             ).strftime("%Y-%m-%d")
 
         arrangement_copy.batch_id = batch_id
-        
-        #Auto Approve Jack Sim's requests
+
+        # Auto Approve Jack Sim's requests
         if arrangement_copy.staff_id == 130002:
             arrangement_copy.current_approval_status = "approved"
 
@@ -186,8 +254,8 @@ def expand_recurring_arrangement(
 
 
 def update_arrangement_approval_status(
-    db: Session, wfh_update: schemas.ArrangementUpdate
-) -> schemas.ArrangementUpdate:
+    db: Session, wfh_update: ArrangementUpdate
+) -> ArrangementUpdate:
 
     # TODO: Check that the approving officer is the manager of the employee
 
@@ -214,6 +282,8 @@ def update_arrangement_approval_status(
         db, arrangement, wfh_update.action
     )
 
-    arrangement_schema = schemas.ArrangementUpdate(**arrangement.__dict__, action=wfh_update.action)
+    arrangement_schema = ArrangementUpdate(
+        **arrangement.__dict__, action=wfh_update.action
+    )
 
     return arrangement_schema

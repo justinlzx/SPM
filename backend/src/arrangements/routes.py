@@ -1,18 +1,24 @@
+from datetime import datetime
 from typing import Annotated, Dict, List, Literal, Optional
 
-from fastapi import APIRouter, Depends, Form, HTTPException, Query
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
 from fastapi.responses import JSONResponse
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
+
 
 from ..database import get_db
 from ..employees import exceptions as employee_exceptions
 from ..employees import models as employee_models
 from ..employees import services as employee_services
 from ..notifications.email_notifications import craft_and_send_email
+from .schemas import (
+    ArrangementCreate,
+    ArrangementResponse,
+    ArrangementUpdate,
+)
 from . import schemas, services
-from .exceptions import (ArrangementActionNotAllowedError,
-                         ArrangementNotFoundError)
+from .exceptions import ArrangementActionNotAllowedError, ArrangementNotFoundError
 
 router = APIRouter()
 
@@ -20,7 +26,7 @@ router = APIRouter()
 @router.get("/{arrangement_id}", summary="Get an arrangement by its arrangement_id")
 def get_arrangement_by_id(arrangement_id: int, db: Session = Depends(get_db)):
     try:
-        arrangement: schemas.ArrangementResponse = services.get_arrangement_by_id(
+        arrangement: ArrangementResponse = services.get_arrangement_by_id(
             db, arrangement_id
         )
 
@@ -40,7 +46,10 @@ def get_arrangement_by_id(arrangement_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/personal/{staff_id}", summary="Get personal arrangements by an employee's staff_id")
+@router.get(
+    "/personal/{staff_id}",
+    summary="Get personal arrangements by an employee's staff_id",
+)
 def get_personal_arrangements_by_filter(
     staff_id: int,
     current_approval_status: List[
@@ -50,7 +59,9 @@ def get_personal_arrangements_by_filter(
 ):
     try:
         arrangements: List[schemas.ArrangementResponse] = (
-            services.get_personal_arrangements_by_filter(db, staff_id, current_approval_status)
+            services.get_personal_arrangements_by_filter(
+                db, staff_id, current_approval_status
+            )
         )
 
         return JSONResponse(
@@ -58,7 +69,10 @@ def get_personal_arrangements_by_filter(
             content={
                 "message": "Personal arrangements retrieved successfully",
                 "data": [
-                    {**data.model_dump(), "update_datetime": (data.update_datetime.isoformat())}
+                    {
+                        **data.model_dump(),
+                        "update_datetime": (data.update_datetime.isoformat()),
+                    }
                     for data in arrangements
                 ],
             },
@@ -79,8 +93,10 @@ def get_subordinates_arrangements(
     db: Session = Depends(get_db),
 ):
     try:
-        arrangements: List[schemas.ArrangementResponse] = services.get_subordinates_arrangements(
-            db, manager_id, current_approval_status
+        arrangements: List[ArrangementResponse] = (
+            services.get_subordinates_arrangements(
+                db, manager_id, current_approval_status
+            )
         )
 
         return JSONResponse(
@@ -89,7 +105,10 @@ def get_subordinates_arrangements(
                 "message": "Arrangements for employees under manager retrieved successfully",
                 "manager_id": manager_id,
                 "data": [
-                    {**data.model_dump(), "update_datetime": (data.update_datetime.isoformat())}
+                    {
+                        **data.model_dump(),
+                        "update_datetime": (data.update_datetime.isoformat()),
+                    }
                     for data in arrangements
                 ],
             },
@@ -112,8 +131,8 @@ def get_team_arrangements(
     db: Session = Depends(get_db),
 ):
     try:
-        arrangements: Dict[str, List[schemas.ArrangementResponse]] = services.get_team_arrangements(
-            db, staff_id, current_approval_status
+        arrangements: Dict[str, List[ArrangementResponse]] = (
+            services.get_team_arrangements(db, staff_id, current_approval_status)
         )
         return JSONResponse(
             status_code=200,
@@ -122,7 +141,10 @@ def get_team_arrangements(
                 "staff_id": staff_id,
                 "data": {
                     key: [
-                        {**data.model_dump(), "update_datetime": (data.update_datetime.isoformat())}
+                        {
+                            **data.model_dump(),
+                            "update_datetime": (data.update_datetime.isoformat()),
+                        }
                         for data in value
                     ]
                     for key, value in arrangements.items()
@@ -133,86 +155,84 @@ def get_team_arrangements(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/", summary="Create a new WFH request")
+@router.post("/request")
 async def create_wfh_request(
-    wfh_request: Annotated[schemas.ArrangementCreate, Form()],
+    requester_staff_id: int = Form(..., title="Staff ID of the requester"),
+    wfh_date: str = Form(..., title="Date of the WFH request"),
+    wfh_type: Literal["full", "am", "pm"] = Form(..., title="Type of WFH arrangement"),
+    reason_description: str = Form(..., title="Reason for requesting the WFH"),
+    is_recurring: Optional[bool] = Form(
+        False, title="Flag to indicate if the request is recurring"
+    ),
+    recurring_end_date: Optional[str] = Form(
+        None, title="End date of a recurring WFH request"
+    ),
+    recurring_frequency_number: Optional[int] = Form(
+        None, title="Numerical frequency of the recurring WFH request"
+    ),
+    recurring_frequency_unit: Optional[Literal["week", "month"]] = Form(
+        None, title="Unit of the frequency of the recurring WFH request"
+    ),
+    recurring_occurrences: Optional[int] = Form(
+        None, title="Number of occurrences of the recurring WFH request"
+    ),
+    batch_id: Optional[int] = Form(
+        None, title="Unique identifier for the batch, if any"
+    ),
+    supporting_docs: Annotated[
+        Optional[list[UploadFile]], File(upload_multiple=True)
+    ] = [],
     db: Session = Depends(get_db),
-) -> JSONResponse:
-    try:
-        # Check that employee exists
-        requester_employee: employee_models.Employee = employee_services.get_employee_by_id(
-            db, wfh_request.staff_id
-        )
+):
 
-        # Fetch manager info using the helper function from notifications
-        manager: employee_models.Employee = employee_services.get_manager_by_subordinate_id(
-            db, wfh_request.staff_id
-        )
+    update_datetime = datetime.now()
+    current_approval_status = "pending"
 
-        # Create the arrangements
-        created_arrangements: List[schemas.ArrangementCreateResponse] = (
-            services.create_arrangements_from_request(db, wfh_request)
-        )
+    wfh_request: ArrangementCreate = {
+        "reason_description": reason_description,
+        "is_recurring": is_recurring,
+        "recurring_end_date": recurring_end_date,
+        "recurring_frequency_number": recurring_frequency_number,
+        "recurring_frequency_unit": recurring_frequency_unit,
+        "recurring_occurrences": recurring_occurrences,
+        "batch_id": batch_id,
+        "update_datetime": update_datetime,
+        "current_approval_status": current_approval_status,
+        "wfh_date": wfh_date,
+        "wfh_type": wfh_type,
+        "staff_id": requester_staff_id,
+        "approving_officer": None,
+    }
 
-        # Craft and send email
-        await craft_and_send_email(
-            requester_employee, created_arrangements, "create", success=True, manager=manager
-        )
-
-        #auto_approved = wfh_request.current_approval_status == "approved"
-        auto_approved = wfh_request.staff_id == 130002
-        response_message = (
-            f"Request submitted{' and auto-approved ' if auto_approved else ' '}successfully"
-        )
-
-        return JSONResponse(
-            status_code=201,
-            content={
-                "message": response_message,
-                "data": [
-                    {
-                        **arrangement.model_dump(),
-                        "update_datetime": (arrangement.update_datetime.isoformat()),
-                    }
-                    for arrangement in created_arrangements
-                ],
-            },
-        )
-
-    except employee_exceptions.EmployeeNotFoundException as e:
-        raise HTTPException(status_code=404, detail=str(e))
-
-    # TODO: Custom exception handling for Pydantic validation errors
-
-    except SQLAlchemyError as e:
-        # Craft and send failure notification email to the employee (staff)
-        craft_and_send_email(
-            requester_employee, created_arrangements, "create", success=False, error_message=str(e)
-        )
-
-        raise HTTPException(status_code=500, detail=str(e))
+    return await services.create_arrangements_from_request(
+        db, wfh_request, supporting_docs
+    )
 
 
 @router.put("/{arrangement_id}/status", summary="Update the status of a WFH request")
 async def update_wfh_request(
     arrangement_id: int,
-    wfh_update: Annotated[schemas.ArrangementUpdate, Form()],
+    wfh_update: Annotated[ArrangementUpdate, Form()],
     db: Session = Depends(get_db),
 ) -> JSONResponse:
     try:
         wfh_update.arrangement_id = arrangement_id
 
         # Update the arrangement status
-        updated_arrangement = services.update_arrangement_approval_status(db, wfh_update)
+        updated_arrangement = services.update_arrangement_approval_status(
+            db, wfh_update
+        )
 
         # Fetch the staff (requester) information
-        requester_employee: employee_models.Employee = employee_services.get_employee_by_id(
-            db, updated_arrangement.staff_id
+        requester_employee: employee_models.Employee = (
+            employee_services.get_employee_by_id(db, updated_arrangement.staff_id)
         )
 
         # Fetch manager info
-        approving_officer: employee_models.Employee = employee_services.get_employee_by_id(
-            db, updated_arrangement.approving_officer
+        approving_officer: employee_models.Employee = (
+            employee_services.get_employee_by_id(
+                db, updated_arrangement.approving_officer
+            )
         )
 
         # Prepare and send email to staff and approving officer
@@ -230,7 +250,10 @@ async def update_wfh_request(
             "rejected": "Request rejected successfully",
             "withdrawn": "Request withdrawn successfully",
             "cancelled": "Request cancelled successfully",
-        }.get(updated_arrangement.current_approval_status, "Request processed successfully")
+        }.get(
+            updated_arrangement.current_approval_status,
+            "Request processed successfully",
+        )
 
         return JSONResponse(
             status_code=201,
@@ -238,7 +261,9 @@ async def update_wfh_request(
                 "message": f"{action_message} and notifications sent",
                 "data": {
                     **updated_arrangement.model_dump(),
-                    "update_datetime": (updated_arrangement.update_datetime.isoformat()),
+                    "update_datetime": (
+                        updated_arrangement.update_datetime.isoformat()
+                    ),
                 },
             },
         )
@@ -258,7 +283,7 @@ async def update_wfh_request(
 
 # @router.get(
 #     "/view/{manager_id}",
-#     response_model=List[schemas.ArrangementResponse],
+#     response_model=List[ArrangementResponse],
 #     summary="Get all Pending Arrangements by Manager",
 # )
 # def get_arrangements_by_manager(
@@ -276,7 +301,7 @@ async def update_wfh_request(
 
 # @router.get(
 #     "/view/pending-requests/{staff_id}",
-#     response_model=List[schemas.ArrangementCreateResponse],
+#     response_model=List[ArrangementCreateResponse],
 # )
 # def get_pending_requests_for_manager_and_team(staff_id: int, db: Session = Depends(get_db)):
 #     """Get the pending WFH requests for the manager's employees."""
@@ -310,7 +335,7 @@ async def update_wfh_request(
 #         response_data = [
 #             fit_model_to_schema(
 #                 data,
-#                 schemas.ArrangementCreateResponse,
+#                 ArrangementCreateResponse,
 #                 {
 #                     "requester_staff_id": "staff_id",
 #                     "current_approval_status": "approval_status",
@@ -335,7 +360,7 @@ async def update_wfh_request(
 # OLD VERSION WHEREBY PEOPLE CAN VIEW THEIR OWN PENDING ARRANGEMENTS
 # @router.get(
 #     "/view/pending-requests/{staff_id}",
-#     response_model=List[schemas.ArrangementCreateResponse],
+#     response_model=List[ArrangementCreateResponse],
 # )
 # def get_pending_requests_for_manager_and_team(staff_id: int, db: Session = Depends(get_db)):
 #     """
@@ -367,7 +392,7 @@ async def update_wfh_request(
 #         response_data = [
 #             fit_model_to_schema(
 #                 data,
-#                 schemas.ArrangementCreateResponse,
+#                 ArrangementCreateResponse,
 #                 {
 #                     "requester_staff_id": "staff_id",
 #                     "approval_status": "current_approval_status",
