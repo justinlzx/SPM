@@ -45,7 +45,6 @@ export const CreateWfhRequest: React.FC = () => {
     );
   }
 
-  console.log(supportingDocs);
   const requesterStaffId = user.id;
 
   const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
@@ -213,7 +212,6 @@ export const CreateWfhRequest: React.FC = () => {
 
       // Clear the form after submission
       resetForm();
-      setSupportingDocs([]);
     } catch (error) {
       console.error("Error submitting the WFH arrangement:", error);
       setAlertStatus(AlertStatus.Error);
@@ -394,7 +392,6 @@ export const CreateWfhRequest: React.FC = () => {
                 onFileAccepted={(files: File[]) => {
                   setSupportingDocs(files);
                 }}
-                supportingDocs={supportingDocs}
               />
             </FormControl>
 

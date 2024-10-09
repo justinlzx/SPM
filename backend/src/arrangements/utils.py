@@ -103,9 +103,7 @@ async def upload_file(staff_id, update_datetime, file_obj, s3_client=None):
         raise HTTPException(status_code=400, detail="File size exceeds 5MB")
 
     S3_BUCKET_NAME = os.getenv("AWS_S3_BUCKET_NAME")
-    object_name = (
-        f"{staff_id}/{update_datetime}/{file_obj.filename}"  # Use the original filename
-    )
+    object_name = f"{staff_id}/{update_datetime}/{file_obj.filename}"  # Use the original filename
 
     # Upload the file
     s3_client = boto3.client("s3")

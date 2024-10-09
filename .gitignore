@@ -8,4 +8,3 @@ backend/*.env
 .pytest_cache/
 htmlcov/
 .coverage
-backend/.aws/*

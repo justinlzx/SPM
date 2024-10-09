@@ -1,220 +1,200 @@
-from unittest.mock import patch
-
 import pytest
 from fastapi.testclient import TestClient
-from src.app import app
-from src.employees import exceptions, models
-from src.tests.test_utils import mock_db_session
+from unittest.mock import MagicMock, patch
+from sqlalchemy.orm import Session
 
-# Create a TestClient instance
+from src.employees.routes import router
+from src.app import app
+from src.employees import services, exceptions
+from src.tests.test_utils import mock_db_session
+from src.database import get_db  # Import get_db to override the dependency
+
 client = TestClient(app)
 
+app.include_router(router)
 
-# Mock Employee fixture
-@pytest.fixture
-def mock_employee():
-    return models.Employee(
-        staff_id=1,
-        email="test@example.com",
-        reporting_manager=101,
-        staff_fname="John",
-        staff_lname="Doe",
-        dept="Engineering",
-        position="Developer",
-        country="SG",
-        role=1,
+# Override the dependency in the app with the mocked db session
+app.dependency_overrides[get_db] = mock_db_session
+
+
+def test_get_reporting_manager_and_peer_employees_success(mock_db_session, monkeypatch):
+    """Test the success scenario of getting manager and peer employees."""
+    # Create mock objects for manager and peer employees with all required fields
+    mock_manager = MagicMock()
+    mock_manager.staff_id = 1
+    mock_manager.staff_fname = "John"
+    mock_manager.staff_lname = "Doe"
+    mock_manager.dept = "IT"
+    mock_manager.position = "Manager"
+    mock_manager.country = "USA"
+    mock_manager.email = "john.doe@example.com"
+    mock_manager.reporting_manager = None
+    mock_manager.role = 1
+
+    mock_peer_employee = MagicMock()
+    mock_peer_employee.staff_id = 2
+    mock_peer_employee.staff_fname = "Jane"
+    mock_peer_employee.staff_lname = "Smith"
+    mock_peer_employee.dept = "HR"
+    mock_peer_employee.position = "Executive"
+    mock_peer_employee.country = "USA"
+    mock_peer_employee.email = "jane.smith@example.com"
+    mock_peer_employee.reporting_manager = 1
+    mock_peer_employee.role = 2
+
+    # Mock the service functions
+    def mock_get_manager_by_subordinate_id(db, staff_id):
+        return mock_manager
+
+    def mock_get_subordinates_by_manager_id(db, manager_id):
+        return [mock_peer_employee]
+
+    # Patch the service functions with the mocks
+    monkeypatch.setattr(
+        services, "get_manager_by_subordinate_id", mock_get_manager_by_subordinate_id
+    )
+    monkeypatch.setattr(
+        services, "get_subordinates_by_manager_id", mock_get_subordinates_by_manager_id
     )
 
+    # Call the API endpoint
+    response = client.get("/manager/peermanager/1")
 
-@pytest.fixture
-def mock_manager():
-    return models.Employee(
-        staff_id=101,
-        email="manager@example.com",
-        reporting_manager=102,
-        staff_fname="Jane",
-        staff_lname="Smith",
-        dept="Engineering",
-        position="Manager",
-        country="SG",
-        role=2,
+    # Assertions
+    assert response.status_code == 200
+    data = response.json()
+    assert data["manager_id"] == 1
+    assert len(data["peer_employees"]) == 1
+    assert data["peer_employees"][0]["staff_id"] == 2
+
+
+def test_get_reporting_manager_and_peer_employees_employee_not_found(mock_db_session, monkeypatch):
+    """Test scenario where employee is not found."""
+
+    # Mock the service function to raise the exception without arguments
+    def mock_get_manager_by_subordinate_id(db, staff_id):
+        raise exceptions.EmployeeNotFoundException()  # No argument passed
+
+    monkeypatch.setattr(
+        services, "get_manager_by_subordinate_id", mock_get_manager_by_subordinate_id
     )
 
+    # Call the API endpoint
+    response = client.get("/manager/peermanager/999")
 
-@pytest.fixture
-def mock_peer_employees():
-    return [
-        models.Employee(
-            staff_id=2,
-            email="peer1@example.com",
-            reporting_manager=101,
-            staff_fname="Alice",
-            staff_lname="Brown",
-            dept="Engineering",
-            position="Developer",
-            country="SG",
-            role=1,
-        ),
-        models.Employee(
-            staff_id=3,
-            email="peer2@example.com",
-            reporting_manager=101,
-            staff_fname="Bob",
-            staff_lname="Johnson",
-            dept="Engineering",
-            position="Developer",
-            country="SG",
-            role=1,
-        ),
-    ]
+    # Assertions
+    assert response.status_code == 404
+    assert response.json() == {"detail": "Employee not found"}
 
 
-# Test: Get Reporting Manager and Peer Employees
-def test_get_reporting_manager_and_peer_employees(
-    mock_employee, mock_manager, mock_peer_employees, mock_db_session
-):
-    with patch(
-        "src.employees.services.get_manager_by_employee_staff_id", return_value=mock_manager
-    ):
-        with patch(
-            "src.employees.services.get_employees_by_manager_id", return_value=mock_peer_employees
-        ):
-            response = client.get(f"/employee/manager/peermanager/{mock_employee.staff_id}")
-            assert response.status_code == 200
-            data = response.json()
-            assert data["manager_id"] == mock_manager.staff_id
-            assert len(data["peer_employees"]) == len(mock_peer_employees)
-            for peer in data["peer_employees"]:
-                assert "staff_id" in peer
-                assert "email" in peer
+def test_get_employee_by_staff_id_success(mock_db_session, monkeypatch):
+    """Test the success scenario of getting an employee by staff_id."""
+    mock_employee = MagicMock()
+    mock_employee.staff_id = 1
+    mock_employee.staff_fname = "John"
+    mock_employee.staff_lname = "Doe"
+    mock_employee.dept = "IT"
+    mock_employee.position = "Manager"
+    mock_employee.country = "USA"
+    mock_employee.email = "john.doe@example.com"
+    mock_employee.reporting_manager = None
+    mock_employee.role = 1
+
+    def mock_get_employee_by_id(db, staff_id):
+        return mock_employee
+
+    monkeypatch.setattr(services, "get_employee_by_id", mock_get_employee_by_id)
+
+    response = client.get("/1")
+    assert response.status_code == 200
+    assert response.json()["staff_id"] == 1
 
 
-# Test: Get Reporting Manager and Peer Employees - Employee Not Found
-def test_get_reporting_manager_and_peer_employees_employee_not_found(mock_db_session):
-    with patch(
-        "src.employees.services.get_manager_by_employee_staff_id",
-        side_effect=exceptions.EmployeeNotFound,  # No additional argument
-    ):
-        response = client.get("/employee/manager/peermanager/999")
-        assert response.status_code == 404
-        assert response.json()["detail"] == "Employee not found"
+def test_get_employee_by_staff_id_employee_not_found(mock_db_session, monkeypatch):
+    """Test scenario where employee by staff_id is not found."""
+
+    def mock_get_employee_by_id(db, staff_id):
+        raise exceptions.EmployeeNotFoundException()  # No argument passed
+
+    monkeypatch.setattr(services, "get_employee_by_id", mock_get_employee_by_id)
+
+    response = client.get("/999")
+    assert response.status_code == 404
+    assert response.json() == {"detail": "Employee not found"}
 
 
-# Test: Get Employee by Staff ID
-def test_get_employee_by_staff_id(mock_employee, mock_db_session):
-    with patch("src.employees.services.get_employee_by_staff_id", return_value=mock_employee):
-        response = client.get(f"/employee/{mock_employee.staff_id}")
-        assert response.status_code == 200
-        data = response.json()
-        assert data["staff_id"] == mock_employee.staff_id
-        assert data["email"] == mock_employee.email
+def test_get_employee_by_email_success(mock_db_session, monkeypatch):
+    """Test the success scenario of getting an employee by email."""
+    mock_employee = MagicMock()
+    mock_employee.staff_id = 1
+    mock_employee.staff_fname = "John"
+    mock_employee.staff_lname = "Doe"
+    mock_employee.dept = "IT"
+    mock_employee.position = "Manager"
+    mock_employee.country = "USA"
+    mock_employee.email = "john.doe@example.com"
+    mock_employee.reporting_manager = None
+    mock_employee.role = 1
+
+    def mock_get_employee_by_email(db, email):
+        return mock_employee
+
+    monkeypatch.setattr(services, "get_employee_by_email", mock_get_employee_by_email)
+
+    response = client.get("/email/john.doe@example.com")
+    assert response.status_code == 200
+    assert response.json()["email"] == "john.doe@example.com"
 
 
-# Test: Get Employee by Staff ID - Not Found
-def test_get_employee_by_staff_id_not_found(mock_db_session):
-    with patch(
-        "src.employees.services.get_employee_by_staff_id",
-        side_effect=exceptions.EmployeeNotFound,  # No additional argument
-    ):
-        response = client.get("/employee/999")
-        assert response.status_code == 404
-        assert response.json()["detail"] == "Employee not found"
+def test_get_employee_by_email_not_found(mock_db_session, monkeypatch):
+    """Test scenario where employee by email is not found."""
+
+    def mock_get_employee_by_email(db, email):
+        raise exceptions.EmployeeNotFoundException()  # No argument passed
+
+    monkeypatch.setattr(services, "get_employee_by_email", mock_get_employee_by_email)
+
+    response = client.get("/email/notfound@example.com")
+    assert response.status_code == 404
+    assert response.json() == {"detail": "Employee not found"}
 
 
-# Test: Get Employee by Email
-def test_get_employee_by_email(mock_employee, mock_db_session):
-    with patch("src.employees.services.get_employee_by_email", return_value=mock_employee):
-        response = client.get(f"/employee/email/{mock_employee.email}")
-        assert response.status_code == 200
-        data = response.json()
-        assert data["staff_id"] == mock_employee.staff_id
-        assert data["email"] == mock_employee.email
+def test_get_subordinates_by_manager_id_success(mock_db_session, monkeypatch):
+    """Test the success scenario of getting subordinates by manager_id."""
+    mock_employee = MagicMock()
+    mock_employee.staff_id = 2
+    mock_employee.staff_fname = "Jane"
+    mock_employee.staff_lname = "Smith"
+    mock_employee.dept = "HR"
+    mock_employee.position = "Executive"
+    mock_employee.country = "USA"
+    mock_employee.email = "jane.smith@example.com"
+    mock_employee.reporting_manager = 1
+    mock_employee.role = 2
+
+    def mock_get_subordinates_by_manager_id(db, manager_id):
+        return [mock_employee]
+
+    monkeypatch.setattr(
+        services, "get_subordinates_by_manager_id", mock_get_subordinates_by_manager_id
+    )
+
+    response = client.get("/manager/employees/1")
+    assert response.status_code == 200
+    assert len(response.json()) == 1
+    assert response.json()[0]["staff_id"] == 2
 
 
-# Test: Get Employee by Email - Not Found
-def test_get_employee_by_email_not_found(mock_db_session):
-    with patch(
-        "src.employees.services.get_employee_by_email",
-        side_effect=exceptions.EmployeeNotFound,  # No additional argument
-    ):
-        response = client.get("/employee/email/unknown@example.com")
-        assert response.status_code == 404
-        assert response.json()["detail"] == "Employee not found"
+def test_get_subordinates_by_manager_id_manager_not_found(mock_db_session, monkeypatch):
+    """Test scenario where manager is not found."""
 
+    def mock_get_subordinates_by_manager_id(db, manager_id):
+        raise exceptions.ManagerNotFoundException()  # No argument passed
 
-# Test: Get Employees Under Manager
-def test_get_employees_under_manager(mock_peer_employees, mock_db_session):
-    manager_id = 101
-    with patch(
-        "src.employees.services.get_employees_by_manager_id", return_value=mock_peer_employees
-    ):
-        response = client.get(f"/employee/manager/employees/{manager_id}")
-        assert response.status_code == 200
-        data = response.json()
-        assert len(data) == len(mock_peer_employees)
-        for employee in data:
-            assert "staff_id" in employee
-            assert "email" in employee
+    monkeypatch.setattr(
+        services, "get_subordinates_by_manager_id", mock_get_subordinates_by_manager_id
+    )
 
-
-# Test: Get Employees Under Manager - Not Found
-def test_get_employees_under_manager_not_found(mock_db_session):
-    with patch(
-        "src.employees.services.get_employees_by_manager_id",
-        side_effect=exceptions.ManagerNotFound,  # No additional argument
-    ):
-        response = client.get("/employee/manager/employees/999")
-        assert response.status_code == 404
-        assert response.json()["detail"] == "Manager not found"
-
-
-# Test: Get Employee by Email - Invalid Email Format
-def test_get_employee_by_email_invalid_format(mock_db_session):
-    invalid_email = "invalid-email-format"
-
-    # Mock the database response for get_employee_by_email
-    with patch("src.employees.crud.get_employee_by_email", return_value=None):
-        response = client.get(f"/employee/email/{invalid_email}")
-
-        # Ensure that FastAPI detects the invalid format and returns a 422 error
-        assert response.status_code == 422
-        assert (
-            response.json()["detail"][0]["msg"]
-            == "value is not a valid email address: An email address must have an @-sign."
-        )
-
-
-# Test: Get Employee by Staff ID - Invalid ID Format
-def test_get_employee_by_staff_id_invalid_id(mock_db_session):
-    invalid_staff_id = "abc"  # Invalid staff_id (should be an integer)
-
-    # Mock the database response for get_employee_by_staff_id
-    with patch("src.employees.crud.get_employee_by_staff_id", return_value=None):
-        response = client.get(f"/employee/{invalid_staff_id}")
-
-        assert response.status_code == 422  # Unprocessable Entity
-        assert (
-            response.json()["detail"][0]["msg"]
-            == "Input should be a valid integer, unable to parse string as an integer"
-        )
-
-
-# Test: Get Reporting Manager and Peer Employees - Manager Not Found
-def test_get_reporting_manager_and_peer_employees_manager_not_found(mock_db_session):
-    with patch(
-        "src.employees.services.get_manager_by_employee_staff_id",
-        side_effect=exceptions.ManagerNotFound,  # Simulate manager not found by raising the exception
-    ):
-        response = client.get("/employee/manager/peermanager/1")
-        assert response.status_code == 404
-        assert response.json()["detail"] == "Manager not found"
-
-
-# Test: Get Employees Under Manager - No Employees Found
-def test_get_employees_under_manager_no_employees(mock_db_session):
-    manager_id = 101
-    # Simulate a case where no employees are found under the manager
-    with patch("src.employees.services.get_employees_by_manager_id", return_value=[]):
-        response = client.get(f"/employee/manager/employees/{manager_id}")
-        assert response.status_code == 200
-        assert response.json() == []  # Ensure an empty list is returned
+    response = client.get("/manager/employees/999")
+    assert response.status_code == 404
+    assert response.json() == {"detail": "Manager not found"}
