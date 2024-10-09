@@ -2,6 +2,8 @@ annotated-types==0.7.0
 anyio==4.4.0
 bcrypt==3.1.7
 black==24.8.0
+boto3==1.35.34
+botocore==1.35.34
 certifi==2024.8.30
 cffi==1.17.1
 cfgv==3.4.0
@@ -21,6 +23,7 @@ httpcore==1.0.5
 httpx==0.27.2
 identify==2.6.1
 idna==3.8
+jmespath==1.0.1
 mccabe==0.7.0
 mypy-extensions==1.0.0
 nodeenv==1.9.1
@@ -42,12 +45,14 @@ python-dotenv==1.0.1
 python-multipart==0.0.9
 pytz==2024.2
 PyYAML==6.0.2
+s3transfer==0.10.2
 six==1.16.0
 sniffio==1.3.1
 SQLAlchemy==2.0.34
 starlette==0.38.5
 typing_extensions==4.12.2
 tzdata==2024.1
+urllib3==2.2.3
 uvicorn==0.30.6
 virtualenv==20.26.4
-httpx == 0.27.2
+mocker==1.1.1
