@@ -1,5 +1,7 @@
+import os
 from unittest.mock import MagicMock, patch
 import pytest
+from dotenv import load_dotenv
 from fastapi import HTTPException
 from httpx import RequestError, Response
 from src.arrangements.schemas import ArrangementLog
@@ -11,6 +13,10 @@ from src.notifications.email_notifications import (
     fetch_manager_info,
     send_email,
 )
+
+# Load environment variables
+load_dotenv()
+BASE_URL = os.getenv("BACKEND_BASE_URL", "http://localhost:8000")
 
 
 @pytest.mark.asyncio
@@ -28,7 +34,7 @@ async def test_fetch_manager_info_success(mock_get):
 
     # Assertions
     assert result == mock_response_data
-    mock_get.assert_called_once_with("http://localhost:8000/employees/manager/peermanager/123")
+    mock_get.assert_called_once_with(f"{BASE_URL}/employees/manager/peermanager/123")
 
 
 @pytest.mark.asyncio
@@ -64,7 +70,7 @@ async def test_send_email_success(mock_post):
     # Assertions
     assert result == mock_response_data
     mock_post.assert_called_once_with(
-        "http://localhost:8000/email/sendemail",
+        f"{BASE_URL}/email/sendemail",
         data={"to_email": "test@example.com", "subject": "Test Subject", "content": "Test Content"},
     )
 
