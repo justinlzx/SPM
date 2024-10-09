@@ -75,3 +75,57 @@ def test_get_employees_by_manager_id(mock_db_session, mock_employee):
     with patch("src.employees.crud.get_subordinates_by_manager_id", return_value=[]):
         with pytest.raises(exceptions.ManagerNotFoundException):
             services.get_subordinates_by_manager_id(mock_db_session, 999)
+
+
+def test_get_peers_by_staff_id_success(mock_db_session, mock_employee):
+    """Test the success scenario of getting peer employees by staff_id."""
+
+    # Arrange: Set up mock employee with a reporting manager
+    mock_employee.reporting_manager = 101
+
+    # Mock the return of get_employee_by_id to return the mock employee
+    with patch("src.employees.services.get_employee_by_id", return_value=mock_employee):
+        # Mock the return of get_subordinates_by_manager_id to return a list of peer employees
+        mock_peer_employee = MagicMock(staff_id=2, email="peer@example.com")
+        with patch(
+            "src.employees.services.get_subordinates_by_manager_id",
+            return_value=[mock_peer_employee],
+        ):
+            # Act: Call the service function
+            peers = services.get_peers_by_staff_id(mock_db_session, 1)
+
+            # Assert: Check if the correct list of peer employees is returned
+            assert len(peers) == 1
+            assert peers[0].staff_id == 2
+
+
+def test_get_peers_by_staff_id_no_peers(mock_db_session, mock_employee):
+    """Test the scenario where no peer employees are found."""
+
+    # Arrange: Set up mock employee with a reporting manager
+    mock_employee.reporting_manager = 101
+
+    # Mock the return of get_employee_by_id to return the mock employee
+    with patch("src.employees.services.get_employee_by_id", return_value=mock_employee):
+        # Mock the return of get_subordinates_by_manager_id to return an empty list (no peers)
+        with patch("src.employees.services.get_subordinates_by_manager_id", return_value=[]):
+            # Act: Call the service function
+            peers = services.get_peers_by_staff_id(mock_db_session, 1)
+
+            # Assert: Check that the returned list is empty
+            assert len(peers) == 0
+
+
+def test_get_peers_by_staff_id_no_reporting_manager(mock_db_session, mock_employee):
+    """Test the scenario where the employee has no reporting manager."""
+
+    # Arrange: Set up mock employee without a reporting manager
+    mock_employee.reporting_manager = None
+
+    # Mock the return of get_employee_by_id to return the mock employee
+    with patch("src.employees.services.get_employee_by_id", return_value=mock_employee):
+        # Act: Call the service function
+        peers = services.get_peers_by_staff_id(mock_db_session, 1)
+
+        # Assert: Check that the returned list is empty since no reporting manager exists
+        assert len(peers) == 0
