@@ -25,9 +25,7 @@ async def fetch_manager_info(staff_id: int):
     /employees/manager/peermanager/{staff_id} route."""
     try:
         async with httpx.AsyncClient() as client:
-            response = await client.get(
-                f"{BASE_URL}/employees/manager/peermanager/{staff_id}"
-            )
+            response = await client.get(f"{BASE_URL}/employees/manager/peermanager/{staff_id}")
 
             # Check if the response is successful
             if response.status_code != 200:
@@ -228,7 +226,7 @@ def craft_rejection_email_content(
         f"Batch ID: {arrangement.batch_id}\n"
         f"Updated: {arrangement.update_datetime}\n"
         f"Rejection Status: {getattr(arrangement, 'current_approval_status', 'Rejected')}\n"
-        f"Rejection Reason: {getattr(arrangement, 'status_reason', reason)}\n"
+        f"Rejection Reason: {arrangement.status_reason}\n"
     )
 
     if is_manager and manager:
@@ -262,9 +260,7 @@ async def send_email(to_email: str, subject: str, content: str):
             )
             # Check if the response is successful
             if response.status_code != 200:
-                raise HTTPException(
-                    status_code=response.status_code, detail=response.text
-                )
+                raise HTTPException(status_code=response.status_code, detail=response.text)
 
             return response.json()
 
