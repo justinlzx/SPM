@@ -1,6 +1,7 @@
+from datetime import datetime
 from typing import Annotated, Dict, List, Literal, Optional
 
-from fastapi import APIRouter, Depends, Form, HTTPException, Query
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
 from fastapi.responses import JSONResponse
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
@@ -40,7 +41,10 @@ def get_arrangement_by_id(arrangement_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/personal/{staff_id}", summary="Get personal arrangements by an employee's staff_id")
+@router.get(
+    "/personal/{staff_id}",
+    summary="Get personal arrangements by an employee's staff_id",
+)
 def get_personal_arrangements_by_filter(
     staff_id: int,
     current_approval_status: List[
@@ -58,7 +62,10 @@ def get_personal_arrangements_by_filter(
             content={
                 "message": "Personal arrangements retrieved successfully",
                 "data": [
-                    {**data.model_dump(), "update_datetime": (data.update_datetime.isoformat())}
+                    {
+                        **data.model_dump(),
+                        "update_datetime": (data.update_datetime.isoformat()),
+                    }
                     for data in arrangements
                 ],
             },
@@ -89,7 +96,10 @@ def get_subordinates_arrangements(
                 "message": "Arrangements for employees under manager retrieved successfully",
                 "manager_id": manager_id,
                 "data": [
-                    {**data.model_dump(), "update_datetime": (data.update_datetime.isoformat())}
+                    {
+                        **data.model_dump(),
+                        "update_datetime": (data.update_datetime.isoformat()),
+                    }
                     for data in arrangements
                 ],
             },
@@ -122,7 +132,10 @@ def get_team_arrangements(
                 "staff_id": staff_id,
                 "data": {
                     key: [
-                        {**data.model_dump(), "update_datetime": (data.update_datetime.isoformat())}
+                        {
+                            **data.model_dump(),
+                            "update_datetime": (data.update_datetime.isoformat()),
+                        }
                         for data in value
                     ]
                     for key, value in arrangements.items()
@@ -206,13 +219,15 @@ async def update_wfh_request(
         updated_arrangement = services.update_arrangement_approval_status(db, wfh_update)
 
         # Fetch the staff (requester) information
-        requester_employee: employee_models.Employee = employee_services.get_employee_by_id(
-            db, updated_arrangement.staff_id
+        requester_employee: employee_models.Employee = (
+            employee_services.get_employee_by_id(db, updated_arrangement.staff_id)
         )
 
         # Fetch manager info
-        approving_officer: employee_models.Employee = employee_services.get_employee_by_id(
-            db, updated_arrangement.approving_officer
+        approving_officer: employee_models.Employee = (
+            employee_services.get_employee_by_id(
+                db, updated_arrangement.approving_officer
+            )
         )
 
         # Prepare and send email to staff and approving officer
@@ -230,7 +245,10 @@ async def update_wfh_request(
             "rejected": "Request rejected successfully",
             "withdrawn": "Request withdrawn successfully",
             "cancelled": "Request cancelled successfully",
-        }.get(updated_arrangement.current_approval_status, "Request processed successfully")
+        }.get(
+            updated_arrangement.current_approval_status,
+            "Request processed successfully",
+        )
 
         return JSONResponse(
             status_code=201,
@@ -238,7 +256,9 @@ async def update_wfh_request(
                 "message": f"{action_message} and notifications sent",
                 "data": {
                     **updated_arrangement.model_dump(),
-                    "update_datetime": (updated_arrangement.update_datetime.isoformat()),
+                    "update_datetime": (
+                        updated_arrangement.update_datetime.isoformat()
+                    ),
                 },
             },
         )
