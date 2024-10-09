@@ -53,7 +53,8 @@
     "express": ">=4.20.0",
     "ajv": ">=6.12.3",
     "send": ">=0.19.0",
-    "cookie": ">=0.7.0"
+    "cookie": ">=0.7.0",
+    "react-dropzone": "^11.2.4"
   },
   "devDependencies": {
     "@babel/plugin-proposal-private-property-in-object": "^7.21.11",
@@ -79,7 +80,8 @@
     "express": ">=4.20.0",
     "ajv": ">=6.12.3",
     "send": ">=0.19.0",
-    "cookie": ">=0.7.0"
+    "cookie": ">=0.7.0",
+    "react-dropzone": "^11.2.4"
   },
   "eslintConfig": {
     "extends": [
