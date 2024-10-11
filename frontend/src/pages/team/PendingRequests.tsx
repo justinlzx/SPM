@@ -85,28 +85,6 @@ export const PendingRequests = () => {
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const { user } = useContext(UserContext);
   const userId = user!.id;
-  // const storedUser = localStorage.getItem("user");
-
-  // useEffect(() => {
-  //   const fetchUserId = async () => {
-  //     if (storedUser) {
-  //       try {
-  //         const response = await axios.get(
-  //           `${BACKEND_URL}/employees/email/${storedUser}`
-  //         ); // Call your /email endpoint
-  //         setUserId(response.data.staff_id); // Set the staff ID in state
-  //         localStorage.setItem("id", response.data.staff_id);
-  //       } catch (error) {
-  //         console.error("Failed to fetch user ID:", error);
-  //       }
-  //     }
-  //   };
-
-  //   fetchUserId();
-  // }, [storedUser]);
-
-  // Retrieve user's id from local storage
-  // const storedId = localStorage.getItem("id");
 
   // Get personal pending requests
   useEffect(() => {
@@ -142,7 +120,12 @@ export const PendingRequests = () => {
       if (!user || !userId) return;
       try {
         const response = await axios.get(
-          `${BACKEND_URL}/arrangements/subordinates/${userId}`
+          `${BACKEND_URL}/arrangements/subordinates/${userId}`,
+          {
+            params: {
+              current_approval_status: "pending",
+            },
+          }
         );
         const pendingRequests: TArrangementByEmployee[] = response.data.data;
         setActionRequests(pendingRequests);
@@ -170,9 +153,10 @@ export const PendingRequests = () => {
 
       // Log the payload before sending it
       console.log("Payload being sent:", {
-        reason_description: reason_description,
-        action: action,
+        reason_description,
+        action,
         approving_officer: userId,
+        arrangement_id,
       });
 
       await axios.put(
@@ -257,7 +241,9 @@ export const PendingRequests = () => {
                     <TableCell>{staff_id}</TableCell>
                     <TableCell>{wfh_date}</TableCell>
                     <TableCell>{wfh_type?.toUpperCase()}</TableCell>
-                    <TableCell>{reason_description}</TableCell>{" "}
+                    <TableCell className="max-w-[200px] overflow-x-scroll whitespace-nowrap">
+                      {reason_description}
+                    </TableCell>
                     <TableCell>
                       <Chip
                         label={capitalize(request.approval_status)}
@@ -370,8 +356,6 @@ const EmployeeRow = ({ request, handleRequestAction }: TEmployeeRow) => {
     setDocuments(documents);
   };
 
-  console.log(dialogOpen);
-
   return (
     <>
       <TableRow key={request.employee.staff_id}>
@@ -432,7 +416,9 @@ const EmployeeRow = ({ request, handleRequestAction }: TEmployeeRow) => {
                         <TableCell>{idx + 1}</TableCell>
                         <TableCell>{wfh_date}</TableCell>
                         <TableCell>{wfh_type?.toUpperCase()}</TableCell>
-                        <TableCell>{reason_description}</TableCell>
+                        <TableCell className="max-w-80 overflow-scroll">
+                          {reason_description}
+                        </TableCell>
                         <TableCell>
                           {supporting_doc_1 ||
                           supporting_doc_2 ||
@@ -517,11 +503,8 @@ const DocumentDialog = ({ isOpen, documents, onClose }: TDocumentDialog) => {
   return (
     <Dialog open={isOpen} onClose={onClose} fullWidth>
       <DialogTitle
-        sx={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-        }}
+        className="flex justify-between items-center"
+        sx={{ paddingBottom: 0 }}
       >
         Supporting Documents
         <DialogActions>
@@ -534,7 +517,7 @@ const DocumentDialog = ({ isOpen, documents, onClose }: TDocumentDialog) => {
         <List>
           {documents.map((document, idx) => (
             <ListItem key={document}>
-              {idx + 1}.{" "}
+              {idx + 1}.
               <Link
                 href={document}
                 target="_blank"

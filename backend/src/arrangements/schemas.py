@@ -101,6 +101,7 @@ class ArrangementCreateWithFile(ArrangementCreate):
 
 
 class ArrangementCreateResponse(ArrangementCreateWithFile):
+    arrangement_id: int
     requester_info: Optional[employee_schemas.EmployeeBase]
 
 
@@ -203,7 +204,7 @@ class ArrangementResponse(ArrangementCreateWithFile):
 
 class ManagerPendingRequests(BaseModel):
     employee: employee_schemas.EmployeeBase
-    pending_arrangements: List[ArrangementCreateWithFile]
+    pending_arrangements: List[ArrangementCreateResponse]
 
 
 class ManagerPendingRequestResponse(ManagerPendingRequests):

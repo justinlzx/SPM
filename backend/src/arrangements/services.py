@@ -111,7 +111,6 @@ def get_subordinates_arrangements(
         for arrangement in arrangements_schema
     ]
     arrangements_by_employee = group_arrangements_by_employee(arrangements_schema)
-
     return arrangements_by_employee
 
 
@@ -338,6 +337,10 @@ def update_arrangement_approval_status(
 
     arrangement_schema = ArrangementUpdate(
         **arrangement.__dict__, action=wfh_update.action
+    )
+
+    logger.info(
+        f"Arrangement {arrangement.arrangement_id} updated successfully. Status: {arrangement.current_approval_status}"
     )
 
     return arrangement_schema
