@@ -79,15 +79,8 @@ def create_arrangement_log(
             },
         )
         arrangement_log.update_datetime = datetime.utcnow()
-
-        print("About to call db.add")
         db.add(arrangement_log)
-        print("db.add called successfully")
-
-        print("About to call db.flush")
         db.flush()
-        print("db.flush called successfully")
-
         return arrangement_log
     except SQLAlchemyError as e:
         print(f"Caught SQLAlchemyError in create_arrangement_log: {str(e)}")

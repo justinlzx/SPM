@@ -215,23 +215,6 @@ def test_get_arrangements_by_filter_multiple_status(mock_db_session, mock_arrang
     assert len(result) == 2
 
 
-# def test_create_arrangement_log_sqlalchemy_error(mock_db_session, mock_arrangement):
-#     # Simply check if the function exists and can be called
-#     assert hasattr(crud, "create_arrangement_log"), "create_arrangement_log function doesn't exist"
-
-#     try:
-#         crud.create_arrangement_log(mock_db_session, mock_arrangement, "create")
-#     except Exception as e:
-#         print(f"Function raised an exception: {type(e).__name__} - {str(e)}")
-#     else:
-#         print("Function completed without raising an exception")
-
-#     # Basic assertions
-#     assert mock_db_session.add.called, "session.add was not called"
-
-#     print("Test completed")
-
-
 def test_create_arrangements_auto_approve_jack_sim(mock_db_session, mock_arrangement_log):
     jack_sim_arrangement = models.LatestArrangement(
         arrangement_id=3, requester_staff_id=130002, current_approval_status="pending"
@@ -297,3 +280,70 @@ def test_create_recurring_request_with_recurring(mock_db_session):
     mock_db_session.add.assert_called_once_with(mock_batch)
     mock_db_session.commit.assert_called_once()
     mock_db_session.refresh.assert_called_once_with(mock_batch)
+
+
+# Test get_arrangements_by_filter with no requester_staff_id
+def test_get_arrangements_by_filter_no_requester(mock_db_session, mock_arrangements):
+    mock_query = MagicMock()
+    mock_db_session.query.return_value = mock_query
+    mock_query.filter.return_value = mock_query
+    mock_query.all.return_value = mock_arrangements
+
+    result = crud.get_arrangements_by_filter(
+        mock_db_session, requester_staff_id=None, current_approval_status=["pending"]
+    )
+
+    mock_db_session.query.assert_called_once()
+    mock_query.filter.assert_called()
+    assert len(result) == 2
+
+
+# Test get_arrangements_by_filter with multiple current_approval_status
+def test_get_arrangements_by_filter_multiple_status(mock_db_session, mock_arrangements):
+    mock_query = MagicMock()
+    mock_db_session.query.return_value = mock_query
+    mock_query.filter.return_value = mock_query
+    mock_query.all.return_value = mock_arrangements
+
+    result = crud.get_arrangements_by_filter(
+        mock_db_session, requester_staff_id=None, current_approval_status=["pending", "approved"]
+    )
+
+    mock_db_session.query.assert_called_once()
+    mock_query.filter.assert_called()
+    assert len(result) == 2
+
+
+# Test create_arrangements for non-Jack Sim
+def test_create_arrangements_non_jack_sim(mock_db_session, mock_arrangements, mock_arrangement_log):
+    mock_arrangement = models.LatestArrangement(
+        arrangement_id=4, requester_staff_id=12345, current_approval_status="pending"
+    )
+    mock_db_session.add = MagicMock()
+    mock_db_session.flush = MagicMock()
+    mock_db_session.commit = MagicMock()
+    mock_db_session.refresh = MagicMock()
+
+    crud.create_arrangement_log = MagicMock(return_value=mock_arrangement_log)
+
+    result = crud.create_arrangements(mock_db_session, [mock_arrangement])
+
+    assert len(result) == 1
+    assert result[0].current_approval_status == "pending"  # Not auto-approved for non-Jack Sim
+    mock_db_session.add.assert_called()
+    mock_db_session.flush.assert_called()
+    mock_db_session.commit.assert_called_once()
+    mock_db_session.refresh.assert_called()
+
+
+# TODO: FIX Test for SQLAlchemyError in create_arrangement_log
+# def test_create_arrangement_log_sqlalchemy_error(mock_db_session, mock_arrangement):
+#     # Simulate SQLAlchemyError being raised on db.add()
+#     mock_db_session.add.side_effect = SQLAlchemyError("Database Error")
+
+#     # Assert that the SQLAlchemyError is raised
+#     with pytest.raises(SQLAlchemyError):
+#         crud.create_arrangement_log(mock_db_session, mock_arrangement, "create")
+
+#     # Ensure rollback was called after the exception
+#     mock_db_session.rollback.assert_called_once()
