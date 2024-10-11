@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useContext } from "react";
-import axios from 'axios'; 
+import axios from "axios";
 import {
   Container,
   Table,
@@ -15,7 +15,7 @@ import {
   TablePagination,
 } from "@mui/material";
 import { capitalize } from "../../utils/utils";
-import { UserContext } from '../../context/UserContextProvider';
+import { UserContext } from "../../context/UserContextProvider";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 
@@ -41,7 +41,9 @@ type TWFHRequest = {
   reason_description?: string;
 };
 
-const getChipColor = (status: ApprovalStatus | undefined): ChipProps["color"] => {
+const getChipColor = (
+  status: ApprovalStatus | undefined
+): ChipProps["color"] => {
   switch (status) {
     case ApprovalStatus.Approved:
       return "success";
@@ -54,7 +56,9 @@ const getChipColor = (status: ApprovalStatus | undefined): ChipProps["color"] =>
   }
 };
 
-const getWfhTypeChipColor = (wfhType: WfhType | undefined): ChipProps["color"] => {
+const getWfhTypeChipColor = (
+  wfhType: WfhType | undefined
+): ChipProps["color"] => {
   switch (wfhType) {
     case WfhType.AM:
       return "primary";
@@ -82,10 +86,10 @@ export const RequestList = () => {
       try {
         const response = await axios.get(`${BACKEND_URL}/arrangement/view`);
         const allRequests: TWFHRequest[] = response.data.data;
-  
+
         // Temporarily disabling filtering by user
         setRequests(allRequests);
-  
+
         // If needed, re-enable this by uncommenting the following lines:
         /*
         if (user) {
@@ -114,27 +118,37 @@ export const RequestList = () => {
   };
 
   // Handle change in rows per page
-  const handleChangeRowsPerPage = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleChangeRowsPerPage = (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
     setRowsPerPage(parseInt(event.target.value, 10));
     setPage(0);
   };
 
   // Filter the requests based on the search term, with null checks
-  const filteredRequests = requests.filter(
-    (request) =>
-      (request.requester_staff_id && request.requester_staff_id.toString().includes(searchTerm)) ||
-      (request.wfh_date && request.wfh_date.includes(searchTerm)) ||
-      (request.wfh_type && request.wfh_type.toLowerCase().includes(searchTerm)) ||
-      (request.approval_status && request.approval_status.toLowerCase().includes(searchTerm)) ||
-      (request.reason_description && request.reason_description.toLowerCase().includes(searchTerm))
-  );
+  // const requests = requests.filter(
+  //   (request) =>
+  //     (request.requester_staff_id && request.requester_staff_id.toString().includes(searchTerm)) ||
+  //     (request.wfh_date && request.wfh_date.includes(searchTerm)) ||
+  //     (request.wfh_type && request.wfh_type.toLowerCase().includes(searchTerm)) ||
+  //     (request.approval_status && request.approval_status.toLowerCase().includes(searchTerm)) ||
+  //     (request.reason_description && request.reason_description.toLowerCase().includes(searchTerm))
+  // );
 
   return (
     <div>
-      {/* <Typography variant="h4" gutterBottom align="center" sx={{ marginTop: 4 }}>
-        Your WFH Requests
-      </Typography> */}
-      <TableContainer component={Paper} sx={{ marginTop: 3, textAlign: "center", width: "100%" }}>
+      <Typography
+        variant="h4"
+        gutterBottom
+        align="center"
+        sx={{ marginTop: 4 }}
+      >
+        My WFH Requests
+      </Typography>
+      <TableContainer
+        component={Paper}
+        sx={{ marginTop: 3, textAlign: "center", width: "100%" }}
+      >
         <Table>
           <TableHead>
             <TableRow>
@@ -145,20 +159,29 @@ export const RequestList = () => {
             </TableRow>
           </TableHead>
           <TableBody>
-            {filteredRequests.length === 0 ? (
+            {requests.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={4} align="center">
                   No requests found
                 </TableCell>
               </TableRow>
             ) : (
-              filteredRequests
+              requests
                 .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
                 .map((request) => {
-                  const { arrangement_id, wfh_date, wfh_type, approval_status, reason_description } = request;
+                  const {
+                    arrangement_id,
+                    wfh_date,
+                    wfh_type,
+                    approval_status,
+                    reason_description,
+                  } = request;
 
                   return (
-                    <TableRow key={arrangement_id} sx={{ alignItems: "center" }}>
+                    <TableRow
+                      key={arrangement_id}
+                      sx={{ alignItems: "center" }}
+                    >
                       <TableCell
                         sx={{
                           width: { xs: "30%", sm: "20%", md: "15%", lg: "15%" },
@@ -173,7 +196,10 @@ export const RequestList = () => {
                       </TableCell>
 
                       <TableCell
-                        sx={{ width: { xs: "30%", sm: "20%", md: "15%", lg: "15%" }, padding: "10px" }}
+                        sx={{
+                          width: { xs: "30%", sm: "20%", md: "15%", lg: "15%" },
+                          padding: "10px",
+                        }}
                       >
                         <Chip
                           color={getWfhTypeChipColor(wfh_type)}
@@ -182,7 +208,11 @@ export const RequestList = () => {
                         />
                       </TableCell>
                       <TableCell>{wfh_date || "N/A"}</TableCell>
-                      <TableCell>{reason_description ? reason_description.substring(0, 15) : "N/A"}</TableCell>
+                      <TableCell>
+                        {reason_description
+                          ? reason_description.substring(0, 15)
+                          : "N/A"}
+                      </TableCell>
                     </TableRow>
                   );
                 })
@@ -193,7 +223,7 @@ export const RequestList = () => {
       <TablePagination
         component="div"
         rowsPerPageOptions={[10, 20, 30]}
-        count={filteredRequests.length}
+        count={requests.length}
         rowsPerPage={rowsPerPage}
         page={page}
         onPageChange={handleChangePage}
