@@ -48,11 +48,11 @@ export const login = async (credentials: {
     );
 
     const { access_token: accessToken, employee_info: {
-      staff_id: id
+      staff_id: id,
+      role
     } } = response.data.data;
 
     // TODO: remove this hardcode when the backend is ready
-    const role = 1
     localStorage.setItem(AUTH_LOCAL_STORAGE_KEYS.JWT, accessToken);
     localStorage.setItem(AUTH_LOCAL_STORAGE_KEYS.EMAIL, email);
     localStorage.setItem(AUTH_LOCAL_STORAGE_KEYS.ROLE, role.toString());
@@ -72,5 +72,6 @@ export const login = async (credentials: {
 export const logout = () => {
   localStorage.removeItem(AUTH_LOCAL_STORAGE_KEYS.JWT);
   localStorage.removeItem(AUTH_LOCAL_STORAGE_KEYS.EMAIL);
+  localStorage.removeItem(AUTH_LOCAL_STORAGE_KEYS.ROLE)
   delete axios.defaults.headers.common.Authorization;
 };
