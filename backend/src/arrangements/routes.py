@@ -16,6 +16,7 @@ from .schemas import (
     ArrangementCreate,
     ArrangementResponse,
     ArrangementUpdate,
+    ManagerPendingRequests,
 )
 from ..logger import logger
 from . import schemas, services
@@ -95,25 +96,21 @@ def get_subordinates_arrangements(
     db: Session = Depends(get_db),
 ):
     try:
-        logger.info(f"Fetching arrangements for employees under manager ID: {manager_id}")
-        arrangements: List[ArrangementResponse] = (
-            services.get_subordinates_arrangements(
-                db, manager_id, current_approval_status
-            )
+        logger.info(
+            f"Fetching arrangements for employees under manager ID: {manager_id}"
         )
+        arrangements = services.get_subordinates_arrangements(
+            db, manager_id, current_approval_status
+        )
+
+        arrangements_dict = [arrangement.model_dump() for arrangement in arrangements]
 
         return JSONResponse(
             status_code=200,
             content={
                 "message": "Arrangements for employees under manager retrieved successfully",
                 "manager_id": manager_id,
-                "data": [
-                    {
-                        **data.model_dump(),
-                        # "update_datetime": (data.update_datetime.isoformat()),
-                    }
-                    for data in arrangements
-                ],
+                "data": arrangements_dict,
             },
         )
     except employee_exceptions.ManagerNotFoundException as e:

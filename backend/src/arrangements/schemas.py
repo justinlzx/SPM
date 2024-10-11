@@ -203,7 +203,7 @@ class ArrangementResponse(ArrangementCreateWithFile):
 
 class ManagerPendingRequests(BaseModel):
     employee: employee_schemas.EmployeeBase
-    pending_arrangements: List[ArrangementCreate]
+    pending_arrangements: List[ArrangementCreateWithFile]
 
 
 class ManagerPendingRequestResponse(ManagerPendingRequests):

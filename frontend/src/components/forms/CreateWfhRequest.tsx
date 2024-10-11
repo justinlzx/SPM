@@ -298,7 +298,7 @@ export const CreateWfhRequest: React.FC = () => {
         validationSchema={validationSchema}
         onSubmit={handleSubmit}
       >
-        {({ values, setFieldValue, resetForm }) => (
+        {({ values, setFieldValue }) => (
           <Form>
             <Typography variant="h4" sx={{ mb: 2 }}>
               WFH Request Form
@@ -310,10 +310,11 @@ export const CreateWfhRequest: React.FC = () => {
               <Typography variant="subtitle1">Reason for WFH</Typography>
               <Field
                 name="reason"
-                as={TextField}
+                as="textarea"
                 fullWidth
                 required
                 disabled={loading}
+                className="border border-gray-300 rounded p-2 w-full"
               />
               <FormHelperText error>
                 <ErrorMessage name="reason" />

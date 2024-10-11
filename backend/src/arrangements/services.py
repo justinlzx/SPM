@@ -110,7 +110,6 @@ def get_subordinates_arrangements(
         )
         for arrangement in arrangements_schema
     ]
-
     arrangements_by_employee = group_arrangements_by_employee(arrangements_schema)
 
     return arrangements_by_employee

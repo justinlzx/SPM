@@ -18,6 +18,13 @@ import {
   TablePagination,
   Collapse,
   Box,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Link,
+  List,
+  ListItem,
 } from "@mui/material";
 import { UserContext } from "../../context/UserContextProvider";
 import CheckIcon from "@mui/icons-material/Check";
@@ -25,6 +32,7 @@ import CloseIcon from "@mui/icons-material/Close";
 import { TEmployee } from "../../hooks/auth/employee/employee.utils";
 import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import { capitalize } from "../../utils/utils";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 
@@ -44,6 +52,9 @@ type TWFHRequest = {
   arrangement_id: number;
   reason_description: string; // Include reason_description here
   approval_status: ApprovalStatus;
+  supporting_doc_1: string;
+  supporting_doc_2: string;
+  supporting_doc_3: string;
 };
 
 type TArrangementByEmployee = {
@@ -72,7 +83,6 @@ export const PendingRequests = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
-
   const { user } = useContext(UserContext);
   const userId = user!.id;
   // const storedUser = localStorage.getItem("user");
@@ -221,7 +231,6 @@ export const PendingRequests = () => {
               <TableCell sx={{ fontWeight: "bold" }}>WFH Date</TableCell>
               <TableCell sx={{ fontWeight: "bold" }}>WFH Type</TableCell>
               <TableCell sx={{ fontWeight: "bold" }}>Reason</TableCell>{" "}
-              {/* New Column */}
               <TableCell sx={{ fontWeight: "bold" }}>Approval Status</TableCell>
               <TableCell sx={{ fontWeight: "bold" }}>Action</TableCell>
             </TableRow>
@@ -250,39 +259,10 @@ export const PendingRequests = () => {
                     <TableCell>{wfh_type?.toUpperCase()}</TableCell>
                     <TableCell>{reason_description}</TableCell>{" "}
                     <TableCell>
-                      <ButtonGroup
-                        variant="contained"
-                        aria-label="Approve/Reject Button group"
-                      >
-                        <Button
-                          size="small"
-                          color="success"
-                          startIcon={<CheckIcon />}
-                          onClick={() =>
-                            handleRequestAction(
-                              "approve",
-                              arrangement_id!,
-                              reason_description!
-                            )
-                          }
-                        >
-                          Approve
-                        </Button>
-                        <Button
-                          size="small"
-                          color="error"
-                          startIcon={<CloseIcon />}
-                          onClick={() =>
-                            handleRequestAction(
-                              "reject",
-                              arrangement_id!,
-                              reason_description!
-                            )
-                          }
-                        >
-                          Reject
-                        </Button>
-                      </ButtonGroup>
+                      <Chip
+                        label={capitalize(request.approval_status)}
+                        color={getChipColor(request.approval_status)}
+                      />
                     </TableCell>
                   </TableRow>
                 );
@@ -302,7 +282,6 @@ export const PendingRequests = () => {
           setRowsPerPage(parseInt(event.target.value, 10))
         }
       />
-
       {user!.role !== 3 && (
         <>
           <Typography
@@ -383,13 +362,22 @@ const EmployeeRow = ({ request, handleRequestAction }: TEmployeeRow) => {
   const arrangements = request.pending_arrangements;
 
   const [isCollapsed, setIsCollapsed] = useState(true);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [documents, setDocuments] = useState<string[]>([]);
+
+  const handleDialogOpen = (documents: string[]) => {
+    setDialogOpen(true);
+    setDocuments(documents);
+  };
+
+  console.log(dialogOpen);
 
   return (
     <>
       <TableRow key={request.employee.staff_id}>
         <TableCell>
           <Button onClick={() => setIsCollapsed(!isCollapsed)}>
-            {isCollapsed ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+            {isCollapsed ? <ExpandMoreIcon /> : <ExpandLessIcon />}
           </Button>
         </TableCell>
         <TableCell>{staff_id}</TableCell>
@@ -405,15 +393,16 @@ const EmployeeRow = ({ request, handleRequestAction }: TEmployeeRow) => {
       </TableRow>
       <TableRow>
         <TableCell
-          style={{ paddingBottom: 0, paddingTop: 0, paddingLeft: 40 }}
+          style={{
+            paddingBottom: 0,
+            paddingTop: 0,
+            paddingLeft: 40,
+            paddingRight: 0,
+          }}
           colSpan={7}
         >
           <Collapse in={!isCollapsed} timeout="auto" unmountOnExit>
-            <Box
-            // sx={{
-            //   ms: 4,
-            // }}
-            >
+            <Box>
               <Table size="small">
                 <TableHead>
                   <TableRow className="bg-gray-100">
@@ -421,6 +410,9 @@ const EmployeeRow = ({ request, handleRequestAction }: TEmployeeRow) => {
                     <TableCell sx={{ fontWeight: "bold" }}>Date</TableCell>
                     <TableCell sx={{ fontWeight: "bold" }}>WFH Type</TableCell>
                     <TableCell sx={{ fontWeight: "bold" }}>Reason</TableCell>
+                    <TableCell sx={{ fontWeight: "bold" }}>
+                      Supporting Documents
+                    </TableCell>
                     <TableCell sx={{ fontWeight: "bold" }}>Action</TableCell>
                   </TableRow>
                 </TableHead>
@@ -431,6 +423,9 @@ const EmployeeRow = ({ request, handleRequestAction }: TEmployeeRow) => {
                       wfh_date,
                       wfh_type,
                       reason_description,
+                      supporting_doc_1,
+                      supporting_doc_2,
+                      supporting_doc_3,
                     } = arrangement;
                     return (
                       <TableRow key={arrangement_id}>
@@ -438,6 +433,27 @@ const EmployeeRow = ({ request, handleRequestAction }: TEmployeeRow) => {
                         <TableCell>{wfh_date}</TableCell>
                         <TableCell>{wfh_type?.toUpperCase()}</TableCell>
                         <TableCell>{reason_description}</TableCell>
+                        <TableCell>
+                          {supporting_doc_1 ||
+                          supporting_doc_2 ||
+                          supporting_doc_3 ? (
+                            <Button
+                              variant="text"
+                              onClick={() =>
+                                handleDialogOpen([
+                                  supporting_doc_1,
+                                  supporting_doc_2,
+                                  supporting_doc_3,
+                                ])
+                              }
+                              sx={{ textTransform: "none" }}
+                            >
+                              <u>View more ...</u>
+                            </Button>
+                          ) : (
+                            "NA"
+                          )}
+                        </TableCell>
                         <TableCell>
                           <ButtonGroup
                             variant="contained"
@@ -482,6 +498,55 @@ const EmployeeRow = ({ request, handleRequestAction }: TEmployeeRow) => {
           </Collapse>
         </TableCell>
       </TableRow>
+      <DocumentDialog
+        isOpen={dialogOpen}
+        documents={documents}
+        onClose={() => setDialogOpen(false)}
+      />
     </>
+  );
+};
+
+type TDocumentDialog = {
+  isOpen: boolean;
+  documents: string[];
+  onClose: () => void;
+};
+
+const DocumentDialog = ({ isOpen, documents, onClose }: TDocumentDialog) => {
+  return (
+    <Dialog open={isOpen} onClose={onClose} fullWidth>
+      <DialogTitle
+        sx={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+        }}
+      >
+        Supporting Documents
+        <DialogActions>
+          <Button onClick={onClose}>
+            <CloseIcon />
+          </Button>
+        </DialogActions>
+      </DialogTitle>
+      <DialogContent>
+        <List>
+          {documents.map((document, idx) => (
+            <ListItem key={document}>
+              {idx + 1}.{" "}
+              <Link
+                href={document}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="ps-2"
+              >
+                Click to View...
+              </Link>
+            </ListItem>
+          ))}
+        </List>
+      </DialogContent>
+    </Dialog>
   );
 };

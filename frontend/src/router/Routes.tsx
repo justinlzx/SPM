@@ -9,8 +9,6 @@ import { TeamPage } from "../pages/team/TeamPage";
 import { Settings } from "../pages/staff/Settings";
 import { WfhSchedulePage } from "../pages/staff/WfhSchedulePage";
 
-
-
 type routesProps = {
   path: string;
   element: JSX.Element;
@@ -53,7 +51,7 @@ const routes: routesProps[] = [
           {
             path: "/settings",
             element: <Settings />,
-          }
+          },
         ],
       },
     ],

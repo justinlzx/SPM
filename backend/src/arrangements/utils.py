@@ -118,7 +118,8 @@ async def upload_file(staff_id, update_datetime, file_obj, s3_client=None):
                 "Metadata": {
                     "staff_id": str(staff_id),
                     "update_datetime": str(update_datetime),
-                }
+                },
+                "ContentType": file_obj.content_type,
             },
         )
 
