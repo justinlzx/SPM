@@ -222,7 +222,7 @@ export const PendingRequests = () => {
           <TableBody>
             {filteredRequests.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} align="center">
+                <TableCell colSpan={7} align="center">
                   No pending requests
                 </TableCell>
               </TableRow>
@@ -296,7 +296,7 @@ export const PendingRequests = () => {
               </TableHead>
               {actionRequests.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} align="center">
+                  <TableCell colSpan={7} align="center">
                     No pending requests
                   </TableCell>
                 </TableRow>
