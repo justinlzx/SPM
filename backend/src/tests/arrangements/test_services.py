@@ -1,4 +1,6 @@
+from datetime import datetime
 from unittest.mock import MagicMock, patch
+from fastapi import HTTPException
 import pytest
 from src.arrangements.services import (
     get_arrangement_by_id,
@@ -12,7 +14,7 @@ from src.arrangements.services import (
 from src.arrangements import models as arrangement_models
 from src.arrangements import exceptions as arrangement_exceptions
 from src.tests.test_utils import mock_db_session
-from src.arrangements.schemas import ArrangementCreateWithFile
+from src.arrangements.schemas import ArrangementCreateWithFile, ArrangementUpdate
 from fastapi.testclient import TestClient
 from src.app import app
 from moto import mock_aws
@@ -162,3 +164,183 @@ async def test_create_arrangements_with_file_upload_success(mock_db_session, moc
     assert isinstance(response_data, list)
     assert len(response_data) == 1
     assert response_data[0] == "arrangement_schema"
+
+
+def create_mock_arrangement_create_with_file(**kwargs):
+    default_data = {
+        "staff_id": 1,
+        "wfh_date": "2024-01-01",
+        "wfh_type": "full",
+        "reason_description": "Work from home request",
+        "is_recurring": False,
+        "approving_officer": None,
+        "update_datetime": datetime.now(),
+        "current_approval_status": "pending",
+        "supporting_doc_1": None,
+        "supporting_doc_2": None,
+        "supporting_doc_3": None,
+    }
+    default_data.update(kwargs)
+    return ArrangementCreateWithFile(**default_data)
+
+
+def test_expand_recurring_arrangement():
+    wfh_request = create_mock_arrangement_create_with_file(
+        is_recurring=True,
+        recurring_frequency_unit="week",
+        recurring_frequency_number=1,
+        recurring_occurrences=3,
+    )
+    batch_id = 1
+    result = expand_recurring_arrangement(wfh_request, batch_id)
+    assert len(result) == 3
+    assert result[0].wfh_date == "2024-01-01"
+    assert result[1].wfh_date == "2024-01-08"
+    assert result[2].wfh_date == "2024-01-15"
+    assert all(arr.batch_id == batch_id for arr in result)
+
+
+def test_expand_recurring_arrangement_monthly():
+    wfh_request = create_mock_arrangement_create_with_file(
+        is_recurring=True,
+        recurring_frequency_unit="month",
+        recurring_frequency_number=1,
+        recurring_occurrences=3,
+    )
+    batch_id = 1
+    result = expand_recurring_arrangement(wfh_request, batch_id)
+    assert len(result) == 3
+    assert result[0].wfh_date == "2024-01-01"
+    assert result[1].wfh_date == "2024-02-01"
+    assert result[2].wfh_date == "2024-03-01"
+    assert all(arr.batch_id == batch_id for arr in result)
+
+
+def test_update_arrangement_approval_status(mock_db_session):
+    mock_arrangement = MagicMock(spec=arrangement_models.LatestArrangement)
+    mock_arrangement.arrangement_id = 1
+
+    wfh_update = ArrangementUpdate(
+        arrangement_id=1,
+        action="approve",
+        approving_officer=2,
+        reason_description="Approved by manager",
+    )
+
+    with patch("src.arrangements.crud.get_arrangement_by_id", return_value=mock_arrangement):
+        with patch(
+            "src.arrangements.crud.update_arrangement_approval_status",
+            return_value=mock_arrangement,
+        ):
+            result = update_arrangement_approval_status(mock_db_session, wfh_update)
+
+            assert result.arrangement_id == 1
+            assert result.current_approval_status == "approved"
+            assert result.approving_officer == 2
+            assert result.reason_description == "Approved by manager"
+
+
+@pytest.mark.asyncio
+async def test_update_arrangement_approval_status_not_found(mock_db_session):
+    wfh_update = ArrangementUpdate(
+        arrangement_id=1,
+        action="approve",
+        approving_officer=2,
+        reason_description="Approved by manager",
+    )
+
+    with patch("src.arrangements.crud.get_arrangement_by_id", return_value=None):
+        with pytest.raises(arrangement_exceptions.ArrangementNotFoundError):
+            await update_arrangement_approval_status(mock_db_session, wfh_update)
+
+
+@pytest.mark.asyncio
+async def test_create_arrangements_from_request_recurring(mock_db_session, mock_employee):
+    wfh_request = create_mock_arrangement_create_with_file(
+        is_recurring=True,
+        recurring_frequency_unit="week",
+        recurring_frequency_number=1,
+        recurring_occurrences=3,
+    )
+
+    mock_batch = MagicMock(spec=arrangement_models.RecurringRequest)
+    mock_batch.batch_id = 1
+
+    with patch("src.arrangements.crud.create_recurring_request", return_value=mock_batch):
+        with patch(
+            "src.arrangements.services.expand_recurring_arrangement",
+            return_value=[wfh_request, wfh_request, wfh_request],
+        ):
+            with patch(
+                "src.arrangements.crud.create_arrangements",
+                return_value=[MagicMock(spec=arrangement_models.LatestArrangement)],
+            ):
+                with patch(
+                    "src.utils.convert_model_to_pydantic_schema",
+                    return_value=["arrangement_schema"],
+                ):
+                    with patch(
+                        "src.employees.crud.get_employee_by_staff_id", return_value=mock_employee
+                    ):
+                        with patch(
+                            "src.arrangements.services.fetch_manager_info",
+                            return_value={"manager_id": 2},
+                        ):
+                            with patch("src.arrangements.services.boto3.client"):
+                                with patch(
+                                    "src.arrangements.utils.upload_file",
+                                    return_value={"file_url": "https://example.com/file.pdf"},
+                                ):
+                                    result = await create_arrangements_from_request(
+                                        mock_db_session, wfh_request, []
+                                    )
+                                    assert len(result) == 1
+                                    assert result[0] == "arrangement_schema"
+
+
+@pytest.mark.asyncio
+async def test_create_arrangements_from_request_jack_sim(mock_db_session, mock_employee):
+    wfh_request = create_mock_arrangement_create_with_file(staff_id=130002)
+
+    with patch(
+        "src.arrangements.crud.create_arrangements",
+        return_value=[MagicMock(spec=arrangement_models.LatestArrangement)],
+    ):
+        with patch(
+            "src.utils.convert_model_to_pydantic_schema", return_value=["arrangement_schema"]
+        ):
+            with patch("src.employees.crud.get_employee_by_staff_id", return_value=mock_employee):
+                with patch(
+                    "src.arrangements.services.fetch_manager_info", return_value={"manager_id": 2}
+                ):
+                    with patch("src.arrangements.services.boto3.client"):
+                        with patch(
+                            "src.arrangements.utils.upload_file",
+                            return_value={"file_url": "https://example.com/file.pdf"},
+                        ):
+                            result = await create_arrangements_from_request(
+                                mock_db_session, wfh_request, []
+                            )
+                            assert len(result) == 1
+                            assert result[0] == "arrangement_schema"
+                            assert wfh_request.current_approval_status == "approved"
+
+
+@pytest.mark.asyncio
+async def test_create_arrangements_from_request_file_upload_failure(mock_db_session, mock_employee):
+    wfh_request = create_mock_arrangement_create_with_file()
+
+    mock_file = MagicMock()
+
+    with patch("src.employees.crud.get_employee_by_staff_id", return_value=mock_employee):
+        with patch("src.arrangements.services.fetch_manager_info", return_value={"manager_id": 2}):
+            with patch("src.arrangements.services.boto3.client"):
+                with patch(
+                    "src.arrangements.utils.upload_file", side_effect=Exception("Upload failed")
+                ):
+                    with pytest.raises(HTTPException) as exc_info:
+                        await create_arrangements_from_request(
+                            mock_db_session, wfh_request, [mock_file]
+                        )
+                    assert exc_info.value.status_code == 500
+                    assert "Error uploading files" in str(exc_info.value.detail)
