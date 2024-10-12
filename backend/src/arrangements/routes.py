@@ -205,24 +205,28 @@ async def update_wfh_request(
         # Update the arrangement status
         updated_arrangement = services.update_arrangement_approval_status(db, wfh_update)
 
-        # Fetch the staff (requester) information
-        requester_employee: employee_models.Employee = employee_services.get_employee_by_id(
-            db, updated_arrangement.staff_id
-        )
+        # **Skip employee lookups for 'withdraw' and 'cancel' actions**
+        if updated_arrangement.current_approval_status not in ["withdrawn", "cancelled"]:
+            # Fetch the staff (requester) information
+            requester_employee: employee_models.Employee = (
+                employee_services.get_employee_by_id(db, updated_arrangement.staff_id)
+            )
 
-        # Fetch manager info
-        approving_officer: employee_models.Employee = employee_services.get_employee_by_id(
-            db, updated_arrangement.approving_officer
-        )
+            # Fetch manager info (approving officer)
+            approving_officer: employee_models.Employee = (
+                employee_services.get_employee_by_id(
+                    db, updated_arrangement.approving_officer
+                )
+            )
 
-        # Prepare and send email to staff and approving officer
-        await craft_and_send_email(
-            requester_employee,
-            [updated_arrangement],
-            "approve",
-            success=True,
-            manager=approving_officer,
-        )
+            # Prepare and send email to staff and approving officer
+            await craft_and_send_email(
+                requester_employee,
+                [updated_arrangement],
+                "approve",
+                success=True,
+                manager=approving_officer,
+            )
 
         # Custom message based on the action performed
         action_message = {

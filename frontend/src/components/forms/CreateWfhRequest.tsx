@@ -2,7 +2,7 @@ import React, { useContext, useState } from 'react';
 import { UserContext } from '../../context/UserContextProvider';
 import { useNavigate } from 'react-router-dom';
 import { Formik, Form, Field, ErrorMessage } from 'formik';
-import { addWeeks, addMonths, isAfter, isWeekend } from 'date-fns';
+import { addDays, addWeeks, addMonths, isAfter, isWeekend } from 'date-fns';
 import { SnackBarComponent, AlertStatus } from '../../common/SnackBar';
 import {
   Box,
@@ -181,7 +181,7 @@ export const CreateWfhRequest: React.FC = () => {
   // Yup form validation schema
   const validationSchema = Yup.object().shape({
     reason: Yup.string().required('Reason is required'),
-    startDate: Yup.date().required('Start date is required'),
+    startDate: Yup.date().required('Start date is required').min(addDays(new Date(), 1), 'Start date must be at least 1 day from today'),
     wfhType: Yup.string().required('You must select AM, PM, or Full-day'),
     endDate: Yup.date()
       .nullable()
@@ -296,9 +296,10 @@ export const CreateWfhRequest: React.FC = () => {
                   dateFormat="dd/MM/yyyy"
                   customInput={<TextField fullWidth />}
                   required
-                  minDate={new Date()}
+                  minDate={addDays(new Date(), 1)}  // Disable today and only allow future dates
                   disabled={loading}
                 />
+
                 <FormHelperText error>
                   <ErrorMessage name="startDate" />
                 </FormHelperText>

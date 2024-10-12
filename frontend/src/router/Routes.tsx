@@ -7,7 +7,7 @@ import { RequestPage } from "../pages/staff/RequestPage";
 import { HomePage } from "../pages/staff/HomePage";
 import { TeamPage } from "../pages/team/TeamPage";
 import { Settings } from "../pages/staff/Settings";
-import { WfhSchedulePage } from "../pages/staff/WfhSchedulePage";
+import { MyWfhSchedulePage } from "../pages/staff/MyWfhSchedulePage";
 
 
 
@@ -48,7 +48,7 @@ const routes: routesProps[] = [
           },
           {
             path: "/wfh-schedule",
-            element: <WfhSchedulePage />,
+            element: <MyWfhSchedulePage />,
           },
           {
             path: "/settings",

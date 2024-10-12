@@ -19,6 +19,11 @@ def get_reporting_manager_and_peer_employees(staff_id: int, db: Session = Depend
 
     If the employee reports to themselves, the manager will be set to None.
     """
+    
+    #Auto Approve for Jack Sim and Skip manager check 
+    if staff_id == 130002: 
+        return EmployeePeerResponse(manager_id=None, peer_employees=[])
+    
     try:
         # Get manager
         manager: models.Employee = services.get_manager_by_subordinate_id(db, staff_id)
