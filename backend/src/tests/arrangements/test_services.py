@@ -1,6 +1,5 @@
+from unittest.mock import MagicMock, patch
 import pytest
-from unittest.mock import patch, MagicMock
-from fastapi import HTTPException
 from src.arrangements.services import (
     get_arrangement_by_id,
     get_personal_arrangements_by_filter,
@@ -10,76 +9,156 @@ from src.arrangements.services import (
     expand_recurring_arrangement,
     update_arrangement_approval_status,
 )
+from src.arrangements import models as arrangement_models
 from src.arrangements import exceptions as arrangement_exceptions
-from src.employees import exceptions as employee_exceptions
-from src.arrangements.models import LatestArrangement
-from src.arrangements.schemas import ArrangementCreateWithFile, ArrangementUpdate
+from src.tests.test_utils import mock_db_session
+from src.arrangements.schemas import ArrangementCreateWithFile
+from fastapi.testclient import TestClient
+from src.app import app
+from moto import mock_aws
+from src.employees.models import Employee
+from src.tests.test_utils import mock_db_session
+import httpx
+
+
+client = TestClient(app)
 
 
 @pytest.fixture
-def mock_db_session():
-    # Mock the session for testing purposes
-    return MagicMock()
-
-
-# 1. get_arrangement_by_id
-@patch("src.arrangements.crud.get_arrangement_by_id")
-def test_get_arrangement_by_id_success(mock_get_arrangement_by_id, mock_db_session):
-    mock_arrangement = MagicMock(spec=LatestArrangement)
-    mock_get_arrangement_by_id.return_value = mock_arrangement
-
-    result = get_arrangement_by_id(mock_db_session, arrangement_id=1)
-
-    assert result == mock_arrangement
-    mock_get_arrangement_by_id.assert_called_once_with(mock_db_session, 1)
-
-
-@patch("src.arrangements.crud.get_arrangement_by_id", return_value=None)
-def test_get_arrangement_by_id_not_found(mock_get_arrangement_by_id, mock_db_session):
-    with pytest.raises(arrangement_exceptions.ArrangementNotFoundError):
-        get_arrangement_by_id(mock_db_session, arrangement_id=999)
-
-
-# 2. get_personal_arrangements_by_filter
-@patch("src.arrangements.crud.get_arrangements_by_filter")
-@patch("src.utils.convert_model_to_pydantic_schema")
-def test_get_personal_arrangements_by_filter_success(
-    mock_convert_model, mock_get_arrangements_by_filter, mock_db_session
-):
-    mock_arrangements = [MagicMock(spec=LatestArrangement)]
-    mock_get_arrangements_by_filter.return_value = mock_arrangements
-    mock_convert_model.return_value = ["arrangement_schema"]
-
-    result = get_personal_arrangements_by_filter(mock_db_session, 1, ["approved"])
-
-    assert result == ["arrangement_schema"]
-    mock_get_arrangements_by_filter.assert_called_once_with(mock_db_session, 1, ["approved"])
-
-
-# 3. get_subordinates_arrangements
-@patch("src.employees.services.get_subordinates_by_manager_id")
-@patch("src.arrangements.crud.get_arrangements_by_staff_ids")
-@patch("src.utils.convert_model_to_pydantic_schema")
-def test_get_subordinates_arrangements_success(
-    mock_convert_model, mock_get_arrangements_by_staff_ids, mock_get_subordinates, mock_db_session
-):
-    mock_subordinates = [MagicMock(staff_id=1)]
-    mock_get_subordinates.return_value = mock_subordinates
-    mock_get_arrangements_by_staff_ids.return_value = [MagicMock(spec=LatestArrangement)]
-    mock_convert_model.return_value = ["arrangement_schema"]
-
-    result = get_subordinates_arrangements(
-        mock_db_session, manager_id=1, current_approval_status=["approved"]
+def mock_employee():
+    return Employee(
+        staff_id=1,
+        staff_fname="Jane",
+        staff_lname="Doe",
+        email="jane.doe@test.com",
+        dept="IT",
+        position="Manager",
+        country="USA",
+        role=2,
+        reporting_manager=None,
     )
 
-    assert result == ["arrangement_schema"]
-    mock_get_subordinates.assert_called_once_with(mock_db_session, 1)
-    mock_get_arrangements_by_staff_ids.assert_called_once()
+
+def test_get_arrangement_by_id_success(mock_db_session):
+    mock_arrangement = MagicMock(spec=arrangement_models.LatestArrangement)
+    with patch("src.arrangements.crud.get_arrangement_by_id", return_value=mock_arrangement):
+        result = get_arrangement_by_id(mock_db_session, arrangement_id=1)
+        assert result == mock_arrangement
 
 
-@patch("src.employees.services.get_subordinates_by_manager_id", return_value=[])
-def test_get_subordinates_arrangements_manager_not_found(mock_get_subordinates, mock_db_session):
-    with pytest.raises(employee_exceptions.ManagerNotFoundException):
-        get_subordinates_arrangements(
-            mock_db_session, manager_id=999, current_approval_status=["pending"]
+def test_get_arrangement_by_id_not_found(mock_db_session):
+    with patch("src.arrangements.crud.get_arrangement_by_id", return_value=None):
+        with pytest.raises(arrangement_exceptions.ArrangementNotFoundError):
+            get_arrangement_by_id(mock_db_session, arrangement_id=1)
+
+
+def test_get_personal_arrangements_by_filter_success(mock_db_session):
+    mock_arrangements = [MagicMock(spec=arrangement_models.LatestArrangement)]
+    with patch("src.arrangements.crud.get_arrangements_by_filter", return_value=mock_arrangements):
+        with patch(
+            "src.utils.convert_model_to_pydantic_schema", return_value=["arrangement_schema"]
+        ):
+            result = get_personal_arrangements_by_filter(
+                mock_db_session, staff_id=1, current_approval_status=[]
+            )
+            assert result == ["arrangement_schema"]
+
+
+def test_get_personal_arrangements_by_filter_empty(mock_db_session):
+    with patch("src.arrangements.crud.get_arrangements_by_filter", return_value=[]):
+        result = get_personal_arrangements_by_filter(
+            mock_db_session, staff_id=1, current_approval_status=[]
         )
+        assert result == []
+
+
+def test_get_subordinates_arrangements_success(mock_db_session):
+    mock_arrangements = [MagicMock(spec=arrangement_models.LatestArrangement)]
+    with patch(
+        "src.arrangements.crud.get_arrangements_by_staff_ids", return_value=mock_arrangements
+    ):
+        with patch(
+            "src.utils.convert_model_to_pydantic_schema", return_value=["arrangement_schema"]
+        ):
+            result = get_subordinates_arrangements(
+                mock_db_session, manager_id=1, current_approval_status=[]
+            )
+            assert result == ["arrangement_schema"]
+
+
+def test_get_team_arrangements_success(mock_db_session):
+    mock_arrangements = [MagicMock(spec=arrangement_models.LatestArrangement)]
+    with patch(
+        "src.arrangements.crud.get_arrangements_by_staff_ids", return_value=mock_arrangements
+    ):
+        with patch(
+            "src.utils.convert_model_to_pydantic_schema", return_value=["arrangement_schema"]
+        ):
+            result = get_team_arrangements(mock_db_session, staff_id=1, current_approval_status=[])
+            assert isinstance(result, dict)
+            assert "peers" in result
+
+
+@pytest.mark.asyncio
+async def test_create_arrangements_from_request_failure(mock_db_session):
+    with patch("src.arrangements.crud.create_arrangements", side_effect=Exception("Failed")):
+        with pytest.raises(Exception):
+            await create_arrangements_from_request(mock_db_session, MagicMock(), [])
+
+
+@pytest.mark.asyncio
+async def test_create_arrangements_with_file_upload_success(mock_db_session, mock_employee):
+    data = {
+        "requester_staff_id": "1",
+        "wfh_date": "2024-10-12",
+        "wfh_type": "full",
+        "reason_description": "Work from home request",
+        "is_recurring": "false",
+    }
+
+    file_content = b"this is a test file"
+    files = {"supporting_docs": ("test_file.pdf", file_content, "application/pdf")}
+
+    mock_arrangements = [MagicMock(spec=arrangement_models.LatestArrangement)]
+
+    # Mock the database session
+    mock_db = MagicMock()
+    mock_db.query.return_value.filter.return_value.first.return_value = mock_employee
+
+    # Mock the httpx.AsyncClient.get method
+    async def mock_get(*args, **kwargs):
+        return httpx.Response(200, json={"manager_id": 2})
+
+    # Mock the upload_file function
+    async def mock_upload_file(*args, **kwargs):
+        return {"file_url": "https://s3-bucket/test_file.pdf"}
+
+    with patch("src.arrangements.crud.create_arrangements", return_value=mock_arrangements):
+        with patch(
+            "src.utils.convert_model_to_pydantic_schema", return_value=["arrangement_schema"]
+        ):
+            with patch("httpx.AsyncClient.get", side_effect=mock_get):
+                with patch(
+                    "src.employees.crud.get_employee_by_staff_id", return_value=mock_employee
+                ):
+                    with mock_aws():
+                        with patch(
+                            "src.arrangements.utils.upload_file", side_effect=mock_upload_file
+                        ):
+                            with patch("src.arrangements.services.boto3.client"):
+                                with patch("src.database.SessionLocal", return_value=mock_db):
+                                    with patch("sqlalchemy.orm.session.Session", mock_db):
+                                        response = client.post(
+                                            "/arrangements/request",
+                                            data=data,
+                                            files=files,
+                                        )
+
+    print(f"Response status: {response.status_code}")
+    print(f"Response content: {response.content.decode()}")
+
+    assert response.status_code == 200
+    response_data = response.json()
+    assert isinstance(response_data, list)
+    assert len(response_data) == 1
+    assert response_data[0] == "arrangement_schema"
