@@ -58,7 +58,9 @@ def get_arrangements_by_staff_ids(
 def create_arrangement_log(
     db: Session, arrangement: models.LatestArrangement, action: str
 ) -> models.ArrangementLog:
+    print("Entering create_arrangement_log function")
     try:
+        print("Calling fit_model_to_model")
         arrangement_log: models.ArrangementLog = fit_model_to_model(
             arrangement,
             models.ArrangementLog,
@@ -67,14 +69,13 @@ def create_arrangement_log(
             },
         )
         arrangement_log.update_datetime = datetime.utcnow()
-
-        # arrangement_log.approval_status = arrangement.current_approval_status
         db.add(arrangement_log)
         db.flush()
-        return arrangement_log
     except SQLAlchemyError as e:
+        print(f"Caught SQLAlchemyError in create_arrangement_log: {str(e)}")
         db.rollback()
         raise e
+    return arrangement_log
 
 
 def create_recurring_request(
@@ -101,10 +102,10 @@ def create_arrangements(
     try:
         created_arrangements = []
         for arrangement in arrangements:
-            #Auto-approve Jack Sim's requests
+            # Auto-approve Jack Sim's requests
             if arrangement.requester_staff_id == 130002:
                 arrangement.current_approval_status = "approved"
-            
+
             db.add(arrangement)
             db.flush()
             created_arrangements.append(arrangement)
