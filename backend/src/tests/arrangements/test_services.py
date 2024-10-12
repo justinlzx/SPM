@@ -572,3 +572,84 @@ def test_expand_recurring_arrangement_monthly():
     assert result[1].wfh_date == "2024-02-29"  # Leap year
     assert result[2].wfh_date == "2024-03-31"
     assert all(arr.batch_id == batch_id for arr in result)
+
+
+def test_expand_recurring_arrangement_zero_occurrences():
+    with pytest.raises(
+        ValueError,
+        match="When 'is_recurring' is True, 'recurring_occurrences' must have a non-zero value",
+    ):
+        create_mock_arrangement_create_with_file(
+            is_recurring=True,
+            recurring_frequency_unit="week",
+            recurring_frequency_number=1,
+            recurring_occurrences=0,
+        )
+
+
+def test_expand_recurring_arrangement_invalid_frequency_unit():
+    with pytest.raises(ValueError, match="Input should be 'week' or 'month'"):
+        create_mock_arrangement_create_with_file(
+            is_recurring=True,
+            recurring_frequency_unit="invalid_unit",
+            recurring_frequency_number=1,
+            recurring_occurrences=3,
+        )
+
+
+def test_update_arrangement_approval_status_invalid_action_exception(mock_db_session):
+    with pytest.raises(
+        ValueError, match="Input should be 'approve', 'reject', 'withdraw' or 'cancel'"
+    ):
+        wfh_update = ArrangementUpdate(
+            arrangement_id=1,
+            action="invalid_action",
+            approving_officer=2,
+            reason_description="Invalid action test",
+        )
+
+
+@pytest.mark.asyncio
+async def test_create_arrangements_from_request_file_upload_unsupported_format(
+    mock_db_session, mock_employee
+):
+    wfh_request = create_mock_arrangement_create_with_file()
+    mock_file = MagicMock()
+
+    with patch("src.employees.crud.get_employee_by_staff_id", return_value=mock_employee):
+        with patch("src.arrangements.services.fetch_manager_info", return_value={"manager_id": 2}):
+            with patch("src.arrangements.services.boto3.client"):
+                with patch(
+                    "src.arrangements.utils.upload_file",
+                    side_effect=Exception(
+                        "Error uploading files: 400: Invalid file type. Supported file types are JPEG, PNG, and PDF"
+                    ),
+                ):
+                    with pytest.raises(HTTPException) as exc_info:
+                        await create_arrangements_from_request(
+                            mock_db_session, wfh_request, [mock_file]
+                        )
+                    assert exc_info.value.status_code == 500
+                    assert "Invalid file type. Supported file types are JPEG, PNG, and PDF" in str(
+                        exc_info.value.detail
+                    )
+
+
+@pytest.mark.asyncio
+async def test_create_arrangements_from_request_missing_required_fields(
+    mock_db_session, mock_employee
+):
+    with pytest.raises(ValueError, match="Input should be 'full', 'am' or 'pm'"):
+        create_mock_arrangement_create_with_file(wfh_type=None)
+
+
+def test_get_team_arrangements_no_peers_or_subordinates(mock_db_session):
+    with patch("src.employees.services.get_peers_by_staff_id", return_value=[]):
+        with patch("src.employees.services.get_subordinates_by_manager_id", return_value=[]):
+            with patch("src.arrangements.crud.get_arrangements_by_staff_ids", return_value=[]):
+                result = get_team_arrangements(
+                    mock_db_session, staff_id=1, current_approval_status=[]
+                )
+                assert isinstance(result, dict)
+                assert result.get("peers", []) == []
+                assert result.get("subordinates", []) == []
