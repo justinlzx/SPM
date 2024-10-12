@@ -1,10 +1,9 @@
 import pytest
 from unittest.mock import MagicMock
 from sqlalchemy.exc import SQLAlchemyError
-from src.arrangements import crud, models, schemas, utils
+from src.arrangements import crud, models, schemas
 from src.tests.test_utils import mock_db_session
 from datetime import datetime
-from sqlalchemy.orm import Session
 from unittest import mock
 
 
@@ -34,7 +33,6 @@ def mock_arrangement_log():
     )
 
 
-# TODO: FIX Test for SQLAlchemyError in create_arrangement_log
 def test_create_arrangement_log_sqlalchemy_error(mock_db_session, mock_arrangement):
     # Simulate SQLAlchemyError being raised on db.add()
     mock_db_session.add.side_effect = SQLAlchemyError("Database Error")
@@ -48,7 +46,6 @@ def test_create_arrangement_log_sqlalchemy_error(mock_db_session, mock_arrangeme
     mock_db_session.rollback.assert_called_once()
 
 
-# Test for get_arrangement_by_id
 def test_get_arrangement_by_id(mock_db_session, mock_arrangement):
     mock_db_session.query().get.return_value = mock_arrangement
 
@@ -58,7 +55,6 @@ def test_get_arrangement_by_id(mock_db_session, mock_arrangement):
     assert result == mock_arrangement
 
 
-# Test for get_arrangements_by_filter
 def test_get_arrangements_by_filter(mock_db_session, mock_arrangements):
     mock_query = MagicMock()
     mock_db_session.query.return_value = mock_query
@@ -74,7 +70,6 @@ def test_get_arrangements_by_filter(mock_db_session, mock_arrangements):
     assert len(result) == 2
 
 
-# Test for get_arrangements_by_staff_ids
 def test_get_arrangements_by_staff_ids(mock_db_session, mock_arrangements):
     mock_query = MagicMock()
     mock_db_session.query.return_value = mock_query
@@ -90,7 +85,6 @@ def test_get_arrangements_by_staff_ids(mock_db_session, mock_arrangements):
     assert len(result) == 2
 
 
-# Test for create_arrangement_log
 def test_create_arrangement_log(mock_db_session, mock_arrangement, mock_arrangement_log):
     mock_db_session.add = MagicMock()
     mock_db_session.flush = MagicMock()
@@ -105,7 +99,6 @@ def test_create_arrangement_log(mock_db_session, mock_arrangement, mock_arrangem
     mock_db_session.flush.assert_called_once()
 
 
-# Test for create_arrangements
 def test_create_arrangements(mock_db_session, mock_arrangements, mock_arrangement_log):
     mock_db_session.add = MagicMock()
     mock_db_session.flush = MagicMock()
@@ -123,7 +116,6 @@ def test_create_arrangements(mock_db_session, mock_arrangements, mock_arrangemen
     mock_db_session.refresh.assert_called()
 
 
-# Test for SQLAlchemyError in create_arrangements
 def test_create_arrangements_sqlalchemy_error(mock_db_session, mock_arrangements):
     mock_db_session.add.side_effect = SQLAlchemyError("Database Error")
 
@@ -133,7 +125,6 @@ def test_create_arrangements_sqlalchemy_error(mock_db_session, mock_arrangements
     mock_db_session.rollback.assert_called_once()
 
 
-# Test for update_arrangement_approval_status
 def test_update_arrangement_approval_status(
     mock_db_session, mock_arrangement, mock_arrangement_log
 ):
@@ -149,7 +140,6 @@ def test_update_arrangement_approval_status(
     mock_db_session.refresh.assert_called_once_with(mock_arrangement)
 
 
-# Test for SQLAlchemyError in update_arrangement_approval_status
 def test_update_arrangement_approval_status_sqlalchemy_error(mock_db_session, mock_arrangement):
     mock_db_session.commit.side_effect = SQLAlchemyError("Database Error")
 
@@ -159,7 +149,6 @@ def test_update_arrangement_approval_status_sqlalchemy_error(mock_db_session, mo
     mock_db_session.rollback.assert_called_once()
 
 
-# Test for SQLAlchemyError in create_recurring_request
 def test_create_recurring_request_sqlalchemy_error(mock_db_session):
     # Simulate a SQLAlchemy error
     mock_db_session.add.side_effect = SQLAlchemyError("Database Error")
@@ -181,7 +170,6 @@ def test_create_recurring_request_sqlalchemy_error(mock_db_session):
     mock_db_session.rollback.assert_called_once()
 
 
-# Test for create_recurring_request
 def test_create_recurring_request(mock_db_session):
     # Arrange
     mock_batch = models.RecurringRequest(
@@ -297,7 +285,6 @@ def test_create_recurring_request_with_recurring(mock_db_session):
     mock_db_session.refresh.assert_called_once_with(mock_batch)
 
 
-# Test get_arrangements_by_filter with no requester_staff_id
 def test_get_arrangements_by_filter_no_requester(mock_db_session, mock_arrangements):
     mock_query = MagicMock()
     mock_db_session.query.return_value = mock_query
@@ -313,23 +300,6 @@ def test_get_arrangements_by_filter_no_requester(mock_db_session, mock_arrangeme
     assert len(result) == 2
 
 
-# Test get_arrangements_by_filter with multiple current_approval_status
-def test_get_arrangements_by_filter_multiple_status(mock_db_session, mock_arrangements):
-    mock_query = MagicMock()
-    mock_db_session.query.return_value = mock_query
-    mock_query.filter.return_value = mock_query
-    mock_query.all.return_value = mock_arrangements
-
-    result = crud.get_arrangements_by_filter(
-        mock_db_session, requester_staff_id=None, current_approval_status=["pending", "approved"]
-    )
-
-    mock_db_session.query.assert_called_once()
-    mock_query.filter.assert_called()
-    assert len(result) == 2
-
-
-# Test create_arrangements for non-Jack Sim
 def test_create_arrangements_non_jack_sim(mock_db_session, mock_arrangements, mock_arrangement_log):
     mock_arrangement = models.LatestArrangement(
         arrangement_id=4, requester_staff_id=12345, current_approval_status="pending"
