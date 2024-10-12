@@ -21,6 +21,8 @@ from moto import mock_aws
 from src.employees.models import Employee
 from src.tests.test_utils import mock_db_session
 import httpx
+from src.employees import exceptions as employee_exceptions
+from src.arrangements.services import STATUS
 
 
 client = TestClient(app)
@@ -344,3 +346,120 @@ async def test_create_arrangements_from_request_file_upload_failure(mock_db_sess
                         )
                     assert exc_info.value.status_code == 500
                     assert "Error uploading files" in str(exc_info.value.detail)
+
+
+def test_get_subordinates_arrangements_no_subordinates(mock_db_session):
+    with patch("src.employees.services.get_subordinates_by_manager_id", return_value=[]):
+        with pytest.raises(employee_exceptions.ManagerNotFoundException):
+            get_subordinates_arrangements(mock_db_session, manager_id=1, current_approval_status=[])
+
+
+def test_get_team_arrangements_employee_is_manager(mock_db_session):
+    mock_peer_arrangements = [MagicMock(spec=arrangement_models.LatestArrangement)]
+    mock_subordinate_arrangements = [MagicMock(spec=arrangement_models.LatestArrangement)]
+
+    with patch(
+        "src.employees.services.get_peers_by_staff_id", return_value=[MagicMock(spec=Employee)]
+    ):
+        with patch(
+            "src.arrangements.crud.get_arrangements_by_staff_ids",
+            side_effect=[mock_peer_arrangements, mock_subordinate_arrangements],
+        ):
+            with patch("src.utils.convert_model_to_pydantic_schema", return_value=["schema"]):
+                with patch(
+                    "src.employees.services.get_subordinates_by_manager_id",
+                    return_value=[MagicMock(spec=Employee)],
+                ):
+                    result = get_team_arrangements(
+                        mock_db_session, staff_id=1, current_approval_status=[]
+                    )
+                    assert isinstance(result, dict)
+                    assert "peers" in result
+                    assert "subordinates" in result
+                    assert result["peers"] == ["schema"]
+                    assert result["subordinates"] == ["schema"]
+
+
+@pytest.mark.parametrize(
+    "action, expected_status",
+    [
+        ("approve", "approved"),
+        ("reject", "rejected"),
+        ("withdraw", "withdrawn"),
+        ("cancel", "cancelled"),
+    ],
+)
+def test_update_arrangement_approval_status_actions(mock_db_session, action, expected_status):
+    mock_arrangement = MagicMock(spec=arrangement_models.LatestArrangement)
+    mock_arrangement.arrangement_id = 1
+
+    wfh_update = ArrangementUpdate(
+        arrangement_id=1,
+        action=action,
+        approving_officer=2,
+        reason_description="Action taken",
+    )
+
+    with patch("src.arrangements.crud.get_arrangement_by_id", return_value=mock_arrangement):
+        with patch(
+            "src.arrangements.crud.update_arrangement_approval_status",
+            return_value=mock_arrangement,
+        ):
+            result = update_arrangement_approval_status(mock_db_session, wfh_update)
+
+            assert result.arrangement_id == 1
+            assert result.current_approval_status == expected_status
+            assert result.approving_officer == 2
+            assert result.reason_description == "Action taken"
+
+
+def test_update_arrangement_approval_status_invalid_action(mock_db_session):
+    mock_arrangement = MagicMock(spec=arrangement_models.LatestArrangement)
+    mock_arrangement.arrangement_id = 1
+
+    wfh_update = ArrangementUpdate(
+        arrangement_id=1,
+        action="approve",  # Use a valid action
+        approving_officer=2,
+        reason_description="Invalid action test",
+    )
+
+    with patch("src.arrangements.crud.get_arrangement_by_id", return_value=mock_arrangement):
+        with patch.dict(STATUS, {"approve": None}):  # Make 'approve' action invalid
+            with pytest.raises(ValueError, match="Invalid action: approve"):
+                update_arrangement_approval_status(mock_db_session, wfh_update)
+
+
+@pytest.mark.asyncio
+async def test_create_arrangements_from_request_file_upload_failure(mock_db_session, mock_employee):
+    wfh_request = create_mock_arrangement_create_with_file()
+    mock_file = MagicMock()
+
+    with patch("src.employees.crud.get_employee_by_staff_id", return_value=mock_employee):
+        with patch("src.arrangements.services.fetch_manager_info", return_value={"manager_id": 2}):
+            with patch("src.arrangements.services.boto3.client"):
+                with patch(
+                    "src.arrangements.utils.upload_file", side_effect=Exception("Upload failed")
+                ):
+                    with patch("src.arrangements.utils.delete_file"):
+                        with pytest.raises(HTTPException) as exc_info:
+                            await create_arrangements_from_request(
+                                mock_db_session, wfh_request, [mock_file]
+                            )
+                        assert exc_info.value.status_code == 500
+                        assert "Error uploading files" in str(exc_info.value.detail)
+
+
+def test_expand_recurring_arrangement_jack_sim():
+    wfh_request = create_mock_arrangement_create_with_file(
+        staff_id=130002,
+        is_recurring=True,
+        recurring_frequency_unit="week",
+        recurring_frequency_number=1,
+        recurring_occurrences=3,
+    )
+    batch_id = 1
+    result = expand_recurring_arrangement(wfh_request, batch_id)
+    assert len(result) == 3
+    assert all(arr.current_approval_status == "approved" for arr in result)
+    assert all(arr.batch_id == batch_id for arr in result)
