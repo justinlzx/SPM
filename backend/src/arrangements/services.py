@@ -6,6 +6,8 @@ from typing import Dict, List
 import boto3
 from fastapi import File
 from sqlalchemy.orm import Session
+
+from src.employees.schemas import EmployeeBase
 from ..logger import logger
 
 from src.arrangements.utils import delete_file, upload_file
@@ -13,6 +15,7 @@ from src.employees.crud import get_employee_by_staff_id
 from src.notifications.email_notifications import fetch_manager_info
 
 from .. import utils
+from .utils import create_presigned_url
 from ..employees import exceptions as employee_exceptions
 from ..employees import models as employee_models
 from ..employees import services as employee_services
@@ -24,6 +27,8 @@ from .schemas import (
     ArrangementCreateWithFile,
     ArrangementResponse,
     ArrangementUpdate,
+    ManagerPendingRequestResponse,
+    ManagerPendingRequests,
 )
 
 from .models import LatestArrangement
@@ -61,7 +66,7 @@ def get_personal_arrangements_by_filter(
 
 def get_subordinates_arrangements(
     db: Session, manager_id: int, current_approval_status: List[str]
-) -> List[ArrangementResponse]:
+) -> List[ManagerPendingRequestResponse]:
 
     # Check if the employee is a manager
     employees_under_manager: List[employee_models.Employee] = (
@@ -77,11 +82,60 @@ def get_subordinates_arrangements(
         db, employees_under_manager_ids, current_approval_status
     )
 
-    arrangements_schema: List[ArrangementResponse] = utils.convert_model_to_pydantic_schema(
-        arrangements, ArrangementResponse
-    )
+    arrangements_schema: List[ArrangementCreateResponse] = (
+        utils.convert_model_to_pydantic_schema(arrangements, ArrangementCreateResponse)
 
-    return arrangements_schema
+
+    # get presigned url for each supporting document in each arrangement
+    arrangements_schema = [
+        ArrangementCreateResponse(
+            **{
+                **arrangement.model_dump(),
+                "supporting_doc_1": (
+                    create_presigned_url(arrangement.supporting_doc_1)
+                    if arrangement.supporting_doc_1
+                    else None
+                ),
+                "supporting_doc_2": (
+                    create_presigned_url(arrangement.supporting_doc_2)
+                    if arrangement.supporting_doc_2
+                    else None
+                ),
+                "supporting_doc_3": (
+                    create_presigned_url(arrangement.supporting_doc_3)
+                    if arrangement.supporting_doc_3
+                    else None
+                ),
+            }
+        )
+        for arrangement in arrangements_schema
+    ]
+    arrangements_by_employee = group_arrangements_by_employee(arrangements_schema)
+    return arrangements_by_employee
+
+
+def group_arrangements_by_employee(
+    arrangements_schema: List[ArrangementCreateResponse],
+) -> List[ManagerPendingRequests]:
+
+    arrangements_dict = {}
+
+    for arrangement in arrangements_schema:
+        staff_id = arrangement.staff_id
+        if staff_id not in arrangements_dict:
+            arrangements_dict[staff_id] = []
+
+        arrangements_dict[staff_id].append(arrangement)
+
+    result = []
+    for _, val in arrangements_dict.items():
+        result.append(
+            ManagerPendingRequests(
+                employee=val[0].requester_info, pending_arrangements=val
+            )
+        )
+
+    return result
 
 
 def get_team_arrangements(
@@ -338,9 +392,9 @@ def update_arrangement_approval_status(
     arrangement.approving_officer = wfh_update.approving_officer
     arrangement.reason_description = wfh_update.reason_description
     # Update the arrangement in the database
+
     updated_arrangement: models.LatestArrangement = crud.update_arrangement_approval_status(
         db, arrangement, wfh_update.action
-    )
 
     # Create and return the ArrangementUpdate schema
     arrangement_schema = ArrangementUpdate(
@@ -349,6 +403,10 @@ def update_arrangement_approval_status(
         approving_officer=updated_arrangement.approving_officer,
         reason_description=updated_arrangement.reason_description,
         current_approval_status=updated_arrangement.current_approval_status,
+
     )
+    logger.info(
+        f"Arrangement {arrangement.arrangement_id} updated successfully. Status: {arrangement.current_approval_status}"
+
 
     return arrangement_schema

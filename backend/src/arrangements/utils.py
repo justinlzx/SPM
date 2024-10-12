@@ -1,4 +1,3 @@
-from io import BytesIO
 from typing import Dict
 
 from fastapi import HTTPException
@@ -6,6 +5,7 @@ from ..logger import logger
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from sqlalchemy.ext.declarative import DeclarativeMeta
+from botocore.exceptions import ClientError
 
 import boto3
 import os
@@ -103,7 +103,9 @@ async def upload_file(staff_id, update_datetime, file_obj, s3_client=None):
         raise HTTPException(status_code=400, detail="File size exceeds 5MB")
 
     S3_BUCKET_NAME = os.getenv("AWS_S3_BUCKET_NAME")
-    object_name = f"{staff_id}/{update_datetime}/{file_obj.filename}"  # Use the original filename
+    object_name = (
+        f"{staff_id}/{update_datetime}/{file_obj.filename}"  # Use the original filename
+    )
 
     # Upload the file
     s3_client = boto3.client("s3")
@@ -116,11 +118,10 @@ async def upload_file(staff_id, update_datetime, file_obj, s3_client=None):
                 "Metadata": {
                     "staff_id": str(staff_id),
                     "update_datetime": str(update_datetime),
-                }
+                },
+                "ContentType": file_obj.content_type,
             },
         )
-
-        # file_url = f"https://{S3_BUCKET_NAME}.s3.amazonaws.com/{OBJECT_NAME}"
 
         logger.info(f"File uploaded successfully: {object_name}")
         return {
@@ -155,3 +156,31 @@ async def delete_file(staff_id, update_datetime, s3_client=None):
             status_code=500,
             content={"message": f"An error occurred: {str(e)}"},
         )
+
+
+def create_presigned_url(object_name):
+    """Generate a presigned URL to share an S3 object
+
+    :param bucket_name: string
+    :param object_name: string
+    :param expiration: Time in seconds for the presigned URL to remain valid
+    :return: Presigned URL as string. If error, returns None.
+    """
+
+    # Generate a presigned URL for the S3 object
+    s3_client = boto3.client("s3")
+
+    S3_BUCKET_NAME = os.getenv("AWS_S3_BUCKET_NAME")
+    EXPIRATION = 3600  # 1 hour
+    try:
+        response = s3_client.generate_presigned_url(
+            "get_object",
+            Params={"Bucket": S3_BUCKET_NAME, "Key": object_name},
+            ExpiresIn=EXPIRATION,
+        )
+    except ClientError as e:
+        logger.error(e)
+        return None
+
+    # The response contains the presigned URL
+    return response

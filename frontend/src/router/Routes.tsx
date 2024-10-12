@@ -1,4 +1,4 @@
-import { createBrowserRouter, Navigate } from "react-router-dom";
+import { createBrowserRouter } from "react-router-dom";
 import { LoginPage } from "../pages/login-signup/LoginPage";
 import { SignUpPage } from "../pages/login-signup/SignUpPage";
 import { App } from "../App";
@@ -8,8 +8,6 @@ import { HomePage } from "../pages/staff/HomePage";
 import { TeamPage } from "../pages/team/TeamPage";
 import { Settings } from "../pages/staff/Settings";
 import { WfhSchedulePage } from "../pages/staff/WfhSchedulePage";
-
-
 
 type routesProps = {
   path: string;
@@ -53,7 +51,7 @@ const routes: routesProps[] = [
           {
             path: "/settings",
             element: <Settings />,
-          }
+          },
         ],
       },
     ],
