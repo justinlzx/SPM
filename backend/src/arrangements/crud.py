@@ -71,16 +71,11 @@ def create_arrangement_log(
         arrangement_log.update_datetime = datetime.utcnow()
         db.add(arrangement_log)
         db.flush()
-        return arrangement_log
     except SQLAlchemyError as e:
         print(f"Caught SQLAlchemyError in create_arrangement_log: {str(e)}")
         db.rollback()
-        raise
-    except Exception as e:
-        print(
-            f"Caught unexpected exception in create_arrangement_log: {type(e).__name__} - {str(e)}"
-        )
-        raise
+        raise e
+    return arrangement_log
 
 
 def create_recurring_request(

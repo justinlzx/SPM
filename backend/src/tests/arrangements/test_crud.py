@@ -1,10 +1,11 @@
 import pytest
-from unittest.mock import MagicMock, patch, call
+from unittest.mock import MagicMock
 from sqlalchemy.exc import SQLAlchemyError
-from src.arrangements import crud, models, schemas, utils  # Import schemas
+from src.arrangements import crud, models, schemas, utils
 from src.tests.test_utils import mock_db_session
 from datetime import datetime
 from sqlalchemy.orm import Session
+from unittest import mock
 
 
 @pytest.fixture
@@ -31,6 +32,20 @@ def mock_arrangement_log():
     return models.ArrangementLog(
         log_id=1, approval_status="pending", update_datetime=datetime.utcnow()
     )
+
+
+# TODO: FIX Test for SQLAlchemyError in create_arrangement_log
+def test_create_arrangement_log_sqlalchemy_error(mock_db_session, mock_arrangement):
+    # Simulate SQLAlchemyError being raised on db.add()
+    mock_db_session.add.side_effect = SQLAlchemyError("Database Error")
+    mock_db_session.commit.side_effect = SQLAlchemyError("Database Error")
+
+    # Assert that the SQLAlchemyError is raised
+    with pytest.raises(SQLAlchemyError):
+        crud.create_arrangement_log(mock_db_session, mock_arrangement, "create")
+
+    # Ensure rollback was called after the exception
+    mock_db_session.rollback.assert_called_once()
 
 
 # Test for get_arrangement_by_id
@@ -336,14 +351,33 @@ def test_create_arrangements_non_jack_sim(mock_db_session, mock_arrangements, mo
     mock_db_session.refresh.assert_called()
 
 
-# TODO: FIX Test for SQLAlchemyError in create_arrangement_log
-# def test_create_arrangement_log_sqlalchemy_error(mock_db_session, mock_arrangement):
-#     # Simulate SQLAlchemyError being raised on db.add()
-#     mock_db_session.add.side_effect = SQLAlchemyError("Database Error")
+def test_get_arrangements_by_filter_no_approval_status(mock_db_session, mock_arrangements):
+    mock_query = MagicMock()
+    mock_db_session.query.return_value = mock_query
+    mock_query.filter.return_value = mock_query
+    mock_query.all.return_value = mock_arrangements
 
-#     # Assert that the SQLAlchemyError is raised
-#     with pytest.raises(SQLAlchemyError):
-#         crud.create_arrangement_log(mock_db_session, mock_arrangement, "create")
+    # Call the function without current_approval_status
+    result = crud.get_arrangements_by_filter(
+        mock_db_session, requester_staff_id=12345, current_approval_status=None
+    )
 
-#     # Ensure rollback was called after the exception
-#     mock_db_session.rollback.assert_called_once()
+    mock_db_session.query.assert_called_once()
+    mock_query.filter.assert_called_once_with(mock.ANY)  # Skip exact comparison
+    assert len(result) == 2
+
+
+def test_get_arrangements_by_staff_ids_no_approval_status(mock_db_session, mock_arrangements):
+    mock_query = MagicMock()
+    mock_db_session.query.return_value = mock_query
+    mock_query.filter.return_value = mock_query
+    mock_query.all.return_value = mock_arrangements
+
+    # Call the function without current_approval_status
+    result = crud.get_arrangements_by_staff_ids(
+        mock_db_session, staff_ids=[12345, 130002], current_approval_status=None
+    )
+
+    mock_db_session.query.assert_called_once()
+    mock_query.filter.assert_called_once_with(mock.ANY)  # Skip exact comparison
+    assert len(result) == 2
