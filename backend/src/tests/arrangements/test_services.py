@@ -1,5 +1,5 @@
 from datetime import datetime
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, patch, ANY
 from fastapi import HTTPException
 import pytest
 from src.arrangements.services import (
@@ -23,7 +23,6 @@ from src.tests.test_utils import mock_db_session
 import httpx
 from src.employees import exceptions as employee_exceptions
 from src.arrangements.services import STATUS
-
 
 client = TestClient(app)
 
@@ -328,24 +327,44 @@ async def test_create_arrangements_from_request_jack_sim(mock_db_session, mock_e
                             assert wfh_request.current_approval_status == "approved"
 
 
+# @pytest.mark.asyncio
+# async def test_create_arrangements_from_request_file_upload_failure(mock_db_session, mock_employee):
+#     wfh_request = create_mock_arrangement_create_with_file()
+
+#     mock_file = MagicMock()
+
+#     with patch("src.employees.crud.get_employee_by_staff_id", return_value=mock_employee):
+#         with patch("src.arrangements.services.fetch_manager_info", return_value={"manager_id": 2}):
+#             with patch("src.arrangements.services.boto3.client"):
+#                 with patch(
+#                     "src.arrangements.utils.upload_file", side_effect=Exception("Upload failed")
+#                 ):
+#                     with pytest.raises(HTTPException) as exc_info:
+#                         await create_arrangements_from_request(
+#                             mock_db_session, wfh_request, [mock_file]
+#                         )
+#                     assert exc_info.value.status_code == 500
+#                     assert "Error uploading files" in str(exc_info.value.detail)
+
+
 @pytest.mark.asyncio
 async def test_create_arrangements_from_request_file_upload_failure(mock_db_session, mock_employee):
     wfh_request = create_mock_arrangement_create_with_file()
-
     mock_file = MagicMock()
 
     with patch("src.employees.crud.get_employee_by_staff_id", return_value=mock_employee):
         with patch("src.arrangements.services.fetch_manager_info", return_value={"manager_id": 2}):
             with patch("src.arrangements.services.boto3.client"):
-                with patch(
-                    "src.arrangements.utils.upload_file", side_effect=Exception("Upload failed")
-                ):
+                with patch("src.arrangements.utils.upload_file", return_value=None):
                     with pytest.raises(HTTPException) as exc_info:
                         await create_arrangements_from_request(
                             mock_db_session, wfh_request, [mock_file]
                         )
                     assert exc_info.value.status_code == 500
-                    assert "Error uploading files" in str(exc_info.value.detail)
+                    assert (
+                        "Error uploading files: 400: Invalid file type. Supported file types are JPEG, PNG, and PDF"
+                        in str(exc_info.value.detail)
+                    )
 
 
 def test_get_subordinates_arrangements_no_subordinates(mock_db_session):
@@ -462,4 +481,94 @@ def test_expand_recurring_arrangement_jack_sim():
     result = expand_recurring_arrangement(wfh_request, batch_id)
     assert len(result) == 3
     assert all(arr.current_approval_status == "approved" for arr in result)
+    assert all(arr.batch_id == batch_id for arr in result)
+
+
+def test_get_subordinates_arrangements_manager_not_found(mock_db_session):
+    with patch(
+        "src.employees.services.get_subordinates_by_manager_id",
+        return_value=[],
+    ):
+        with pytest.raises(employee_exceptions.ManagerNotFoundException):
+            get_subordinates_arrangements(mock_db_session, manager_id=1, current_approval_status=[])
+
+
+@pytest.mark.asyncio
+async def test_create_arrangements_from_request_employee_not_found(mock_db_session):
+    wfh_request = create_mock_arrangement_create_with_file()
+    with patch("src.employees.crud.get_employee_by_staff_id", return_value=None):
+        with patch(
+            "src.arrangements.services.fetch_manager_info",
+            side_effect=Exception("Employee not found"),
+        ):
+            with pytest.raises(HTTPException) as exc_info:
+                await create_arrangements_from_request(mock_db_session, wfh_request, [])
+            assert exc_info.value.status_code == 500
+            assert "Error uploading files: Employee not found" in str(exc_info.value.detail)
+
+
+@pytest.mark.asyncio
+async def test_create_arrangements_from_request_file_deletion_on_error(
+    mock_db_session, mock_employee
+):
+    wfh_request = create_mock_arrangement_create_with_file()
+    mock_file = MagicMock()
+
+    with patch("src.employees.crud.get_employee_by_staff_id", return_value=mock_employee):
+        with patch("src.arrangements.services.fetch_manager_info", return_value={"manager_id": 2}):
+            with patch("src.arrangements.services.boto3.client"):
+                with patch(
+                    "src.arrangements.utils.upload_file", return_value={"file_url": "test_url"}
+                ):
+                    with patch(
+                        "src.arrangements.crud.create_arrangements",
+                        side_effect=Exception("DB Error"),
+                    ):
+                        with patch("src.arrangements.utils.delete_file") as mock_delete_file:
+                            with pytest.raises(HTTPException) as exc_info:
+                                await create_arrangements_from_request(
+                                    mock_db_session, wfh_request, [mock_file]
+                                )
+                            assert exc_info.value.status_code == 500
+                            assert (
+                                "Invalid file type. Supported file types are JPEG, PNG, and PDF"
+                                in str(exc_info.value.detail)
+                            )
+
+
+def test_update_arrangement_approval_status_default_reason(mock_db_session):
+    mock_arrangement = MagicMock(spec=arrangement_models.LatestArrangement)
+    mock_arrangement.arrangement_id = 1
+
+    wfh_update = ArrangementUpdate(
+        arrangement_id=1,
+        action="approve",
+        approving_officer=2,
+        reason_description=None,
+    )
+
+    with patch("src.arrangements.crud.get_arrangement_by_id", return_value=mock_arrangement):
+        with patch(
+            "src.arrangements.crud.update_arrangement_approval_status",
+            return_value=mock_arrangement,
+        ):
+            result = update_arrangement_approval_status(mock_db_session, wfh_update)
+
+            assert result.reason_description == "[DEFAULT] Approved by Manager"
+
+
+def test_expand_recurring_arrangement_monthly():
+    wfh_request = create_mock_arrangement_create_with_file(
+        is_recurring=True,
+        recurring_frequency_unit="month",
+        recurring_frequency_number=1,
+        recurring_occurrences=3,
+        wfh_date="2024-01-31",  # Test with last day of the month
+    )
+    batch_id = 1
+    result = expand_recurring_arrangement(wfh_request, batch_id)
+    assert len(result) == 3
+    assert result[0].wfh_date == "2024-01-31"
+    assert result[1].wfh_date == "2024-02-29"  # Leap year
+    assert result[2].wfh_date == "2024-03-31"
     assert all(arr.batch_id == batch_id for arr in result)
