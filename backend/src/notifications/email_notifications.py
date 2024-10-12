@@ -20,28 +20,28 @@ load_dotenv()
 BASE_URL = getenv("BACKEND_BASE_URL", "http://localhost:8000")
 
 
-# async def fetch_manager_info(staff_id: int):
-#     """Fetch manager information by making an HTTP request to the
-#     /employee/manager/peermanager/{staff_id} route."""
-#     try:
-#         async with httpx.AsyncClient() as client:
-#             response = await client.get(f"{BASE_URL}/employee/manager/peermanager/{staff_id}")
+async def fetch_manager_info(staff_id: int):
+    """Fetch manager information by making an HTTP request to the
+    /employees/manager/peermanager/{staff_id} route."""
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.get(f"{BASE_URL}/employees/manager/peermanager/{staff_id}")
 
-#             # Check if the response is successful
-#             if response.status_code != 200:
-#                 raise HTTPException(
-#                     status_code=response.status_code,
-#                     detail=f"Error fetching manager info: {response.text}",
-#                 )
+            # Check if the response is successful
+            if response.status_code != 200:
+                raise HTTPException(
+                    status_code=response.status_code,
+                    detail=f"Error fetching manager info: {response.text}",
+                )
 
-#             manager_info = response.json()
-#             return manager_info
+            manager_info = response.json()
+            return manager_info
 
-#     except httpx.RequestError as exc:
-#         raise HTTPException(
-#             status_code=500,
-#             detail=f"An error occurred while fetching manager info: {str(exc)}",
-#         )
+    except httpx.RequestError as exc:
+        raise HTTPException(
+            status_code=500,
+            detail=f"An error occurred while fetching manager info: {str(exc)}",
+        )
 
 
 async def craft_and_send_email(
@@ -226,7 +226,7 @@ def craft_rejection_email_content(
         f"Batch ID: {arrangement.batch_id}\n"
         f"Updated: {arrangement.update_datetime}\n"
         f"Rejection Status: {getattr(arrangement, 'current_approval_status', 'Rejected')}\n"
-        f"Rejection Reason: {getattr(arrangement, 'status_reason', reason)}\n"
+        f"Rejection Reason: {arrangement.status_reason}\n"
     )
 
     if is_manager and manager:

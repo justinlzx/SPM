@@ -54,6 +54,21 @@ class ArrangementLog(Base):
         nullable=True,
         doc="Unique identifier for the batch, if any",
     )
+    supporting_doc_1 = Column(
+        String(length=255),
+        nullable=True,
+        doc="URL of the first supporting document",
+    )
+    supporting_doc_2 = Column(
+        String(length=255),
+        nullable=True,
+        doc="URL of the second supporting document",
+    )
+    supporting_doc_3 = Column(
+        String(length=255),
+        nullable=True,
+        doc="URL of the third supporting document",
+    )
 
     requester_info = relationship(
         "Employee",
@@ -89,7 +104,7 @@ class LatestArrangement(Base):
         doc="Date and time of the latest update",
     )
     requester_staff_id = Column(
-        String(length=10),
+        Integer,
         ForeignKey("employees.staff_id"),
         nullable=False,
         doc="Staff ID of the employee who made the request",
@@ -144,17 +159,32 @@ class LatestArrangement(Base):
         foreign_keys=[approving_officer],
         lazy="select",
     )
+    supporting_doc_1 = Column(
+        String(length=255),
+        nullable=True,
+        doc="URL of the first supporting document",
+    )
+    supporting_doc_2 = Column(
+        String(length=255),
+        nullable=True,
+        doc="URL of the second supporting document",
+    )
+    supporting_doc_3 = Column(
+        String(length=255),
+        nullable=True,
+        doc="URL of the third supporting document",
+    )
+    status_reason = Column(
+        String(length=255),
+        nullable=True,
+        doc="Reason for approval or rejection",
+    )
     __table_args__ = (
         CheckConstraint("wfh_type IN ('full', 'am', 'pm')", name="check_wfh_type"),
         CheckConstraint(
             "current_approval_status IN ('pending', 'approved', 'rejected', 'withdrawn')",
             name="check_current_approval_status",
         ),
-    )
-    status_reason = Column(
-        String(length=255),
-        nullable=True,
-        doc="Reason for approval or rejection",
     )
 
 
@@ -208,4 +238,6 @@ class RecurringRequest(Base):
         doc="Number of occurrences of the recurring WFH request",
     )
 
-    __table_args__ = (CheckConstraint("wfh_type IN ('full', 'am', 'pm')", name="check_wfh_type"),)
+    __table_args__ = (
+        CheckConstraint("wfh_type IN ('full', 'am', 'pm')", name="check_wfh_type"),
+    )
