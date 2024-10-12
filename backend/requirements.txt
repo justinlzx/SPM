@@ -26,6 +26,7 @@ identify==2.6.1
 idna==3.8
 jmespath==1.0.1
 mccabe==0.7.0
+moto==5.0.16
 mypy-extensions==1.0.0
 nodeenv==1.9.1
 numpy==2.1.1
