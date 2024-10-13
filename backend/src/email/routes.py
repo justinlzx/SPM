@@ -1,13 +1,12 @@
-from fastapi import APIRouter, HTTPException, Form
-from .models import EmailModel
+from fastapi import APIRouter, Form, HTTPException
+
+from . import models
 
 router = APIRouter()
 
 
 @router.post("/sendemail")
-async def send_email(
-    to_email: str = Form(...), subject: str = Form(...), content: str = Form(...)
-):
+async def send_email(to_email: str = Form(...), subject: str = Form(...), content: str = Form(...)):
     if not to_email.strip():
         raise HTTPException(status_code=400, detail="Recipient email cannot be empty.")
     if not subject.strip():
@@ -17,11 +16,11 @@ async def send_email(
 
     sender_email = "zarapetproject@gmail.com"
 
-    email = EmailModel(
+    email = models.EmailModel(
         sender_email=sender_email, to_email=to_email, subject=subject, content=content
     )
 
-    result = email.send_email()
+    result = await email.send_email()
 
     if "error" in result:
         raise HTTPException(status_code=500, detail=result["error"])
