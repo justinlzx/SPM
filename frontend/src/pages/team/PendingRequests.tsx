@@ -187,14 +187,6 @@ export const PendingRequests = () => {
 
   return (
     <Container>
-      <Typography
-        variant="h4"
-        gutterBottom
-        align="center"
-        sx={{ marginTop: 4 }}
-      >
-        My Pending Requests
-      </Typography>
       <TextField
         label="Search"
         variant="outlined"
@@ -205,6 +197,13 @@ export const PendingRequests = () => {
       />
 
       {/* Table for an employees Pending Requests */}
+      {/* <Typography
+        gutterBottom
+        align="left"
+        sx={{ marginTop: 4 }}
+      >
+        My Pending Requests
+      </Typography>
       <TableContainer
         component={Paper}
         sx={{ marginTop: 3, textAlign: "center" }}
@@ -257,8 +256,8 @@ export const PendingRequests = () => {
             )}
           </TableBody>
         </Table>
-      </TableContainer>
-      <TablePagination
+      </TableContainer> */}
+      {/* <TablePagination
         component="div"
         rowsPerPageOptions={[10, 20, 30]}
         count={filteredRequests.length}
@@ -268,13 +267,13 @@ export const PendingRequests = () => {
         onRowsPerPageChange={(event) =>
           setRowsPerPage(parseInt(event.target.value, 10))
         }
-      />
+      /> */}
       {user!.role !== 3 && (
         <>
           <Typography
             variant="h4"
             gutterBottom
-            align="center"
+            align="left"
             sx={{ marginTop: 4 }}
           >
             Action Required
