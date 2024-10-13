@@ -1,14 +1,14 @@
 import React from "react";
 import {
-Table,
-TableBody,
-TableCell,
-TableContainer,
-TableHead,
-TableRow,
-Paper,
-Chip,
-ChipProps,
+    Table,
+    TableBody,
+    TableCell,
+    TableContainer,
+    TableHead,
+    TableRow,
+    Paper,
+    Chip,
+    ChipProps,
 } from "@mui/material";
 import { WithdrawButton } from "./WithdrawButton";
 import { CancelButton } from "./CancelButton";
@@ -26,7 +26,7 @@ approval_status: string;
 
 interface WFHRequestTableProps {
 requests: TWFHRequest[];
-handleSuccess: (id: number) => void;
+handleSuccess: (id: number, action: "cancel" | "withdraw") => void;
 }
 
 const getChipColor = (status: string): ChipProps["color"] => {
@@ -46,8 +46,8 @@ switch (status.toLowerCase()) {
 };
 
 export const WFHRequestTable: React.FC<WFHRequestTableProps> = ({
-requests,
-handleSuccess,
+    requests,
+    handleSuccess,
 }) => (
 <TableContainer component={Paper} sx={{ marginTop: 3 }}>
     <Table>
@@ -96,16 +96,20 @@ handleSuccess,
             </TableCell>
             <TableCell>
                 {request.approval_status === "pending" && (
-                <WithdrawButton
+                <>
+                    <WithdrawButton
                     arrangement_id={request.arrangement_id}
-                    onSuccess={handleSuccess}
-                />
+                    onSuccess={(id) => handleSuccess(id, "withdraw")}
+                    />
+                </>
                 )}
                 {request.approval_status === "approved" && (
-                <CancelButton
+                <>
+                    <CancelButton
                     arrangement_id={request.arrangement_id}
-                    onSuccess={handleSuccess}
-                />
+                    onSuccess={(id) => handleSuccess(id, "cancel")}
+                    />
+                </>
                 )}
             </TableCell>
             </TableRow>
