@@ -1,10 +1,11 @@
-import pytest
+from datetime import datetime
+from unittest import mock
 from unittest.mock import MagicMock
+
+import pytest
 from sqlalchemy.exc import SQLAlchemyError
 from src.arrangements import crud, models, schemas
 from src.tests.test_utils import mock_db_session
-from datetime import datetime
-from unittest import mock
 
 
 @pytest.fixture
@@ -71,18 +72,25 @@ def test_get_arrangements_by_filter(mock_db_session, mock_arrangements):
 
 
 def test_get_arrangements_by_staff_ids(mock_db_session, mock_arrangements):
+    # Mock the query object behavior
     mock_query = MagicMock()
     mock_db_session.query.return_value = mock_query
-    mock_query.filter.return_value = mock_query
-    mock_query.all.return_value = mock_arrangements
+    mock_query.join.return_value = mock_query  # Mock join
+    mock_query.where.return_value = mock_query  # Mock where
+    mock_query.filter.return_value = mock_query  # Mock filter
+    mock_query.all.return_value = mock_arrangements  # Return mocked arrangements
 
+    # Call the function
     result = crud.get_arrangements_by_staff_ids(
         mock_db_session, staff_ids=[12345, 130002], current_approval_status=["pending"]
     )
 
-    mock_db_session.query.assert_called_once()
-    mock_query.filter.assert_called()
-    assert len(result) == 2
+    # Assertions on the final result
+    mock_db_session.query.assert_called_once_with(models.LatestArrangement)
+    mock_query.join.assert_called_once()
+    mock_query.where.assert_called_once()  # Ensure where was used
+    mock_query.filter.assert_called_once()  # Ensure filter was used
+    assert result == mock_arrangements  # Ensure the result matches
 
 
 def test_create_arrangement_log(mock_db_session, mock_arrangement, mock_arrangement_log):
@@ -240,18 +248,25 @@ def test_create_arrangements_auto_approve_jack_sim(mock_db_session, mock_arrange
 
 
 def test_get_arrangements_by_staff_ids_multiple_status(mock_db_session, mock_arrangements):
+    # Mock the query object behavior
     mock_query = MagicMock()
     mock_db_session.query.return_value = mock_query
-    mock_query.filter.return_value = mock_query
-    mock_query.all.return_value = mock_arrangements
+    mock_query.join.return_value = mock_query  # Mock join
+    mock_query.where.return_value = mock_query  # Mock where
+    mock_query.filter.return_value = mock_query  # Mock filter
+    mock_query.all.return_value = mock_arrangements  # Return mocked arrangements
 
+    # Call the function with multiple approval statuses
     result = crud.get_arrangements_by_staff_ids(
         mock_db_session, staff_ids=[12345, 130002], current_approval_status=["pending", "approved"]
     )
 
-    mock_db_session.query.assert_called_once()
-    mock_query.filter.assert_called()
-    assert len(result) == 2
+    # Assertions on the final result
+    mock_db_session.query.assert_called_once_with(models.LatestArrangement)
+    mock_query.join.assert_called_once()
+    mock_query.where.assert_called_once()  # Ensure where was used
+    mock_query.filter.assert_called_once()  # Ensure filter was used
+    assert result == mock_arrangements  # Ensure the result matches
 
 
 def test_create_recurring_request_with_recurring(mock_db_session):
@@ -338,16 +353,22 @@ def test_get_arrangements_by_filter_no_approval_status(mock_db_session, mock_arr
 
 
 def test_get_arrangements_by_staff_ids_no_approval_status(mock_db_session, mock_arrangements):
+    # Mock the query object behavior
     mock_query = MagicMock()
     mock_db_session.query.return_value = mock_query
-    mock_query.filter.return_value = mock_query
-    mock_query.all.return_value = mock_arrangements
+    mock_query.join.return_value = mock_query  # Mock join
+    mock_query.where.return_value = mock_query  # Mock where
+    mock_query.filter.return_value = mock_query  # Mock filter
+    mock_query.all.return_value = mock_arrangements  # Return mocked arrangements
 
     # Call the function without current_approval_status
     result = crud.get_arrangements_by_staff_ids(
         mock_db_session, staff_ids=[12345, 130002], current_approval_status=None
     )
 
-    mock_db_session.query.assert_called_once()
-    mock_query.filter.assert_called_once_with(mock.ANY)  # Skip exact comparison
-    assert len(result) == 2
+    # Assertions on the final result
+    mock_db_session.query.assert_called_once_with(models.LatestArrangement)
+    mock_query.join.assert_called_once()
+    mock_query.where.assert_called_once()  # Ensure where was used
+    mock_query.filter.assert_not_called()  # No filter call expected
+    assert result == mock_arrangements  # Ensure the result matches

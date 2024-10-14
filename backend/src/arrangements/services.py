@@ -74,7 +74,7 @@ def get_subordinates_arrangements(
     )
 
     if not employees_under_manager:
-        raise employee_exceptions.ManagerNotFoundException(manager_id)
+        raise employee_exceptions.ManagerWithIDNotFoundException(manager_id)
 
     employees_under_manager_ids = [employee.staff_id for employee in employees_under_manager]
 
@@ -166,7 +166,7 @@ def get_team_arrangements(
             utils.convert_model_to_pydantic_schema(subordinates_arrangements, ArrangementResponse)
         )
         arrangements["subordinates"] = subordinates_arrangements
-    except employee_exceptions.ManagerNotFoundException:
+    except employee_exceptions.ManagerWithIDNotFoundException:
         pass
     return arrangements
 
