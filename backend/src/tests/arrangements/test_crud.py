@@ -1,10 +1,11 @@
-import pytest
+from datetime import datetime
+from unittest import mock
 from unittest.mock import MagicMock
+
+import pytest
 from sqlalchemy.exc import SQLAlchemyError
 from src.arrangements import crud, models, schemas
 from src.tests.test_utils import mock_db_session
-from datetime import datetime
-from unittest import mock
 
 
 @pytest.fixture

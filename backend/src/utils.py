@@ -3,7 +3,6 @@ from typing import Dict, List
 from pydantic import BaseModel
 from sqlalchemy.ext.declarative import DeclarativeMeta
 
-
 # def convert_model_to_pydantic_schema(model_data: List[DeclarativeMeta], schema: BaseModel):
 #     return [schema.model_validate(model) for model in model_data]
 

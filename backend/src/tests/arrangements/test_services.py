@@ -1,37 +1,37 @@
 from datetime import datetime
-from unittest.mock import MagicMock, patch, ANY
-from fastapi import HTTPException
-import pytest
-from src.employees.schemas import EmployeeBase
+from unittest.mock import ANY, MagicMock, patch
+
 import boto3
+import httpx
+import pytest
+from fastapi import HTTPException
+from fastapi.testclient import TestClient
+from moto import mock_aws
+from src.app import app
+from src.arrangements import exceptions as arrangement_exceptions
+from src.arrangements import models as arrangement_models
+from src.arrangements.schemas import (
+    ArrangementCreateResponse,
+    ArrangementCreateWithFile,
+    ArrangementResponse,
+    ArrangementUpdate,
+    ManagerPendingRequestResponse,
+    ManagerPendingRequests,
+)
 from src.arrangements.services import (
+    STATUS,
+    create_arrangements_from_request,
+    expand_recurring_arrangement,
     get_arrangement_by_id,
     get_personal_arrangements_by_filter,
     get_subordinates_arrangements,
     get_team_arrangements,
-    create_arrangements_from_request,
-    expand_recurring_arrangement,
     update_arrangement_approval_status,
 )
-from src.arrangements import models as arrangement_models
-from src.arrangements import exceptions as arrangement_exceptions
-from src.tests.test_utils import mock_db_session
-from src.arrangements.schemas import (
-    ArrangementCreateWithFile,
-    ArrangementUpdate,
-    ArrangementResponse,
-    ArrangementCreateResponse,
-    ManagerPendingRequestResponse,
-    ManagerPendingRequests,
-)
-from fastapi.testclient import TestClient
-from src.app import app
-from moto import mock_aws
-from src.employees.models import Employee
-from src.tests.test_utils import mock_db_session
-import httpx
 from src.employees import exceptions as employee_exceptions
-from src.arrangements.services import STATUS
+from src.employees.models import Employee
+from src.employees.schemas import EmployeeBase
+from src.tests.test_utils import mock_db_session
 
 client = TestClient(app)
 
