@@ -37,7 +37,21 @@ def mock_environ():
 
 
 @pytest.mark.asyncio
-def test_send_email_success(email_data, mock_smtp, mock_environ):
+async def test_send_real_email_success(email_data, mock_environ):
+    email = EmailModel(
+        sender_email=email_data["sender_email"],
+        to_email=email_data["to_email"],
+        subject=email_data["subject"],
+        content=email_data["content"],
+    )
+
+    result = await email.send_email()
+
+    assert result == {"message": "Email sent successfully!"}
+
+
+@pytest.mark.asyncio
+async def test_send_email_success(email_data, mock_smtp, mock_environ):
     # Mock the SMTP instance
     mock_server = MagicMock()
     mock_smtp.return_value.__enter__.return_value = mock_server
@@ -49,7 +63,7 @@ def test_send_email_success(email_data, mock_smtp, mock_environ):
         content=email_data["content"],
     )
 
-    result = email.send_email()
+    result = await email.send_email()
 
     # Assertions
     assert result == {"message": "Email sent successfully!"}
@@ -60,10 +74,10 @@ def test_send_email_success(email_data, mock_smtp, mock_environ):
 
 
 @pytest.mark.asyncio
-def test_send_email_failure(email_data, mock_smtp, mock_environ):
+async def test_send_email_failure(email_data, mock_smtp, mock_environ):
     mock_server = MagicMock()
     mock_smtp.return_value.__enter__.return_value = mock_server
-    mock_server.sendmail.side_effect = Exception("SMTP error")
+    mock_server.sendmail.side_effect = smtplib.SMTPException("SMTP error")
 
     email = EmailModel(
         sender_email=email_data["sender_email"],
@@ -72,12 +86,12 @@ def test_send_email_failure(email_data, mock_smtp, mock_environ):
         content=email_data["content"],
     )
 
-    with pytest.raises(Exception):  # TODO: Find out what Exception subclass is raised
-        email.send_email()
+    with pytest.raises(smtplib.SMTPException):
+        await email.send_email()
 
 
 @pytest.mark.asyncio
-def test_send_email_smtp_login_failure(email_data, mock_smtp, mock_environ):
+async def test_send_email_smtp_login_failure(email_data, mock_smtp, mock_environ):
     mock_server = MagicMock()
     mock_server.login.side_effect = smtplib.SMTPAuthenticationError(535, b"Authentication failed")
     mock_smtp.return_value.__enter__.return_value = mock_server
@@ -90,16 +104,22 @@ def test_send_email_smtp_login_failure(email_data, mock_smtp, mock_environ):
     )
 
     with pytest.raises(smtplib.SMTPAuthenticationError):
-        email.send_email()
+        await email.send_email()
 
 
 def test_email_with_invalid_email_format():
+
+    # Test invalid sender email
     with pytest.raises(InvalidEmailException):
-        EmailModel("not_an_email", "also_not_an_email", "Subject", "Content")
+        EmailModel("invalid_sender_email", "user@example.com", "Subject", "Content")
+
+    # Test invalid recipient email
+    with pytest.raises(InvalidEmailException):
+        EmailModel("user@example.com", "invalid_recipient_email", "Subject", "Content")
 
 
 @pytest.mark.asyncio
-def test_smtp_connection_timeout(email_data, mock_smtp):
+async def test_smtp_connection_timeout(email_data, mock_smtp):
     mock_smtp.side_effect = TimeoutError("Connection timed out")
 
     email = EmailModel(
@@ -110,4 +130,4 @@ def test_smtp_connection_timeout(email_data, mock_smtp):
     )
 
     with pytest.raises(TimeoutError):
-        email.send_email()
+        await email.send_email()

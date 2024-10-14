@@ -1,26 +1,23 @@
-from dateutil.relativedelta import relativedelta
 from datetime import datetime, timedelta
-from fastapi import HTTPException
 from typing import Dict, List
 
 import boto3
-from fastapi import File
+from dateutil.relativedelta import relativedelta
+from fastapi import File, HTTPException
 from sqlalchemy.orm import Session
-
-from src.employees.schemas import EmployeeBase
-from ..logger import logger
-
 from src.arrangements.utils import delete_file, upload_file
 from src.employees.crud import get_employee_by_staff_id
 from src.notifications.email_notifications import fetch_manager_info
 
 from .. import utils
-from .utils import create_presigned_url
 from ..employees import exceptions as employee_exceptions
 from ..employees import models as employee_models
 from ..employees import services as employee_services
-from . import crud, exceptions, models
 
+# from src.employees.schemas import EmployeeBase
+from ..logger import logger
+from . import crud, exceptions, models
+from .models import LatestArrangement
 from .schemas import (
     ArrangementCreate,
     ArrangementCreateResponse,
@@ -30,8 +27,7 @@ from .schemas import (
     ManagerPendingRequestResponse,
     ManagerPendingRequests,
 )
-
-from .models import LatestArrangement
+from .utils import create_presigned_url
 
 STATUS = {
     "approve": "approved",

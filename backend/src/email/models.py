@@ -24,7 +24,7 @@ class EmailModel:
         regex = r"^\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b"
         return re.match(regex, email) is not None
 
-    def send_email(self):
+    async def send_email(self):
         # Get Gmail SMTP settings from environment variables
         smtp_server = os.getenv("SMTP_SERVER", "SMTP_SERVER")
         smtp_port = os.getenv("SMTP_PORT", "SMTP_PORT")

@@ -16,19 +16,26 @@ async def send_email(to_email: str = Form(...), subject: str = Form(...), conten
 
     sender_email = "zarapetproject@gmail.com"
 
-    email = models.EmailModel(
-        sender_email=sender_email, to_email=to_email, subject=subject, content=content
-    )
+    try:
+        email = models.EmailModel(
+            sender_email=sender_email, to_email=to_email, subject=subject, content=content
+        )
 
-    result = await email.send_email()
+        result = await email.send_email()
 
-    if "error" in result:
-        raise HTTPException(status_code=500, detail=result["error"])
+        # if "error" in result:
+        #     raise HTTPException(status_code=500, detail=result["error"])
 
-    return {
-        "message": "Email sent successfully!",
-        "sender_email": sender_email,
-        "to_email": to_email,
-        "subject": subject,
-        "content": content,
-    }
+        return {
+            "message": result["message"],
+            "sender_email": sender_email,
+            "to_email": to_email,
+            "subject": subject,
+            "content": content,
+        }
+    except models.InvalidEmailException as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except TimeoutError:
+        raise HTTPException(status_code=500, detail="Connection timed out")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
