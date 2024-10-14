@@ -6,7 +6,7 @@ const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 
 type CancelButtonProps = {
 arrangement_id: number;
-onSuccess: (id: number) => void;
+onSuccess: (id: number, action: "cancel" | "withdraw") => void;
 };
 
 export const CancelButton: React.FC<CancelButtonProps> = ({
@@ -27,20 +27,25 @@ const handleCancel = async () => {
         new URLSearchParams({
         action: "cancel",
         approving_officer: approvingOfficer,
-        reason_description: "",
+        reason_description: "", // Optional, but can be customized
         }),
         { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
     );
 
     console.log("Cancel successful");
-    onSuccess(arrangement_id); // Notify parent on success
+    onSuccess(arrangement_id, "cancel"); // Notify parent on successful cancellation
     } catch (error) {
     console.error("Failed to cancel request:", error);
     }
 };
 
 return (
-    <Button size="small" variant="outlined" color="primary" onClick={handleCancel}>
+    <Button
+    size="small"
+    variant="outlined"
+    color="primary"
+    onClick={handleCancel}
+    >
     Cancel
     </Button>
 );

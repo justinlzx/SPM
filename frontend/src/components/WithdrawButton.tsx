@@ -6,7 +6,7 @@ const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 
 type WithdrawButtonProps = {
 arrangement_id: number;
-onSuccess: (id: number) => void;
+onSuccess: (id: number, action: "cancel" | "withdraw") => void;
 };
 
 export const WithdrawButton: React.FC<WithdrawButtonProps> = ({
@@ -33,19 +33,14 @@ const handleWithdraw = async () => {
     );
 
     console.log("Withdraw successful");
-    onSuccess(arrangement_id); // Notify parent on success
+    onSuccess(arrangement_id, "withdraw"); // Pass 'withdraw' as the action
     } catch (error) {
     console.error("Failed to withdraw request:", error);
     }
 };
 
 return (
-    <Button
-    size="small"
-    variant="contained"
-    sx={{ backgroundColor: "grey.500", color: "white" }}
-    onClick={handleWithdraw}
-    >
+    <Button size="small" variant="outlined" color="secondary" onClick={handleWithdraw}>
     Withdraw
     </Button>
 );

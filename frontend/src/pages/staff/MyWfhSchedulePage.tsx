@@ -57,15 +57,22 @@ export const MyWfhSchedulePage: React.FC = () => {
     fetchRequests();
   }, [user, userId]);
 
-  const handleSuccess = (id: number) => {
+  const handleSuccess = (id: number, action: "cancel" | "withdraw") => {
+    const updatedStatus = action === "cancel" ? "cancelled" : "withdrawn";
+
     setRequests((prevRequests) =>
       prevRequests.map((request) =>
         request.arrangement_id === id
-          ? { ...request, approval_status: "withdrawn" }
+          ? { ...request, approval_status: updatedStatus }
           : request
       )
     );
-    setSnackbarMessage("Your WFH request has been successfully withdrawn!");
+
+    const message =
+      action === "cancel"
+        ? "Your WFH request has been successfully cancelled!"
+        : "Your WFH request has been successfully withdrawn!";
+    setSnackbarMessage(message);
     setOpenSnackbar(true);
   };
 
@@ -83,7 +90,12 @@ export const MyWfhSchedulePage: React.FC = () => {
         My WFH Request Overview
       </Typography>
 
-      <WFHRequestTable requests={requests} handleSuccess={handleSuccess} />
+      <WFHRequestTable
+        requests={requests}
+        handleSuccess={(id: number, action: "cancel" | "withdraw") =>
+          handleSuccess(id, action)
+        }
+      />
 
       <Snackbar
         open={openSnackbar}
@@ -100,4 +112,3 @@ export const MyWfhSchedulePage: React.FC = () => {
 };
 
 export default MyWfhSchedulePage;
-
