@@ -369,7 +369,7 @@ async def test_create_arrangements_from_request_file_upload_failure(mock_db_sess
 
 def test_get_subordinates_arrangements_no_subordinates(mock_db_session):
     with patch("src.employees.services.get_subordinates_by_manager_id", return_value=[]):
-        with pytest.raises(employee_exceptions.ManagerNotFoundException):
+        with pytest.raises(employee_exceptions.ManagerWithIDNotFoundException):
             get_subordinates_arrangements(mock_db_session, manager_id=1, current_approval_status=[])
 
 
@@ -489,7 +489,7 @@ def test_get_subordinates_arrangements_manager_not_found(mock_db_session):
         "src.employees.services.get_subordinates_by_manager_id",
         return_value=[],
     ):
-        with pytest.raises(employee_exceptions.ManagerNotFoundException):
+        with pytest.raises(employee_exceptions.ManagerWithIDNotFoundException):
             get_subordinates_arrangements(mock_db_session, manager_id=1, current_approval_status=[])
 
 
