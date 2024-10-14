@@ -37,6 +37,15 @@ client = TestClient(app)
 
 
 @pytest.fixture
+def mock_db_arrangement(mock_arrangement_data):
+    class MockDBArrangement:
+        def __init__(self, data):
+            self.__dict__.update(data)
+
+    return MockDBArrangement(mock_arrangement_data)
+
+
+@pytest.fixture
 def mock_employee():
     return EmployeeBase(
         staff_id=123,
@@ -71,7 +80,7 @@ def mock_create_presigned_url():
 def mock_arrangement_data():
     return {
         "arrangement_id": 1,
-        "staff_id": 123,
+        "requester_staff_id": 123,
         "wfh_date": "2024-10-12",
         "wfh_type": "full",
         "approving_officer": 456,
@@ -87,17 +96,17 @@ def mock_arrangement_data():
         "supporting_doc_1": "test_file_1.pdf",
         "supporting_doc_2": None,
         "supporting_doc_3": None,
-        "requester_info": {
-            "staff_id": 123,
-            "staff_fname": "John",
-            "staff_lname": "Doe",
-            "email": "john.doe@example.com",
-            "dept": "IT",
-            "position": "Developer",
-            "country": "USA",
-            "role": 1,
-            "reporting_manager": 456,
-        },
+        "requester_info": EmployeeBase(
+            staff_id=123,
+            staff_fname="John",
+            staff_lname="Doe",
+            email="john.doe@example.com",
+            dept="IT",
+            position="Developer",
+            country="USA",
+            role=1,
+            reporting_manager=456,
+        ),
         "latest_log_id": 1,
     }
 
@@ -167,10 +176,9 @@ def test_get_subordinates_arrangements_success(
 
 
 def test_get_team_arrangements_success(
-    mock_db_session, mock_s3_client, mock_create_presigned_url, mock_arrangement_data, mock_employee
+    mock_db_session, mock_s3_client, mock_create_presigned_url, mock_db_arrangement, mock_employee
 ):
-    mock_arrangement = ArrangementResponse(**mock_arrangement_data)
-    mock_arrangements = [mock_arrangement]
+    mock_arrangements = [mock_db_arrangement]
 
     with patch("src.employees.services.get_peers_by_staff_id", return_value=[mock_employee]):
         with patch(
@@ -474,11 +482,10 @@ def test_get_subordinates_arrangements_no_subordinates(mock_db_session):
 
 
 def test_get_team_arrangements_employee_is_manager(
-    mock_db_session, mock_s3_client, mock_create_presigned_url, mock_arrangement_data, mock_employee
+    mock_db_session, mock_s3_client, mock_create_presigned_url, mock_db_arrangement, mock_employee
 ):
-    mock_arrangement_data["supporting_doc_2"] = "test_file_2.pdf"
-    mock_arrangement = ArrangementResponse(**mock_arrangement_data)
-    mock_arrangements = [mock_arrangement]
+    mock_db_arrangement.supporting_doc_2 = "test_file_2.pdf"
+    mock_arrangements = [mock_db_arrangement]
 
     with patch("src.employees.services.get_peers_by_staff_id", return_value=[mock_employee]):
         with patch(
