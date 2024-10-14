@@ -36,7 +36,7 @@ export const Recurring: React.FC<RecurringProps> = ({ disabled }) => {
             selected={values.startDate}
             onChange={(date) => setFieldValue('startDate', date)}
             dateFormat="dd/MM/yyyy"
-            customInput={<TextField fullWidth disabled={disabled} />}
+            customInput={<TextField data-cy="start-datepicker-recurring" fullWidth disabled={disabled} />}
             required
             minDate={new Date()}
             disabled={disabled} // Disable date picker while loading
