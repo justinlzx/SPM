@@ -1,0 +1,12 @@
+[run]
+branch = True
+omit =
+    */test_*.py
+    */__init__.py
+    */health.py
+    */database.py
+    */base.py
+    */app.py
+
+[report]
+# Optional: Customize the coverage report

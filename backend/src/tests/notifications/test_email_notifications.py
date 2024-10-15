@@ -1,23 +1,15 @@
 import os
-import httpx
 from unittest.mock import MagicMock, patch
+
+import httpx
 import pytest
 from dotenv import load_dotenv
 from fastapi import HTTPException
-from httpx import RequestError, Response
+from httpx import RequestError
 from src.arrangements.schemas import ArrangementLog
 
 # from src.arrangements.models import LatestArrangement
-from src.notifications.email_notifications import (
-    craft_approval_email_content,
-    craft_email_content,
-    craft_rejection_email_content,
-    fetch_manager_info,
-    send_email,
-    craft_and_send_email,
-    send_email,
-)
-
+from src.notifications import email_notifications as notifications
 
 # Load environment variables
 load_dotenv()
@@ -61,7 +53,7 @@ async def send_email(to_email: str, subject: str, content: str):
 
 @pytest.mark.asyncio
 @patch("httpx.AsyncClient.get")
-async def test_fetch_manager_info_success(mock_get):
+async def test_fetch_manager_info_success(mock_get: MagicMock):
     # Mock response data
     mock_response_data = {"manager_id": 1, "manager_name": "John Doe"}
 
@@ -70,7 +62,7 @@ async def test_fetch_manager_info_success(mock_get):
     mock_get.return_value.status_code = 200
 
     # Call the function
-    result = await fetch_manager_info(staff_id=123)
+    result = await notifications.fetch_manager_info(staff_id=123)
 
     # Assertions
     assert result == mock_response_data
@@ -79,14 +71,14 @@ async def test_fetch_manager_info_success(mock_get):
 
 @pytest.mark.asyncio
 @patch("httpx.AsyncClient.get")
-async def test_fetch_manager_info_failure(mock_get):
+async def test_fetch_manager_info_failure(mock_get: MagicMock):
     # Set the mock to return an unsuccessful response
     mock_get.return_value.status_code = 404
     mock_get.return_value.text = "Not Found"
 
     # Call the function and check for HTTPException
     with pytest.raises(HTTPException) as exc_info:
-        await fetch_manager_info(staff_id=123)
+        await notifications.fetch_manager_info(staff_id=123)
 
     assert exc_info.value.status_code == 404
     assert "Error fetching manager info" in exc_info.value.detail
@@ -94,14 +86,14 @@ async def test_fetch_manager_info_failure(mock_get):
 
 @pytest.mark.asyncio
 @patch("httpx.AsyncClient.get")
-async def test_fetch_manager_info_request_error(mock_get):
+async def test_fetch_manager_info_request_error(mock_get: MagicMock):
     """Test network failure scenario for fetch_manager_info."""
     # Simulate a network error
     mock_get.side_effect = RequestError("Network error")
 
     # Call the function and check for HTTPException
     with pytest.raises(HTTPException) as exc_info:
-        await fetch_manager_info(staff_id=123)
+        await notifications.fetch_manager_info(staff_id=123)
 
     # Updated assertion to match the correct error message
     assert "An error occurred while fetching manager info" in exc_info.value.detail
@@ -109,7 +101,7 @@ async def test_fetch_manager_info_request_error(mock_get):
 
 @pytest.mark.asyncio
 @patch("httpx.AsyncClient.post")
-async def test_send_email_success(mock_post):
+async def test_send_email_success(mock_post: MagicMock):
     # Mock response data
     mock_response_data = {"status": "success"}
 
@@ -132,7 +124,7 @@ async def test_send_email_success(mock_post):
 
 @pytest.mark.asyncio
 @patch("httpx.AsyncClient.post")
-async def test_send_email_failure(mock_post):
+async def test_send_email_failure(mock_post: MagicMock):
     # Set the mock to return an unsuccessful response
     mock_post.return_value.status_code = 500
     mock_post.return_value.text = "Internal Server Error"
@@ -149,7 +141,7 @@ async def test_send_email_failure(mock_post):
 
 @pytest.mark.asyncio
 @patch("httpx.AsyncClient.post")
-async def test_send_email_request_error(mock_post):
+async def test_send_email_request_error(mock_post: MagicMock):
     """Test network failure scenario for send_email."""
     # Simulate a network error
     mock_post.side_effect = RequestError("Network error")
@@ -173,7 +165,7 @@ async def test_craft_email_content():
     mock_arrangement.current_approval_status = "pending"
     mock_arrangement.reason_description = "Work from home for personal reasons"
 
-    subject, content = craft_email_content(
+    subject, content = notifications.craft_email_content(
         employee=mock_staff, arrangements=[mock_arrangement], success=True
     )
 
@@ -190,7 +182,9 @@ async def test_craft_email_content_empty_arrangement():
     mock_staff = MagicMock(staff_fname="Jane", staff_lname="Doe")
 
     # Call the function with an empty list of arrangements
-    subject, content = craft_email_content(employee=mock_staff, arrangements=[], success=True)
+    subject, content = notifications.craft_email_content(
+        employee=mock_staff, arrangements=[], success=True
+    )
 
     # Updated assertions for empty arrangement
     assert "[All-In-One] Successful Creation of WFH Request" in subject
@@ -205,7 +199,7 @@ async def test_craft_email_content_failure():
     mock_staff = MagicMock(staff_fname="Jane", staff_lname="Doe")
     error_message = "Some error occurred"
 
-    subject, content = craft_email_content(
+    subject, content = notifications.craft_email_content(
         employee=mock_staff, arrangements=[], success=False, error_message=error_message
     )
 
@@ -220,7 +214,7 @@ async def test_craft_email_content_failure_empty_error_message():
     mock_staff = MagicMock(staff_fname="Jane", staff_lname="Doe")
 
     # Call the function with an empty error message
-    subject, content = craft_email_content(
+    subject, content = notifications.craft_email_content(
         employee=mock_staff, arrangements=[], success=False, error_message=""
     )
 
@@ -246,7 +240,7 @@ async def test_craft_approval_email_content():
         approval_status="approved",
     )
 
-    subject, content = craft_approval_email_content(
+    subject, content = notifications.craft_approval_email_content(
         employee=mock_staff, arrangement=mock_arrangement
     )
 
@@ -267,7 +261,7 @@ async def test_craft_approval_email_content_empty_description():
     mock_arrangement.reason_description = ""  # Missing description
     mock_arrangement.wfh_date = "2024-10-07"
 
-    subject, content = craft_approval_email_content(
+    subject, content = notifications.craft_approval_email_content(
         employee=mock_staff, arrangement=mock_arrangement
     )
 
@@ -288,7 +282,7 @@ async def test_craft_rejection_email_content():
     mock_arrangement.current_approval_status = "rejected"
     mock_arrangement.status_reason = "Not enough reason provided"
 
-    subject, content = craft_rejection_email_content(
+    subject, content = notifications.craft_rejection_email_content(
         employee=mock_staff, arrangement=mock_arrangement
     )
 
@@ -309,7 +303,7 @@ async def test_craft_rejection_email_content_empty_reason():
     mock_arrangement.wfh_date = "2024-10-08"
     mock_arrangement.status_reason = ""  # Missing rejection reason
 
-    subject, content = craft_rejection_email_content(
+    subject, content = notifications.craft_rejection_email_content(
         employee=mock_staff, arrangement=mock_arrangement
     )
 
@@ -335,7 +329,7 @@ async def test_craft_approval_email_content_with_manager():
         update_datetime="2024-10-01",
     )
 
-    subject, content = craft_approval_email_content(
+    subject, content = notifications.craft_approval_email_content(
         employee=mock_employee,
         arrangement=mock_arrangement,
         is_manager=True,
@@ -360,7 +354,7 @@ async def test_craft_approval_email_content_no_manager():
         update_datetime="2024-10-01",
     )
 
-    subject, content = craft_approval_email_content(
+    subject, content = notifications.craft_approval_email_content(
         employee=mock_employee,
         arrangement=mock_arrangement,
         is_manager=False,
@@ -387,7 +381,7 @@ async def test_craft_rejection_email_content_with_manager():
         status_reason="Not enough justification",
     )
 
-    subject, content = craft_rejection_email_content(
+    subject, content = notifications.craft_rejection_email_content(
         employee=mock_employee,
         arrangement=mock_arrangement,
         is_manager=True,
@@ -413,7 +407,7 @@ async def test_craft_rejection_email_content_no_manager():
         status_reason="Not enough justification",
     )
 
-    subject, content = craft_rejection_email_content(
+    subject, content = notifications.craft_rejection_email_content(
         employee=mock_employee,
         arrangement=mock_arrangement,
         is_manager=False,
@@ -436,7 +430,7 @@ async def test_craft_email_content_error():
         reason_description="Work from home for personal reasons",
     )
 
-    subject, content = craft_email_content(
+    subject, content = notifications.craft_email_content(
         employee=mock_staff,
         arrangements=[mock_arrangement],
         success=False,
@@ -450,7 +444,7 @@ async def test_craft_email_content_error():
 
 @pytest.mark.asyncio
 @patch("httpx.AsyncClient.post")
-async def test_send_email_invalid_response(mock_post):
+async def test_send_email_invalid_response(mock_post: MagicMock):
     # Mock invalid response
     mock_post.return_value.status_code = 403
     mock_post.return_value.text = "Forbidden"
@@ -468,7 +462,7 @@ async def test_craft_and_send_email_invalid_event():
     arrangements = [MockArrangement()]
 
     with pytest.raises(ValueError) as excinfo:
-        await craft_and_send_email(employee, arrangements, "invalid_event")
+        await notifications.craft_and_send_email(employee, arrangements, "invalid_event")
     assert str(excinfo.value) == "Invalid event: invalid_event"
 
 
@@ -482,13 +476,15 @@ async def test_craft_and_send_email_create_with_manager(mocker):
     # Mock the send_email function to prevent actual email sending
     mocker.patch("src.notifications.email_notifications.send_email", return_value=True)
 
-    result = await craft_and_send_email(employee, arrangements, "create", manager=manager)
+    result = await notifications.craft_and_send_email(
+        employee, arrangements, "create", manager=manager
+    )
     assert result is True
 
 
 @pytest.mark.asyncio
 @patch("httpx.AsyncClient.post")
-async def test_send_email_http_exception(mock_post):
+async def test_send_email_http_exception(mock_post: MagicMock):
     # Simulate a request error when sending the email
     mock_post.side_effect = httpx.RequestError("Request failed")
 
@@ -509,7 +505,9 @@ async def test_craft_and_send_email_reject_with_manager(mocker):
     employee = MagicMock()  # Mock employee
     arrangements = [MockArrangement()]  # Mock arrangements
 
-    result = await craft_and_send_email(employee, arrangements, "reject", manager=manager)
+    result = await notifications.craft_and_send_email(
+        employee, arrangements, "reject", manager=manager
+    )
     assert result is True
 
 
@@ -517,7 +515,7 @@ async def test_craft_and_send_email_reject_with_manager(mocker):
 async def test_craft_email_content_multiple_arrangements():
     employee = MagicMock()  # Use MagicMock for employee object
     arrangements = [MockArrangement(), MockArrangement()]  # Mock multiple arrangements
-    subject, content = craft_email_content(employee, arrangements, True)
+    subject, content = notifications.craft_email_content(employee, arrangements, True)
 
     assert "Request ID" in content
     assert "WFH Date" in content
@@ -533,7 +531,9 @@ async def test_craft_and_send_email_create_with_empty_manager_email(mocker):
     # Mock the send_email function to prevent actual email sending
     mocker.patch("src.notifications.email_notifications.send_email", return_value=True)
 
-    result = await craft_and_send_email(employee, arrangements, "create", manager=manager)
+    result = await notifications.craft_and_send_email(
+        employee, arrangements, "create", manager=manager
+    )
     assert result is True
 
 
@@ -543,7 +543,7 @@ async def test_craft_and_send_email_unhandled_event(mocker):
     arrangements = [MockArrangement()]
 
     with pytest.raises(ValueError) as excinfo:
-        await craft_and_send_email(employee, arrangements, "unhandled_event")
+        await notifications.craft_and_send_email(employee, arrangements, "unhandled_event")
     assert str(excinfo.value) == "Invalid event: unhandled_event"
 
 
@@ -566,7 +566,7 @@ async def test_send_email_empty_inputs():
 async def test_craft_email_content_multiple_empty_arrangements():
     employee = MagicMock()  # Use MagicMock for employee object
     arrangements = []  # No arrangements
-    subject, content = craft_email_content(employee, arrangements, True)
+    subject, content = notifications.craft_email_content(employee, arrangements, True)
 
     assert "[All-In-One] Successful Creation of WFH Request" in subject
     assert "Your WFH request has been successfully created" in content
@@ -581,7 +581,7 @@ async def test_craft_and_send_email_none_manager_employee():
 
     # Ensure that it raises an error when the employee is None
     with pytest.raises(AttributeError) as exc_info:
-        await craft_and_send_email(employee, arrangements, "approve")
+        await notifications.craft_and_send_email(employee, arrangements, "approve")
 
     assert "'NoneType' object has no attribute 'staff_fname'" in str(exc_info.value)
 
@@ -592,7 +592,7 @@ async def test_craft_rejection_email_content_missing_data():
     mock_staff = MagicMock(staff_fname="Jane", staff_lname="Doe")
     mock_arrangement = MagicMock(wfh_date=None, current_approval_status=None, status_reason=None)
 
-    subject, content = craft_rejection_email_content(
+    subject, content = notifications.craft_rejection_email_content(
         employee=mock_staff, arrangement=mock_arrangement
     )
 
@@ -607,7 +607,7 @@ async def test_craft_approval_email_content_invalid_arrangement_data():
     mock_staff = MagicMock(staff_fname="Jane", staff_lname="Doe")
     mock_arrangement = MagicMock(wfh_date=None, current_approval_status=None)
 
-    subject, content = craft_approval_email_content(mock_staff, mock_arrangement)
+    subject, content = notifications.craft_approval_email_content(mock_staff, mock_arrangement)
 
     # Ensure invalid data is gracefully omitted from the content
     assert "WFH Date: None" in content  # Ensure None is shown for missing data
@@ -621,7 +621,9 @@ async def test_craft_and_send_email_no_manager(mock_send_email):
     arrangements = [MockArrangement()]
 
     # Call the function when the manager is None
-    result = await craft_and_send_email(employee, arrangements, "approve", manager=None)
+    result = await notifications.craft_and_send_email(
+        employee, arrangements, "approve", manager=None
+    )
 
     assert result is True  # Ensure the function completes successfully
     mock_send_email.assert_called_once()  # Ensure that send_email was called
@@ -635,7 +637,9 @@ async def test_craft_email_content_missing_arrangement_id():
         arrangement_id=None, wfh_date="2024-10-07", current_approval_status="approved"
     )
 
-    subject, content = craft_email_content(mock_staff, [mock_arrangement], success=True)
+    subject, content = notifications.craft_email_content(
+        mock_staff, [mock_arrangement], success=True
+    )
 
     assert "[All-In-One] Successful Creation of WFH Request" in subject
     assert "WFH Date: 2024-10-07" in content
@@ -649,7 +653,9 @@ async def test_craft_email_content_empty_wfh_type():
         wfh_date="2024-10-07", wfh_type="", reason_description="Work from home"
     )
 
-    subject, content = craft_email_content(mock_staff, [mock_arrangement], success=True)
+    subject, content = notifications.craft_email_content(
+        mock_staff, [mock_arrangement], success=True
+    )
 
     assert "[All-In-One] Successful Creation of WFH Request" in subject
     assert "WFH Date: 2024-10-07" in content
@@ -662,7 +668,9 @@ async def test_craft_email_content_missing_update_datetime():
     mock_staff = MagicMock(staff_fname="Jane", staff_lname="Doe")
     mock_arrangement = MagicMock(wfh_date="2024-10-07", update_datetime=None)
 
-    subject, content = craft_email_content(mock_staff, [mock_arrangement], success=True)
+    subject, content = notifications.craft_email_content(
+        mock_staff, [mock_arrangement], success=True
+    )
 
     assert "[All-In-One] Successful Creation of WFH Request" in subject
     assert "WFH Date: 2024-10-07" in content
@@ -671,7 +679,7 @@ async def test_craft_email_content_missing_update_datetime():
 
 @pytest.mark.asyncio
 @patch("src.notifications.email_notifications.httpx.AsyncClient.post")
-async def test_send_email_invalid_email_format(mock_post):
+async def test_send_email_invalid_email_format(mock_post: MagicMock):
     # Simulate the behavior where an invalid email format causes an HTTPException
     mock_post.side_effect = HTTPException(
         status_code=400, detail="Recipient email must be a valid email address."
@@ -692,7 +700,7 @@ async def test_craft_rejection_email_empty_reason_description():
         wfh_date="2024-10-08", current_approval_status="rejected", status_reason=""
     )
 
-    subject, content = craft_rejection_email_content(mock_staff, mock_arrangement)
+    subject, content = notifications.craft_rejection_email_content(mock_staff, mock_arrangement)
 
     assert "[All-In-One] Your WFH Request Has Been Rejected" in subject
     assert "WFH Date: 2024-10-08" in content
@@ -708,7 +716,9 @@ async def test_craft_and_send_email_approve_with_manager(mocker):
     manager = MagicMock()
     arrangements = [MockArrangement()]
 
-    result = await craft_and_send_email(employee, arrangements, "approve", manager=manager)
+    result = await notifications.craft_and_send_email(
+        employee, arrangements, "approve", manager=manager
+    )
     assert result is True
 
 
