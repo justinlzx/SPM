@@ -312,12 +312,11 @@ export const CreateWfhRequest: React.FC = () => {
                 name="reason"
                 as="textarea"
                 fullWidth
-                required
                 disabled={loading}
                 className="border border-gray-300 rounded p-2 w-full"
               />
               <FormHelperText error>
-                <ErrorMessage name="reason" />
+                <ErrorMessage data-cy="reason-error" name="reason" />
               </FormHelperText>
             </FormControl>
 
@@ -326,6 +325,7 @@ export const CreateWfhRequest: React.FC = () => {
               <Typography variant="subtitle1">WFH Type</Typography>
               <Select
                 name="wfhType"
+                data-cy = "wfhType"
                 value={values.wfhType}
                 onChange={(e) => setFieldValue("wfhType", e.target.value)}
                 fullWidth
@@ -348,6 +348,7 @@ export const CreateWfhRequest: React.FC = () => {
               <Typography variant="subtitle1">Schedule Type</Typography>
               <Select
                 name="scheduleType"
+                data-cy = "scheduleType"
                 value={scheduleType}
                 onChange={(e) =>
                   setScheduleType(e.target.value as "adhoc" | "recurring")
@@ -368,7 +369,7 @@ export const CreateWfhRequest: React.FC = () => {
                   selected={values.startDate}
                   onChange={(date) => setFieldValue("startDate", date)}
                   dateFormat="dd/MM/yyyy"
-                  customInput={<TextField fullWidth />}
+                  customInput={<TextField data-cy="start-datepicker" fullWidth />}
                   required
                   minDate={addDays(new Date(), 1)}  // Disable today and only allow future dates
                   disabled={loading}
@@ -400,6 +401,7 @@ export const CreateWfhRequest: React.FC = () => {
             {/* Submit Button */}
             <Box sx={{ display: "flex", justifyContent: "flex-end", mt: 4 }}>
               <Button
+                data-cy="cancel"
                 variant="outlined"
                 color="primary"
                 onClick={() => navigate(-1)}
@@ -410,6 +412,7 @@ export const CreateWfhRequest: React.FC = () => {
               <Button
                 type="submit"
                 variant="contained"
+                data-cy="submit-request"
                 color="primary"
                 disabled={loading}
               >

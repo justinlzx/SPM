@@ -58,6 +58,7 @@ export const LoginPage = () => {
             Email
           </InputLabel>
           <Input
+            data-cy= "email"
             type="email"
             placeholder="Enter Email"
             value={email}
@@ -72,6 +73,7 @@ export const LoginPage = () => {
             Password
           </InputLabel>
           <Input
+            data-cy="password"
             id="filled-adornment-password"
             type={showPassword ? "text" : "password"}
             value={password}
@@ -98,7 +100,7 @@ export const LoginPage = () => {
 
           {/* Submit button */}
           <div>
-            <button
+            <button data-cy = "submit"
               type="submit"
               className={`${
                 isLoggingIn && "opacity-50"

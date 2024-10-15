@@ -69,7 +69,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, handleDrawerToggle
                   backgroundColor: activeTab === sideBarItems.indexOf(item) ? "navy" : "#e0e0e0",
                 }
               }}
+              data-cy={item.text.toLowerCase().replace(/\s+/g, '-')} // Assign data-cy for all items dynamically
               onClick={() => handleButtonClick(item.route || "")}
+
             >
               <ListItemIcon sx={{ color: activeTab === sideBarItems.indexOf(item) ? "white" : "inherit" }}>
                 {item.icon}
