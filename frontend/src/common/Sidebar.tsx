@@ -12,6 +12,7 @@ import { useContext } from "react";
 import { AppContext } from "../context/AppContextProvider";
 import { useNavigate } from "react-router-dom";
 import InboxIcon from "@mui/icons-material/MoveToInbox";
+import SelfImprovementIcon from '@mui/icons-material/SelfImprovement';
 import SpaceDashboardIcon from '@mui/icons-material/SpaceDashboard';
 import TeamIcon from "@mui/icons-material/Group";
 import WfhScheduleIcon from '@mui/icons-material/CalendarMonth';
@@ -20,9 +21,10 @@ import SettingsIcon from "@mui/icons-material/Settings";
 // Define sideBarLabels here since it's only used by the Sidebar component
 enum sideBarLabels {
   Dashboard = "Dashboard",
-  Requests = "Requests",
+  Requests = "WFH Requests",
+  oooRequests = "OOO Requests",
   MyTeam = "My Team",
-  MyWFHSchedule = "My WFH Schedule",
+  MyWFHSchedule = "My Schedule",
   Settings = "Settings",
   DepartmentOverview = "Department Overview",
   ReviewRequests = "Review Requests",
@@ -33,6 +35,7 @@ const drawerWidth = 240;
 const sideBarItems = [
   { text: sideBarLabels.Dashboard, icon: <SpaceDashboardIcon />, route: "/home" },
   { text: sideBarLabels.Requests, icon: <InboxIcon />, route: "/request" },
+  { text: sideBarLabels.oooRequests, icon: <SelfImprovementIcon />, route: "/ooorequest" },
   { text: sideBarLabels.MyTeam, icon: <TeamIcon />, route: "/team" },
   { text: sideBarLabels.MyWFHSchedule, icon: <WfhScheduleIcon />, route: "/wfh-schedule" },
   { text: sideBarLabels.Settings, icon: <SettingsIcon />, route: "/settings" },

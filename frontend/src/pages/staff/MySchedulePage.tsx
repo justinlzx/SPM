@@ -3,21 +3,32 @@ import axios from "axios";
 import { Container, Typography, Snackbar, Alert } from "@mui/material";
 import { UserContext } from "../../context/UserContextProvider";
 import { WFHRequestTable } from "../../components/WFHRequestTable";
+import { OOORequestTable } from "../../components/OOORequestTable";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 
 type TWFHRequest = {
   arrangement_id: number;
   staff_id: number;
-  wfh_date: string;
+  wfh_date: string; 
   end_date?: string;
   wfh_type: string;
   reason_description: string;
   approval_status: string;
 };
 
-export const MyWfhSchedulePage: React.FC = () => {
-  const [requests, setRequests] = useState<TWFHRequest[]>([]);
+type TOOORequest = {
+  arrangement_id: number;
+  staff_id: number;
+  ooo_start_date: string;
+  ooo_end_date?: string;
+  reason_description: string;
+  approval_status: string;
+};
+
+export const MySchedulePage: React.FC = () => {
+  const [wfhRequests, setWfhRequests] = useState<TWFHRequest[]>([]);
+  const [oooRequests, setOooRequests] = useState<TOOORequest[]>([]);
   const [userId, setUserId] = useState<number | null>(null);
   const [openSnackbar, setOpenSnackbar] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState("");
@@ -43,24 +54,46 @@ export const MyWfhSchedulePage: React.FC = () => {
   }, [storedUser]);
 
   useEffect(() => {
-    const fetchRequests = async () => {
+    const fetchWFHRequests = async () => {
       if (!user || userId === null) return;
       try {
         const response = await axios.get(
           `${BACKEND_URL}/arrangements/personal/${userId}`
         );
-        setRequests(response.data.data);
+        setWfhRequests(response.data.data);
       } catch (error) {
-        console.error("Failed to fetch requests:", error);
+        console.error("Failed to fetch WFH requests:", error);
       }
     };
-    fetchRequests();
+
+    const fetchOOORequests = async () => {
+      if (!user || userId === null) return;
+      try {
+        const response = await axios.get(
+          `${BACKEND_URL}/arrangements/personal/ooo/${userId}`
+        );
+        setOooRequests(response.data.data);
+      } catch (error) {
+        console.error("Failed to fetch OOO requests:", error);
+      }
+    };
+
+    fetchWFHRequests();
+    fetchOOORequests();
   }, [user, userId]);
 
   const handleSuccess = (id: number, action: "cancel" | "withdraw") => {
     const updatedStatus = action === "cancel" ? "cancelled" : "withdrawn";
 
-    setRequests((prevRequests) =>
+    setWfhRequests((prevRequests) =>
+      prevRequests.map((request) =>
+        request.arrangement_id === id
+          ? { ...request, approval_status: updatedStatus }
+          : request
+      )
+    );
+
+    setOooRequests((prevRequests) =>
       prevRequests.map((request) =>
         request.arrangement_id === id
           ? { ...request, approval_status: updatedStatus }
@@ -70,8 +103,8 @@ export const MyWfhSchedulePage: React.FC = () => {
 
     const message =
       action === "cancel"
-        ? "Your WFH request has been successfully cancelled!"
-        : "Your WFH request has been successfully withdrawn!";
+        ? "Your request has been successfully cancelled!"
+        : "Your request has been successfully withdrawn!";
     setSnackbarMessage(message);
     setOpenSnackbar(true);
   };
@@ -91,7 +124,18 @@ export const MyWfhSchedulePage: React.FC = () => {
       </Typography>
 
       <WFHRequestTable
-        requests={requests}
+        requests={wfhRequests}
+        handleSuccess={(id: number, action: "cancel" | "withdraw") =>
+          handleSuccess(id, action)
+        }
+      />
+
+      <Typography variant="h4" gutterBottom align="left" sx={{ marginTop: 8 }}>
+        My OOO Request Overview
+      </Typography>
+
+      <OOORequestTable
+        requests={oooRequests}
         handleSuccess={(id: number, action: "cancel" | "withdraw") =>
           handleSuccess(id, action)
         }
@@ -111,4 +155,4 @@ export const MyWfhSchedulePage: React.FC = () => {
   );
 };
 
-export default MyWfhSchedulePage;
+export default MySchedulePage;

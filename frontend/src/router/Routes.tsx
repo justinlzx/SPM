@@ -7,7 +7,8 @@ import { RequestPage } from "../pages/staff/RequestPage";
 import { HomePage } from "../pages/staff/HomePage";
 import { TeamPage } from "../pages/team/TeamPage";
 import { Settings } from "../pages/staff/Settings";
-import { MyWfhSchedulePage } from "../pages/staff/MyWfhSchedulePage";
+import { MySchedulePage } from "../pages/staff/MySchedulePage";
+import { OOORequestPage } from "../pages/staff/OOORequestPage";
 
 type routesProps = {
   path: string;
@@ -41,12 +42,16 @@ const routes: routesProps[] = [
             element: <RequestPage />,
           },
           {
+            path: "/ooorequest",
+            element: <OOORequestPage />,
+          },
+          {
             path: "/team",
             element: <TeamPage />,
           },
           {
             path: "/wfh-schedule",
-            element: <MyWfhSchedulePage />,
+            element: <MySchedulePage />,
           },
           {
             path: "/settings",
