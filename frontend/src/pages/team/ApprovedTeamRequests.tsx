@@ -71,7 +71,7 @@ const getWfhTypeChipColor = (
   }
 };
 
-export const RequestList = () => {
+export const ApprovedTeamRequests = () => {
   const [requests, setRequests] = useState<TWFHRequest[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [page, setPage] = useState(0);
@@ -233,4 +233,4 @@ export const RequestList = () => {
   );
 };
 
-export default RequestList;
+export default ApprovedTeamRequests;

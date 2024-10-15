@@ -12,7 +12,7 @@ export const TeamPage = () => {
 
   return (
     <div>
-      <PendingRequests />
+      approved requests for the entire team should go here
     </div>
   );
 };

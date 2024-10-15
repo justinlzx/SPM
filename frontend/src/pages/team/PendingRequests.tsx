@@ -160,17 +160,17 @@ export const PendingRequests = () => {
         approving_officer: userId,
         arrangement_id,
       });
-
+  
       await axios.put(
         `${BACKEND_URL}/arrangements/${arrangement_id}/status`,
         formData,
         {
           headers: {
-            "Content-Type": "multipart/form-data",
+            "Content-Type": "application/x-www-form-urlencoded",
           },
         }
       );
-
+  
       console.log(`Request ${action}d successfully`);
     } catch (error) {
       console.error(`Error ${action}ing request:`, error);

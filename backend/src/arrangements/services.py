@@ -393,7 +393,7 @@ def update_arrangement_approval_status(
 
     # Set default reason description if not provided
     if wfh_update.reason_description is None:
-        wfh_update.reason_description = "[DEFAULT] Approved by Manager"
+        wfh_update.reason_description = ""
 
     # Fetch the arrangement
     arrangement: models.LatestArrangement = crud.get_arrangement_by_id(
