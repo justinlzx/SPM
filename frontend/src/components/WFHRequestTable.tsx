@@ -10,18 +10,18 @@ import {
     Chip,
     ChipProps,
 } from "@mui/material";
-import { WithdrawButton } from "./WithdrawButton";
-import { CancelButton } from "./CancelButton";
+import { WithdrawButton } from "./crud/WithdrawButton";
+import { CancelButton } from "./crud/CancelButton";
 import { capitalize } from "../utils/utils";
 
 type TWFHRequest = {
-arrangement_id: number;
-staff_id: number;
-wfh_date: string;
-end_date?: string;
-wfh_type: string;
-reason_description: string;
-approval_status: string;
+    arrangement_id: number;
+    staff_id: number;
+    wfh_date: string;
+    end_date?: string;
+    wfh_type: string;
+    reason_description: string;
+    approval_status: string;
 };
 
 interface WFHRequestTableProps {
@@ -86,7 +86,7 @@ export const WFHRequestTable: React.FC<WFHRequestTableProps> = ({
                 padding: 1,
                 }}
             >
-                {request.reason_description || "No reason provided"}
+                {request.reason_description || "-"}
             </TableCell>
             <TableCell>
                 <Chip
@@ -106,8 +106,9 @@ export const WFHRequestTable: React.FC<WFHRequestTableProps> = ({
                 {request.approval_status === "approved" && (
                 <>
                     <CancelButton
-                    arrangement_id={request.arrangement_id}
-                    onSuccess={(id) => handleSuccess(id, "cancel")}
+                        //existingPayload={request}
+                        arrangement_id={request.arrangement_id}
+                        onSuccess={(id) => handleSuccess(id, "cancel")}
                     />
                 </>
                 )}

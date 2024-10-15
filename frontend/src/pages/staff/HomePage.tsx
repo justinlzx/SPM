@@ -4,7 +4,7 @@ import { UserContext } from '../../context/UserContextProvider';
 import AddIcon from '@mui/icons-material/Add';
 import { Button, Box, Toolbar, Container, Typography } from '@mui/material';
 import DashboardCards from '../../components/staffView/DashboardCards';
-import { RequestList } from '../../pages/team/RequestList';
+import { ApprovedTeamRequests } from '../team/ApprovedTeamRequests';
 
 type Request = {
   id: number;
@@ -42,7 +42,7 @@ export const HomePage = () => {
         >
           Create a WFH Request
         </Button>
-        <RequestList />
+        <ApprovedTeamRequests />
       </Container>
     </Box>
   );
