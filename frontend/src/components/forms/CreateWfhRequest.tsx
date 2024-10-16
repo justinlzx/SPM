@@ -92,7 +92,7 @@ export const CreateWfhRequest: React.FC = () => {
     let recurringDates: Date[] = [];
     const start = new Date(values.startDate);
     const end = new Date(values.endDate);
-
+  
     // Check if WFH limit has been exceeded
     if (wfhDaysTaken >= 2 && !proceedWithSubmission) {
       setAlertStatus(AlertStatus.Warning);
@@ -104,8 +104,8 @@ export const CreateWfhRequest: React.FC = () => {
       setLoading(false);
       return;
     }
-
-    // Check if the start date is a weekend
+  
+    // Check if the start date is a weekend for ad-hoc requests
     if (scheduleType === "adhoc" && isWeekend(start)) {
       setAlertStatus(AlertStatus.Error);
       setSnackbarMessage("You cannot request WFH on a weekend.");
@@ -113,12 +113,12 @@ export const CreateWfhRequest: React.FC = () => {
       setLoading(false);
       return;
     }
-
-    // Check for weekend dates in recurring and year limit
+  
+    // Check for weekend dates in recurring schedules and ensure it's within 1 year
     if (scheduleType === "recurring") {
       const oneYearLater = new Date(start);
       oneYearLater.setFullYear(start.getFullYear() + 1);
-
+  
       if (end > oneYearLater) {
         setAlertStatus(AlertStatus.Error);
         setSnackbarMessage("End date is more than 1 year from start date.");
@@ -126,8 +126,7 @@ export const CreateWfhRequest: React.FC = () => {
         setLoading(false);
         return;
       }
-
-      // Generate recurring dates based on repeat interval and unit
+  
       const {
         recurringDates: validRecurringDates,
         weekendDates: removedWeekends,
@@ -137,10 +136,10 @@ export const CreateWfhRequest: React.FC = () => {
         values.repeatInterval,
         values.repeatIntervalUnit
       );
-
+  
       recurringDates = validRecurringDates;
-
-      // Warn if weekends are removed
+  
+      // Notify about removed weekend dates
       if (removedWeekends.length > 0) {
         setAlertStatus(AlertStatus.Warning);
         setSnackbarMessage(
@@ -150,8 +149,7 @@ export const CreateWfhRequest: React.FC = () => {
         );
         setShowSnackbar(true);
       }
-
-      // Prevent submission if no valid dates remain
+  
       if (recurringDates.length === 0) {
         setAlertStatus(AlertStatus.Error);
         setSnackbarMessage(
@@ -161,66 +159,55 @@ export const CreateWfhRequest: React.FC = () => {
         setLoading(false);
         return;
       }
-    }
-
-    // Build the payload
-    const payload: {
-      recurring_end_date?: any;
-      recurring_frequency_number?: any;
-      recurring_frequency_unit?: any;
-      recurring_occurrences?: any;
-      requester_staff_id: number;
-      wfh_date: any;
-      wfh_type: any;
-      reason_description: any;
-      is_recurring: boolean;
-    } = {
-      requester_staff_id: requesterStaffId,
-      wfh_date: values.startDate.toISOString().split("T")[0],
-      wfh_type: values.wfhType.toLowerCase(),
-      reason_description: values.reason,
-      is_recurring: scheduleType === "recurring",
-      ...(scheduleType === "recurring" && {
-        recurring_end_date: values.endDate
-          ? values.endDate.toISOString().split("T")[0]
-          : null,
-        recurring_frequency_number: values.repeatInterval,
-        recurring_frequency_unit: values.repeatIntervalUnit,
-        recurring_occurrences: values.occurrences,
-      }),
     };
 
-    try {
-      const form = new FormData();
-
-      Object.keys(payload).forEach((key) => {
-        form.append(key, (payload as any)[key]);
-      });
-
-      supportingDocs.forEach((file) => {
-        form.append("supporting_docs", file);
-      });
-
-      await axios.post(`${BACKEND_URL}/arrangements/request`, form, {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
-      });
-      setAlertStatus(AlertStatus.Success);
-      setSnackbarMessage("Your request was successfully submitted!");
-      setShowSnackbar(true);
-      setSupportingDocs([]);
-      // Clear the form after submission
-      resetForm();
-    } catch (error) {
-      console.error("Error submitting the WFH arrangement:", error);
-      setAlertStatus(AlertStatus.Error);
-      setSnackbarMessage("An error occurred while submitting your request.");
-      setShowSnackbar(true);
-    } finally {
-      setLoading(false);
-    }
+    // Build the payload
+  const payload: any = {
+    requester_staff_id: requesterStaffId,
+    wfh_date: values.startDate.toISOString().split("T")[0],
+    wfh_type: values.wfhType.toLowerCase(),
+    reason_description: values.reason,
+    is_recurring: scheduleType === "recurring",
+    ...(scheduleType === "recurring" && {
+      recurring_end_date: values.endDate
+        ? values.endDate.toISOString().split("T")[0]
+        : null,
+      recurring_frequency_number: values.repeatInterval,
+      recurring_frequency_unit: values.repeatIntervalUnit,
+      recurring_occurrences: values.occurrences,
+    }),
   };
+
+  try {
+    const form = new FormData();
+    Object.keys(payload).forEach((key) => {
+      form.append(key, payload[key]);
+    });
+
+    supportingDocs.forEach((file) => {
+      form.append("supporting_docs", file);
+    });
+
+    await axios.post(`${BACKEND_URL}/arrangements/request`, form, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    });
+    setAlertStatus(AlertStatus.Success);
+    setSnackbarMessage("Your request was successfully submitted!");
+    setShowSnackbar(true);
+      setSupportingDocs([]);
+    // Clear the form after submission
+    resetForm();
+  } catch (error) {
+    console.error("Error submitting the WFH arrangement:", error);
+    setAlertStatus(AlertStatus.Error);
+    setSnackbarMessage("An error occurred while submitting your request.");
+    setShowSnackbar(true);
+  } finally {
+    setLoading(false);
+  }
+};
 
   // Yup form validation schema
   const validationSchema = Yup.object().shape({
