@@ -69,7 +69,7 @@ def test_arrangement_log_fields(mock_db_session, mock_arrangement_log):
     """Test that ArrangementLog object has valid fields."""
     assert mock_arrangement_log.requester_staff_id == 1
     assert mock_arrangement_log.wfh_type == "full"
-    assert mock_arrangement_log.approval_status == "pending"
+    assert mock_arrangement_log.approval_status == "pending approval"
     assert mock_arrangement_log.batch_id is None
 
 
@@ -98,7 +98,7 @@ def test_check_constraints(mock_arrangement_log, mock_latest_arrangement, mock_r
     assert mock_recurring_request.wfh_type in ["full", "am", "pm"]
 
     # Valid Approval Statuses
-    assert mock_arrangement_log.approval_status in ["pending", "approved", "rejected", "withdrawn"]
+    assert mock_arrangement_log.approval_status in ["pending approval", "pending withdrawal", "approved", "rejected", "withdrawn"]
     assert mock_latest_arrangement.current_approval_status in [
         "pending",
         "approved",

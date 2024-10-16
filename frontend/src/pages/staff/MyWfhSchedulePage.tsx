@@ -2,7 +2,8 @@ import React, { useContext, useEffect, useState } from "react";
 import axios from "axios";
 import { Container, Typography, Snackbar, Alert } from "@mui/material";
 import { UserContext } from "../../context/UserContextProvider";
-import { WFHRequestTable } from "../../components/WFHRequestTable";
+import { StaffWfhRequests } from "../../components/StaffWfhRequests";
+import { ApprovalStatus } from "../../types/ApprovalStatus";  // Import the common enum
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 
@@ -13,7 +14,25 @@ type TWFHRequest = {
   end_date?: string;
   wfh_type: string;
   reason_description: string;
-  approval_status: string;
+  approval_status: ApprovalStatus; // Now using enum from common file
+};
+
+// Function to map the approval status from the backend to the enum
+const mapApprovalStatus = (status: string): ApprovalStatus => {
+  switch (status.toLowerCase()) {
+    case "approved":
+      return ApprovalStatus.Approved;
+    case "pending approval":
+      return ApprovalStatus.PendingApproval;
+    case "pending withdrawal":
+      return ApprovalStatus.PendingWithdrawal;
+    case "rejected":
+      return ApprovalStatus.Rejected;
+    case "cancelled":
+      return ApprovalStatus.Cancelled;
+    default:
+      throw new Error(`Unknown approval status: ${status}`);
+  }
 };
 
 export const MyWfhSchedulePage: React.FC = () => {
@@ -25,6 +44,7 @@ export const MyWfhSchedulePage: React.FC = () => {
   const { user } = useContext(UserContext);
   const storedUser = localStorage.getItem("user");
 
+  // Fetch user ID based on stored email
   useEffect(() => {
     const fetchUserId = async () => {
       if (storedUser) {
@@ -42,6 +62,7 @@ export const MyWfhSchedulePage: React.FC = () => {
     fetchUserId();
   }, [storedUser]);
 
+  // Fetch WFH requests for the user
   useEffect(() => {
     const fetchRequests = async () => {
       if (!user || userId === null) return;
@@ -49,7 +70,13 @@ export const MyWfhSchedulePage: React.FC = () => {
         const response = await axios.get(
           `${BACKEND_URL}/arrangements/personal/${userId}`
         );
-        setRequests(response.data.data);
+        
+        const fetchedRequests = response.data.data.map((request: any) => ({
+          ...request,
+          approval_status: mapApprovalStatus(request.approval_status), // Map to enum
+        }));
+
+        setRequests(fetchedRequests);
       } catch (error) {
         console.error("Failed to fetch requests:", error);
       }
@@ -58,7 +85,7 @@ export const MyWfhSchedulePage: React.FC = () => {
   }, [user, userId]);
 
   const handleSuccess = (id: number, action: "cancel" | "withdraw") => {
-    const updatedStatus = action === "cancel" ? "cancelled" : "withdrawn";
+    const updatedStatus = action === "cancel" ? ApprovalStatus.Cancelled : ApprovalStatus.PendingWithdrawal;
 
     setRequests((prevRequests) =>
       prevRequests.map((request) =>
@@ -90,8 +117,8 @@ export const MyWfhSchedulePage: React.FC = () => {
         My WFH Request Overview
       </Typography>
 
-      <WFHRequestTable
-        requests={requests}
+      <StaffWfhRequests
+        requests={requests} 
         handleSuccess={(id: number, action: "cancel" | "withdraw") =>
           handleSuccess(id, action)
         }

@@ -35,8 +35,8 @@ class ArrangementLog(Base):
     approval_status = Column(
         String(length=50),
         nullable=False,
-        default="pending",
-        doc="Current status of the request: pending, approved, rejected, withdrawn or cancelled",
+        default="pending approval",
+        doc="Current status of the request: pending approval, pending withdrawal, approved, rejected, withdrawn or cancelled",
     )
     approving_officer = Column(
         Integer,
@@ -84,7 +84,7 @@ class ArrangementLog(Base):
     __table_args__ = (
         CheckConstraint("wfh_type IN ('full', 'am', 'pm')", name="check_wfh_type"),
         CheckConstraint(
-            "approval_status IN ('pending', 'approved', 'rejected', 'withdrawn', 'cancelled')",
+            "approval_status IN ('pending', 'pending approval', 'pending withdrawal', 'approved', 'rejected', 'withdrawn', 'cancelled')",
             name="check_approval_status",
         ),
     )
@@ -122,7 +122,7 @@ class LatestArrangement(Base):
     current_approval_status = Column(
         String(length=50),
         nullable=False,
-        doc="Current status of the request: pending, approved, rejected, withdrawn or cancelled",
+        doc="Current status of the request: pending approval, pending withdrawal, approved, rejected, withdrawn or cancelled",
     )
     approving_officer = Column(
         Integer,
@@ -182,7 +182,7 @@ class LatestArrangement(Base):
     __table_args__ = (
         CheckConstraint("wfh_type IN ('full', 'am', 'pm')", name="check_wfh_type"),
         CheckConstraint(
-            "current_approval_status IN ('pending', 'approved', 'rejected', 'withdrawn', 'cancelled')",
+            "current_approval_status IN ('pending approval', 'pending withdrawal', 'approved', 'rejected', 'withdrawn', 'cancelled')",
             name="check_current_approval_status",
         ),
     )

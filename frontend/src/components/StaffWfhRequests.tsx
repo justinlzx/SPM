@@ -7,17 +7,18 @@ import {
   TableHead,
   TableRow,
   Paper,
+  Chip,
   Button,
+  ChipProps,
   Modal,
   Box,
   Typography,
-  TextField,
   CircularProgress,
-  Chip,
-  ChipProps,
+  TextField,
 } from "@mui/material";
 import axios from "axios";
 import { capitalize } from "../utils/utils";
+import { ApprovalStatus } from "../types/ApprovalStatus";  // Import the common enum
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 
@@ -28,60 +29,54 @@ type TWFHRequest = {
   end_date?: string;
   wfh_type: string;
   reason_description: string;
-  approval_status: string;
+  approval_status: ApprovalStatus;  // Now using enum from common file
 };
 
-interface WFHRequestTableProps {
+interface StaffWfhRequestsProps {
   requests: TWFHRequest[];
   handleSuccess: (id: number, action: "cancel" | "withdraw") => void;
 }
 
-const getChipColor = (status: string): ChipProps["color"] => {
-  switch (status.toLowerCase()) {
-    case "approved":
+const getChipColor = (status: ApprovalStatus | undefined): ChipProps["color"] => {
+  if (!status) return "default";
+  switch (status) {
+    case ApprovalStatus.Approved:
       return "success";
-    case "pending approval":
-    case "pending withdrawal":
+    case ApprovalStatus.PendingApproval:
+    case ApprovalStatus.PendingWithdrawal:
       return "warning";
-    case "rejected":
+    case ApprovalStatus.Rejected:
       return "error";
-    case "cancelled":
-    case "withdrawn":
-      return "default";
     default:
-      return "primary";
+      return "default";
   }
 };
 
-export const WFHRequestTable: React.FC<WFHRequestTableProps> = ({
+export const StaffWfhRequests: React.FC<StaffWfhRequestsProps> = ({
   requests,
   handleSuccess,
 }) => {
   const [open, setOpen] = useState(false);
+  const [actionType, setActionType] = useState<"cancel" | "withdraw">();
+  const [selectedArrangementId, setSelectedArrangementId] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
   const [reason, setReason] = useState<string>("");
-  const [currentAction, setCurrentAction] = useState<"cancel" | "withdraw">();
-  const [selectedArrangementId, setSelectedArrangementId] = useState<number | null>(null);
 
   const handleOpen = (arrangementId: number, action: "cancel" | "withdraw") => {
     setSelectedArrangementId(arrangementId);
-    setCurrentAction(action);
+    setActionType(action);
     setOpen(true);
   };
 
   const handleClose = () => {
     setOpen(false);
-    setReason("");
-    setLoading(false);
     setSelectedArrangementId(null);
+    setActionType(undefined);
+    setReason("");
   };
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setReason(e.target.value);
-  };
-
-  const handleSubmitAction = async () => {
-    if (!selectedArrangementId || !currentAction) return;
+  const handleConfirmAction = async () => {
+    if (!selectedArrangementId || !actionType) return;
     setLoading(true);
 
     try {
@@ -90,12 +85,14 @@ export const WFHRequestTable: React.FC<WFHRequestTableProps> = ({
         console.error("Approving officer ID not found.");
         return;
       }
+      
 
+      // Build the payload for the backend
       const payload = new URLSearchParams({
-        action: currentAction,
+        action: actionType,
         approving_officer: approvingOfficer,
-        reason_description: reason.trim() || "",
-        new_status: currentAction === "cancel" ? "pending cancellation" : "pending withdrawal",
+        reason_description: actionType === "withdraw" ? reason : "Withdraw Approved Request",
+        new_status: actionType === "withdraw" ? "pending withdrawal" : "cancelled",
       });
 
       await axios.put(
@@ -104,44 +101,13 @@ export const WFHRequestTable: React.FC<WFHRequestTableProps> = ({
         { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
       );
 
-      console.log(`${currentAction} action successful`);
-      handleSuccess(selectedArrangementId, currentAction);
+      console.log(`${actionType} action successful`);
+      handleSuccess(selectedArrangementId, actionType);
     } catch (error) {
-      console.error(`Failed to ${currentAction} request:`, error);
+      console.error(`Failed to ${actionType} request:`, error);
     } finally {
       setLoading(false);
       handleClose();
-    }
-  };
-
-
-  const renderActionButton = (request: TWFHRequest) => {
-    if (request.approval_status === "pending approval") {
-      return (
-        <Button
-          size="small"
-          variant="outlined"
-          color="primary"
-          onClick={() => handleOpen(request.arrangement_id, "cancel")}
-        >
-          Cancel
-        </Button>
-      );
-    } else if (request.approval_status === "approved") {
-      return (
-        <Button
-          size="small"
-          variant="outlined"
-          color="primary"
-          onClick={() => handleOpen(request.arrangement_id, "withdraw")}
-        >
-          Withdraw
-        </Button>
-      );
-    } else if (request.approval_status === "pending cancellation" || request.approval_status === "pending withdrawal") {
-      return <Chip label={capitalize(request.approval_status)} color="warning" />;
-    } else {
-      return null;
     }
   };
 
@@ -173,7 +139,7 @@ export const WFHRequestTable: React.FC<WFHRequestTableProps> = ({
                   <TableCell>{request.staff_id}</TableCell>
                   <TableCell>{request.wfh_date}</TableCell>
                   <TableCell>{request.end_date || "-"}</TableCell>
-                  <TableCell>{request.wfh_type.toUpperCase()}</TableCell>
+                  <TableCell>{request.wfh_type?.toUpperCase() || "-"}</TableCell>
                   <TableCell
                     sx={{
                       maxWidth: "200px",
@@ -184,15 +150,41 @@ export const WFHRequestTable: React.FC<WFHRequestTableProps> = ({
                       padding: 1,
                     }}
                   >
-                    {request.reason_description || "-"}
+                    {request.reason_description || "No reason provided"}
                   </TableCell>
                   <TableCell>
                     <Chip
-                      color={getChipColor(request.approval_status)}
-                      label={capitalize(request.approval_status)}
+                      color={getChipColor(request.approval_status)} 
+                      label={request.approval_status ? capitalize(request.approval_status) : "Unknown"}
+                      variant={request.approval_status === ApprovalStatus.PendingWithdrawal ? "outlined" : "filled"}
                     />
                   </TableCell>
-                  <TableCell>{renderActionButton(request)}</TableCell>
+                  <TableCell>
+                    {request.approval_status === ApprovalStatus.PendingApproval && (
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        color="primary"
+                        onClick={() => handleOpen(request.arrangement_id, "cancel")}
+                      >
+                        Cancel
+                      </Button>
+                    )}
+                    {request.approval_status === ApprovalStatus.Approved && (
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        color="secondary"
+                        onClick={() => handleOpen(request.arrangement_id, "withdraw")}
+                      >
+                        Withdraw
+                      </Button>
+                    )}
+                    {request.approval_status === ApprovalStatus.PendingWithdrawal && (
+                      // <Chip label="Pending withdrawal" color="warning" variant="outlined" />
+                      "-"
+                    )}
+                  </TableCell>
                 </TableRow>
               ))
             )}
@@ -200,6 +192,7 @@ export const WFHRequestTable: React.FC<WFHRequestTableProps> = ({
         </Table>
       </TableContainer>
 
+      {/* Confirmation Dialog */}
       <Modal open={open} onClose={handleClose}>
         <Box
           sx={{
@@ -207,36 +200,43 @@ export const WFHRequestTable: React.FC<WFHRequestTableProps> = ({
             top: "50%",
             left: "50%",
             transform: "translate(-50%, -50%)",
-            width: 500,
+            width: 400,
             bgcolor: "background.paper",
-            boxShadow: 24,
-            p: 4,
             borderRadius: 2,
+            p: 4,
+            boxShadow: 24,
           }}
         >
-          <Typography variant="h6" mb={2}>
-            Confirm {currentAction === "cancel" ? "Cancellation" : "Withdrawal"}
+          <Typography variant="h6">
+            Confirm {actionType === "cancel" ? "Cancellation" : "Withdrawal"}
           </Typography>
-          <Typography variant="body1">
-            Are you sure you want to {currentAction === "cancel" ? "cancel" : "withdraw"} this request?
-            This action cannot be undone.
+          <Typography mb={2}>
+            Are you sure you want to{" "}
+            {actionType === "cancel" ? "cancel" : "withdraw"} this request?
           </Typography>
-          <TextField
-            fullWidth
-            label="Reason (optional)"
-            variant="outlined"
-            value={reason}
-            onChange={handleInputChange}
-            margin="normal"
-          />
-          <Box mt={2} display="flex" justifyContent="flex-end" gap={2}>
-            <Button variant="outlined" color="secondary" onClick={handleClose} disabled={loading}>
+          {actionType === "withdraw" && (
+            <TextField
+              label="Reason for withdrawal (Optional)"
+              fullWidth
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              margin="normal"
+            />
+          )}
+
+          <Box mt={2} display="flex" justifyContent="flex-end">
+            <Button
+              onClick={handleClose}
+              variant="outlined"
+              color="secondary"
+              sx={{ mr: 2 }}
+            >
               No
             </Button>
             <Button
+              onClick={handleConfirmAction}
               variant="contained"
               color="primary"
-              onClick={handleSubmitAction}
               disabled={loading}
             >
               {loading ? <CircularProgress size={24} color="inherit" /> : "Yes"}
