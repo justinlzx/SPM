@@ -50,7 +50,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   const getSidebarItems = () => {
     if (user?.role === 1) {
-      return [...sideBarItems, { text: "Review Requests", icon: <InboxIcon />, route: "/review-requests" }];
+      return [...sideBarItems, { text: "Review Team Requests", icon: <InboxIcon />, route: "/review-requests" }];
     }
     if (user?.role === 2) {
       return [...sideBarItems, { text: "Department Overview", icon: <TeamIcon />, route: "/department-overview" }];

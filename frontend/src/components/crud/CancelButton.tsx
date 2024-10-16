@@ -50,7 +50,8 @@ export const CancelButton: React.FC<CancelButtonProps> = ({
         action: "cancel",
         approving_officer: approvingOfficer,
         reason_description: reason.trim() || "",
-        new_status: "pending_cancellation", // Inform backend of the status change
+        //new_status: "pending_cancellation", 
+        new_status: "pending",
       });
 
       await axios.put(
@@ -60,7 +61,8 @@ export const CancelButton: React.FC<CancelButtonProps> = ({
       );
 
       console.log("Cancellation request sent successfully");
-      onSuccess(arrangement_id, "pending_cancellation"); // Notify parent component
+      onSuccess(arrangement_id, "pending_cancellation");
+      //onSuccess(arrangement_id, "pending_cancellation"); // Notify parent component
     } catch (error) {
       console.error("Failed to cancel request:", error);
     } finally {
