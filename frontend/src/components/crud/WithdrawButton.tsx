@@ -1,5 +1,10 @@
 import React, { useState } from "react";
-import { Button, Modal, Box, Typography, CircularProgress } from "@mui/material";
+import { Button, 
+  Modal, 
+  Box, 
+  Typography,
+  TextField, 
+  CircularProgress } from "@mui/material";
 import axios from "axios";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL; // Ensure this URL is set in your environment
@@ -13,13 +18,21 @@ export const WithdrawButton: React.FC<WithdrawButtonProps> = ({
   arrangement_id,
   onSuccess,
 }) => {
-  const [open, setOpen] = useState(false); // Manage modal open/close state
-  const [loading, setLoading] = useState(false); // Manage loading state
+  const [open, setOpen] = useState(false); 
+  const [loading, setLoading] = useState(false); 
+  const [reason, setReason] = useState<string>("");
 
   const handleOpen = () => setOpen(true);
-  const handleClose = () => setOpen(false);
+  const handleClose = () => {
+    setOpen(false)
+    setReason("");
+  };
 
-  // API call to update the backend state on withdrawal
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setReason(e.target.value);
+  };
+
+ 
   const handleWithdraw = async () => {
     setLoading(true); // Show loading indicator
     try {
@@ -29,13 +42,16 @@ export const WithdrawButton: React.FC<WithdrawButtonProps> = ({
         return;
       }
 
-      // Send the withdraw request to the backend
+      // Send a PUT request to the backend to withdraw the request
+      const payload = new URLSearchParams({
+        action: "withdraw",
+        approving_officer: approvingOfficer,
+        reason_description: reason.trim() || "",
+        new_status: "withdrawn", 
+      });
       await axios.put(
         `${BACKEND_URL}/arrangements/${arrangement_id}/status`,
-        new URLSearchParams({
-          action: "withdraw",
-          approving_officer: approvingOfficer, // Include officer's ID
-        }),
+        payload,
         { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
       );
 
@@ -51,7 +67,6 @@ export const WithdrawButton: React.FC<WithdrawButtonProps> = ({
 
   return (
     <>
-      {/* Button to open the withdraw confirmation modal */}
       <Button size="small" variant="outlined" color="primary" onClick={handleOpen}>
         Withdraw
       </Button>
@@ -74,12 +89,20 @@ export const WithdrawButton: React.FC<WithdrawButtonProps> = ({
           <Typography variant="h6" mb={2}>
             Confirm Withdrawal
           </Typography>
-          <Typography variant="body1" mb={2}>
+          <Typography variant="body1">
             Are you sure you want to withdraw this request?
             <br />
             <br />
             This action cannot be undone.
           </Typography>
+          <TextField
+            fullWidth
+            label="Reason (optional)"
+            variant="outlined"
+            value={reason}
+            onChange={handleInputChange}
+            margin="normal"
+          />
           <Box mt={2} display="flex" justifyContent="flex-end" gap={2}>
             <Button variant="outlined" color="secondary" onClick={handleClose} disabled={loading}>
               No
