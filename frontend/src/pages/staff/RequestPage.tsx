@@ -9,5 +9,3 @@ export const RequestPage = () => {
     </div>
   )
 }
-
-export default RequestPage; 
