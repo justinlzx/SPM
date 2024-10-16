@@ -8,6 +8,54 @@ from ..base import BaseSchema
 from ..employees import schemas as employee_schemas
 
 
+class OOOBase(BaseSchema):
+    staff_id: int = Field(
+        ...,
+        title="Staff ID of the employee who made the OOO request",
+        alias="requester_staff_id",
+    )
+
+    ooo_start_date: str = Field(
+        ...,
+        title="Start date of the Out of Office request",
+    )
+
+    ooo_end_date: str = Field(
+        ...,
+        title="End date of the Out of Office request",
+    )
+
+    ooo_type: Literal["full", "am", "pm"] = Field(..., title="Type of OOO arrangement")
+
+
+class OOOCreate(OOOBase):
+
+    requester_staff_id: int = Field(..., title="Staff ID of the requester")
+    ooo_start_date: datetime = Field(..., title="Start date of the OOO request")
+    ooo_end_date: datetime = Field(..., title="End date of the OOO request")
+    reason_description: str = Field(..., title="Reason for the OOO request")
+
+    approving_officer: Optional[int] = Field(
+        default=None, title="Staff ID of the approving officer"
+    )
+
+    update_datetime: SkipJsonSchema[datetime] = Field(
+        default_factory=datetime.now, exclude=True, title="Datetime that the request was created"
+    )
+    current_approval_status: SkipJsonSchema[str] = Field(
+        default="pending", exclude=True, title="Approval status of the request"
+    )
+
+    batch_id: Optional[int] = Field(default=None, title="Unique identifier for the batch, if any")
+
+    def model_dump(self, **kwargs):
+        data = super().model_dump(**kwargs)
+        # Include excluded fields in the dump
+        data["update_datetime"] = self.update_datetime
+        data["current_approval_status"] = self.current_approval_status
+        return data
+
+
 class ArrangementBase(BaseSchema):
     staff_id: int = Field(
         ...,
@@ -38,9 +86,7 @@ class ArrangementCreate(ArrangementBase):
                 )
         return v
 
-    approving_officer: Optional[int] = Field(
-        ..., title="Staff ID of the approving officer"
-    )
+    approving_officer: Optional[int] = Field(..., title="Staff ID of the approving officer")
     reason_description: str = Field(..., title="Reason for requesting the WFH")
 
     update_datetime: SkipJsonSchema[datetime] = Field(
@@ -66,9 +112,7 @@ class ArrangementCreate(ArrangementBase):
     recurring_occurrences: Optional[int] = Field(
         default=None, title="Number of occurrences of the recurring WFH request"
     )
-    batch_id: Optional[int] = Field(
-        default=None, title="Unique identifier for the batch, if any"
-    )
+    batch_id: Optional[int] = Field(default=None, title="Unique identifier for the batch, if any")
 
     def model_dump(self, **kwargs):
         data = super().model_dump(**kwargs)
@@ -109,15 +153,9 @@ class ArrangementUpdate(ArrangementBase):
     action: Literal["approve", "reject", "withdraw", "cancel"] = Field(
         exclude=True, title="Action to be taken on the WFH request"
     )
-    approving_officer: int = Field(
-        exclude=True, title="Staff ID of the approving officer"
-    )
-    reason_description: Optional[str] = Field(
-        None, title="Reason for the status update"
-    )
-    arrangement_id: SkipJsonSchema[int] = Field(
-        None, title="Unique identifier for the arrangement"
-    )
+    approving_officer: int = Field(exclude=True, title="Staff ID of the approving officer")
+    reason_description: Optional[str] = Field(None, title="Reason for the status update")
+    arrangement_id: SkipJsonSchema[int] = Field(None, title="Unique identifier for the arrangement")
     staff_id: SkipJsonSchema[int] = Field(
         None,
         title="Staff ID of the employee who made the request",
@@ -156,15 +194,9 @@ class ArrangementLog(ArrangementBase):
     requester_info: Optional[employee_schemas.EmployeeBase] = Field(
         None, exclude=True, title="Information about the requester"
     )
-    supporting_doc_1: Optional[str] = Field(
-        None, title="URL of the first supporting document"
-    )
-    supporting_doc_2: Optional[str] = Field(
-        None, title="URL of the second supporting document"
-    )
-    supporting_doc_3: Optional[str] = Field(
-        None, title="URL of the third supporting document"
-    )
+    supporting_doc_1: Optional[str] = Field(None, title="URL of the first supporting document")
+    supporting_doc_2: Optional[str] = Field(None, title="URL of the second supporting document")
+    supporting_doc_3: Optional[str] = Field(None, title="URL of the third supporting document")
 
     class Config:
         from_attributes = True
@@ -172,18 +204,14 @@ class ArrangementLog(ArrangementBase):
 
 class ArrangementQueryParams(BaseModel):
     current_approval_status: Optional[
-        List[Literal["pending", "approved", "rejected", "withdrawn","cancelled"]]
+        List[Literal["pending", "approved", "rejected", "withdrawn", "cancelled"]]
     ] = Field([], title="Filter by the current approval status")
-    requester_staff_id: Optional[int] = Field(
-        None, title="Filter by the staff ID of the requester"
-    )
+    requester_staff_id: Optional[int] = Field(None, title="Filter by the staff ID of the requester")
 
 
 class ArrangementResponse(ArrangementCreateWithFile):
     arrangement_id: int = Field(..., title="Unique identifier for the arrangement")
-    update_datetime: datetime = Field(
-        exclude=True, title="Datetime of the arrangement update"
-    )
+    update_datetime: datetime = Field(exclude=True, title="Datetime of the arrangement update")
     approval_status: Literal["pending", "approved", "rejected", "withdrawn", "cancelled"] = Field(
         ..., title="Current status of the WFH request", alias="current_approval_status"
     )

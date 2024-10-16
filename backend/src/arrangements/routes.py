@@ -195,11 +195,12 @@ async def create_wfh_request(
     return await services.create_arrangements_from_request(db, wfh_request, supporting_docs)
 
 
-@router.post("/personal/ooo/{userId}")
+@router.post("/personal/{userId}")
 async def create_ooo_request(
     requester_staff_id: int = Form(..., title="Staff ID of the requester"),
     ooo_start_date: str = Form(..., title="Start date of the OOO request"),
     ooo_end_date: str = Form(..., title="End date of the OOO request"),
+    ooo_type: Literal["full", "am", "pm"] = Form(..., title="Type of OOO arrangement"),
     reason_description: str = Form(..., title="Reason for requesting OOO"),
     batch_id: Optional[int] = Form(None, title="Unique identifier for the batch, if any"),
     supporting_docs: Annotated[Optional[list[UploadFile]], File(upload_multiple=True)] = [],
@@ -216,6 +217,7 @@ async def create_ooo_request(
         "current_approval_status": current_approval_status,
         "ooo_start_date": ooo_start_date,
         "ooo_end_date": ooo_end_date,
+        "ooo_type": ooo_type,
         "staff_id": requester_staff_id,
         "approving_officer": None,
     }
