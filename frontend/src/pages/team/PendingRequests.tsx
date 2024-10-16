@@ -125,7 +125,7 @@ export const PendingRequests = () => {
           `${BACKEND_URL}/arrangements/subordinates/${userId}`,
           {
             params: {
-              current_approval_status: "pending",
+              current_approval_status: ["pending approval","pending withdrawal"],
             },
           }
         );

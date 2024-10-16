@@ -46,9 +46,9 @@ class ArrangementCreate(ArrangementBase):
         exclude=True,
         title="Datetime that the request was created",
     )
-    current_approval_status: Literal[
-        "pending", "approved", "rejected", "cancelled", "withdrawn"
-    ] = Field(default="pending", title="Approval status of the request")
+    current_approval_status: SkipJsonSchema[str] = Field(
+        default="pending approval", exclude=True, title="Approval status of the request"
+    )
     is_recurring: Optional[bool] = Field(
         default=False, title="Flag to indicate if the request is recurring"
     )
@@ -136,7 +136,7 @@ class ArrangementUpdate(ArrangementBase):
 class ArrangementLog(ArrangementBase):
     arrangement_id: int = Field(..., title="Unique identifier for the arrangement")
     update_datetime: datetime = Field(..., title="Datetime of the arrangement update")
-    approval_status: Literal["pending", "approved", "rejected", "withdrawn", "cancelled"] = Field(
+    approval_status: Literal["pending approval", "pending withdrawal", "approved", "rejected", "withdrawn", "cancelled"] = Field(
         ..., title="Current status of the WFH request"
     )
     reason_description: str = Field(..., title="Reason for the status update")
@@ -156,15 +156,17 @@ class ArrangementLog(ArrangementBase):
 
 class ArrangementQueryParams(BaseModel):
     current_approval_status: Optional[
-        List[Literal["pending", "approved", "rejected", "withdrawn", "cancelled"]]
+        List[Literal["pending approval", "pending withdrawal", "approved", "rejected", "withdrawn","cancelled"]]
     ] = Field([], title="Filter by the current approval status")
     requester_staff_id: Optional[int] = Field(None, title="Filter by the staff ID of the requester")
 
 
 class ArrangementResponse(ArrangementCreateWithFile):
     arrangement_id: int = Field(..., title="Unique identifier for the arrangement")
-    update_datetime: datetime = Field(exclude=True, title="Datetime of the arrangement update")
-    approval_status: Literal["pending", "approved", "rejected", "withdrawn", "cancelled"] = Field(
+    update_datetime: datetime = Field(
+        exclude=True, title="Datetime of the arrangement update"
+    )
+    approval_status: Literal["pending approval", "pending withdrawal", "approved", "rejected", "withdrawn", "cancelled"] = Field(
         ..., title="Current status of the WFH request", alias="current_approval_status"
     )
     approving_officer: Optional[int] = Field(
