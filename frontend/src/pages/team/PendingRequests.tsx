@@ -25,6 +25,7 @@ import {
   Link,
   List,
   ListItem,
+  Tooltip,
 } from "@mui/material";
 import { UserContext } from "../../context/UserContextProvider";
 import CheckIcon from "@mui/icons-material/Check";
@@ -38,11 +39,12 @@ import { capitalize } from "../../utils/utils";
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 
 // Define types
-type TAction = "approve" | "reject";
+type TAction = "approve" | "reject" | "withdraw";
 
 enum ApprovalStatus {
   Approved = "approved",
-  Pending = "pending",
+  PendingApproval = "pending",
+  PendingWithdrawal = "pending withdrawal",
   Rejected = "rejected",
 }
 
@@ -67,7 +69,8 @@ const getChipColor = (status: ApprovalStatus): ChipProps["color"] => {
   switch (status) {
     case ApprovalStatus.Approved:
       return "success";
-    case ApprovalStatus.Pending:
+    case ApprovalStatus.PendingApproval:
+    case ApprovalStatus.PendingWithdrawal:
       return "warning";
     case ApprovalStatus.Rejected:
       return "error";
@@ -105,7 +108,7 @@ export const PendingRequests = () => {
           ) {
             return false;
           }
-          return request.approval_status === ApprovalStatus.Pending;
+          return ( request.approval_status === ApprovalStatus.PendingApproval || request.approval_status === ApprovalStatus.PendingWithdrawal );
         });
 
         setRequests(filteredRequests);
@@ -124,7 +127,7 @@ export const PendingRequests = () => {
           `${BACKEND_URL}/arrangements/subordinates/${userId}`,
           {
             params: {
-              current_approval_status: ["pending approval","pending withdrawal"],
+              current_approval_status: ["pending approval", "pending withdrawal"],
             },
           }
         );
@@ -154,22 +157,22 @@ export const PendingRequests = () => {
 
       // Log the payload before sending it
       console.log("Payload being sent:", {
-        reason_description,
         action,
+        reason_description,
         approving_officer: userId,
         arrangement_id,
       });
-  
+
       await axios.put(
         `${BACKEND_URL}/arrangements/${arrangement_id}/status`,
         formData,
         {
           headers: {
-            "Content-Type": "application/x-www-form-urlencoded",
+            "Content-Type": "multipart/form-data",
           },
         }
       );
-  
+
       console.log(`Request ${action}d successfully`);
     } catch (error) {
       console.error(`Error ${action}ing request:`, error);
@@ -232,17 +235,22 @@ export const PendingRequests = () => {
                   arrangement_id,
                   wfh_date,
                   wfh_type,
-                  reason_description, // Ensure this is included
+                  reason_description,
                   staff_id,
-                } = request; // Access properties directly
-
+                } = request;
                 return (
                   <TableRow key={arrangement_id}>
                     <TableCell>{staff_id}</TableCell>
                     <TableCell>{wfh_date}</TableCell>
                     <TableCell>{wfh_type?.toUpperCase()}</TableCell>
-                    <TableCell className="max-w-[200px] overflow-x-scroll whitespace-nowrap">
-                      {reason_description}
+                    <TableCell className="max-w-[200px]">
+                      <Tooltip title="Scroll to view more">
+                        <div className="relative">
+                          <div className="overflow-x-scroll scrollbar-hide">
+                            {reason_description}
+                          </div>
+                        </div>
+                      </Tooltip>
                     </TableCell>
                     <TableCell>
                       <Chip
@@ -401,84 +409,85 @@ const EmployeeRow = ({ request, handleRequestAction }: TEmployeeRow) => {
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {arrangements.map((arrangement, idx) => {
-                    const {
-                      arrangement_id,
-                      wfh_date,
-                      wfh_type,
-                      reason_description,
-                      supporting_doc_1,
-                      supporting_doc_2,
-                      supporting_doc_3,
-                    } = arrangement;
-                    return (
-                      <TableRow key={arrangement_id}>
-                        <TableCell>{idx + 1}</TableCell>
-                        <TableCell>{wfh_date}</TableCell>
-                        <TableCell>{wfh_type?.toUpperCase()}</TableCell>
-                        <TableCell className="max-w-80 overflow-scroll">
-                          {reason_description}
-                        </TableCell>
-                        <TableCell>
-                          {supporting_doc_1 ||
-                          supporting_doc_2 ||
-                          supporting_doc_3 ? (
+                {arrangements.map((arrangement, idx) => {
+                  const {
+                    arrangement_id,
+                    wfh_date,
+                    wfh_type,
+                    reason_description,
+                    approval_status, // Add this to check the status
+                    supporting_doc_1,
+                    supporting_doc_2,
+                    supporting_doc_3,
+                  } = arrangement;
+
+                  return (
+                    <TableRow key={arrangement_id}>
+                      <TableCell>{idx + 1}</TableCell>
+                      <TableCell>{wfh_date}</TableCell>
+                      <TableCell>{wfh_type?.toUpperCase()}</TableCell>
+                      <TableCell className="max-w-[200px]">
+                        <Tooltip title="Scroll to view more">
+                          <div className="relative">
+                            <div className="overflow-x-scroll scrollbar-hide">
+                              {reason_description}
+                            </div>
+                          </div>
+                        </Tooltip>
+                      </TableCell>
+                      <TableCell>
+                        {supporting_doc_1 || supporting_doc_2 || supporting_doc_3 ? (
+                          <Button
+                            variant="text"
+                            onClick={() =>
+                              handleDialogOpen([supporting_doc_1, supporting_doc_2, supporting_doc_3])
+                            }
+                            sx={{ textTransform: "none" }}
+                          >
+                            <u>View more ...</u>
+                          </Button>
+                        ) : (
+                          "NA"
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <ButtonGroup variant="contained" aria-label="Approve/Reject Button group">
+                          {approval_status === ApprovalStatus.PendingWithdrawal ? (
                             <Button
-                              variant="text"
+                              size="small"
+                              color="warning"
                               onClick={() =>
-                                handleDialogOpen([
-                                  supporting_doc_1,
-                                  supporting_doc_2,
-                                  supporting_doc_3,
-                                ])
+                                handleRequestAction("withdraw", arrangement_id, reason_description)
                               }
-                              sx={{ textTransform: "none" }}
                             >
-                              <u>View more ...</u>
+                              Approve Withdrawal
                             </Button>
                           ) : (
-                            "NA"
+                            <>
+                              <Button
+                                size="small"
+                                color="success"
+                                startIcon={<CheckIcon />}
+                                onClick={() => handleRequestAction("approve", arrangement_id, reason_description)}
+                              >
+                                Approve
+                              </Button>
+                              <Button
+                                size="small"
+                                color="error"
+                                startIcon={<CloseIcon />}
+                                onClick={() => handleRequestAction("reject", arrangement_id, reason_description)}
+                              >
+                                Reject
+                              </Button>
+                            </>
                           )}
-                        </TableCell>
-                        <TableCell>
-                          <ButtonGroup
-                            variant="contained"
-                            aria-label="Approve/Reject Button group"
-                          >
-                            <Button
-                              size="small"
-                              color="success"
-                              startIcon={<CheckIcon />}
-                              onClick={() =>
-                                handleRequestAction(
-                                  "approve",
-                                  arrangement_id,
-                                  reason_description
-                                )
-                              }
-                            >
-                              Approve
-                            </Button>
-                            <Button
-                              size="small"
-                              color="error"
-                              startIcon={<CloseIcon />}
-                              onClick={() =>
-                                handleRequestAction(
-                                  "reject",
-                                  arrangement_id,
-                                  reason_description
-                                )
-                              }
-                            >
-                              Reject
-                            </Button>
-                          </ButtonGroup>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
+                        </ButtonGroup>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
               </Table>
             </Box>
           </Collapse>
