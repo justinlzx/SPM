@@ -70,8 +70,8 @@ def get_subordinates_arrangements(
     manager_id: int,
     current_approval_status: List[str],
     name,
-    start_date,
-    end_date,
+    start_date: datetime,
+    end_date: datetime,
     type,
     items_per_page,
     page_num,
@@ -94,11 +94,9 @@ def get_subordinates_arrangements(
         employees_under_manager_ids,
         current_approval_status,
         name,
+        type,
         start_date,
         end_date,
-        type,
-        items_per_page,
-        page_num,
     )
 
     arrangements_schema: List[ArrangementCreateResponse] = (
