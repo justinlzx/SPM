@@ -3,7 +3,7 @@ import axios from "axios";
 import { Container, Typography, Snackbar, Alert } from "@mui/material";
 import { UserContext } from "../../context/UserContextProvider";
 import { StaffWfhRequests } from "../../components/StaffWfhRequests";
-import { ApprovalStatus } from "../../types/ApprovalStatus";  // Import the common enum
+import { ApprovalStatus } from "../../types/ApprovalStatus";  
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 
@@ -29,6 +29,8 @@ const mapApprovalStatus = (status: string): ApprovalStatus => {
       return ApprovalStatus.Rejected;
     case "cancelled":
       return ApprovalStatus.Cancelled;
+    case "withdrawn":
+      return ApprovalStatus.Withdrawn;
     default:
       throw new Error(`Unknown approval status: ${status}`);
   }
@@ -72,7 +74,7 @@ export const MyWfhSchedulePage: React.FC = () => {
         
         const fetchedRequests = response.data.data.map((request: any) => ({
           ...request,
-          approval_status: mapApprovalStatus(request.approval_status), // Map to enum
+          approval_status: mapApprovalStatus(request.approval_status), 
         }));
 
         setRequests(fetchedRequests);
@@ -98,8 +100,8 @@ export const MyWfhSchedulePage: React.FC = () => {
 
     const message =
       action === "cancel"
-        ? "Your request has been successfully cancelled!"
-        : "Your request has been successfully withdrawn!";
+        ? "Your WFH request has been successfully cancelled!"
+        : "Withdrawal Request has been sent to your manager for review.";
     setSnackbarMessage(message);
     setOpenSnackbar(true);
   };

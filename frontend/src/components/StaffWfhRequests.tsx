@@ -18,7 +18,7 @@ import {
 } from "@mui/material";
 import axios from "axios";
 import { capitalize } from "../utils/utils";
-import { ApprovalStatus } from "../types/ApprovalStatus";  // Import the common enum
+import { ApprovalStatus } from "../types/ApprovalStatus"; 
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 
@@ -29,7 +29,7 @@ type TWFHRequest = {
   end_date?: string;
   wfh_type: string;
   reason_description: string;
-  approval_status: ApprovalStatus;  // Now using enum from common file
+  approval_status: ApprovalStatus;  
 };
 
 interface StaffWfhRequestsProps {
@@ -57,43 +57,42 @@ export const StaffWfhRequests: React.FC<StaffWfhRequestsProps> = ({
   handleSuccess,
 }) => {
   const [open, setOpen] = useState(false);
-  const [actionType, setActionType] = useState<"cancel" | "withdraw">();
+  const [action, setAction] = useState<"cancel" | "withdraw">();
   const [selectedArrangementId, setSelectedArrangementId] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
   const [reason, setReason] = useState<string>("");
 
   const handleOpen = (arrangementId: number, action: "cancel" | "withdraw") => {
     setSelectedArrangementId(arrangementId);
-    setActionType(action);
+    setAction(action);
     setOpen(true);
   };
 
   const handleClose = () => {
     setOpen(false);
     setSelectedArrangementId(null);
-    setActionType(undefined);
+    setAction(undefined);
     setReason("");
   };
 
   const handleConfirmAction = async () => {
-    if (!selectedArrangementId || !actionType) return;
+    if (!selectedArrangementId || !action) return;
     setLoading(true);
-
     try {
       const approvingOfficer = localStorage.getItem("id");
       if (!approvingOfficer) {
         console.error("Approving officer ID not found.");
         return;
       }
-      
-
       // Build the payload for the backend
       const payload = new URLSearchParams({
-        action: actionType,
+        action: action,
         approving_officer: approvingOfficer,
-        reason_description: actionType === "withdraw" ? reason : "Withdraw Approved Request",
-        new_status: actionType === "withdraw" ? "pending withdrawal" : "cancelled",
+        reason_description: action === "withdraw" ? reason : "Withdraw Request",
+        new_status: action === "withdraw" ? "pending withdrawal" : "cancelled",
       });
+
+      console.log(payload)
 
       await axios.put(
         `${BACKEND_URL}/arrangements/${selectedArrangementId}/status`,
@@ -101,15 +100,28 @@ export const StaffWfhRequests: React.FC<StaffWfhRequestsProps> = ({
         { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
       );
 
-      console.log(`${actionType} action successful`);
-      handleSuccess(selectedArrangementId, actionType);
+      const updatedRequest = await fetchUpdatedStatus(selectedArrangementId);
+      console.log(`${action} action successful`);
+      handleSuccess(selectedArrangementId, action);
     } catch (error) {
-      console.error(`Failed to ${actionType} request:`, error);
+      console.error(`Failed to ${action} request:`, error);
     } finally {
       setLoading(false);
       handleClose();
     }
   };
+
+  const fetchUpdatedStatus = async (arrangementId: number) => {
+    try {
+      const response = await axios.get(
+        `${BACKEND_URL}/arrangements/${arrangementId}`
+      ); 
+      return response.data.data; 
+    } catch (error) {
+      console.error("Failed to fetch updated request:", error);
+      return null; 
+    }
+  }
 
   return (
     <>
@@ -150,7 +162,7 @@ export const StaffWfhRequests: React.FC<StaffWfhRequestsProps> = ({
                       padding: 1,
                     }}
                   >
-                    {request.reason_description || "No reason provided"}
+                    {request.reason_description || "Withdraw Request"}
                   </TableCell>
                   <TableCell>
                     <Chip
@@ -180,10 +192,6 @@ export const StaffWfhRequests: React.FC<StaffWfhRequestsProps> = ({
                         Withdraw
                       </Button>
                     )}
-                    {request.approval_status === ApprovalStatus.PendingWithdrawal && (
-                      // <Chip label="Pending withdrawal" color="warning" variant="outlined" />
-                      "-"
-                    )}
                   </TableCell>
                 </TableRow>
               ))
@@ -208,13 +216,13 @@ export const StaffWfhRequests: React.FC<StaffWfhRequestsProps> = ({
           }}
         >
           <Typography variant="h6">
-            Confirm {actionType === "cancel" ? "Cancellation" : "Withdrawal"}
+            Confirm {action === "cancel" ? "Cancellation" : "Withdrawal"}
           </Typography>
           <Typography mb={2}>
             Are you sure you want to{" "}
-            {actionType === "cancel" ? "cancel" : "withdraw"} this request?
+            {action === "cancel" ? "cancel" : "withdraw"} this request?
           </Typography>
-          {actionType === "withdraw" && (
+          {action === "withdraw" && (
             <TextField
               label="Reason for withdrawal (Optional)"
               fullWidth

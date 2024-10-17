@@ -3,6 +3,7 @@ export enum ApprovalStatus {
     PendingApproval = "pending approval",
     PendingWithdrawal = "pending withdrawal",
     Rejected = "rejected",
-    Cancelled = "cancelled",  // Make sure to include cancelled
+    Cancelled = "cancelled",  
+    Withdrawn = "withdrawn",
   }
   
