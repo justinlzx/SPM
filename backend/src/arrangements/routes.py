@@ -120,8 +120,6 @@ def get_subordinates_arrangements(
             page_num,
         )
 
-        print(arrangements)
-
         arrangements_dict = [arrangement.model_dump() for arrangement in arrangements]
 
         return JSONResponse(
