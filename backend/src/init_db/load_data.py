@@ -1,7 +1,7 @@
 import pandas as pd
 from sqlalchemy.orm import Session
 
-from ..arrangements.models import ArrangementLog
+from ..arrangements.models import ArrangementLog, LatestArrangement
 from ..auth.models import Auth
 from ..auth.utils import hash_password
 from ..database import SessionLocal
@@ -96,7 +96,7 @@ def load_auth_data_from_csv(file_path: str):
         db.close()
 
 
-def load_arrangement_data_from_csv(file_path: str):
+def load_latest_arrangement_data_from_csv(file_path: str):
     db = SessionLocal()
     try:
         # Check for empty file using pandas before processing the CSV
@@ -115,21 +115,26 @@ def load_arrangement_data_from_csv(file_path: str):
             for row in csv_reader:
                 try:
                     # Convert the update_datetime string to a datetime object
-                    update_datetime = datetime.strptime(row["update_datetime"], "%Y-%m-%d %H:%M:%S")
+                    update_datetime = datetime.strptime(row["update_datetime"], "%Y-%m-%dT%H:%M:%SZ")
 
-                    arrangement_log = ArrangementLog(
+                    latest_arrangement = LatestArrangement(
                         wfh_date=row["wfh_date"],
                         wfh_type=row["wfh_type"],
                         reason_description=row["reason_description"],
                         requester_staff_id=int(row["requester_staff_id"]),
-                        approval_status=row["approval_status"],
+                        current_approval_status=row["current_approval_status"],
                         approving_officer=(
-                            int(row["approving_officer"]) if row["approving_officer"] else None
+                            int(row["approving_officer"])
+                            if row["approving_officer"]
+                            else None
                         ),
                         update_datetime=update_datetime,
                         batch_id=int(row["batch_id"]) if row["batch_id"] else None,
+                        supporting_doc_1=None,
+                        supporting_doc_2=None,
+                        supporting_doc_3=None
                     )
-                    db.add(arrangement_log)
+                    db.add(latest_arrangement)
                 except KeyError as ke:
                     print(f"Missing expected column in CSV: {str(ke)}")
                 except ValueError as ve:

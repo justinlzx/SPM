@@ -151,13 +151,13 @@ class LatestArrangement(Base):
         "Employee",
         back_populates="latest_arrangements_requested",
         foreign_keys=[requester_staff_id],
-        lazy="select",
+        lazy="immediate",
     )
     approving_officer_info = relationship(
         "Employee",
         back_populates="latest_arrangements_approved",
         foreign_keys=[approving_officer],
-        lazy="select",
+        lazy="immediate",
     )
     supporting_doc_1 = Column(
         String(length=255),

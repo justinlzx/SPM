@@ -47,7 +47,7 @@ def get_arrangements_by_staff_ids(
     db: Session, staff_ids: List[int], current_approval_status: List[str] = None
 ) -> List[schemas.ArrangementCreateResponse]:
     """Fetch the WFH requests for a list of staff IDs."""
-    logger.info(f"Fetching pending requests by staff ID")
+    logger.info("Fetching pending requests by staff ID")
     query = db.query(models.LatestArrangement)
     query = query.join(
         Employee, Employee.staff_id == models.LatestArrangement.requester_staff_id
