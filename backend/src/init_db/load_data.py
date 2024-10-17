@@ -115,7 +115,9 @@ def load_latest_arrangement_data_from_csv(file_path: str):
             for row in csv_reader:
                 try:
                     # Convert the update_datetime string to a datetime object
-                    update_datetime = datetime.strptime(row["update_datetime"], "%Y-%m-%dT%H:%M:%SZ")
+                    update_datetime = datetime.strptime(
+                        row["update_datetime"], "%Y-%m-%dT%H:%M:%SZ"
+                    )
 
                     latest_arrangement = LatestArrangement(
                         wfh_date=row["wfh_date"],
@@ -132,7 +134,8 @@ def load_latest_arrangement_data_from_csv(file_path: str):
                         batch_id=int(row["batch_id"]) if row["batch_id"] else None,
                         supporting_doc_1=None,
                         supporting_doc_2=None,
-                        supporting_doc_3=None
+                        supporting_doc_3=None,
+                        latest_log_id=row["latest_log_id"],
                     )
                     db.add(latest_arrangement)
                 except KeyError as ke:
@@ -140,7 +143,9 @@ def load_latest_arrangement_data_from_csv(file_path: str):
                 except ValueError as ve:
                     print(f"Data conversion error: {str(ve)}")
                 except Exception as e:
-                    print(f"An unexpected error occurred while processing row: {str(e)}")
+                    print(
+                        f"An unexpected error occurred while processing row: {str(e)}"
+                    )
                     # Handle errors for specific rows without rolling back the entire transaction
                     continue
 

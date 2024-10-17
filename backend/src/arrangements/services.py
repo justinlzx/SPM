@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta
+from math import ceil
 from typing import Dict, List
 
 import boto3
@@ -65,7 +66,15 @@ def get_personal_arrangements_by_filter(
 
 
 def get_subordinates_arrangements(
-    db: Session, manager_id: int, current_approval_status: List[str]
+    db: Session,
+    manager_id: int,
+    current_approval_status: List[str],
+    name,
+    start_date,
+    end_date,
+    type,
+    items_per_page,
+    page_num,
 ) -> List[ManagerPendingRequestResponse]:
 
     # Check if the employee is a manager
@@ -81,7 +90,15 @@ def get_subordinates_arrangements(
     ]
 
     arrangements = crud.get_arrangements_by_staff_ids(
-        db, employees_under_manager_ids, current_approval_status
+        db,
+        employees_under_manager_ids,
+        current_approval_status,
+        name,
+        start_date,
+        end_date,
+        type,
+        items_per_page,
+        page_num,
     )
 
     arrangements_schema: List[ArrangementCreateResponse] = (
@@ -113,7 +130,16 @@ def get_subordinates_arrangements(
         for arrangement in arrangements_schema
     ]
     arrangements_by_employee = group_arrangements_by_employee(arrangements_schema)
-    return arrangements_by_employee
+
+    total_count = len(arrangements_by_employee)
+    total_pages = ceil(total_count / items_per_page)
+
+    return arrangements_by_employee, {
+        "total_count": total_count,
+        "page_size": items_per_page,
+        "page_num": page_num,
+        "total_pages": total_pages,
+    }
 
 
 def group_arrangements_by_employee(
