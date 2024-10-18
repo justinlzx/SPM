@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime
 from typing import Annotated, Dict, List, Literal, Optional
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
@@ -91,8 +91,8 @@ def get_personal_arrangements_by_filter(
 def get_subordinates_arrangements(
     manager_id: int,
     name: Optional[str] = Query(None, description="Name of the employee"),
-    start_date: Optional[datetime] = Query(None, description="Start Date"),
-    end_date: Optional[datetime] = Query(None, description="End Date"),
+    start_date: Optional[date] = Query(None, description="Start Date"),
+    end_date: Optional[date] = Query(None, description="End Date"),
     type: Optional[Literal["full", "am", "pm"]] = Query(
         None, description="Type of WFH arrangement"
     ),

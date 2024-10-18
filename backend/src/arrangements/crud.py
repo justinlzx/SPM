@@ -13,8 +13,6 @@ from . import models, schemas
 from .utils import fit_model_to_model, fit_schema_to_model
 from ..logger import logger
 
-from ..utils import PaginationResponse
-
 
 def get_arrangement_by_id(db: Session, arrangement_id: int) -> models.LatestArrangement:
     return db.query(models.LatestArrangement).get(arrangement_id)
@@ -99,19 +97,12 @@ def get_arrangements_by_staff_ids(
 
     if type:
         query = query.filter(models.LatestArrangement.wfh_type == type)
-    print(start_date)
 
     if start_date:
-        query = query.filter(
-            func.date(func.substr(models.LatestArrangement.wfh_date, 1, 10))
-            >= func.date(start_date.strftime("%d-%m-%Y"))
-        )
+        query = query.filter(func.date(models.LatestArrangement.wfh_date) >= start_date)
 
     if end_date:
-        query = query.filter(
-            func.date(func.substr(models.LatestArrangement.wfh_date, 1, 10))
-            <= func.date(end_date.strftime("%d-%m-%Y"))
-        )
+        query = query.filter(func.date(models.LatestArrangement.wfh_date) <= end_date)
 
     result = query.all()
 
