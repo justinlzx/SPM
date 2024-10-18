@@ -9,21 +9,22 @@ const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 type TWFHRequest = {
   arrangement_id: number;
   staff_id: number;
-  wfh_date: string;
+  wfh_date: string; 
   end_date?: string;
   wfh_type: string;
   reason_description: string;
   approval_status: string;
 };
 
+
 export const MyWfhSchedulePage: React.FC = () => {
-  const [requests, setRequests] = useState<TWFHRequest[]>([]);
+  const [wfhRequests, setWfhRequests] = useState<TWFHRequest[]>([]);
   const [userId, setUserId] = useState<number | null>(null);
   const [openSnackbar, setOpenSnackbar] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState("");
 
   const { user } = useContext(UserContext);
-  const storedUser = localStorage.getItem("user");
+  const storedUser = localStorage.getItem("user")?.toLowerCase();
 
   useEffect(() => {
     const fetchUserId = async () => {
@@ -43,24 +44,26 @@ export const MyWfhSchedulePage: React.FC = () => {
   }, [storedUser]);
 
   useEffect(() => {
-    const fetchRequests = async () => {
+    const fetchWFHRequests = async () => {
       if (!user || userId === null) return;
       try {
         const response = await axios.get(
           `${BACKEND_URL}/arrangements/personal/${userId}`
         );
-        setRequests(response.data.data);
+        setWfhRequests(response.data.data);
       } catch (error) {
-        console.error("Failed to fetch requests:", error);
+        console.error("Failed to fetch WFH requests:", error);
       }
     };
-    fetchRequests();
+
+
+    fetchWFHRequests();
   }, [user, userId]);
 
   const handleSuccess = (id: number, action: "cancel" | "withdraw") => {
     const updatedStatus = action === "cancel" ? "cancelled" : "withdrawn";
 
-    setRequests((prevRequests) =>
+    setWfhRequests((prevRequests) =>
       prevRequests.map((request) =>
         request.arrangement_id === id
           ? { ...request, approval_status: updatedStatus }
@@ -70,8 +73,8 @@ export const MyWfhSchedulePage: React.FC = () => {
 
     const message =
       action === "cancel"
-        ? "Your WFH request has been successfully cancelled!"
-        : "Your WFH request has been successfully withdrawn!";
+        ? "Your request has been successfully cancelled!"
+        : "Your request has been successfully withdrawn!";
     setSnackbarMessage(message);
     setOpenSnackbar(true);
   };
@@ -91,11 +94,15 @@ export const MyWfhSchedulePage: React.FC = () => {
       </Typography>
 
       <WFHRequestTable
-        requests={requests}
+        requests={wfhRequests}
         handleSuccess={(id: number, action: "cancel" | "withdraw") =>
           handleSuccess(id, action)
         }
       />
+
+      <Typography variant="h4" gutterBottom align="left" sx={{ marginTop: 8 }}>
+        My OOO Request Overview
+      </Typography>
 
       <Snackbar
         open={openSnackbar}
@@ -110,5 +117,6 @@ export const MyWfhSchedulePage: React.FC = () => {
     </Container>
   );
 };
+
 
 export default MyWfhSchedulePage;

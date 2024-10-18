@@ -25,6 +25,7 @@ import {
   Link,
   List,
   ListItem,
+  Tooltip,
 } from "@mui/material";
 import { UserContext } from "../../context/UserContextProvider";
 import CheckIcon from "@mui/icons-material/Check";
@@ -232,17 +233,22 @@ export const PendingRequests = () => {
                   arrangement_id,
                   wfh_date,
                   wfh_type,
-                  reason_description, // Ensure this is included
+                  reason_description,
                   staff_id,
-                } = request; // Access properties directly
-
+                } = request;
                 return (
                   <TableRow key={arrangement_id}>
                     <TableCell>{staff_id}</TableCell>
                     <TableCell>{wfh_date}</TableCell>
                     <TableCell>{wfh_type?.toUpperCase()}</TableCell>
-                    <TableCell className="max-w-[200px] overflow-x-scroll whitespace-nowrap">
-                      {reason_description}
+                    <TableCell className="max-w-[200px]">
+                      <Tooltip title="Scroll to view more">
+                        <div className="relative">
+                          <div className="overflow-x-scroll scrollbar-hide">
+                            {reason_description}
+                          </div>
+                        </div>
+                      </Tooltip>
                     </TableCell>
                     <TableCell>
                       <Chip
@@ -416,8 +422,14 @@ const EmployeeRow = ({ request, handleRequestAction }: TEmployeeRow) => {
                         <TableCell>{idx + 1}</TableCell>
                         <TableCell>{wfh_date}</TableCell>
                         <TableCell>{wfh_type?.toUpperCase()}</TableCell>
-                        <TableCell className="max-w-80 overflow-scroll">
-                          {reason_description}
+                        <TableCell className="max-w-[200px]">
+                          <Tooltip title="Scroll to view more">
+                            <div className="relative">
+                              <div className="overflow-x-scroll scrollbar-hide">
+                                {reason_description}
+                              </div>
+                            </div>
+                          </Tooltip>
                         </TableCell>
                         <TableCell>
                           {supporting_doc_1 ||
