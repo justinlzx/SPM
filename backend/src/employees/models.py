@@ -2,6 +2,8 @@ from sqlalchemy import CheckConstraint, Column, ForeignKey, Integer, String, Dat
 from sqlalchemy.orm import relationship
 import enum
 from datetime import datetime
+from src.arrangements.models import LatestArrangement
+
 
 from ..database import Base
 
@@ -69,7 +71,10 @@ class DelegateLog(Base):
 
     # Relationships to the Employee model
     manager = relationship(
-        "Employee", foreign_keys=[manager_id], back_populates="delegations_as_manager", lazy="select"
+        "Employee",
+        foreign_keys=[manager_id],
+        back_populates="delegations_as_manager",
+        lazy="select",
     )
     delegator = relationship(
         "Employee",
