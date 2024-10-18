@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -7,8 +8,10 @@ from sqlalchemy.orm import Session
 from .. import utils
 from ..database import get_db
 from ..employees.models import Employee
-from ..employees.schemas import EmployeeBase, EmployeePeerResponse
+from ..employees.schemas import EmployeeBase, EmployeePeerResponse, DelegateLogCreate
 from . import exceptions, models, schemas, services
+from ..arrangements import models as arrangement_models, services as arrangement_services
+from ..employees import models as employee_models
 
 router = APIRouter()
 
@@ -95,6 +98,58 @@ def get_subordinates_by_manager_id(staff_id: int, db: Session = Depends(get_db))
         return employees_under_manager_pydantic
     except exceptions.ManagerNotFoundException as e:
         raise HTTPException(status_code=404, detail=str(e))
+
+
+@router.put("/manager/delegate/{staff_id}", response_model=DelegateLogCreate)
+def delegate_manager(staff_id: int, delegate_manager_id: int, db: Session = Depends(get_db)):
+    """
+    Delegates the approval responsibility of a manager to another staff member.
+    Logs the delegation in `delegate_logs` and updates pending arrangements.
+
+    :param staff_id: The staff ID of the manager initiating the delegation.
+    :param delegate_manager_id: The staff ID of the delegated manager.
+    :param db: The database session.
+    :return: Details of the created delegation log entry.
+    """
+    # Step 1: Log the delegation in the `delegate_logs` table
+    try:
+        # Create a new DelegateLog record
+        new_delegation = employee_models.DelegateLog(
+            manager_id=staff_id,
+            delegate_manager_id=delegate_manager_id,
+            date_of_delegation=datetime.utcnow(),
+            status_of_delegation=employee_models.DelegationStatus.pending,  # Default status
+        )
+
+        db.add(new_delegation)
+        db.commit()
+        db.refresh(new_delegation)
+
+        # Step 2: Update pending approval requests in `latest_arrangements`
+        # Fetch all pending requests where staff_id is the approving officer
+        pending_arrangements = (
+            db.query(arrangement_models.LatestArrangement)
+            .filter(
+                arrangement_models.LatestArrangement.approving_officer == staff_id,
+                arrangement_models.LatestArrangement.current_approval_status == "pending",
+            )
+            .all()
+        )
+
+        if not pending_arrangements:
+            raise HTTPException(status_code=404, detail="No pending arrangements found.")
+
+        # Update the approving officer to the delegate_manager_id
+        for arrangement in pending_arrangements:
+            arrangement.delegate_approving_officer = delegate_manager_id
+            db.add(arrangement)
+
+        db.commit()
+
+        return new_delegation  # Returning the created delegation log
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
 
 
 # Load the employee data from CSV
