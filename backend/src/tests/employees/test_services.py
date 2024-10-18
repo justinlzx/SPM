@@ -129,3 +129,13 @@ def test_get_peers_by_staff_id_no_reporting_manager(mock_db_session, mock_employ
 
         # Assert: Check that the returned list is empty since no reporting manager exists
         assert len(peers) == 0
+
+
+def test_get_manager_by_subordinate_id_auto_approve_jack_sim(mock_db_session):
+    """Test the auto-approve scenario for Jack Sim (staff_id=130002)."""
+
+    # Act: Call the service function with Jack Sim's staff ID (130002)
+    manager = services.get_manager_by_subordinate_id(mock_db_session, 130002)
+
+    # Assert: Check that the manager is returned as None for auto-approve
+    assert manager is None
