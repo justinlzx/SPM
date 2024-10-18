@@ -2,7 +2,7 @@ import React, { useContext, useEffect, useState } from "react";
 import axios from "axios";
 import { Container, Typography, Snackbar, Alert } from "@mui/material";
 import { UserContext } from "../../context/UserContextProvider";
-import { StaffWfhRequests } from "../../components/StaffWfhRequests";
+import { WFHRequestTable } from "../../components/WFHRequestTable";
 import { ApprovalStatus } from "../../types/ApprovalStatus";  
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
@@ -119,7 +119,7 @@ export const MyWfhSchedulePage: React.FC = () => {
         My WFH Request Overview
       </Typography>
 
-      <StaffWfhRequests
+      <WFHRequestTable
         requests={requests} 
         handleSuccess={(id: number, action: "cancel" | "withdraw") =>
           handleSuccess(id, action)
