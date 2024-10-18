@@ -129,17 +129,36 @@ def get_subordinates_arrangements(
         )
         for arrangement in arrangements_schema
     ]
-    arrangements_by_employee = group_arrangements_by_employee(arrangements_schema)
+    arrangements_by_date = group_arrangements_by_date(arrangements_schema)
 
-    total_count = len(arrangements_by_employee)
+    total_count = len(arrangements_by_date)
     total_pages = ceil(total_count / items_per_page)
 
-    return arrangements_by_employee, {
+    return arrangements_by_date, {
         "total_count": total_count,
         "page_size": items_per_page,
         "page_num": page_num,
         "total_pages": total_pages,
     }
+
+
+def group_arrangements_by_date(
+    arrangements_schema: List[ArrangementCreateResponse],
+):
+    arrangements_dict = {}
+
+    for arrangement in arrangements_schema:
+        wfh_date = arrangement.wfh_date
+        if wfh_date not in arrangements_dict:
+            arrangements_dict[str(wfh_date)] = []
+
+        arrangements_dict[wfh_date].append(arrangement)
+
+    result = []
+    for date, val in arrangements_dict.items():
+        result.append(ManagerPendingRequests(date=date, pending_arrangements=val))
+
+    return result
 
 
 def group_arrangements_by_employee(

@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, date
 from typing import List, Literal, Optional
 
 from pydantic import BaseModel, Field, ValidationInfo, field_validator
@@ -194,9 +194,14 @@ class ArrangementResponse(ArrangementCreateWithFile):
     )
 
 
+# class ManagerPendingRequests(BaseModel):
+#     employee: employee_schemas.EmployeeBase
+#     pending_arrangements: List[ArrangementCreateResponse]
+
+
 class ManagerPendingRequests(BaseModel):
-    employee: employee_schemas.EmployeeBase
-    pending_arrangements: List[ArrangementCreateResponse]
+    date: str
+    pending_arrangements: List[ArrangementResponse]
 
 
 class ManagerPendingRequestResponse(ManagerPendingRequests):
