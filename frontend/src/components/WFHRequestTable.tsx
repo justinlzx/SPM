@@ -32,7 +32,7 @@ type TWFHRequest = {
   approval_status: ApprovalStatus;  
 };
 
-interface StaffWfhRequestsProps {
+interface WFHRequestTableProps {
   requests: TWFHRequest[];
   handleSuccess: (id: number, action: "cancel" | "withdraw") => void;
 }
@@ -52,7 +52,7 @@ const getChipColor = (status: ApprovalStatus | undefined): ChipProps["color"] =>
   }
 };
 
-export const StaffWfhRequests: React.FC<StaffWfhRequestsProps> = ({
+export const WFHRequestTable: React.FC<WFHRequestTableProps> = ({
   requests,
   handleSuccess,
 }) => {
