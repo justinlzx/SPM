@@ -221,3 +221,62 @@ def update_delegation_status(
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
+
+
+@router.put("/manager/undelegate/{staff_id}", response_model=DelegateLogCreate)
+def undelegate_manager(staff_id: int, db: Session = Depends(get_db)):
+    """
+    Undelegates the approval responsibility of a manager.
+    This action can only be taken if the delegation status is 'approved'.
+    Once undelegated, the status is changed to 'undelegated'.
+
+    :param staff_id: The staff ID of the manager who initiated the delegation.
+    :param db: The database session.
+    :return: Updated delegation log with 'undelegated' status.
+    """
+    try:
+        # Step 1: Fetch the delegation log entry for the given staff_id (manager who initiated the delegation)
+        delegation_log = db.query(DelegateLog).filter(DelegateLog.manager_id == staff_id).first()
+
+        if not delegation_log:
+            raise HTTPException(status_code=404, detail="Delegation log not found.")
+
+        # Step 2: Check if the status of the delegation is 'approved'
+        if delegation_log.status_of_delegation != DelegationStatus.accepted:
+            raise HTTPException(
+                status_code=400, detail="Delegation must be approved to undelegate."
+            )
+
+        # Step 3: Update the `latest_arrangements` to remove the delegation and restore the original manager
+        pending_arrangements = (
+            db.query(arrangement_models.LatestArrangement)
+            .filter(
+                arrangement_models.LatestArrangement.delegate_approving_officer
+                == delegation_log.delegate_manager_id,
+                arrangement_models.LatestArrangement.current_approval_status == "pending",
+            )
+            .all()
+        )
+
+        for arrangement in pending_arrangements:
+            arrangement.delegate_approving_officer = None  # Remove the delegate manager
+            db.add(arrangement)
+
+        # Step 4: Mark the delegation as 'undelegated' (new status)
+        delegation_log.status_of_delegation = DelegationStatus.undelegated
+
+        # Step 5: Commit the changes to the database
+        db.commit()
+        db.refresh(delegation_log)
+
+        return delegation_log
+
+    except HTTPException as http_exc:
+        # Log HTTPException details and re-raise it
+        print(f"HTTPException occurred: {http_exc.detail}")
+        raise http_exc
+    except Exception as e:
+        # Log any unexpected errors and raise 500
+        print(f"Unexpected error: {str(e)}")
+        db.rollback()
+        raise HTTPException(status_code=500, detail="An unexpected error occurred.")

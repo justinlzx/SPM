@@ -54,6 +54,7 @@ class DelegationStatus(enum.Enum):
     pending = "pending"
     accepted = "accepted"
     rejected = "rejected"
+    undelegated = "undelegated"
 
 
 class DelegateLog(Base):
