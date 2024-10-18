@@ -1,4 +1,12 @@
-from sqlalchemy import CheckConstraint, Column, ForeignKey, Integer, String, DateTime
+from sqlalchemy import (
+    CheckConstraint,
+    Column,
+    Date,
+    ForeignKey,
+    Integer,
+    String,
+    DateTime,
+)
 from sqlalchemy.orm import relationship
 from ..database import Base
 
@@ -23,7 +31,7 @@ class ArrangementLog(Base):
         doc="Staff ID of the employee who made the request",
     )
     wfh_date = Column(
-        String(length=50),
+        Date,
         nullable=False,
         doc="Date of the WFH arrangement",
     )
@@ -151,13 +159,13 @@ class LatestArrangement(Base):
         "Employee",
         back_populates="latest_arrangements_requested",
         foreign_keys=[requester_staff_id],
-        lazy="select",
+        lazy="immediate",
     )
     approving_officer_info = relationship(
         "Employee",
         back_populates="latest_arrangements_approved",
         foreign_keys=[approving_officer],
-        lazy="select",
+        lazy="immediate",
     )
     supporting_doc_1 = Column(
         String(length=255),

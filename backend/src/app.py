@@ -40,7 +40,9 @@ async def lifespan(app: FastAPI):
     load_data.load_auth_data_from_csv("./src/init_db/auth.csv")
 
     # Load arrangements data from CSV
-    load_data.load_arrangement_data_from_csv("./src/init_db/arrangement.csv")
+    load_data.load_latest_arrangement_data_from_csv(
+        "./src/init_db/latest_arrangement.csv"
+    )
 
     yield
 

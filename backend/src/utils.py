@@ -7,7 +7,9 @@ from sqlalchemy.ext.declarative import DeclarativeMeta
 #     return [schema.model_validate(model) for model in model_data]
 
 
-def convert_model_to_pydantic_schema(model_data: List[DeclarativeMeta], schema: BaseModel):
+def convert_model_to_pydantic_schema(
+    model_data: List[DeclarativeMeta], schema: BaseModel
+):
     # Check if the model has a method to convert to dict (common in SQLAlchemy models)
     return [
         schema.model_validate(model.__dict__ if hasattr(model, "__dict__") else model)
@@ -73,3 +75,10 @@ def fit_model_to_schema(
 
     schema_data = schema_type(**valid_fields)
     return schema_data
+
+
+class PaginationResponse(BaseModel):
+    total_count: int
+    page_size: int
+    page_num: int
+    total_pages: int
