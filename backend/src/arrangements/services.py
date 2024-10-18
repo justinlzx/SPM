@@ -9,6 +9,8 @@ from sqlalchemy.orm import Session
 from src.arrangements.utils import delete_file, upload_file
 from src.employees.crud import get_employee_by_staff_id
 from src.notifications.email_notifications import fetch_manager_info
+from src.employees.models import LatestArrangement
+
 
 from .. import utils
 from ..employees import exceptions as employee_exceptions
@@ -36,6 +38,15 @@ STATUS = {
     "withdraw": "withdrawn",
     "cancel": "cancelled",
 }
+
+
+def get_approving_officer(arrangement: LatestArrangement):
+    """
+    Returns the delegate approving officer if present, otherwise the original approving officer.
+    """
+    if arrangement.delegate_approving_officer:
+        return arrangement.delegate_approving_officer_info
+    return arrangement.approving_officer_info
 
 
 def get_arrangement_by_id(db: Session, arrangement_id: int) -> ArrangementResponse:
