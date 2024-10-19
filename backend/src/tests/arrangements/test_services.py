@@ -10,24 +10,19 @@ from moto import mock_aws
 from src.app import app
 from src.arrangements import exceptions as arrangement_exceptions
 from src.arrangements import models as arrangement_models
-from src.arrangements.schemas import (
-    ArrangementCreateResponse,
-    ArrangementCreateWithFile,
-    ArrangementResponse,
-    ArrangementUpdate,
-    ManagerPendingRequestResponse,
-    ManagerPendingRequests,
-)
-from src.arrangements.services import (
-    STATUS,
-    create_arrangements_from_request,
-    expand_recurring_arrangement,
-    get_arrangement_by_id,
-    get_personal_arrangements_by_filter,
-    get_subordinates_arrangements,
-    get_team_arrangements,
-    update_arrangement_approval_status,
-)
+from src.arrangements.schemas import (ArrangementCreateResponse,
+                                      ArrangementCreateWithFile,
+                                      ArrangementResponse, ArrangementUpdate,
+                                      ManagerPendingRequestResponse,
+                                      ManagerPendingRequests)
+from src.arrangements.services import (STATUS,
+                                       create_arrangements_from_request,
+                                       expand_recurring_arrangement,
+                                       get_arrangement_by_id,
+                                       get_personal_arrangements_by_filter,
+                                       get_subordinates_arrangements,
+                                       get_team_arrangements,
+                                       update_arrangement_approval_status)
 from src.employees import exceptions as employee_exceptions
 from src.employees.models import Employee
 from src.employees.schemas import EmployeeBase
@@ -120,7 +115,7 @@ def test_get_arrangement_by_id_success(mock_db_session):
 
 def test_get_arrangement_by_id_not_found(mock_db_session):
     with patch("src.arrangements.crud.get_arrangement_by_id", return_value=None):
-        with pytest.raises(arrangement_exceptions.ArrangementNotFoundError):
+        with pytest.raises(arrangement_exceptions.ArrangementNotFoundException):
             get_arrangement_by_id(mock_db_session, arrangement_id=1)
 
 
@@ -359,7 +354,7 @@ async def test_update_arrangement_approval_status_not_found(mock_db_session):
     )
 
     with patch("src.arrangements.crud.get_arrangement_by_id", return_value=None):
-        with pytest.raises(arrangement_exceptions.ArrangementNotFoundError):
+        with pytest.raises(arrangement_exceptions.ArrangementNotFoundException):
             await update_arrangement_approval_status(mock_db_session, wfh_update)
 
 

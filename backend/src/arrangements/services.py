@@ -13,20 +13,14 @@ from .. import utils
 from ..employees import exceptions as employee_exceptions
 from ..employees import models as employee_models
 from ..employees import services as employee_services
-
 # from src.employees.schemas import EmployeeBase
 from ..logger import logger
 from . import crud, exceptions, models
 from .models import LatestArrangement
-from .schemas import (
-    ArrangementCreate,
-    ArrangementCreateResponse,
-    ArrangementCreateWithFile,
-    ArrangementResponse,
-    ArrangementUpdate,
-    ManagerPendingRequestResponse,
-    ManagerPendingRequests,
-)
+from .schemas import (ArrangementCreate, ArrangementCreateResponse,
+                      ArrangementCreateWithFile, ArrangementResponse,
+                      ArrangementUpdate, ManagerPendingRequestResponse,
+                      ManagerPendingRequests)
 from .utils import create_presigned_url
 
 STATUS = {
@@ -41,7 +35,7 @@ def get_arrangement_by_id(db: Session, arrangement_id: int) -> ArrangementRespon
     arrangement: LatestArrangement = crud.get_arrangement_by_id(db, arrangement_id)
 
     if not arrangement:
-        raise exceptions.ArrangementNotFoundError(arrangement_id)
+        raise exceptions.ArrangementNotFoundException(arrangement_id)
 
     arrangements_schema: ArrangementResponse = utils.convert_model_to_pydantic_schema(
         arrangement, ArrangementResponse
@@ -374,7 +368,7 @@ def update_arrangement_approval_status(
     )
 
     if not arrangement:
-        raise exceptions.ArrangementNotFoundError(wfh_update.arrangement_id)
+        raise exceptions.ArrangementNotFoundException(wfh_update.arrangement_id)
 
     # TODO: Add logic for raising ArrangementActionNotAllowed exceptions based on the current status
     # For example:
