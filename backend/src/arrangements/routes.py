@@ -55,7 +55,7 @@ def get_arrangement_by_id(arrangement_id: int, db: Session = Depends(get_db)):
 def get_personal_arrangements_by_filter(
     staff_id: int,
     current_approval_status: List[
-        Literal["pending approval", "pending withdrawal" "approved", "rejected", "withdrawn", "cancelled"]
+        Literal["pending approval", "pending withdrawal", "approved", "rejected", "withdrawn", "cancelled"]
     ] = Query(None, description="Filter by status"),
     db: Session = Depends(get_db),
 ):

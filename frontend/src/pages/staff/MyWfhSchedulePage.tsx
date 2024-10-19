@@ -7,17 +7,6 @@ import { ApprovalStatus } from "../../types/ApprovalStatus";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 
-type TWFHRequest = {
-  arrangement_id: number;
-  staff_id: number;
-  wfh_date: string;
-  end_date?: string;
-  wfh_type: string;
-  reason_description: string;
-  approval_status: ApprovalStatus; // Now using enum from common file
-};
-
-// Function to map the approval status from the backend to the enum
 const mapApprovalStatus = (status: string): ApprovalStatus => {
   switch (status.toLowerCase()) {
     case "approved":
@@ -37,48 +26,37 @@ const mapApprovalStatus = (status: string): ApprovalStatus => {
   }
 };
 
+type TWFHRequest = {
+  arrangement_id: number;
+  staff_id: number;
+  wfh_date: string;
+  end_date?: string;
+  wfh_type: string;
+  reason_description: string;
+  approval_status: ApprovalStatus; // Only using approval_status
+};
+
 export const MyWfhSchedulePage: React.FC = () => {
   const [requests, setRequests] = useState<TWFHRequest[]>([]);
-  const [userId, setUserId] = useState<number | null>(null);
   const [openSnackbar, setOpenSnackbar] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState("");
 
   const { user } = useContext(UserContext);
-  const storedUser = localStorage.getItem("user");
+  const userId = user!.id;
 
-  // Fetch user ID based on stored email
-  useEffect(() => {
-    const fetchUserId = async () => {
-      if (storedUser) {
-        try {
-          const response = await axios.get(
-            `${BACKEND_URL}/employees/email/${storedUser}`
-          );
-          setUserId(response.data.staff_id);
-          localStorage.setItem("id", response.data.staff_id);
-        } catch (error) {
-          console.error("Failed to fetch user ID:", error);
-        }
-      }
-    };
-    fetchUserId();
-  }, [storedUser]);
-
-  // Fetch WFH requests for the user
   useEffect(() => {
     const fetchRequests = async () => {
-      if (!user || userId === null) return;
+      if (!user || !userId) return;
       try {
         const response = await axios.get(
           `${BACKEND_URL}/arrangements/personal/${userId}`
         );
-        
-        const fetchedRequests = response.data.data.map((request: any) => ({
+        const allRequests: TWFHRequest[] = response.data.data.map((request: any) => ({
           ...request,
-          approval_status: mapApprovalStatus(request.approval_status), 
+          approval_status: mapApprovalStatus(request.approval_status), // Ensure mapping here
         }));
-
-        setRequests(fetchedRequests);
+        console.log(allRequests);
+        setRequests(allRequests);
       } catch (error) {
         console.error("Failed to fetch requests:", error);
       }
@@ -86,32 +64,30 @@ export const MyWfhSchedulePage: React.FC = () => {
     fetchRequests();
   }, [user, userId]);
 
+  // Update state when an action is successful (cancel/withdraw)
   const handleSuccess = (id: number, action: "cancel" | "withdraw") => {
+    // Determine the new status based on the action
     const updatedStatus = action === "cancel" ? ApprovalStatus.Cancelled : ApprovalStatus.PendingWithdrawal;
 
+    // Update the requests state with the new status
     setRequests((prevRequests) =>
       prevRequests.map((request) =>
         request.arrangement_id === id
-          ? { ...request, approval_status: updatedStatus }
-          : request
+          ? { ...request, approval_status: updatedStatus } // Update the matching request
+          : request // Keep other requests unchanged
       )
     );
 
-    const message =
+    // Set a success message for the Snackbar
+    setSnackbarMessage(
       action === "cancel"
         ? "Your WFH request has been successfully cancelled!"
-        : "Withdrawal Request has been sent to your manager for review.";
-    setSnackbarMessage(message);
+        : "Withdrawal Request has been sent to your manager for review."
+    );
     setOpenSnackbar(true);
   };
 
-  const handleCloseSnackBar = (
-    event?: React.SyntheticEvent | Event,
-    reason?: string
-  ) => {
-    if (reason === "clickaway") return;
-    setOpenSnackbar(false);
-  };
+  const handleCloseSnackBar = () => setOpenSnackbar(false);
 
   return (
     <Container sx={{ flexGrow: 1 }}>
@@ -119,12 +95,8 @@ export const MyWfhSchedulePage: React.FC = () => {
         My WFH Request Overview
       </Typography>
 
-      <WFHRequestTable
-        requests={requests} 
-        handleSuccess={(id: number, action: "cancel" | "withdraw") =>
-          handleSuccess(id, action)
-        }
-      />
+      {/* Pass requests and handleSuccess function to the child component */}
+      <WFHRequestTable requests={requests} handleSuccess={handleSuccess} />
 
       <Snackbar
         open={openSnackbar}
@@ -139,5 +111,3 @@ export const MyWfhSchedulePage: React.FC = () => {
     </Container>
   );
 };
-
-export default MyWfhSchedulePage;
