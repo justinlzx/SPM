@@ -4,6 +4,7 @@ import { Container, Typography, Snackbar, Alert } from "@mui/material";
 import { UserContext } from "../../context/UserContextProvider";
 import { WFHRequestTable } from "../../components/WFHRequestTable";
 import { ApprovalStatus } from "../../types/ApprovalStatus";  
+import { Filters } from "../../components/Filters";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 
@@ -33,7 +34,8 @@ type TWFHRequest = {
   end_date?: string;
   wfh_type: string;
   reason_description: string;
-  approval_status: ApprovalStatus; // Only using approval_status
+  approval_status: ApprovalStatus; 
+  work_type: string; // Added work_type field here
 };
 
 export const MyWfhSchedulePage: React.FC = () => {
@@ -53,7 +55,7 @@ export const MyWfhSchedulePage: React.FC = () => {
         );
         const allRequests: TWFHRequest[] = response.data.data.map((request: any) => ({
           ...request,
-          approval_status: mapApprovalStatus(request.approval_status), // Ensure mapping here
+          approval_status: mapApprovalStatus(request.approval_status), 
         }));
         console.log(allRequests);
         setRequests(allRequests);
@@ -66,21 +68,41 @@ export const MyWfhSchedulePage: React.FC = () => {
     fetchWFHRequests();
   }, [user, userId]);
 
+  const handleApplyFilters = (filters: {
+    startDate: Date | null;
+    endDate: Date | null;
+    wfhType: string;
+    requestStatus: string[];
+    workType: string; // workType filter added here
+  }) => {
+    // Logic to apply the filters to your request data
+    console.log("Applied Filters:", filters);
+
+    const filteredRequests = requests.filter((request) => {
+      // Add filtering logic for each filter here
+      if (filters.startDate && new Date(request.wfh_date) < filters.startDate) return false;
+      if (filters.endDate && new Date(request.wfh_date) > filters.endDate) return false;
+      if (filters.wfhType && request.wfh_type !== filters.wfhType) return false;
+      if (filters.requestStatus.length > 0 && !filters.requestStatus.includes(request.approval_status.toString())) return false;
+      if (filters.workType && request.work_type !== filters.workType) return false; // Added workType filter
+      return true;
+    });
+
+    setRequests(filteredRequests);
+  };
+
   // Update state when an action is successful (cancel/withdraw)
   const handleSuccess = (id: number, action: "cancel" | "withdraw") => {
-    // Determine the new status based on the action
     const updatedStatus = action === "cancel" ? ApprovalStatus.Cancelled : ApprovalStatus.PendingWithdrawal;
 
-    // Update the requests state with the new status
     setRequests((prevRequests) =>
       prevRequests.map((request) =>
         request.arrangement_id === id
-          ? { ...request, approval_status: updatedStatus } // Update the matching request
-          : request // Keep other requests unchanged
+          ? { ...request, approval_status: updatedStatus } 
+          : request 
       )
     );
 
-    // Set a success message for the Snackbar
     setSnackbarMessage(
       action === "cancel"
         ? "Your WFH request has been successfully cancelled!"
@@ -97,7 +119,9 @@ export const MyWfhSchedulePage: React.FC = () => {
         My WFH Request Overview
       </Typography>
 
-      {/* Pass requests and handleSuccess function to the child component */}
+      <Filters 
+        onApply={handleApplyFilters} 
+      />
       <WFHRequestTable requests={requests} handleSuccess={handleSuccess} />
 
       <Snackbar
