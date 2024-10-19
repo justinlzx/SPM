@@ -7,7 +7,6 @@ import {
   Select,
   MenuItem,
   TextField,
-  Typography,
   Button,
   InputAdornment,
   IconButton,
@@ -30,7 +29,7 @@ const FilterDatePicker: React.FC<FilterDatePickerProps> = ({ label, selectedDate
       customInput={
         <TextField
           variant="outlined"
-          sx={{ minWidth: 200 }} // Adjust width to fit better in one line
+          sx={{ minWidth: 200 }}
           InputProps={{
             endAdornment: (
               <InputAdornment position="end">
@@ -52,7 +51,6 @@ interface FiltersProps {
     endDate: Date | null;
     wfhType: string;
     requestStatus: string[];
-    departments: string[];
     workType: string;
   }) => void;
 }
@@ -62,16 +60,15 @@ export const Filters: React.FC<FiltersProps> = ({ onApply }) => {
   const [endDate, setEndDate] = useState<Date | null>(null);
   const [wfhType, setWfhType] = useState<string>("");
   const [requestStatus, setRequestStatus] = useState<string[]>([]);
+  const [workType, setWorkType] = useState<string>(""); // State for workType
 
   const handleApplyFilters = () => {
-    // Pass the selected filter values to the parent component
     onApply({
       startDate,
       endDate,
       wfhType,
       requestStatus,
-      departments: [], // Assuming departments is not used here currently
-      workType: "",    // Assuming workType is not used here currently
+      workType, // Pass workType to the parent component
     });
   };
 
@@ -106,6 +103,21 @@ export const Filters: React.FC<FiltersProps> = ({ onApply }) => {
           </Select>
         </FormControl>
 
+        {/* Work Type Filter */}
+        <FormControl variant="outlined" sx={{ minWidth: 150 }}>
+          <InputLabel>WFH Duration</InputLabel>
+          <Select
+            value={workType}
+            onChange={(e) => setWorkType(e.target.value as string)}
+            label="Work Type"
+          >
+            <MenuItem value="full">Full</MenuItem>
+            <MenuItem value="am">AM</MenuItem>
+            <MenuItem value="pm">PM</MenuItem>
+
+          </Select>
+        </FormControl>
+
         {/* Request Status Filter */}
         <FormControl variant="outlined" sx={{ minWidth: 200 }}>
           <InputLabel>Request Status</InputLabel>
@@ -116,7 +128,8 @@ export const Filters: React.FC<FiltersProps> = ({ onApply }) => {
             label="Request Status"
             renderValue={(selected) => (selected as string[]).join(", ")}
           >
-            <MenuItem value="Pending">Pending</MenuItem>
+            <MenuItem value="Pending Approval">Pending Approval</MenuItem>
+            <MenuItem value="Pending Withdrawal">Pending Withdrawal</MenuItem>
             <MenuItem value="Approved">Approved</MenuItem>
             <MenuItem value="Rejected">Rejected</MenuItem>
           </Select>
