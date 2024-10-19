@@ -1,14 +1,15 @@
+from unittest.mock import MagicMock, patch
+
 import pytest
 from fastapi.testclient import TestClient
-from unittest.mock import MagicMock, patch
 from sqlalchemy.orm import Session
-
-from src.employees.routes import router
 from src.app import app
-from src.employees import services, exceptions
-from src.employees.exceptions import EmployeeNotFoundException, ManagerNotFoundException
-from src.tests.test_utils import mock_db_session
 from src.database import get_db  # Import get_db to override the dependency
+from src.employees import exceptions, services
+from src.employees.exceptions import (EmployeeNotFoundException,
+                                      ManagerNotFoundException)
+from src.employees.routes import router
+from src.tests.test_utils import mock_db_session
 
 client = TestClient(app)
 
@@ -406,3 +407,36 @@ def test_get_reporting_manager_and_peer_employees_self_reporting(mock_db_session
     assert data["manager_id"] == 1  # The employee should still have themselves as the manager
     assert len(data["peer_employees"]) == 1
     assert data["peer_employees"][0]["staff_id"] == 2
+
+
+def test_get_reporting_manager_and_peer_employees_auto_approve_jack_sim(mock_db_session):
+    """Test the auto-approve scenario for Jack Sim (staff_id=130002)."""
+
+    response = client.get("/manager/peermanager/130002")
+
+    # Assertions
+    assert response.status_code == 200
+    data = response.json()
+    assert data["manager_id"] is None
+    assert data["peer_employees"] == []
+
+
+def test_get_reporting_manager_and_peer_employees_manager_none(mock_db_session, monkeypatch):
+    """Test the scenario where no manager is found (manager is None)."""
+
+    # Mock the service function to return None for the manager
+    def mock_get_manager_by_subordinate_id(db, staff_id):
+        return None  # No manager found
+
+    monkeypatch.setattr(
+        services, "get_manager_by_subordinate_id", mock_get_manager_by_subordinate_id
+    )
+
+    # Call the API endpoint
+    response = client.get("/manager/peermanager/1")
+
+    # Assertions
+    assert response.status_code == 200
+    data = response.json()
+    assert data["manager_id"] is None
+    assert data["peer_employees"] == []

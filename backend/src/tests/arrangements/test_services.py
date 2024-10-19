@@ -18,6 +18,7 @@ from src.arrangements.schemas import (ArrangementCreateResponse,
 from src.arrangements.services import (STATUS,
                                        create_arrangements_from_request,
                                        expand_recurring_arrangement,
+                                       get_approving_officer,
                                        get_arrangement_by_id,
                                        get_personal_arrangements_by_filter,
                                        get_subordinates_arrangements,
@@ -773,3 +774,31 @@ def test_get_team_arrangements_no_peers_or_subordinates(mock_db_session):
                 assert isinstance(result, dict)
                 assert result.get("peers", []) == []
                 assert result.get("subordinates", []) == []
+
+
+def test_returns_delegate_approving_officer_info():
+    # Arrange: Mock an arrangement with a delegate approving officer
+    arrangement = MagicMock()
+    arrangement.delegate_approving_officer = True
+    arrangement.delegate_approving_officer_info = "Delegate Officer Info"
+    arrangement.approving_officer_info = "Original Officer Info"
+
+    # Act: Call the function with the mocked arrangement
+    result = get_approving_officer(arrangement)
+
+    # Assert: Check if the delegate approving officer info is returned
+    assert result == "Delegate Officer Info"
+
+
+def test_returns_original_approving_officer_info():
+    # Arrange: Mock an arrangement without a delegate approving officer
+    arrangement = MagicMock()
+    arrangement.delegate_approving_officer = False  # No delegate
+    arrangement.delegate_approving_officer_info = None
+    arrangement.approving_officer_info = "Original Officer Info"
+
+    # Act: Call the function with the mocked arrangement
+    result = get_approving_officer(arrangement)
+
+    # Assert: Check if the original approving officer info is returned
+    assert result == "Original Officer Info"

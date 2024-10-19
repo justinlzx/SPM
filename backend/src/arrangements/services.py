@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta
+from math import ceil
 from typing import Dict, List
 
 import boto3
@@ -7,6 +8,7 @@ from fastapi import File, HTTPException
 from sqlalchemy.orm import Session
 from src.arrangements.utils import delete_file, upload_file
 from src.employees.crud import get_employee_by_staff_id
+from src.employees.models import LatestArrangement
 from src.notifications.email_notifications import fetch_manager_info
 
 from .. import utils
@@ -29,6 +31,14 @@ STATUS = {
     "withdraw": "withdrawn",
     "cancel": "cancelled",
 }
+
+
+def get_approving_officer(arrangement: LatestArrangement):
+    """Returns the delegate approving officer if present, otherwise the original approving
+    officer."""
+    if arrangement.delegate_approving_officer:
+        return arrangement.delegate_approving_officer_info
+    return arrangement.approving_officer_info
 
 
 def get_arrangement_by_id(db: Session, arrangement_id: int) -> ArrangementResponse:
@@ -59,7 +69,15 @@ def get_personal_arrangements_by_filter(
 
 
 def get_subordinates_arrangements(
-    db: Session, manager_id: int, current_approval_status: List[str]
+    db: Session,
+    manager_id: int,
+    current_approval_status: List[str],
+    name,
+    start_date: datetime,
+    end_date: datetime,
+    type,
+    items_per_page,
+    page_num,
 ) -> List[ManagerPendingRequestResponse]:
 
     # Check if the employee is a manager
@@ -73,7 +91,13 @@ def get_subordinates_arrangements(
     employees_under_manager_ids = [employee.staff_id for employee in employees_under_manager]
 
     arrangements = crud.get_arrangements_by_staff_ids(
-        db, employees_under_manager_ids, current_approval_status
+        db,
+        employees_under_manager_ids,
+        current_approval_status,
+        name,
+        type,
+        start_date,
+        end_date,
     )
 
     arrangements_schema: List[ArrangementCreateResponse] = utils.convert_model_to_pydantic_schema(
@@ -105,7 +129,16 @@ def get_subordinates_arrangements(
         for arrangement in arrangements_schema
     ]
     arrangements_by_employee = group_arrangements_by_employee(arrangements_schema)
-    return arrangements_by_employee
+
+    total_count = len(arrangements_by_employee)
+    total_pages = ceil(total_count / items_per_page)
+
+    return arrangements_by_employee, {
+        "total_count": total_count,
+        "page_size": items_per_page,
+        "page_num": page_num,
+        "total_pages": total_pages,
+    }
 
 
 def group_arrangements_by_employee(

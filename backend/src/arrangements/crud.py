@@ -1,15 +1,16 @@
-from datetime import datetime
-from typing import List
+from datetime import date, datetime
+from math import ceil
+from typing import List, Literal
 
 # from pydantic import ValidationError
+from sqlalchemy import Date, DateTime, cast, func, or_
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
-
 from src.employees.models import Employee
 
+from ..logger import logger
 from . import models, schemas
 from .utils import fit_model_to_model, fit_schema_to_model
-from ..logger import logger
 
 
 def get_arrangement_by_id(db: Session, arrangement_id: int) -> models.LatestArrangement:
@@ -24,44 +25,76 @@ def get_arrangements_by_filter(
     query = db.query(models.LatestArrangement)
 
     if requester_staff_id:
-        query = query.filter(
-            models.LatestArrangement.requester_staff_id == requester_staff_id
-        )
+        query = query.filter(models.LatestArrangement.requester_staff_id == requester_staff_id)
     if current_approval_status:
         if len(current_approval_status) > 1:
             query = query.filter(
-                models.LatestArrangement.current_approval_status.in_(
-                    current_approval_status
-                )
+                models.LatestArrangement.current_approval_status.in_(current_approval_status)
             )
         else:
             query = query.filter(
-                models.LatestArrangement.current_approval_status
-                == current_approval_status[0]
+                models.LatestArrangement.current_approval_status == current_approval_status[0]
             )
 
     return query.all()
 
 
 def get_arrangements_by_staff_ids(
-    db: Session, staff_ids: List[int], current_approval_status: List[str] = None
+    db: Session,
+    staff_ids: List[int],
+    current_approval_status: List[
+        Literal["pending", "approved", "rejected", "cancelled", "withdrawn"]
+    ] = None,
+    name: str = None,
+    type: Literal["full", "am", "pm"] = None,
+    start_date: datetime = None,
+    end_date: datetime = None,
 ) -> List[schemas.ArrangementCreateResponse]:
-    """Fetch the WFH requests for a list of staff IDs."""
-    logger.info(f"Fetching pending requests by staff ID")
-    query = db.query(models.LatestArrangement)
-    query = query.join(
-        Employee, Employee.staff_id == models.LatestArrangement.requester_staff_id
-    )
-    query = query.where(models.LatestArrangement.requester_staff_id.in_(staff_ids))
+    """Fetch the WFH requests for a list of staff IDs with optional filters.
 
-    if current_approval_status:
+    Args:
+        db: Database session
+        staff_ids: List of staff IDs to filter by
+        current_approval_status: Optional list of approval statuses
+        name: Optional employee name filter
+        type: Optional arrangement type (full/am/pm)
+        start_date: Optional start date filter
+        end_date: Optional end date filter
+        limit: Optional limit for pagination
+        page_num: Optional page number for pagination
+
+    Returns:
+        List of arrangements matching the criteria
+    """
+    logger.info("Fetching requests by staff ID with filters")
+    query = db.query(models.LatestArrangement)
+    query = query.join(Employee, Employee.staff_id == models.LatestArrangement.requester_staff_id)
+    query = query.filter(models.LatestArrangement.requester_staff_id.in_(staff_ids))
+
+    if name:
         query = query.filter(
-            models.LatestArrangement.current_approval_status.in_(
-                current_approval_status
+            or_(
+                Employee.staff_fname.ilike(f"%{name}%"),
+                Employee.staff_lname.ilike(f"%{name}%"),
             )
         )
+    # Apply optional filters
+    if current_approval_status:
+        query = query.filter(
+            models.LatestArrangement.current_approval_status.in_(current_approval_status)
+        )
+
+    if type:
+        query = query.filter(models.LatestArrangement.wfh_type == type)
+
+    if start_date:
+        query = query.filter(func.date(models.LatestArrangement.wfh_date) >= start_date)
+
+    if end_date:
+        query = query.filter(func.date(models.LatestArrangement.wfh_date) <= end_date)
 
     result = query.all()
+
     return result
 
 

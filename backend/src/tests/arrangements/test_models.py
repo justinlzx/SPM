@@ -1,7 +1,8 @@
 import pytest
-from src.arrangements.models import ArrangementLog, LatestArrangement, RecurringRequest
-from src.tests.test_utils import mock_db_session
+from src.arrangements.models import (ArrangementLog, LatestArrangement,
+                                     RecurringRequest)
 from src.employees.models import Employee
+from src.tests.test_utils import mock_db_session
 
 
 @pytest.fixture
@@ -29,6 +30,7 @@ def mock_latest_arrangement():
         wfh_type="am",
         current_approval_status="approved",
         approving_officer=2,
+        delegate_approving_officer=3,  # Include delegate_approving_officer
         reason_description="Approved WFH request",
         batch_id=None,
         latest_log_id=1,
@@ -79,6 +81,9 @@ def test_latest_arrangement_fields(mock_db_session, mock_latest_arrangement):
     assert mock_latest_arrangement.wfh_type == "am"
     assert mock_latest_arrangement.current_approval_status == "approved"
     assert mock_latest_arrangement.latest_log_id == 1
+    assert (
+        mock_latest_arrangement.delegate_approving_officer == 3
+    )  # Test for delegate_approving_officer
 
 
 def test_recurring_request_fields(mock_db_session, mock_recurring_request):
@@ -98,12 +103,19 @@ def test_check_constraints(mock_arrangement_log, mock_latest_arrangement, mock_r
     assert mock_recurring_request.wfh_type in ["full", "am", "pm"]
 
     # Valid Approval Statuses
-    assert mock_arrangement_log.approval_status in ["pending", "approved", "rejected", "withdrawn"]
+    assert mock_arrangement_log.approval_status in [
+        "pending",
+        "approved",
+        "rejected",
+        "withdrawn",
+        "cancelled",
+    ]
     assert mock_latest_arrangement.current_approval_status in [
         "pending",
         "approved",
         "rejected",
         "withdrawn",
+        "cancelled",
     ]
 
 
@@ -119,3 +131,13 @@ def test_relationships(mock_db_session, mock_arrangement_log, mock_employee):
     assert mock_arrangement_log.requester_info is not None
     assert mock_arrangement_log.requester_info.staff_fname == "Test"
     assert mock_arrangement_log.approving_officer_info is not None
+
+
+def test_delegate_relationship(mock_db_session, mock_latest_arrangement, mock_employee):
+    """Test relationship for delegate_approving_officer."""
+    # Mock the delegate_approving_officer_info relationship
+    mock_latest_arrangement.delegate_approving_officer_info = mock_employee
+
+    # Ensure the relationship is set up correctly
+    assert mock_latest_arrangement.delegate_approving_officer_info is not None
+    assert mock_latest_arrangement.delegate_approving_officer_info.staff_fname == "Test"

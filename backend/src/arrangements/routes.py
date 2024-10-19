@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime
 from typing import Annotated, Dict, List, Literal, Optional
 
 from fastapi import (APIRouter, Depends, File, Form, HTTPException, Query,
@@ -83,15 +83,32 @@ def get_personal_arrangements_by_filter(
 )
 def get_subordinates_arrangements(
     manager_id: int,
+    name: Optional[str] = Query(None, description="Name of the employee"),
+    start_date: Optional[date] = Query(None, description="Start Date"),
+    end_date: Optional[date] = Query(None, description="End Date"),
+    type: Optional[Literal["full", "am", "pm"]] = Query(
+        None, description="Type of WFH arrangement"
+    ),
     current_approval_status: Optional[
         List[Literal["pending", "approved", "rejected", "withdrawn", "cancelled"]]
     ] = Query(None, description="Filter by status"),
+    items_per_page: int = Query(10, description="Items per Page"),
+    page_num: int = Query(1, description="Page Number"),
     db: Session = Depends(get_db),
 ):
+
     try:
         logger.info(f"Fetching arrangements for employees under manager ID: {manager_id}")
-        arrangements = services.get_subordinates_arrangements(
-            db, manager_id, current_approval_status
+        arrangements, pagination_meta = services.get_subordinates_arrangements(
+            db,
+            manager_id,
+            current_approval_status,
+            name,
+            start_date,
+            end_date,
+            type,
+            items_per_page,
+            page_num,
         )
 
         arrangements_dict = [arrangement.model_dump() for arrangement in arrangements]
@@ -102,6 +119,7 @@ def get_subordinates_arrangements(
                 "message": "Arrangements for employees under manager retrieved successfully",
                 "manager_id": manager_id,
                 "data": arrangements_dict,
+                "pagination_meta": pagination_meta,
             },
         )
     except employee_exceptions.ManagerNotFoundException as e:
@@ -207,7 +225,10 @@ async def update_wfh_request(
         )
 
         # **Skip employee lookups for 'withdraw' and 'cancel' actions**
-        if updated_arrangement.current_approval_status not in ["withdrawn", "cancelled"]:
+        if updated_arrangement.current_approval_status not in [
+            "withdrawn",
+            "cancelled",
+        ]:
             # Fetch the staff (requester) information
             requester_employee: employee_models.Employee = employee_services.get_employee_by_id(
                 db, updated_arrangement.staff_id

@@ -6,10 +6,10 @@ from . import crud, exceptions, models
 
 
 def get_manager_by_subordinate_id(db: Session, staff_id: int) -> models.Employee:
-    #Auto Approve for Jack Sim and bypass manager check
+    # Auto Approve for Jack Sim and bypass manager check
     if staff_id == 130002:
-        return None
-    
+        return None  # Keep the auto-approve for Jack Sim
+
     emp: models.Employee = get_employee_by_id(db, staff_id)
     print(f"staff id: {emp.staff_id}")
     manager: models.Employee = emp.manager

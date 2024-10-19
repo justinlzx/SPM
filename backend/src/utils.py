@@ -73,3 +73,10 @@ def fit_model_to_schema(
 
     schema_data = schema_type(**valid_fields)
     return schema_data
+
+
+class PaginationResponse(BaseModel):
+    total_count: int
+    page_size: int
+    page_num: int
+    total_pages: int
