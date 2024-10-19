@@ -17,7 +17,7 @@ BASE_URL = os.getenv("BACKEND_BASE_URL", "http://localhost:8000")
 
 
 class MockArrangement(MagicMock):
-    def __init__(self, current_approval_status, reason_description="Personal reason", **kwargs):
+    def __init__(self, current_approval_status="", reason_description="Personal reason", **kwargs):
         super().__init__(**kwargs)
         self.arrangement_id = 1
         self.wfh_date = "2024-10-07"
@@ -477,7 +477,6 @@ class TestCraftAndSendEmail:
             )
         assert str(exc_info.value) == "Error message cannot be an empty string."
 
-    # TODO
     @pytest.mark.asyncio
     @pytest.mark.parametrize(
         "action, mock_arrangement_fixture",
@@ -502,34 +501,44 @@ class TestCraftAndSendEmail:
             manager=mock_manager,
         )
         assert result is True
-        mock_send_email.assert_called_once()
+        assert mock_send_email.call_count == 2
+        mock_send_email.assert_called()
 
-    # @pytest.mark.asyncio
-    # async def test_craft_and_send_email_create(
-    #     self,
-    #     mocker,
-    #     mock_staff,
-    #     mock_manager,
-    #     mock_create_arrangement,
-    # ):
-    #     # Mock the send_email function to prevent actual email sending
-    #     mocker.patch("src.notifications.email_notifications.send_email", return_value=True)
+    @pytest.mark.asyncio
+    @patch(
+        "src.notifications.email_notifications.send_email",
+        side_effect=HTTPException(status_code=500),
+    )
+    async def test_email_failure(
+        self, mock_send_email, mock_staff, mock_create_arrangement, mock_manager
+    ):
 
-    #     result = await notifications.craft_and_send_email(
-    #         mock_staff, [mock_create_arrangement], "create", manager=mock_manager
-    #     )
-    #     assert result is True
+        with pytest.raises(notification_exceptions.EmailNotificationException) as exc_info:
+            await notifications.craft_and_send_email(
+                employee=mock_staff,
+                arrangements=mock_create_arrangement,
+                action="create",
+                manager=mock_manager,
+            )
+        assert (
+            str(exc_info.value)
+            == "Failed to send emails to jane.doe@allinone.com.sg, michael.scott@allinone.com.sg"
+        )
+        assert mock_send_email.call_count == 2
+        mock_send_email.assert_called()
 
-    # TODO: Test for multiple arrangements
-    # @pytest.mark.asyncio
-    # async def test_craft_email_content_multiple_arrangements(
-    #     mock_staff, mock_manager, mock_create_arrangement
-    # ):
-    #     employee = MagicMock()  # Use MagicMock for employee object
-    #     arrangements = [mock_create_arrangement] * 2  # Mock multiple arrangements
-    #     email_subject_content = notifications.craft_email_content(
-    #         employee, arrangements, "create", manager=mock_manager
-    #     )
+    @pytest.mark.asyncio
+    @patch("src.notifications.email_notifications.send_email", return_value=True)
+    async def test_create_multiple_arrangements_success(
+        self, mock_send_email, mock_staff, mock_manager, mock_create_arrangement
+    ):
+        mock_arrangements = [mock_create_arrangement] * 2
 
-    #     assert "Request ID" in content
-    #     assert "WFH Date" in content
+        result = await notifications.craft_and_send_email(
+            employee=mock_staff,
+            arrangements=mock_arrangements,
+            action="create",
+            manager=mock_manager,
+        )
+        assert result is True
+        mock_send_email.assert_called()

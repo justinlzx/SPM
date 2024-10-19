@@ -157,9 +157,6 @@ def craft_email_content(
     manager: employee_models.Employee = None,
     error_message: str = None,
 ):
-    if not isinstance(arrangements, List):
-        arrangements = [arrangements]
-
     formatted_details = "\n".join(
         [
             f"Request ID: {arrangement.arrangement_id}\n"
