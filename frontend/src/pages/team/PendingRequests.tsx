@@ -10,9 +10,6 @@ import {
   TableRow,
   Paper,
   Typography,
-  TextField,
-  Chip,
-  ChipProps,
   Button,
   ButtonGroup,
   TablePagination,
@@ -25,16 +22,16 @@ import {
   Link,
   List,
   ListItem,
-  Tooltip,
+  Chip,
   Tooltip,
 } from "@mui/material";
 import { UserContext } from "../../context/UserContextProvider";
 import CheckIcon from "@mui/icons-material/Check";
 import CloseIcon from "@mui/icons-material/Close";
-import { TEmployee } from "../../hooks/auth/employee/employee.utils";
 import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
-import { capitalize } from "../../utils/utils";
+import { Search } from "../../components/Search"; // Import the Search component
+import { TEmployee } from "../../hooks/auth/employee/employee.utils";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 
@@ -51,7 +48,7 @@ export enum ApprovalStatus {
 // Define types
 type TAction = "approve" | "reject" | "withdraw";
 
-type TWFHRequest = {
+export type TWFHRequest = {
   staff_id: number;
   wfh_date: string;
   wfh_type: string;
@@ -70,10 +67,8 @@ type TArrangementByEmployee = {
 
 export const PendingRequests = () => {
   const [requests, setRequests] = useState<TWFHRequest[]>([]);
-  const [actionRequests, setActionRequests] = useState<TArrangementByEmployee[]>(
-    []
-  );
-  const [searchTerm, setSearchTerm] = useState("");
+  const [actionRequests, setActionRequests] = useState<TArrangementByEmployee[]>([]);
+  const [filteredRequests, setFilteredRequests] = useState<TArrangementByEmployee[]>([]);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const { user } = useContext(UserContext);
@@ -93,8 +88,8 @@ export const PendingRequests = () => {
           }
         );
         const pendingRequests: TArrangementByEmployee[] = response.data.data;
-        console.log(pendingRequests);
         setActionRequests(pendingRequests);
+        setFilteredRequests(pendingRequests); // Initialize filteredRequests with the same data
       } catch (error) {
         console.error("Failed to fetch subordinates' requests:", error);
       }
@@ -102,8 +97,20 @@ export const PendingRequests = () => {
     fetchPendingRequestsFromSubordinates();
   }, [user, userId]);
 
-  const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchTerm(e.target.value);
+  // Handle search input and filter the results
+  const handleSearch = (searchTerm: string) => {
+    const lowercasedTerm = searchTerm.toLowerCase();
+    const updatedFilteredRequests = actionRequests.filter((request) =>
+      request.employee.staff_id.toString().includes(lowercasedTerm) ||
+      request.employee.staff_fname.toLowerCase().includes(lowercasedTerm) ||
+      request.employee.staff_lname.toLowerCase().includes(lowercasedTerm) ||
+      request.pending_arrangements.some((arrangement) =>
+        arrangement.wfh_date.toLowerCase().includes(lowercasedTerm) ||
+        arrangement.wfh_type.toLowerCase().includes(lowercasedTerm) ||
+        arrangement.approval_status.toLowerCase().includes(lowercasedTerm)
+      )
+    );
+    setFilteredRequests(updatedFilteredRequests);
   };
 
   const handleRequestAction = async (
@@ -118,14 +125,6 @@ export const PendingRequests = () => {
       formData.append("reason_description", reason_description);
       formData.append("approving_officer", userId?.toString() || "");
       
-      // Log the payload before sending it
-      console.log("Payload being sent:", {
-        reason_description,
-        action,
-        approving_officer: userId,
-        arrangement_id,
-      });
-  
       if (action === "withdraw") {
         if (approval_status === ApprovalStatus.PendingWithdrawal) {
           formData.append("current_approval_status", ApprovalStatus.Withdrawn);
@@ -152,28 +151,9 @@ export const PendingRequests = () => {
     }
   };
 
-  // Filter personal requests based on search term
-  const filteredRequests = requests.filter(
-    (request) =>
-      request.staff_id.toString().includes(searchTerm) ||
-      request.wfh_date.includes(searchTerm) ||
-      request.wfh_type.toLowerCase().includes(searchTerm) ||
-      request.approval_status.toLowerCase().includes(searchTerm)
-  );
-
   return (
-    <Container>
-      <TextField
-        label="Search"
-        variant="outlined"
-        fullWidth
-        margin="normal"
-        value={searchTerm}
-        onChange={handleSearch}
-      />
-
-      {user!.role !== 3 && (
         <>
+          <Search data={actionRequests} onSearchResult={setFilteredRequests} />
           <Typography
             variant="h4"
             gutterBottom
@@ -198,14 +178,14 @@ export const PendingRequests = () => {
                   <TableCell sx={{ fontWeight: "bold" }}>Pending</TableCell>
                 </TableRow>
               </TableHead>
-              {actionRequests.length === 0 ? (
+              {filteredRequests.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={7} align="center">
                     No pending requests
                   </TableCell>
                 </TableRow>
               ) : (
-                actionRequests.map((request) => {
+                filteredRequests.map((request) => {
                   return (
                     <EmployeeRow
                       request={request}
@@ -220,7 +200,7 @@ export const PendingRequests = () => {
           <TablePagination
             component="div"
             rowsPerPageOptions={[10, 20, 30]}
-            count={actionRequests.length}
+            count={filteredRequests.length}
             rowsPerPage={rowsPerPage}
             page={page}
             onPageChange={(event, newPage) => setPage(newPage)}
@@ -229,8 +209,6 @@ export const PendingRequests = () => {
             }
           />
         </>
-      )}
-    </Container>
   );
 };
 
@@ -267,7 +245,7 @@ const EmployeeRow = ({ request, handleRequestAction }: TEmployeeRow) => {
         <TableCell>{position}</TableCell>
         <TableCell>{email}</TableCell>
         <TableCell>
-          <Chip label={arrangements.length}></Chip>
+          <Chip label={arrangements.length} /> {/* Reintroducing the Chip component */}
         </TableCell>
       </TableRow>
       <TableRow>
