@@ -168,6 +168,7 @@ export const CreateWfhRequest: React.FC = () => {
     wfh_type: values.wfhType.toLowerCase(),
     reason_description: values.reason,
     is_recurring: scheduleType === "recurring",
+    current_approval_status: "pending approval",
     ...(scheduleType === "recurring" && {
       recurring_end_date: values.endDate
         ? values.endDate.toISOString().split("T")[0]

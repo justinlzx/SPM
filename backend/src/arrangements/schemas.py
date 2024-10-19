@@ -99,6 +99,9 @@ class ArrangementCreateWithFile(ArrangementCreate):
 class ArrangementCreateResponse(ArrangementCreateWithFile):
     arrangement_id: int
     requester_info: Optional[employee_schemas.EmployeeBase]
+    approval_status: Literal[
+        "pending approval", "pending withdrawal", "approved", "rejected", "withdrawn", "cancelled"
+    ] = Field(..., title="Current status of the WFH request", alias="current_approval_status")
 
 
 class ArrangementUpdate(ArrangementBase):

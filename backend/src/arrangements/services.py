@@ -408,6 +408,14 @@ def update_arrangement_approval_status(
     # if arrangement.current_approval_status == "approved" and wfh_update.action != "cancel":
     #     raise exceptions.ArrangementActionNotAllowed(f"Cannot {wfh_update.action} an already approved arrangement")
 
+    ####TODO: TEST THIS LOGIC 
+    if wfh_update.action == "withdraw":
+        if arrangement.current_approval_status != "approved":
+            raise exceptions.ArrangementActionNotAllowed(
+                f"Cannot withdraw an arrangement in status '{arrangement.current_approval_status}'"
+            )
+        new_status = "pending withdrawal"
+    
     # Update arrangement fields
     new_status = STATUS.get(wfh_update.action)
     if new_status is None:
