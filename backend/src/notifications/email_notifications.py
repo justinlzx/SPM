@@ -104,14 +104,6 @@ async def craft_and_send_email(
     if error_message is not None and error_message == "":
         raise ValueError("Error message cannot be an empty string.")
 
-    # REVIEW: should move this validation logic to the Pydantic model
-    if not employee.email and (not manager or not manager.email):
-        raise ValueError("Both employee and manager emails are required.")
-    if not employee.email:
-        raise ValueError("Employee email is missing.")
-    if manager and not manager.email:
-        raise ValueError("Manager email is missing.")
-
     if not isinstance(arrangements, List):
         arrangements = [arrangements]
 

@@ -6,9 +6,6 @@ import pytest
 from dotenv import load_dotenv
 from fastapi import HTTPException
 from httpx import RequestError
-from src.arrangements.schemas import (ArrangementCreateResponse,
-                                      ArrangementLog, ArrangementUpdate)
-# from src.arrangements.models import LatestArrangement
 from src.notifications import email_notifications as notifications
 from src.notifications import exceptions as notification_exceptions
 
@@ -536,32 +533,3 @@ class TestCraftAndSendEmail:
 
     #     assert "Request ID" in content
     #     assert "WFH Date" in content
-
-    # TODO
-    # @pytest.mark.asyncio
-    # async def test_craft_and_send_email_none_manager_employee(mock_create_arrangement):
-    #     # Test when employee is None
-    #     employee = None
-    #     manager = None
-
-    #     # Ensure that it raises an error when the employee is None
-    #     with pytest.raises(AttributeError) as exc_info:
-    #         await notifications.craft_and_send_email(
-    #             employee, [mock_create_arrangement], "create", manager=manager
-    #         )
-
-    #     assert "'NoneType' object has no attribute 'staff_fname'" in str(exc_info.value)
-
-    # @pytest.mark.asyncio
-    # async def test_craft_and_send_email_approve_with_manager(self, mocker):
-    #     # Mock send_email to prevent actual email sending
-    #     mocker.patch("src.notifications.email_notifications.send_email", return_value=True)
-
-    #     employee = MagicMock()
-    #     manager = MagicMock()
-    #     arrangements = [MockArrangement()]
-
-    #     result = await notifications.craft_and_send_email(
-    #         employee, arrangements, "approve", manager=manager
-    #     )
-    #     assert result is True

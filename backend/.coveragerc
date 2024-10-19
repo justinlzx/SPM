@@ -7,6 +7,3 @@ omit =
     */database.py
     */base.py
     */app.py
-
-[report]
-# Optional: Customize the coverage report
