@@ -157,6 +157,9 @@ def test_arrangement_create_model_dump():
     # Call the custom model_dump method
     data = arrangement.model_dump()
 
+    print("dog", data)
+    print(type(data))
+
     # Ensure fields added manually in custom model_dump are included
     assert "update_datetime" in data
     assert "current_approval_status" in data
@@ -165,6 +168,8 @@ def test_arrangement_create_model_dump():
 
     # Call the superclass method directly to see what would be excluded by default
     base_data = super(ArrangementCreate, arrangement).model_dump()
+
+    print("dog base_Data:", base_data)
 
     # These should be excluded in the base call and added in custom dump
     assert "update_datetime" not in base_data

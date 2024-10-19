@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import {
@@ -13,13 +13,17 @@ import {
 } from "@mui/material";
 import CalendarTodayIcon from "@mui/icons-material/CalendarToday";
 
-interface FilterDatePickerProps {
+type FilterDatePickerProps = {
   label: string;
   selectedDate: Date | null;
   onChange: (date: Date | null) => void;
-}
+};
 
-const FilterDatePicker: React.FC<FilterDatePickerProps> = ({ label, selectedDate, onChange }) => {
+const FilterDatePicker = ({
+  label,
+  selectedDate,
+  onChange,
+}: FilterDatePickerProps) => {
   return (
     <DatePicker
       selected={selectedDate}
@@ -45,42 +49,59 @@ const FilterDatePicker: React.FC<FilterDatePickerProps> = ({ label, selectedDate
   );
 };
 
-interface FiltersProps {
+type TFilterProps = {
   onApply: (filters: {
     startDate: Date | null;
     endDate: Date | null;
     wfhType: string;
     requestStatus: string[];
-    wfhDuration: string;
+    departments: string[];
+    workType: string;
   }) => void;
-}
+};
 
-export const Filters: React.FC<FiltersProps> = ({ onApply }) => {
+export const Filters = ({ onApply }: TFilterProps) => {
   const [startDate, setStartDate] = useState<Date | null>(null);
   const [endDate, setEndDate] = useState<Date | null>(null);
   const [wfhType, setWfhType] = useState<string>("");
   const [requestStatus, setRequestStatus] = useState<string[]>([]);
-  const [wfhDuration, setWfhDuration] = useState<string>(""); // Updated to wfhDuration
-  const [searchTerm, setSearchTerm] = useState<string>("");
-  
-  const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchTerm(e.target.value);
-  };
+  const [sortByDate, setSortByDate] = useState<"asc" | "desc">("asc");
+  const [error, setError] = useState<string | null>(null);
 
   const handleApplyFilters = () => {
+    if (startDate && endDate && startDate > endDate) {
+      setError("Start date cannot be after end date.");
+      return;
+    }
+    setError(null);
+    // Pass the selected filter values to the parent component
     onApply({
       startDate,
       endDate,
       wfhType,
       requestStatus,
-      wfhDuration, // Pass wfhDuration to the parent component
+      departments: [], // Assuming departments is not used here currently
+      workType: "", // Assuming workType is not used here currently
     });
   };
 
   return (
-    <div style={{ marginBottom: "20px", padding: "10px", border: "1px solid #ccc", borderRadius: "8px" }}>
-      <div style={{ display: 'flex', flexWrap: 'nowrap', gap: '15px', alignItems: 'center' }}>
-        
+    <div
+      style={{
+        marginBottom: "20px",
+        padding: "10px",
+        border: "1px solid #ccc",
+        borderRadius: "8px",
+      }}
+    >
+      <div
+        style={{
+          display: "flex",
+          flexWrap: "nowrap",
+          gap: "15px",
+          alignItems: "center",
+        }}
+      >
         {/* Start Date Picker */}
         <FilterDatePicker
           label="Select Start Date"
@@ -108,20 +129,6 @@ export const Filters: React.FC<FiltersProps> = ({ onApply }) => {
           </Select>
         </FormControl>
 
-        {/* WFH Duration Filter */}
-        <FormControl variant="outlined" sx={{ minWidth: 150 }}>
-          <InputLabel>WFH Duration</InputLabel>
-          <Select
-            value={wfhDuration}
-            onChange={(e) => setWfhDuration(e.target.value as string)}
-            label="WFH Duration"
-          >
-            <MenuItem value="full">Full</MenuItem>
-            <MenuItem value="am">AM</MenuItem>
-            <MenuItem value="pm">PM</MenuItem>
-          </Select>
-        </FormControl>
-
         {/* Request Status Filter */}
         <FormControl variant="outlined" sx={{ minWidth: 200 }}>
           <InputLabel>Request Status</InputLabel>
@@ -139,11 +146,30 @@ export const Filters: React.FC<FiltersProps> = ({ onApply }) => {
           </Select>
         </FormControl>
 
+        {/* Sort By Date */}
+        <FormControl variant="outlined" sx={{ minWidth: 120 }}>
+          <InputLabel>Sort by</InputLabel>
+          <Select
+            value={wfhType}
+            onChange={(e) => setSortByDate(e.target.value as "asc" | "desc")}
+            label="Sort By Date"
+          >
+            <MenuItem value="asc">Ascending</MenuItem>
+            <MenuItem value="desc">Descending</MenuItem>
+          </Select>
+        </FormControl>
+
         {/* Apply Button */}
-        <Button variant="contained" color="primary" onClick={handleApplyFilters} sx={{ height: 'fit-content' }}>
+        <Button
+          variant="contained"
+          color="primary"
+          onClick={handleApplyFilters}
+          sx={{ height: "fit-content" }}
+        >
           Apply
         </Button>
       </div>
+      {error && <div style={{ color: "red", marginTop: "10px" }}>{error}</div>}
     </div>
   );
 };

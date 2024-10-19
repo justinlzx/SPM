@@ -46,9 +46,9 @@ class ArrangementCreate(ArrangementBase):
         exclude=True,
         title="Datetime that the request was created",
     )
-    current_approval_status: SkipJsonSchema[str] = Field(
-        default="pending approval", exclude=True, title="Approval status of the request"
-    )
+    current_approval_status: Literal[
+        "pending approval", "pending withdrawal", "approved", "rejected", "cancelled", "withdrawn"
+    ] = Field(default="pending approval", exclude=True, title="Approval status of the request")
     is_recurring: Optional[bool] = Field(
         default=False, title="Flag to indicate if the request is recurring"
     )
@@ -205,4 +205,4 @@ class ManagerPendingRequests(BaseModel):
 
 
 class ManagerPendingRequestResponse(ManagerPendingRequests):
-    pass
+    pagination_meta: dict

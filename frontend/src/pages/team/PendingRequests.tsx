@@ -30,7 +30,7 @@ import CheckIcon from "@mui/icons-material/Check";
 import CloseIcon from "@mui/icons-material/Close";
 import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
-import { capitalize } from "../../utils/utils";
+import { Filters as FilterToolBar } from "../../components/Filters";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 
@@ -78,6 +78,17 @@ export const PendingRequests = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [filters, setFilters] = useState<{
+    startDate: Date | null;
+    endDate: Date | null;
+    wfhType: string;
+    requestStatus: string[];
+  }>({
+    startDate: null,
+    endDate: null,
+    wfhType: "",
+    requestStatus: [],
+  });
   const { user } = useContext(UserContext);
   const userId = user!.id;
 
@@ -177,6 +188,15 @@ export const PendingRequests = () => {
     }
   };
 
+  const handleFiltersChange = (filters: {
+    startDate: Date | null;
+    endDate: Date | null;
+    wfhType: string;
+    requestStatus: string[];
+  }) => {
+    setFilters(filters);
+  };
+
   return (
         <>
           <Search data={actionRequests} onSearchResult={setFilteredRequests} />
@@ -188,6 +208,15 @@ export const PendingRequests = () => {
           >
             Action Required
           </Typography>
+          <TextField
+            label="Search"
+            variant="outlined"
+            fullWidth
+            margin="normal"
+            value={searchTerm}
+            onChange={handleSearch}
+          />
+          <FilterToolBar onApply={handleFiltersChange} />
           <TableContainer
             component={Paper}
             sx={{ marginTop: 3, textAlign: "center" }}
