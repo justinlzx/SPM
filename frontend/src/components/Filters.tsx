@@ -51,7 +51,7 @@ interface FiltersProps {
     endDate: Date | null;
     wfhType: string;
     requestStatus: string[];
-    workType: string;
+    wfhDuration: string;
   }) => void;
 }
 
@@ -60,7 +60,12 @@ export const Filters: React.FC<FiltersProps> = ({ onApply }) => {
   const [endDate, setEndDate] = useState<Date | null>(null);
   const [wfhType, setWfhType] = useState<string>("");
   const [requestStatus, setRequestStatus] = useState<string[]>([]);
-  const [workType, setWorkType] = useState<string>(""); // State for workType
+  const [wfhDuration, setWfhDuration] = useState<string>(""); // Updated to wfhDuration
+  const [searchTerm, setSearchTerm] = useState<string>("");
+  
+  const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchTerm(e.target.value);
+  };
 
   const handleApplyFilters = () => {
     onApply({
@@ -68,7 +73,7 @@ export const Filters: React.FC<FiltersProps> = ({ onApply }) => {
       endDate,
       wfhType,
       requestStatus,
-      workType, // Pass workType to the parent component
+      wfhDuration, // Pass wfhDuration to the parent component
     });
   };
 
@@ -103,18 +108,17 @@ export const Filters: React.FC<FiltersProps> = ({ onApply }) => {
           </Select>
         </FormControl>
 
-        {/* Work Type Filter */}
+        {/* WFH Duration Filter */}
         <FormControl variant="outlined" sx={{ minWidth: 150 }}>
           <InputLabel>WFH Duration</InputLabel>
           <Select
-            value={workType}
-            onChange={(e) => setWorkType(e.target.value as string)}
-            label="Work Type"
+            value={wfhDuration}
+            onChange={(e) => setWfhDuration(e.target.value as string)}
+            label="WFH Duration"
           >
             <MenuItem value="full">Full</MenuItem>
             <MenuItem value="am">AM</MenuItem>
             <MenuItem value="pm">PM</MenuItem>
-
           </Select>
         </FormControl>
 

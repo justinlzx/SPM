@@ -71,18 +71,17 @@ export const MyWfhSchedulePage: React.FC = () => {
     endDate: Date | null;
     wfhType: string;
     requestStatus: string[];
-    workType: string; // workType filter added here
+    wfhDuration: string; 
   }) => {
     // Logic to apply the filters to your request data
     console.log("Applied Filters:", filters);
 
     const filteredRequests = requests.filter((request) => {
-      // Add filtering logic for each filter here
       if (filters.startDate && new Date(request.wfh_date) < filters.startDate) return false;
       if (filters.endDate && new Date(request.wfh_date) > filters.endDate) return false;
       if (filters.wfhType && request.wfh_type !== filters.wfhType) return false;
       if (filters.requestStatus.length > 0 && !filters.requestStatus.includes(request.approval_status.toString())) return false;
-      if (filters.workType && request.work_type !== filters.workType) return false; // Added workType filter
+
       return true;
     });
 
