@@ -170,6 +170,43 @@ def craft_email_content(
     return subject, content
 
 
+def craft_email_content_for_delegation(
+    employee: employee_models.Employee, counterpart_employee: employee_models.Employee, event: str
+):
+    """
+    Helper function to craft email content for delegation events.
+
+    :param employee: The employee receiving the email.
+    :param counterpart_employee: The counterpart involved in the delegation (either the delegator or delegatee).
+    :param event: The event type ('delegate' for manager, 'delegated_to' for delegatee).
+    :return: Tuple of (subject, content).
+    """
+    if event == "delegate":
+        subject = "[All-In-One] You have delegated approval responsibilities"
+        content = (
+            f"Dear {employee.staff_fname} {employee.staff_lname},\n\n"
+            f"You have successfully delegated your approval responsibilities to "
+            f"{counterpart_employee.staff_fname} {counterpart_employee.staff_lname}.\n\n"
+            f"Please note that this delegation will take effect immediately after acceptance, and any pending approvals "
+            f"will be managed by your delegate only upon their acceptance.\n\n"
+            f"This email is auto-generated. Please do not reply to this email. Thank you."
+        )
+    elif event == "delegated_to":
+        subject = "[All-In-One] Approval responsibilities delegated to you"
+        content = (
+            f"Dear {employee.staff_fname} {employee.staff_lname},\n\n"
+            f"{counterpart_employee.staff_fname} {counterpart_employee.staff_lname} has delegated their "
+            f"approval responsibilities to you.\n\n"
+            f"Please log in to the portal and ensure that you accept the delegation promptly. "
+            f"The delegation will only take effect after your acceptance. Please reach out if you have any questions.\n\n"
+            f"This email is auto-generated. Please do not reply to this email. Thank you."
+        )
+    else:
+        raise ValueError("Invalid event type for delegation email.")
+
+    return subject, content
+
+
 def craft_approval_email_content(
     employee: employee_models.Employee,
     arrangement: arrangement_schemas.ArrangementUpdate,

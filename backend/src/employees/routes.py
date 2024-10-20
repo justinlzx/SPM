@@ -6,15 +6,17 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import EmailStr
 from sqlalchemy.orm import Session
 
+from ..email.routes import send_email
+
 from .. import utils
 from ..database import get_db
 from ..employees.models import Employee
 from ..employees.schemas import EmployeeBase, EmployeePeerResponse, DelegateLogCreate
 from . import exceptions, models, schemas, services
 from ..arrangements import models as arrangement_models, services as arrangement_services
-from ..employees import models as employee_models
 from ..employees.models import DelegateLog, DelegationStatus
-
+from ..notifications.email_notifications import craft_email_content_for_delegation
+from ..employees import services as employee_services
 
 router = APIRouter()
 
@@ -104,7 +106,7 @@ def get_subordinates_by_manager_id(staff_id: int, db: Session = Depends(get_db))
 
 
 @router.put("/manager/delegate/{staff_id}", response_model=DelegateLogCreate)
-def delegate_manager(staff_id: int, delegate_manager_id: int, db: Session = Depends(get_db)):
+async def delegate_manager(staff_id: int, delegate_manager_id: int, db: Session = Depends(get_db)):
     """
     Delegates the approval responsibility of a manager to another staff member.
     Logs the delegation in `delegate_logs` but does not update pending approvals.
@@ -120,13 +122,13 @@ def delegate_manager(staff_id: int, delegate_manager_id: int, db: Session = Depe
     try:
         # Step 1: Check if either the staff_id or delegate_manager_id is already in `delegate_logs`
         existing_delegation = (
-            db.query(employee_models.DelegateLog)
+            db.query(DelegateLog)
             .filter(
-                (employee_models.DelegateLog.manager_id == staff_id)
-                | (employee_models.DelegateLog.delegate_manager_id == delegate_manager_id)
+                (DelegateLog.manager_id == staff_id)
+                | (DelegateLog.delegate_manager_id == delegate_manager_id)
             )
             .filter(
-                employee_models.DelegateLog.status_of_delegation.in_(
+                DelegateLog.status_of_delegation.in_(
                     [DelegationStatus.pending, DelegationStatus.accepted]
                 )
             )
@@ -140,18 +142,38 @@ def delegate_manager(staff_id: int, delegate_manager_id: int, db: Session = Depe
             )
 
         # Step 2: Log the delegation in the `delegate_logs` table
-        new_delegation = employee_models.DelegateLog(
+        new_delegation = DelegateLog(
             manager_id=staff_id,
             delegate_manager_id=delegate_manager_id,
             date_of_delegation=datetime.utcnow(),
-            status_of_delegation=employee_models.DelegationStatus.pending,  # Default to pending
+            status_of_delegation=DelegationStatus.pending,  # Default to pending
         )
 
         db.add(new_delegation)
         db.commit()
         db.refresh(new_delegation)
 
+        # Step 3: Fetch employee info for both manager and delegatee
+        manager_employee = employee_services.get_employee_by_id(db, staff_id)
+        delegatee_employee = employee_services.get_employee_by_id(db, delegate_manager_id)
+
+        # Step 4: Craft and send email notifications to both the manager and delegatee
+        # Prepare the email for the manager (staff_id)
+        manager_subject, manager_content = craft_email_content_for_delegation(
+            manager_employee, delegatee_employee, "delegate"
+        )
+        # Send email to manager
+        await send_email(manager_employee.email, manager_subject, manager_content)
+
+        # Prepare the email for the delegatee (delegate_manager_id)
+        delegatee_subject, delegatee_content = craft_email_content_for_delegation(
+            delegatee_employee, manager_employee, "delegated_to"
+        )
+        # Send email to delegatee
+        await send_email(delegatee_employee.email, delegatee_subject, delegatee_content)
+
         return new_delegation  # Returning the created delegation log
+
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
