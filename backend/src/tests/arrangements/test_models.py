@@ -1,7 +1,8 @@
 import pytest
-from src.arrangements.models import ArrangementLog, LatestArrangement, RecurringRequest
-from src.tests.test_utils import mock_db_session
+from src.arrangements.models import (ArrangementLog, LatestArrangement,
+                                     RecurringRequest)
 from src.employees.models import Employee
+from src.tests.test_utils import mock_db_session
 
 
 @pytest.fixture

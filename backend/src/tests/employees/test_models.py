@@ -1,9 +1,9 @@
+from datetime import datetime
 from unittest.mock import MagicMock
 
 import pytest
-from src.employees.models import Employee, DelegateLog, DelegationStatus
+from src.employees.models import DelegateLog, DelegationStatus, Employee
 from src.tests.test_utils import mock_db_session
-from datetime import datetime
 
 
 def test_create_employee(mock_db_session):
