@@ -105,7 +105,7 @@ class ArrangementCreateResponse(ArrangementCreateWithFile):
 
 
 class ArrangementUpdate(ArrangementBase):
-    action: Literal["approve", "reject", "withdraw", "cancel"] = Field(
+    action: Literal["approve", "reject", "withdraw", "allow withdraw", "cancel"] = Field(
         exclude=True, title="Action to be taken on the WFH request"
     )
     approving_officer: int = Field(exclude=True, title="Staff ID of the approving officer")

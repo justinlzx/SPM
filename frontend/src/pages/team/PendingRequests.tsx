@@ -46,7 +46,7 @@ export enum ApprovalStatus {
 }
 
 // Define types
-type TAction = "approve" | "reject" | "withdraw";
+type TAction = "approve" | "reject" | "allow withdraw";
 
 export type TWFHRequest = {
   staff_id: number;
@@ -126,8 +126,8 @@ export const PendingRequests = () => {
       formData.append("reason_description", reason_description);
       formData.append("approving_officer", userId?.toString() || "");
       
-      if (action === "withdraw") {
-        formData.append("current_approval_status", ApprovalStatus.PendingWithdrawal);
+      if (action === "allow withdraw") {
+        formData.append("current_approval_status", ApprovalStatus.Withdrawn);
       }
       // else if (action === "pending withdrawal") {
       //   formData.append("current_approval_status", ApprovalStatus.Withdrawn);
@@ -376,14 +376,14 @@ const EmployeeRow = ({ request, handleRequestAction }: TEmployeeRow) => {
                                 startIcon={<CheckIcon />}
                                 onClick={() =>
                                   handleRequestAction(
-                                    "withdraw",
+                                    "allow withdraw",
                                     arrangement_id,
                                     reason_description,
                                     approval_status
                                   )
                                 }
                               >
-                                Withdraw
+                                Allow Withdraw
                               </Button>
                               <Button
                                 size="small"
