@@ -115,7 +115,7 @@ export const WFHRequestTable: React.FC<TWFHRequestTableProps> = ({ requests, han
       formData.append("wfh_date", request.wfh_date);  
       formData.append("wfh_type", request.wfh_type.toLowerCase());  
       formData.append("reason_description", reason || "");  
-      formData.append("approval_status", "pending withdrawal"); 
+      formData.append("current_approval_status", "pending withdrawal"); 
       formData.append("approving_officer", approvingOfficer || "");  
   
       await axios.put(`${BACKEND_URL}/arrangements/${selectedArrangementId}/status`, formData);
