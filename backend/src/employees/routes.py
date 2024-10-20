@@ -7,7 +7,7 @@ from pydantic import EmailStr
 from sqlalchemy.orm import Session
 
 from ..email.routes import send_email
-
+import traceback
 from .. import utils
 from ..database import get_db
 from ..employees.models import Employee
@@ -175,7 +175,9 @@ async def delegate_manager(staff_id: int, delegate_manager_id: int, db: Session 
         return new_delegation  # Returning the created delegation log
 
     except Exception as e:
-        db.rollback()
+        db.rollback()  # Ensure that any DB operations are rolled back
+        print(f"An error occurred: {str(e)}")
+        traceback.print_exc()  # This will print the full stack trace for debugging
         raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
 
 
@@ -185,7 +187,7 @@ class DelegationApprovalStatus(Enum):
 
 
 @router.put("/manager/delegate/{staff_id}/status", response_model=DelegateLogCreate)
-def update_delegation_status(
+async def update_delegation_status(
     staff_id: int,
     status: DelegationApprovalStatus,
     db: Session = Depends(get_db),
@@ -208,7 +210,10 @@ def update_delegation_status(
         if not delegation_log:
             raise HTTPException(status_code=404, detail="Delegation log not found.")
 
-        # Update the status based on the provided status in the request
+        # Fetch manager and delegatee details for email notification
+        manager_employee = employee_services.get_employee_by_id(db, delegation_log.manager_id)
+        delegatee_employee = employee_services.get_employee_by_id(db, staff_id)
+
         if status == DelegationApprovalStatus.accept:
             delegation_log.status_of_delegation = DelegationStatus.accepted
 
@@ -223,18 +228,38 @@ def update_delegation_status(
                 .all()
             )
 
-            if not pending_arrangements:
-                raise HTTPException(status_code=404, detail="No pending arrangements found.")
-
-            # Update the approving officer to the delegate_manager_id
             for arrangement in pending_arrangements:
                 arrangement.delegate_approving_officer = delegation_log.delegate_manager_id
                 db.add(arrangement)
 
             db.commit()
 
+            # Send email to staff for approval
+            staff_subject, staff_content = craft_email_content_for_delegation(
+                manager_employee, delegatee_employee, "approved"
+            )
+            await send_email(manager_employee.email, staff_subject, staff_content)
+
+            # Send email to delegate for approval
+            delegate_subject, delegate_content = craft_email_content_for_delegation(
+                delegatee_employee, manager_employee, "approved_for_delegate"
+            )
+            await send_email(delegatee_employee.email, delegate_subject, delegate_content)
+
         elif status == DelegationApprovalStatus.reject:
             delegation_log.status_of_delegation = DelegationStatus.rejected
+
+            # Send email to staff for rejection
+            staff_subject, staff_content = craft_email_content_for_delegation(
+                manager_employee, delegatee_employee, "rejected"
+            )
+            await send_email(manager_employee.email, staff_subject, staff_content)
+
+            # Send email to delegate for rejection
+            delegate_subject, delegate_content = craft_email_content_for_delegation(
+                delegatee_employee, manager_employee, "rejected_for_delegate"
+            )
+            await send_email(delegatee_employee.email, delegate_subject, delegate_content)
 
         db.commit()
         db.refresh(delegation_log)
@@ -246,7 +271,7 @@ def update_delegation_status(
 
 
 @router.put("/manager/undelegate/{staff_id}", response_model=DelegateLogCreate)
-def undelegate_manager(staff_id: int, db: Session = Depends(get_db)):
+async def undelegate_manager(staff_id: int, db: Session = Depends(get_db)):
     """
     Undelegates the approval responsibility of a manager.
     This action can only be taken if the delegation status is 'approved'.
@@ -262,6 +287,12 @@ def undelegate_manager(staff_id: int, db: Session = Depends(get_db)):
 
         if not delegation_log:
             raise HTTPException(status_code=404, detail="Delegation log not found.")
+
+        # Fetch manager and delegatee details for email notification
+        manager_employee = employee_services.get_employee_by_id(db, delegation_log.manager_id)
+        delegatee_employee = employee_services.get_employee_by_id(
+            db, delegation_log.delegate_manager_id
+        )
 
         # Step 2: Check if the status of the delegation is 'approved'
         if delegation_log.status_of_delegation != DelegationStatus.accepted:
@@ -290,6 +321,18 @@ def undelegate_manager(staff_id: int, db: Session = Depends(get_db)):
         # Step 5: Commit the changes to the database
         db.commit()
         db.refresh(delegation_log)
+
+        # Send email to the manager informing them that the delegation has been withdrawn
+        manager_subject, manager_content = craft_email_content_for_delegation(
+            manager_employee, delegatee_employee, "withdrawn"
+        )
+        await send_email(manager_employee.email, manager_subject, manager_content)
+
+        # Send email to the delegatee informing them that the delegation has been withdrawn
+        delegatee_subject, delegatee_content = craft_email_content_for_delegation(
+            delegatee_employee, manager_employee, "withdrawn_for_delegate"
+        )
+        await send_email(delegatee_employee.email, delegatee_subject, delegatee_content)
 
         return delegation_log
 
