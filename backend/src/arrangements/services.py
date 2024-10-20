@@ -8,28 +8,21 @@ from fastapi import File, HTTPException
 from sqlalchemy.orm import Session
 from src.arrangements.utils import delete_file, upload_file
 from src.employees.crud import get_employee_by_staff_id
-from src.notifications.email_notifications import fetch_manager_info
 from src.employees.models import LatestArrangement
-
+from src.notifications.email_notifications import fetch_manager_info
 
 from .. import utils
 from ..employees import exceptions as employee_exceptions
 from ..employees import models as employee_models
 from ..employees import services as employee_services
-
 # from src.employees.schemas import EmployeeBase
 from ..logger import logger
 from . import crud, exceptions, models
 from .models import LatestArrangement
-from .schemas import (
-    ArrangementCreate,
-    ArrangementCreateResponse,
-    ArrangementCreateWithFile,
-    ArrangementResponse,
-    ArrangementUpdate,
-    ManagerPendingRequestResponse,
-    ManagerPendingRequests,
-)
+from .schemas import (ArrangementCreate, ArrangementCreateResponse,
+                      ArrangementCreateWithFile, ArrangementResponse,
+                      ArrangementUpdate, ManagerPendingRequestResponse,
+                      ManagerPendingRequests)
 from .utils import create_presigned_url
 
 STATUS = {
@@ -41,9 +34,8 @@ STATUS = {
 
 
 def get_approving_officer(arrangement: LatestArrangement):
-    """
-    Returns the delegate approving officer if present, otherwise the original approving officer.
-    """
+    """Returns the delegate approving officer if present, otherwise the original approving
+    officer."""
     if arrangement.delegate_approving_officer:
         return arrangement.delegate_approving_officer_info
     return arrangement.approving_officer_info
@@ -53,7 +45,7 @@ def get_arrangement_by_id(db: Session, arrangement_id: int) -> ArrangementRespon
     arrangement: LatestArrangement = crud.get_arrangement_by_id(db, arrangement_id)
 
     if not arrangement:
-        raise exceptions.ArrangementNotFoundError(arrangement_id)
+        raise exceptions.ArrangementNotFoundException(arrangement_id)
 
     arrangements_schema: ArrangementResponse = utils.convert_model_to_pydantic_schema(
         arrangement, ArrangementResponse
@@ -69,8 +61,8 @@ def get_personal_arrangements_by_filter(
     arrangements: List[models.LatestArrangement] = crud.get_arrangements_by_filter(
         db, staff_id, current_approval_status
     )
-    arrangements_schema: List[ArrangementResponse] = (
-        utils.convert_model_to_pydantic_schema(arrangements, ArrangementResponse)
+    arrangements_schema: List[ArrangementResponse] = utils.convert_model_to_pydantic_schema(
+        arrangements, ArrangementResponse
     )
 
     return arrangements_schema
@@ -96,9 +88,7 @@ def get_subordinates_arrangements(
     if not employees_under_manager:
         raise employee_exceptions.ManagerWithIDNotFoundException(manager_id)
 
-    employees_under_manager_ids = [
-        employee.staff_id for employee in employees_under_manager
-    ]
+    employees_under_manager_ids = [employee.staff_id for employee in employees_under_manager]
 
     arrangements = crud.get_arrangements_by_staff_ids(
         db,
@@ -110,8 +100,8 @@ def get_subordinates_arrangements(
         end_date,
     )
 
-    arrangements_schema: List[ArrangementCreateResponse] = (
-        utils.convert_model_to_pydantic_schema(arrangements, ArrangementCreateResponse)
+    arrangements_schema: List[ArrangementCreateResponse] = utils.convert_model_to_pydantic_schema(
+        arrangements, ArrangementCreateResponse
     )
 
     # get presigned url for each supporting document in each arrangement
@@ -167,9 +157,7 @@ def group_arrangements_by_employee(
     result = []
     for _, val in arrangements_dict.items():
         result.append(
-            ManagerPendingRequests(
-                employee=val[0].requester_info, pending_arrangements=val
-            )
+            ManagerPendingRequests(employee=val[0].requester_info, pending_arrangements=val)
         )
 
     return result
@@ -183,30 +171,26 @@ def get_team_arrangements(
 
     # Get arrangements of peer employees
     # TODO: Exception handling and testing
-    peer_employees: List[employee_models.Employee] = (
-        employee_services.get_peers_by_staff_id(db, staff_id)
+    peer_employees: List[employee_models.Employee] = employee_services.get_peers_by_staff_id(
+        db, staff_id
     )
-    peer_arrangements: List[models.LatestArrangement] = (
-        crud.get_arrangements_by_staff_ids(
-            db, [peer.staff_id for peer in peer_employees], current_approval_status
-        )
+    peer_arrangements: List[models.LatestArrangement] = crud.get_arrangements_by_staff_ids(
+        db, [peer.staff_id for peer in peer_employees], current_approval_status
     )
-    peer_arrangements: List[ArrangementResponse] = (
-        utils.convert_model_to_pydantic_schema(peer_arrangements, ArrangementResponse)
+    peer_arrangements: List[ArrangementResponse] = utils.convert_model_to_pydantic_schema(
+        peer_arrangements, ArrangementResponse
     )
 
     arrangements["peers"] = peer_arrangements
 
     try:
         # If employee is manager, get arrangements of subordinates
-        subordinates_arrangements: List[models.LatestArrangement] = (
-            get_subordinates_arrangements(db, staff_id, current_approval_status)
+        subordinates_arrangements: List[models.LatestArrangement] = get_subordinates_arrangements(
+            db, staff_id, current_approval_status
         )
 
         subordinates_arrangements: List[ArrangementResponse] = (
-            utils.convert_model_to_pydantic_schema(
-                subordinates_arrangements, ArrangementResponse
-            )
+            utils.convert_model_to_pydantic_schema(subordinates_arrangements, ArrangementResponse)
         )
         arrangements["subordinates"] = subordinates_arrangements
     except employee_exceptions.ManagerWithIDNotFoundException:
@@ -270,11 +254,9 @@ async def create_arrangements_from_request(
         arrangements: List[ArrangementCreateWithFile] = []
 
         if wfh_request.is_recurring:
-            batch: models.RecurringRequest = crud.create_recurring_request(
-                db, wfh_request
-            )
-            arrangements: List[ArrangementCreateWithFile] = (
-                expand_recurring_arrangement(wfh_request, batch.batch_id)
+            batch: models.RecurringRequest = crud.create_recurring_request(db, wfh_request)
+            arrangements: List[ArrangementCreateWithFile] = expand_recurring_arrangement(
+                wfh_request, batch.batch_id
             )
         else:
             arrangements.append(wfh_request)
@@ -290,9 +272,7 @@ async def create_arrangements_from_request(
 
         # Convert to Pydantic schema
         created_arrangements_schema: List[ArrangementCreateResponse] = (
-            utils.convert_model_to_pydantic_schema(
-                created_arrangements, ArrangementCreateResponse
-            )
+            utils.convert_model_to_pydantic_schema(created_arrangements, ArrangementCreateResponse)
         )
 
         return created_arrangements_schema
@@ -421,7 +401,7 @@ def update_arrangement_approval_status(
     )
 
     if not arrangement:
-        raise exceptions.ArrangementNotFoundError(wfh_update.arrangement_id)
+        raise exceptions.ArrangementNotFoundException(wfh_update.arrangement_id)
 
     # TODO: Add logic for raising ArrangementActionNotAllowed exceptions based on the current status
     # For example:
@@ -438,8 +418,8 @@ def update_arrangement_approval_status(
     arrangement.reason_description = wfh_update.reason_description
     # Update the arrangement in the database
 
-    updated_arrangement: models.LatestArrangement = (
-        crud.update_arrangement_approval_status(db, arrangement, wfh_update.action)
+    updated_arrangement: models.LatestArrangement = crud.update_arrangement_approval_status(
+        db, arrangement, wfh_update.action
     )
 
     # Create and return the ArrangementUpdate schema
