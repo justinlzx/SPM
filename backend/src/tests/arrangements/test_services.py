@@ -1,45 +1,115 @@
 from datetime import datetime
-from unittest.mock import MagicMock, patch, ANY
-from fastapi import HTTPException
+from unittest.mock import ANY, MagicMock, patch
+
+import boto3
+import httpx
 import pytest
+from fastapi import HTTPException
+from fastapi.testclient import TestClient
+from moto import mock_aws
+from src.app import app
+from src.arrangements import exceptions as arrangement_exceptions
+from src.arrangements import models as arrangement_models
+from src.arrangements.schemas import (
+    ArrangementCreateResponse,
+    ArrangementCreateWithFile,
+    ArrangementResponse,
+    ArrangementUpdate,
+    ManagerPendingRequestResponse,
+    ManagerPendingRequests,
+)
 from src.arrangements.services import (
+    STATUS,
+    create_arrangements_from_request,
+    expand_recurring_arrangement,
+    get_approving_officer,
     get_arrangement_by_id,
     get_personal_arrangements_by_filter,
     get_subordinates_arrangements,
     get_team_arrangements,
-    create_arrangements_from_request,
-    expand_recurring_arrangement,
     update_arrangement_approval_status,
 )
-from src.arrangements import models as arrangement_models
-from src.arrangements import exceptions as arrangement_exceptions
-from src.tests.test_utils import mock_db_session
-from src.arrangements.schemas import ArrangementCreateWithFile, ArrangementUpdate
-from fastapi.testclient import TestClient
-from src.app import app
-from moto import mock_aws
-from src.employees.models import Employee
-from src.tests.test_utils import mock_db_session
-import httpx
 from src.employees import exceptions as employee_exceptions
-from src.arrangements.services import STATUS
+from src.employees.models import Employee
+from src.employees.schemas import EmployeeBase
+from src.tests.test_utils import mock_db_session
 
 client = TestClient(app)
 
 
 @pytest.fixture
+def mock_db_arrangement(mock_arrangement_data):
+    class MockDBArrangement:
+        def __init__(self, data):
+            self.__dict__.update(data)
+
+    return MockDBArrangement(mock_arrangement_data)
+
+
+@pytest.fixture
 def mock_employee():
-    return Employee(
-        staff_id=1,
-        staff_fname="Jane",
+    return EmployeeBase(
+        staff_id=123,
+        staff_fname="John",
         staff_lname="Doe",
-        email="jane.doe@test.com",
+        email="john.doe@example.com",
         dept="IT",
-        position="Manager",
+        position="Developer",
         country="USA",
-        role=2,
-        reporting_manager=None,
+        role=1,
+        reporting_manager=456,
     )
+
+
+@pytest.fixture
+def mock_s3_client():
+    with patch("boto3.client") as mock_client:
+        s3_client = MagicMock()
+        mock_client.return_value = s3_client
+        yield s3_client
+
+
+@pytest.fixture
+def mock_create_presigned_url():
+    def _create_presigned_url(file_path):
+        return f"https://example.com/presigned-url/{file_path}"
+
+    return _create_presigned_url
+
+
+@pytest.fixture
+def mock_arrangement_data():
+    return {
+        "arrangement_id": 1,
+        "requester_staff_id": 123,
+        "wfh_date": "2024-10-12",
+        "wfh_type": "full",
+        "approving_officer": 456,
+        "reason_description": "Work from home",
+        "update_datetime": datetime.now(),
+        "current_approval_status": "pending",
+        "is_recurring": False,
+        "recurring_end_date": None,
+        "recurring_frequency_number": None,
+        "recurring_frequency_unit": None,
+        "recurring_occurrences": None,
+        "batch_id": None,
+        "supporting_doc_1": "test_file_1.pdf",
+        "supporting_doc_2": None,
+        "supporting_doc_3": None,
+        "requester_info": EmployeeBase(
+            staff_id=123,
+            staff_fname="John",
+            staff_lname="Doe",
+            email="john.doe@example.com",
+            dept="IT",
+            position="Developer",
+            country="USA",
+            role=1,
+            reporting_manager=456,
+        ),
+        "latest_log_id": 1,
+    }
 
 
 def test_get_arrangement_by_id_success(mock_db_session):
@@ -75,31 +145,70 @@ def test_get_personal_arrangements_by_filter_empty(mock_db_session):
         assert result == []
 
 
-def test_get_subordinates_arrangements_success(mock_db_session):
-    mock_arrangements = [MagicMock(spec=arrangement_models.LatestArrangement)]
+def test_get_subordinates_arrangements_success(
+    mock_db_session, mock_s3_client, mock_create_presigned_url, mock_arrangement_data, mock_employee
+):
+    mock_arrangement = ArrangementCreateResponse(**mock_arrangement_data)
+    mock_arrangements = [mock_arrangement]
+
     with patch(
-        "src.arrangements.crud.get_arrangements_by_staff_ids", return_value=mock_arrangements
+        "src.employees.services.get_subordinates_by_manager_id", return_value=[mock_employee]
     ):
         with patch(
-            "src.utils.convert_model_to_pydantic_schema", return_value=["arrangement_schema"]
+            "src.arrangements.crud.get_arrangements_by_staff_ids", return_value=mock_arrangements
         ):
-            result = get_subordinates_arrangements(
-                mock_db_session, manager_id=1, current_approval_status=[]
-            )
-            assert result == ["arrangement_schema"]
+            with patch(
+                "src.arrangements.services.create_presigned_url",
+                side_effect=mock_create_presigned_url,
+            ):
+                result = get_subordinates_arrangements(
+                    mock_db_session, manager_id=1, current_approval_status=[]
+                )
+
+    assert isinstance(result, list)
+    assert len(result) == 1
+    assert isinstance(result[0], ManagerPendingRequests)
+    assert result[0].employee.staff_id == 123
+    assert len(result[0].pending_arrangements) == 1
+    assert (
+        result[0].pending_arrangements[0].supporting_doc_1
+        == "https://example.com/presigned-url/test_file_1.pdf"
+    )
 
 
-def test_get_team_arrangements_success(mock_db_session):
-    mock_arrangements = [MagicMock(spec=arrangement_models.LatestArrangement)]
-    with patch(
-        "src.arrangements.crud.get_arrangements_by_staff_ids", return_value=mock_arrangements
-    ):
+def test_get_team_arrangements_success(
+    mock_db_session, mock_s3_client, mock_create_presigned_url, mock_db_arrangement, mock_employee
+):
+    mock_arrangements = [mock_db_arrangement]
+
+    with patch("src.employees.services.get_peers_by_staff_id", return_value=[mock_employee]):
         with patch(
-            "src.utils.convert_model_to_pydantic_schema", return_value=["arrangement_schema"]
+            "src.arrangements.crud.get_arrangements_by_staff_ids", return_value=mock_arrangements
         ):
-            result = get_team_arrangements(mock_db_session, staff_id=1, current_approval_status=[])
-            assert isinstance(result, dict)
-            assert "peers" in result
+            with patch(
+                "src.employees.services.get_subordinates_by_manager_id",
+                return_value=[mock_employee],
+            ):
+                with patch(
+                    "src.arrangements.services.create_presigned_url",
+                    side_effect=mock_create_presigned_url,
+                ):
+                    result = get_team_arrangements(
+                        mock_db_session, staff_id=1, current_approval_status=[]
+                    )
+
+    assert isinstance(result, dict)
+    assert "peers" in result
+    assert "subordinates" in result
+    assert len(result["peers"]) == 1
+    assert len(result["subordinates"]) == 1
+    assert (
+        result["peers"][0].supporting_doc_1 == "https://example.com/presigned-url/test_file_1.pdf"
+    )
+    assert (
+        result["subordinates"][0].supporting_doc_1
+        == "https://example.com/presigned-url/test_file_1.pdf"
+    )
 
 
 @pytest.mark.asyncio
@@ -369,34 +478,51 @@ async def test_create_arrangements_from_request_file_upload_failure(mock_db_sess
 
 def test_get_subordinates_arrangements_no_subordinates(mock_db_session):
     with patch("src.employees.services.get_subordinates_by_manager_id", return_value=[]):
-        with pytest.raises(employee_exceptions.ManagerNotFoundException):
+        with pytest.raises(employee_exceptions.ManagerWithIDNotFoundException):
             get_subordinates_arrangements(mock_db_session, manager_id=1, current_approval_status=[])
 
 
-def test_get_team_arrangements_employee_is_manager(mock_db_session):
-    mock_peer_arrangements = [MagicMock(spec=arrangement_models.LatestArrangement)]
-    mock_subordinate_arrangements = [MagicMock(spec=arrangement_models.LatestArrangement)]
+def test_get_team_arrangements_employee_is_manager(
+    mock_db_session, mock_s3_client, mock_create_presigned_url, mock_db_arrangement, mock_employee
+):
+    mock_db_arrangement.supporting_doc_2 = "test_file_2.pdf"
+    mock_arrangements = [mock_db_arrangement]
 
-    with patch(
-        "src.employees.services.get_peers_by_staff_id", return_value=[MagicMock(spec=Employee)]
-    ):
+    with patch("src.employees.services.get_peers_by_staff_id", return_value=[mock_employee]):
         with patch(
-            "src.arrangements.crud.get_arrangements_by_staff_ids",
-            side_effect=[mock_peer_arrangements, mock_subordinate_arrangements],
+            "src.arrangements.crud.get_arrangements_by_staff_ids", return_value=mock_arrangements
         ):
-            with patch("src.utils.convert_model_to_pydantic_schema", return_value=["schema"]):
+            with patch(
+                "src.employees.services.get_subordinates_by_manager_id",
+                return_value=[mock_employee],
+            ):
                 with patch(
-                    "src.employees.services.get_subordinates_by_manager_id",
-                    return_value=[MagicMock(spec=Employee)],
+                    "src.arrangements.services.create_presigned_url",
+                    side_effect=mock_create_presigned_url,
                 ):
                     result = get_team_arrangements(
                         mock_db_session, staff_id=1, current_approval_status=[]
                     )
-                    assert isinstance(result, dict)
-                    assert "peers" in result
-                    assert "subordinates" in result
-                    assert result["peers"] == ["schema"]
-                    assert result["subordinates"] == ["schema"]
+
+    assert isinstance(result, dict)
+    assert "peers" in result
+    assert "subordinates" in result
+    assert len(result["peers"]) == 1
+    assert len(result["subordinates"]) == 1
+    assert (
+        result["peers"][0].supporting_doc_1 == "https://example.com/presigned-url/test_file_1.pdf"
+    )
+    assert (
+        result["peers"][0].supporting_doc_2 == "https://example.com/presigned-url/test_file_2.pdf"
+    )
+    assert (
+        result["subordinates"][0].supporting_doc_1
+        == "https://example.com/presigned-url/test_file_1.pdf"
+    )
+    assert (
+        result["subordinates"][0].supporting_doc_2
+        == "https://example.com/presigned-url/test_file_2.pdf"
+    )
 
 
 @pytest.mark.parametrize(
@@ -489,7 +615,7 @@ def test_get_subordinates_arrangements_manager_not_found(mock_db_session):
         "src.employees.services.get_subordinates_by_manager_id",
         return_value=[],
     ):
-        with pytest.raises(employee_exceptions.ManagerNotFoundException):
+        with pytest.raises(employee_exceptions.ManagerWithIDNotFoundException):
             get_subordinates_arrangements(mock_db_session, manager_id=1, current_approval_status=[])
 
 
@@ -653,3 +779,31 @@ def test_get_team_arrangements_no_peers_or_subordinates(mock_db_session):
                 assert isinstance(result, dict)
                 assert result.get("peers", []) == []
                 assert result.get("subordinates", []) == []
+
+
+def test_returns_delegate_approving_officer_info():
+    # Arrange: Mock an arrangement with a delegate approving officer
+    arrangement = MagicMock()
+    arrangement.delegate_approving_officer = True
+    arrangement.delegate_approving_officer_info = "Delegate Officer Info"
+    arrangement.approving_officer_info = "Original Officer Info"
+
+    # Act: Call the function with the mocked arrangement
+    result = get_approving_officer(arrangement)
+
+    # Assert: Check if the delegate approving officer info is returned
+    assert result == "Delegate Officer Info"
+
+
+def test_returns_original_approving_officer_info():
+    # Arrange: Mock an arrangement without a delegate approving officer
+    arrangement = MagicMock()
+    arrangement.delegate_approving_officer = False  # No delegate
+    arrangement.delegate_approving_officer_info = None
+    arrangement.approving_officer_info = "Original Officer Info"
+
+    # Act: Call the function with the mocked arrangement
+    result = get_approving_officer(arrangement)
+
+    # Assert: Check if the original approving officer info is returned
+    assert result == "Original Officer Info"

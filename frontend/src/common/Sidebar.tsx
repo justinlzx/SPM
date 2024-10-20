@@ -73,7 +73,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   backgroundColor: location.pathname === item.route ? "navy" : "#e0e0e0",
                 },
               }}
+              data-cy={item.text.toLowerCase().replace(/\s+/g, '-')} // Assign data-cy for all items dynamically
               onClick={() => handleButtonClick(item.route)}
+
             >
               <ListItemIcon
                 sx={{

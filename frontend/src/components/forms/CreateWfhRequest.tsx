@@ -1,9 +1,9 @@
-import React, { useContext, useState } from 'react';
-import { UserContext } from '../../context/UserContextProvider';
-import { useNavigate } from 'react-router-dom';
-import { Formik, Form, Field, ErrorMessage } from 'formik';
-import { addDays, addWeeks, addMonths, isAfter, isWeekend } from 'date-fns';
-import { SnackBarComponent, AlertStatus } from '../../common/SnackBar';
+import React, { useContext, useState } from "react";
+import { UserContext } from "../../context/UserContextProvider";
+import { useNavigate } from "react-router-dom";
+import { Formik, Form, Field, ErrorMessage } from "formik";
+import { addDays, addWeeks, addMonths, isAfter, isWeekend } from "date-fns";
+import { SnackBarComponent, AlertStatus } from "../../common/SnackBar";
 import {
   Box,
   Container,
@@ -189,32 +189,37 @@ export const CreateWfhRequest: React.FC = () => {
       form.append("supporting_docs", file);
     });
 
-    await axios.post(`${BACKEND_URL}/arrangements/request`, form, {
-      headers: {
-        "Content-Type": "multipart/form-data",
-      },
-    });
-    setAlertStatus(AlertStatus.Success);
-    setSnackbarMessage("Your request was successfully submitted!");
-    setShowSnackbar(true);
-
-    // Clear the form after submission
-    resetForm();
-  } catch (error) {
-    console.error("Error submitting the WFH arrangement:", error);
-    setAlertStatus(AlertStatus.Error);
-    setSnackbarMessage("An error occurred while submitting your request.");
-    setShowSnackbar(true);
-  } finally {
-    setLoading(false);
-  }
-};
+      await axios.post(`${BACKEND_URL}/arrangements/request`, form, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
+      setAlertStatus(AlertStatus.Success);
+      setSnackbarMessage("Your request was successfully submitted!");
+      setShowSnackbar(true);
+      setSupportingDocs([]);
+      // Clear the form after submission
+      resetForm();
+    } catch (error) {
+      console.error("Error submitting the WFH arrangement:", error);
+      setAlertStatus(AlertStatus.Error);
+      setSnackbarMessage("An error occurred while submitting your request.");
+      setShowSnackbar(true);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Yup form validation schema
   const validationSchema = Yup.object().shape({
-    reason: Yup.string().required('Reason is required'),
-    startDate: Yup.date().required('Start date is required').min(addDays(new Date(), 1), 'Start date must be at least 1 day from today'),
-    wfhType: Yup.string().required('You must select AM, PM, or Full-day'),
+    reason: Yup.string().required("Reason is required"),
+    startDate: Yup.date()
+      .required("Start date is required")
+      .min(
+        addDays(new Date(), 1),
+        "Start date must be at least 1 day from today"
+      ),
+    wfhType: Yup.string().required("You must select AM, PM, or Full-day"),
     endDate: Yup.date()
       .nullable()
       .test(
@@ -299,13 +304,13 @@ export const CreateWfhRequest: React.FC = () => {
               <Field
                 name="reason"
                 as="textarea"
-                fullWidth
+                fullwidth="true"
                 required
                 disabled={loading}
                 className="border border-gray-300 rounded p-2 w-full"
               />
               <FormHelperText error>
-                <ErrorMessage name="reason" />
+                <ErrorMessage data-cy="reason-error" name="reason" />
               </FormHelperText>
             </FormControl>
 
@@ -314,6 +319,7 @@ export const CreateWfhRequest: React.FC = () => {
               <Typography variant="subtitle1">WFH Type</Typography>
               <Select
                 name="wfhType"
+                data-cy="wfhType"
                 value={values.wfhType}
                 onChange={(e) => setFieldValue("wfhType", e.target.value)}
                 fullWidth
@@ -336,6 +342,7 @@ export const CreateWfhRequest: React.FC = () => {
               <Typography variant="subtitle1">Schedule Type</Typography>
               <Select
                 name="scheduleType"
+                data-cy="scheduleType"
                 value={scheduleType}
                 onChange={(e) =>
                   setScheduleType(e.target.value as "adhoc" | "recurring")
@@ -356,9 +363,11 @@ export const CreateWfhRequest: React.FC = () => {
                   selected={values.startDate}
                   onChange={(date) => setFieldValue("startDate", date)}
                   dateFormat="dd/MM/yyyy"
-                  customInput={<TextField fullWidth />}
+                  customInput={
+                    <TextField data-cy="start-datepicker" fullWidth />
+                  }
                   required
-                  minDate={addDays(new Date(), 1)}  // Disable today and only allow future dates
+                  minDate={addDays(new Date(), 1)} // Disable today and only allow future dates
                   disabled={loading}
                 />
 
@@ -376,6 +385,7 @@ export const CreateWfhRequest: React.FC = () => {
                 Upload Supporting Documents
               </Typography>
               <DragAndDrop
+                files={supportingDocs}
                 maxFileSize={5 * 1000 * 1000}
                 maxFiles={3}
                 multiple={true}
@@ -388,6 +398,7 @@ export const CreateWfhRequest: React.FC = () => {
             {/* Submit Button */}
             <Box sx={{ display: "flex", justifyContent: "flex-end", mt: 4 }}>
               <Button
+                data-cy="cancel"
                 variant="outlined"
                 color="primary"
                 onClick={() => navigate(-1)}
@@ -398,6 +409,7 @@ export const CreateWfhRequest: React.FC = () => {
               <Button
                 type="submit"
                 variant="contained"
+                data-cy="submit-request"
                 color="primary"
                 disabled={loading}
               >

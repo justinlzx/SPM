@@ -1,5 +1,9 @@
-from sqlalchemy import CheckConstraint, Column, ForeignKey, Integer, String
+from sqlalchemy import CheckConstraint, Column, ForeignKey, Integer, String, DateTime, Enum
 from sqlalchemy.orm import relationship
+import enum
+from datetime import datetime
+from src.arrangements.models import LatestArrangement
+
 
 from ..database import Base
 
@@ -46,6 +50,54 @@ class Employee(Base):
     )
 
 
+class DelegationStatus(enum.Enum):
+    pending = "pending"
+    accepted = "accepted"
+    rejected = "rejected"
+
+
+class DelegateLog(Base):
+    __tablename__ = "delegate_logs"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    manager_id = Column(Integer, ForeignKey("employees.staff_id"), nullable=False)
+    delegate_manager_id = Column(Integer, ForeignKey("employees.staff_id"), nullable=False)
+    update_datetime = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    date_of_delegation = Column(DateTime, default=datetime.utcnow, nullable=False)
+    status_of_delegation = Column(
+        Enum(DelegationStatus), nullable=False, default=DelegationStatus.pending
+    )
+    description = Column(String(length=255), nullable=True)
+
+    # Relationships to the Employee model
+    manager = relationship(
+        "Employee",
+        foreign_keys=[manager_id],
+        back_populates="delegations_as_manager",
+        lazy="select",
+    )
+    delegator = relationship(
+        "Employee",
+        foreign_keys=[delegate_manager_id],
+        back_populates="delegations_as_delegator",
+        lazy="select",
+    )
+
+
+# Add the relationships to the Employee class
+Employee.delegations_as_manager = relationship(
+    "DelegateLog",
+    foreign_keys=[DelegateLog.manager_id],
+    back_populates="manager",
+    lazy="select",
+)
+
+Employee.delegations_as_delegator = relationship(
+    "DelegateLog",
+    foreign_keys=[DelegateLog.delegate_manager_id],
+    back_populates="delegator",
+    lazy="select",
+)
 # if __name__ == "__main__":
 
 #     session = Session(bind=engine)
