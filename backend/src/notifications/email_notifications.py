@@ -171,6 +171,107 @@ def craft_email_content(
     return subject, content
 
 
+def craft_approval_email_content(
+    employee: employee_models.Employee,
+    arrangement: arrangement_schemas.ArrangementUpdate,
+    is_manager: bool = False,
+    manager: employee_models.Employee = None,
+):
+    """Helper function to format email content for WFH request approval."""
+    formatted_details = (
+        f"Request ID: {arrangement.arrangement_id}\n"
+        f"WFH Date: {arrangement.wfh_date}\n"
+        f"Type: {arrangement.wfh_type}\n"
+        f"Reason for WFH Request: {arrangement.reason_description}\n"
+        f"Batch ID: {arrangement.batch_id}\n"
+        f"Updated: {arrangement.update_datetime}\n"
+        # f"Approval Status: {getattr(arrangement, 'current_approval_status', 'Approved')}\n"
+        f"Approval Status: Approved\n"
+        # f"Approval Reason: {getattr(arrangement, 'status_reason', reason)}\n"
+        f"Approval Reason: {arrangement.reason_description}\n"
+    )
+
+    if is_manager and manager:
+        subject = "[All-In-One] You Have Approved a WFH Request"
+        content = (
+            f"Dear {manager.staff_fname} {manager.staff_lname},\n\n"
+            f"You have successfully approved a WFH request for {employee.staff_fname} {employee.staff_lname} "
+            f"with the following details:\n\n"
+            f"{formatted_details}\n\n"
+            f"This email is auto-generated. Please do not reply to this email. Thank you."
+        )
+    else:
+        subject = "[All-In-One] Your WFH Request Has Been Approved"
+        content = (
+            f"Dear {employee.staff_fname} {employee.staff_lname},\n\n"
+            f"Your WFH request has been approved with the following details:\n\n"
+            f"{formatted_details}\n\n"
+            f"This email is auto-generated. Please do not reply to this email. Thank you."
+        )
+
+    return subject, content
+
+
+def craft_rejection_email_content(
+    employee: employee_models.Employee,
+    arrangement: arrangement_schemas.ArrangementCreateResponse,
+    is_manager: bool = False,
+    manager: employee_models.Employee = None,
+):
+    """Helper function to format email content for WFH request rejection."""
+    formatted_details = (
+        f"Request ID: {arrangement.arrangement_id}\n"
+        f"WFH Date: {arrangement.wfh_date}\n"
+        f"Type: {arrangement.wfh_type}\n"
+        f"Reason for WFH Request: {arrangement.reason_description}\n"
+        f"Batch ID: {arrangement.batch_id}\n"
+        f"Updated: {arrangement.update_datetime}\n"
+        f"Rejection Status: {getattr(arrangement, 'current_approval_status', 'Rejected')}\n"
+        f"Rejection Reason: {arrangement.status_reason}\n"
+    )
+
+    if is_manager and manager:
+        subject = "[All-In-One] You Have Rejected a WFH Request"
+        content = (
+            f"Dear {manager.staff_fname} {manager.staff_lname},\n\n"
+            f"You have rejected a WFH request for {employee.staff_fname} {employee.staff_lname} "
+            f"with the following details:\n\n"
+            f"{formatted_details}\n\n"
+            f"This email is auto-generated. Please do not reply to this email. Thank you."
+        )
+    else:
+        subject = "[All-In-One] Your WFH Request Has Been Rejected"
+        content = (
+            f"Dear {employee.staff_fname} {employee.staff_lname},\n\n"
+            f"Your WFH request has been rejected with the following details:\n\n"
+            f"{formatted_details}\n\n"
+            f"This email is auto-generated. Please do not reply to this email. Thank you."
+        )
+
+    return subject, content
+
+
+async def send_email(to_email: str, subject: str, content: str):
+    """Sends an email by making a POST request to the /email/sendemail route."""
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                f"{BASE_URL}/email/sendemail",  # Use the base URL from environment variables
+                data={"to_email": to_email, "subject": subject, "content": content},
+            )
+            # Check if the response is successful
+            if response.status_code != 200:
+                raise HTTPException(status_code=response.status_code, detail=response.text)
+
+            return response.json()
+
+    except httpx.RequestError as exc:
+        raise HTTPException(
+            status_code=500,
+            detail=f"An error occurred while sending the email: {str(exc)}",
+        )
+
+
 def craft_email_content_for_delegation(
     employee: employee_models.Employee, counterpart_employee: employee_models.Employee, event: str
 ):
@@ -297,104 +398,3 @@ def craft_email_content_for_delegation(
         raise ValueError("Invalid event type for delegation email.")
 
     return subject, content
-
-
-def craft_approval_email_content(
-    employee: employee_models.Employee,
-    arrangement: arrangement_schemas.ArrangementUpdate,
-    is_manager: bool = False,
-    manager: employee_models.Employee = None,
-):
-    """Helper function to format email content for WFH request approval."""
-    formatted_details = (
-        f"Request ID: {arrangement.arrangement_id}\n"
-        f"WFH Date: {arrangement.wfh_date}\n"
-        f"Type: {arrangement.wfh_type}\n"
-        f"Reason for WFH Request: {arrangement.reason_description}\n"
-        f"Batch ID: {arrangement.batch_id}\n"
-        f"Updated: {arrangement.update_datetime}\n"
-        # f"Approval Status: {getattr(arrangement, 'current_approval_status', 'Approved')}\n"
-        f"Approval Status: Approved\n"
-        # f"Approval Reason: {getattr(arrangement, 'status_reason', reason)}\n"
-        f"Approval Reason: {arrangement.reason_description}\n"
-    )
-
-    if is_manager and manager:
-        subject = "[All-In-One] You Have Approved a WFH Request"
-        content = (
-            f"Dear {manager.staff_fname} {manager.staff_lname},\n\n"
-            f"You have successfully approved a WFH request for {employee.staff_fname} {employee.staff_lname} "
-            f"with the following details:\n\n"
-            f"{formatted_details}\n\n"
-            f"This email is auto-generated. Please do not reply to this email. Thank you."
-        )
-    else:
-        subject = "[All-In-One] Your WFH Request Has Been Approved"
-        content = (
-            f"Dear {employee.staff_fname} {employee.staff_lname},\n\n"
-            f"Your WFH request has been approved with the following details:\n\n"
-            f"{formatted_details}\n\n"
-            f"This email is auto-generated. Please do not reply to this email. Thank you."
-        )
-
-    return subject, content
-
-
-def craft_rejection_email_content(
-    employee: employee_models.Employee,
-    arrangement: arrangement_schemas.ArrangementCreateResponse,
-    is_manager: bool = False,
-    manager: employee_models.Employee = None,
-):
-    """Helper function to format email content for WFH request rejection."""
-    formatted_details = (
-        f"Request ID: {arrangement.arrangement_id}\n"
-        f"WFH Date: {arrangement.wfh_date}\n"
-        f"Type: {arrangement.wfh_type}\n"
-        f"Reason for WFH Request: {arrangement.reason_description}\n"
-        f"Batch ID: {arrangement.batch_id}\n"
-        f"Updated: {arrangement.update_datetime}\n"
-        f"Rejection Status: {getattr(arrangement, 'current_approval_status', 'Rejected')}\n"
-        f"Rejection Reason: {arrangement.status_reason}\n"
-    )
-
-    if is_manager and manager:
-        subject = "[All-In-One] You Have Rejected a WFH Request"
-        content = (
-            f"Dear {manager.staff_fname} {manager.staff_lname},\n\n"
-            f"You have rejected a WFH request for {employee.staff_fname} {employee.staff_lname} "
-            f"with the following details:\n\n"
-            f"{formatted_details}\n\n"
-            f"This email is auto-generated. Please do not reply to this email. Thank you."
-        )
-    else:
-        subject = "[All-In-One] Your WFH Request Has Been Rejected"
-        content = (
-            f"Dear {employee.staff_fname} {employee.staff_lname},\n\n"
-            f"Your WFH request has been rejected with the following details:\n\n"
-            f"{formatted_details}\n\n"
-            f"This email is auto-generated. Please do not reply to this email. Thank you."
-        )
-
-    return subject, content
-
-
-async def send_email(to_email: str, subject: str, content: str):
-    """Sends an email by making a POST request to the /email/sendemail route."""
-    try:
-        async with httpx.AsyncClient() as client:
-            response = await client.post(
-                f"{BASE_URL}/email/sendemail",  # Use the base URL from environment variables
-                data={"to_email": to_email, "subject": subject, "content": content},
-            )
-            # Check if the response is successful
-            if response.status_code != 200:
-                raise HTTPException(status_code=response.status_code, detail=response.text)
-
-            return response.json()
-
-    except httpx.RequestError as exc:
-        raise HTTPException(
-            status_code=500,
-            detail=f"An error occurred while sending the email: {str(exc)}",
-        )
