@@ -87,9 +87,10 @@ export const PendingRequests = () => {
             },
           }
         );
+        console.log(response)
         const pendingRequests: TArrangementByEmployee[] = response.data.data;
         setActionRequests(pendingRequests);
-        setFilteredRequests(pendingRequests); // Initialize filteredRequests with the same data
+        setFilteredRequests(pendingRequests); 
       } catch (error) {
         console.error("Failed to fetch subordinates' requests:", error);
       }
@@ -126,12 +127,12 @@ export const PendingRequests = () => {
       formData.append("approving_officer", userId?.toString() || "");
       
       if (action === "withdraw") {
-        if (approval_status === ApprovalStatus.PendingWithdrawal) {
-          formData.append("current_approval_status", ApprovalStatus.Withdrawn);
-        } else {
-          formData.append("current_approval_status", ApprovalStatus.PendingWithdrawal);
-        }
-      } else if (action === "reject") {
+        formData.append("current_approval_status", ApprovalStatus.PendingWithdrawal);
+      }
+      // else if (action === "pending withdrawal") {
+      //   formData.append("current_approval_status", ApprovalStatus.Withdrawn);
+      // }
+      else if (action === "reject") {
         formData.append("current_approval_status", ApprovalStatus.Rejected);
       }
   
@@ -218,7 +219,11 @@ const EmployeeRow = ({ request, handleRequestAction }: TEmployeeRow) => {
     employee: { staff_id, staff_fname, staff_lname, dept, position, email },
   } = request;
 
-  const arrangements = request.pending_arrangements;
+  const arrangements = request.pending_arrangements.filter(
+    (arrangement) => 
+      arrangement.approval_status === ApprovalStatus.PendingApproval ||
+      arrangement.approval_status === ApprovalStatus.PendingWithdrawal
+  );
 
   const [isCollapsed, setIsCollapsed] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);

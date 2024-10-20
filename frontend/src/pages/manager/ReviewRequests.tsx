@@ -13,25 +13,25 @@ export const ReviewRequests: React.FC = () => {
   const [requests, setRequests] = useState<TWFHRequest[]>([]);
   const [filteredRequests, setFilteredRequests] = useState<TWFHRequest[]>([]);
 
-  useEffect(() => {
-    const fetchRequests = async () => {
-      if (!user) return;
+  // useEffect(() => {
+  //   const fetchRequests = async () => {
+  //     if (!user) return;
 
-      try {
-        const response = await axios.get(
-          `${BACKEND_URL}/arrangements/subordinates/${user.id}`,
-          { params: { current_approval_status: 'pending' } }
-        );
+  //     try {
+  //       const response = await axios.get(
+  //         `${BACKEND_URL}/arrangements/subordinates/${user.id}`,
+  //         { params: { current_approval_status: ['pending approval', 'pending withdrawal'] } }
+  //       );
 
-        setRequests(response.data.data);
-        setFilteredRequests(response.data.data); // Initialize filteredRequests with the same data
-      } catch (error) {
-        console.error('Error fetching requests:', error);
-      }
-    };
+  //       setRequests(response.data.data);
+  //       setFilteredRequests(response.data.data); // Initialize filteredRequests with the same data
+  //     } catch (error) {
+  //       console.error('Error fetching requests:', error);
+  //     }
+  //   };
 
-    fetchRequests();
-  }, [user]);
+  //   fetchRequests();
+  // }, [user]);
 
   // Handle applying filters from Filters component
   const handleApplyFilters = (filters: {
