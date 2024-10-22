@@ -11,6 +11,7 @@ import { useHealthCheck } from "./hooks/auth/health/health";
 
 const theme = createTheme({
   typography: {
+    fontSize: 13,
     fontFamily: 'Poppins, sans-serif',
   },
   palette: {

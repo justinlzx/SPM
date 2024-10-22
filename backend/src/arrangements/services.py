@@ -28,7 +28,8 @@ from .utils import create_presigned_url
 STATUS = {
     "approve": "approved",
     "reject": "rejected",
-    "withdraw": "withdrawn",
+    "withdraw": "pending withdrawal",
+    "allow withdraw" : "withdrawn",
     "cancel": "cancelled",
 }
 
@@ -393,7 +394,7 @@ def update_arrangement_approval_status(
 
     # Set default reason description if not provided
     if wfh_update.reason_description is None:
-        wfh_update.reason_description = "[DEFAULT] Approved by Manager"
+        wfh_update.reason_description = ""
 
     # Fetch the arrangement
     arrangement: models.LatestArrangement = crud.get_arrangement_by_id(
@@ -408,6 +409,7 @@ def update_arrangement_approval_status(
     # if arrangement.current_approval_status == "approved" and wfh_update.action != "cancel":
     #     raise exceptions.ArrangementActionNotAllowed(f"Cannot {wfh_update.action} an already approved arrangement")
 
+    
     # Update arrangement fields
     new_status = STATUS.get(wfh_update.action)
     if new_status is None:

@@ -7,7 +7,6 @@ import {
   Select,
   MenuItem,
   TextField,
-  Typography,
   Button,
   InputAdornment,
   IconButton,
@@ -30,7 +29,7 @@ const FilterDatePicker: React.FC<FilterDatePickerProps> = ({ label, selectedDate
       customInput={
         <TextField
           variant="outlined"
-          sx={{ minWidth: 200 }} // Adjust width to fit better in one line
+          sx={{ minWidth: 200 }}
           InputProps={{
             endAdornment: (
               <InputAdornment position="end">
@@ -52,8 +51,7 @@ interface FiltersProps {
     endDate: Date | null;
     wfhType: string;
     requestStatus: string[];
-    departments: string[];
-    workType: string;
+    wfhDuration: string;
   }) => void;
 }
 
@@ -62,16 +60,20 @@ export const Filters: React.FC<FiltersProps> = ({ onApply }) => {
   const [endDate, setEndDate] = useState<Date | null>(null);
   const [wfhType, setWfhType] = useState<string>("");
   const [requestStatus, setRequestStatus] = useState<string[]>([]);
+  const [wfhDuration, setWfhDuration] = useState<string>(""); // Updated to wfhDuration
+  const [searchTerm, setSearchTerm] = useState<string>("");
+  
+  const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchTerm(e.target.value);
+  };
 
   const handleApplyFilters = () => {
-    // Pass the selected filter values to the parent component
     onApply({
       startDate,
       endDate,
       wfhType,
       requestStatus,
-      departments: [], // Assuming departments is not used here currently
-      workType: "",    // Assuming workType is not used here currently
+      wfhDuration, // Pass wfhDuration to the parent component
     });
   };
 
@@ -106,6 +108,20 @@ export const Filters: React.FC<FiltersProps> = ({ onApply }) => {
           </Select>
         </FormControl>
 
+        {/* WFH Duration Filter */}
+        <FormControl variant="outlined" sx={{ minWidth: 150 }}>
+          <InputLabel>WFH Duration</InputLabel>
+          <Select
+            value={wfhDuration}
+            onChange={(e) => setWfhDuration(e.target.value as string)}
+            label="WFH Duration"
+          >
+            <MenuItem value="full">Full</MenuItem>
+            <MenuItem value="am">AM</MenuItem>
+            <MenuItem value="pm">PM</MenuItem>
+          </Select>
+        </FormControl>
+
         {/* Request Status Filter */}
         <FormControl variant="outlined" sx={{ minWidth: 200 }}>
           <InputLabel>Request Status</InputLabel>
@@ -116,7 +132,8 @@ export const Filters: React.FC<FiltersProps> = ({ onApply }) => {
             label="Request Status"
             renderValue={(selected) => (selected as string[]).join(", ")}
           >
-            <MenuItem value="Pending">Pending</MenuItem>
+            <MenuItem value="Pending Approval">Pending Approval</MenuItem>
+            <MenuItem value="Pending Withdrawal">Pending Withdrawal</MenuItem>
             <MenuItem value="Approved">Approved</MenuItem>
             <MenuItem value="Rejected">Rejected</MenuItem>
           </Select>
