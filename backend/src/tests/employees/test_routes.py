@@ -6,17 +6,36 @@ from sqlalchemy.orm import Session
 from src.app import app
 from src.database import get_db  # Import get_db to override the dependency
 from src.employees import exceptions, services
-from src.employees.exceptions import (EmployeeNotFoundException,
-                                      ManagerNotFoundException)
+from src.employees.exceptions import EmployeeNotFoundException, ManagerNotFoundException
 from src.employees.routes import router
 from src.tests.test_utils import mock_db_session
+from src.employees.models import DelegationStatus
 
 client = TestClient(app)
 
 app.include_router(router)
 
 # Override the dependency in the app with the mocked db session
-app.dependency_overrides[get_db] = mock_db_session
+# app.dependency_overrides[get_db] = mock_db_session
+
+
+def override_get_db():
+    return mock_db_session
+
+
+app.dependency_overrides[get_db] = override_get_db
+
+
+@pytest.fixture
+def mock_employee_service():
+    with patch("src.employees.services.get_employee_by_id") as mock:
+        yield mock
+
+
+@pytest.fixture
+def mock_send_email():
+    with patch("src.employees.routes.send_email") as mock:
+        yield mock
 
 
 def test_get_reporting_manager_and_peer_employees_success(mock_db_session, monkeypatch):
@@ -440,3 +459,72 @@ def test_get_reporting_manager_and_peer_employees_manager_none(mock_db_session, 
     data = response.json()
     assert data["manager_id"] is None
     assert data["peer_employees"] == []
+
+
+def test_delegate_manager_already_exists(mock_db_session):
+    # Arrange: Simulate an existing delegation
+    mock_db_session.query.return_value.filter.return_value.filter.return_value.first.return_value = (
+        MagicMock()
+    )
+
+    # Act: Pass delegate_manager_id as a query parameter
+    response = client.put("/manager/delegate/140001?delegate_manager_id=150008")
+
+    # Assert: Expect a 400 error due to existing delegation
+    assert (
+        response.status_code == 400
+    ), f"Unexpected status code: {response.status_code}. Response: {response.json()}"
+    assert (
+        response.json()["detail"]
+        == "Delegation already exists for either the manager or delegatee."
+    )
+
+
+def test_update_delegation_status_accept(mock_db_session, mock_employee_service, mock_send_email):
+    # Arrange: Simulate a pending delegation
+    mock_db_session.query.return_value.filter.return_value.first.return_value = MagicMock(
+        manager_id=140001, delegate_manager_id=150008, status_of_delegation="pending"
+    )
+    mock_employee_service.return_value = MagicMock(email="test@example.com")  # Mock employee email
+
+    # Act: Pass the correct status as a query parameter
+    response = client.put("/manager/delegate/150008/status?status=accepted")
+
+    # Assert: Check that the delegation status is updated and emails are sent
+    assert (
+        response.status_code == 200
+    ), f"Unexpected status code: {response.status_code}. Response: {response.json()}"
+    assert response.json()["status_of_delegation"] == "accepted"
+    mock_send_email.assert_called()  # Ensure emails are sent
+
+
+def test_update_delegation_status_reject(mock_db_session, mock_employee_service, mock_send_email):
+    # Arrange: Simulate a pending delegation
+    mock_db_session.query.return_value.filter.return_value.first.return_value = MagicMock(
+        manager_id=140001, delegate_manager_id=150008, status_of_delegation="pending"
+    )
+    mock_employee_service.return_value = MagicMock(email="test@example.com")  # Mock employee email
+
+    # Act: Pass the correct status as a query parameter
+    response = client.put("/manager/delegate/150008/status?status=rejected")
+
+    # Assert: Check that the delegation status is updated and emails are sent
+    assert (
+        response.status_code == 200
+    ), f"Unexpected status code: {response.status_code}. Response: {response.json()}"
+    assert response.json()["status_of_delegation"] == "rejected"
+    mock_send_email.assert_called()  # Ensure emails are sent
+
+
+def test_undelegate_manager_invalid_status(mock_db_session):
+    # Arrange: Simulate a pending delegation
+    mock_db_session.query.return_value.filter.return_value.first.return_value = MagicMock(
+        manager_id=140001, delegate_manager_id=150008, status_of_delegation="pending"
+    )
+
+    # Act: Call the undelegate endpoint
+    response = client.put("/manager/undelegate/140001")
+
+    # Assert: Expect a 400 error since the delegation is not yet accepted
+    assert response.status_code == 400
+    assert response.json()["detail"] == "Delegation must be approved to undelegate."

@@ -113,35 +113,30 @@ async def delegate_manager(staff_id: int, delegate_manager_id: int, db: Session 
 
     If the person requesting or the delegatee is already in the `delegate_logs`,
     the request will fail.
-
-    :param staff_id: The staff ID of the manager initiating the delegation.
-    :param delegate_manager_id: The staff ID of the delegated manager.
-    :param db: The database session.
-    :return: Details of the created delegation log entry.
     """
-    try:
-        # Step 1: Check if either the staff_id or delegate_manager_id is already in `delegate_logs`
-        existing_delegation = (
-            db.query(DelegateLog)
-            .filter(
-                (DelegateLog.manager_id == staff_id)
-                | (DelegateLog.delegate_manager_id == delegate_manager_id)
+    # Step 1: Check if either the staff_id or delegate_manager_id is already in `delegate_logs`
+    existing_delegation = (
+        db.query(DelegateLog)
+        .filter(
+            (DelegateLog.manager_id == staff_id)
+            | (DelegateLog.delegate_manager_id == delegate_manager_id)
+        )
+        .filter(
+            DelegateLog.status_of_delegation.in_(
+                [DelegationStatus.pending, DelegationStatus.accepted]
             )
-            .filter(
-                DelegateLog.status_of_delegation.in_(
-                    [DelegationStatus.pending, DelegationStatus.accepted]
-                )
-            )
-            .first()
+        )
+        .first()
+    )
+
+    if existing_delegation:
+        raise HTTPException(
+            status_code=400,
+            detail="Delegation already exists for either the manager or delegatee.",
         )
 
-        if existing_delegation:
-            raise HTTPException(
-                status_code=400,
-                detail="Delegation already exists for either the manager or delegatee.",
-            )
-
-        # Step 2: Log the delegation in the `delegate_logs` table
+    # Step 2: Log the delegation in the `delegate_logs` table
+    try:
         new_delegation = DelegateLog(
             manager_id=staff_id,
             delegate_manager_id=delegate_manager_id,
@@ -158,26 +153,20 @@ async def delegate_manager(staff_id: int, delegate_manager_id: int, db: Session 
         delegatee_employee = employee_services.get_employee_by_id(db, delegate_manager_id)
 
         # Step 4: Craft and send email notifications to both the manager and delegatee
-        # Prepare the email for the manager (staff_id)
         manager_subject, manager_content = craft_email_content_for_delegation(
             manager_employee, delegatee_employee, "delegate"
         )
-        # Send email to manager
         await send_email(manager_employee.email, manager_subject, manager_content)
 
-        # Prepare the email for the delegatee (delegate_manager_id)
         delegatee_subject, delegatee_content = craft_email_content_for_delegation(
             delegatee_employee, manager_employee, "delegated_to"
         )
-        # Send email to delegatee
         await send_email(delegatee_employee.email, delegatee_subject, delegatee_content)
 
         return new_delegation  # Returning the created delegation log
 
     except Exception as e:
-        db.rollback()  # Ensure that any DB operations are rolled back
-        print(f"An error occurred: {str(e)}")
-        traceback.print_exc()  # This will print the full stack trace for debugging
+        db.rollback()
         raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
 
 
@@ -272,15 +261,6 @@ async def update_delegation_status(
 
 @router.put("/manager/undelegate/{staff_id}", response_model=DelegateLogCreate)
 async def undelegate_manager(staff_id: int, db: Session = Depends(get_db)):
-    """
-    Undelegates the approval responsibility of a manager.
-    This action can only be taken if the delegation status is 'approved'.
-    Once undelegated, the status is changed to 'undelegated'.
-
-    :param staff_id: The staff ID of the manager who initiated the delegation.
-    :param db: The database session.
-    :return: Updated delegation log with 'undelegated' status.
-    """
     try:
         # Step 1: Fetch the delegation log entry for the given staff_id (manager who initiated the delegation)
         delegation_log = db.query(DelegateLog).filter(DelegateLog.manager_id == staff_id).first()
@@ -294,7 +274,7 @@ async def undelegate_manager(staff_id: int, db: Session = Depends(get_db)):
             db, delegation_log.delegate_manager_id
         )
 
-        # Step 2: Check if the status of the delegation is 'approved'
+        # Step 2: Check if the status of the delegation is 'accepted'
         if delegation_log.status_of_delegation != DelegationStatus.accepted:
             raise HTTPException(
                 status_code=400, detail="Delegation must be approved to undelegate."
