@@ -1,7 +1,5 @@
-import React, { useEffect, useState, useContext } from "react";
-import axios from "axios";
+import React, { useState, useEffect, useContext } from "react";
 import {
-  Container,
   Table,
   TableBody,
   TableCell,
@@ -10,145 +8,128 @@ import {
   TableRow,
   Paper,
   Typography,
+  TextField,
   Chip,
-  ChipProps,
   TablePagination,
+  CircularProgress,
 } from "@mui/material";
-import { capitalize } from "../../utils/utils";
 import { UserContext } from "../../context/UserContextProvider";
+import axios from "axios";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 
-// Define types
-enum ApprovalStatus {
-  Approved = "approved",
-  Pending = "pending",
-  Rejected = "rejected",
-}
-
-enum WfhType {
-  AM = "AM",
-  PM = "PM",
-  FULL = "FULL",
-}
-
 type TWFHRequest = {
-  requester_staff_id?: number;
-  wfh_date?: string;
-  wfh_type?: WfhType;
-  arrangement_id?: number;
-  approval_status?: ApprovalStatus;
-  reason_description?: string;
+  arrangement_id: number;
+  wfh_date: string;
+  wfh_type: string;
+  approval_status: string;
+  reason_description: string;
 };
 
-const getChipColor = (
-  status: ApprovalStatus | undefined
-): ChipProps["color"] => {
-  switch (status) {
-    case ApprovalStatus.Approved:
+const getChipColor = (status: string) => {
+  switch (status.toLowerCase()) {
+    case "approved":
       return "success";
-    case ApprovalStatus.Pending:
+    case "pending":
       return "warning";
-    case ApprovalStatus.Rejected:
+    case "rejected":
       return "error";
     default:
       return "default";
   }
 };
 
-const getWfhTypeChipColor = (
-  wfhType: WfhType | undefined
-): ChipProps["color"] => {
-  switch (wfhType) {
-    case WfhType.AM:
-      return "primary";
-    case WfhType.PM:
-      return "info";
-    case WfhType.FULL:
-      return "secondary";
-    default:
-      return "default";
-  }
-};
-
-export const RequestList = () => {
+const RequestList = () => {
   const [requests, setRequests] = useState<TWFHRequest[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
-
-  // Retrieve user information from context
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const { user } = useContext(UserContext);
 
-  // Fetch all requests from the backend
   useEffect(() => {
     const fetchAllRequests = async () => {
-      try {
-        const response = await axios.get(`${BACKEND_URL}/arrangement/view`);
-        const allRequests: TWFHRequest[] = response.data.data;
-
-        // Temporarily disabling filtering by user
-        setRequests(allRequests);
-
-        // If needed, re-enable this by uncommenting the following lines:
-        /*
-        if (user) {
-          const response = await axios.get(`${BACKEND_URL}/arrangements/personal/${user.id}`);
-          const userRequests: TWFHRequest[] = response.data.data;
-
-          // Filter requests to only include those submitted by the logged-in user
-          setRequests(userRequests);
+      if (user?.id) {
+        try {
+          setLoading(true);
+          setError(null);
+          const response = await axios.get(
+            `${BACKEND_URL}/arrangements/team/${user.id}`,
+            {
+              withCredentials: true, // Important for CORS
+              headers: {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json'
+              }
+            }
+          );
+          const allRequests: TWFHRequest[] = response.data.data;
+          setRequests(allRequests);
+        } catch (error) {
+          console.error("Failed to fetch all requests:", error);
+          setError("Failed to fetch requests. Please try again later.");
+        } finally {
+          setLoading(false);
         }
-        */
-      } catch (error) {
-        console.error("Failed to fetch all requests:", error);
       }
     };
     fetchAllRequests();
   }, [user]);
 
-  // Handle search input
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchTerm(e.target.value);
+    setPage(0); // Reset to first page when searching
   };
 
-  // Handle change in page number
-  const handleChangePage = (event: unknown, newPage: number) => {
+  const filteredRequests = requests.filter(
+    (request) =>
+      request.reason_description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      request.wfh_type?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      request.approval_status?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const handleChangePage = (_event: unknown, newPage: number) => {
     setPage(newPage);
   };
 
-  // Handle change in rows per page
-  const handleChangeRowsPerPage = (
-    event: React.ChangeEvent<HTMLInputElement>
-  ) => {
+  const handleChangeRowsPerPage = (event: React.ChangeEvent<HTMLInputElement>) => {
     setRowsPerPage(parseInt(event.target.value, 10));
     setPage(0);
   };
 
-  // Filter the requests based on the search term, with null checks
-  // const requests = requests.filter(
-  //   (request) =>
-  //     (request.requester_staff_id && request.requester_staff_id.toString().includes(searchTerm)) ||
-  //     (request.wfh_date && request.wfh_date.includes(searchTerm)) ||
-  //     (request.wfh_type && request.wfh_type.toLowerCase().includes(searchTerm)) ||
-  //     (request.approval_status && request.approval_status.toLowerCase().includes(searchTerm)) ||
-  //     (request.reason_description && request.reason_description.toLowerCase().includes(searchTerm))
-  // );
+  if (loading) {
+    return (
+      <div style={{ display: 'flex', justifyContent: 'center', padding: '2rem' }}>
+        <CircularProgress />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <Typography color="error" align="center" sx={{ marginTop: 4 }}>
+        {error}
+      </Typography>
+    );
+  }
 
   return (
     <div>
-      <Typography
-        variant="h4"
-        gutterBottom
-        align="center"
-        sx={{ marginTop: 4 }}
-      >
-        My WFH Requests
+      <Typography variant="h4" gutterBottom align="center" sx={{ marginTop: 4 }}>
+        My Team's WFH/OOO Requests
       </Typography>
-      <TableContainer
-        component={Paper}
-        sx={{ marginTop: 3, textAlign: "center", width: "100%" }}
-      >
+
+      <TextField
+        label="Search by reason, type or status"
+        variant="outlined"
+        fullWidth
+        margin="normal"
+        value={searchTerm}
+        onChange={handleSearch}
+      />
+
+      <TableContainer component={Paper} sx={{ marginTop: 3, textAlign: "center", width: "100%" }}>
         <Table>
           <TableHead>
             <TableRow>
@@ -159,71 +140,37 @@ export const RequestList = () => {
             </TableRow>
           </TableHead>
           <TableBody>
-            {requests.length === 0 ? (
+            {filteredRequests.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={4} align="center">
-                  No requests found
+                  {searchTerm ? "No matching requests found" : "No requests available"}
                 </TableCell>
               </TableRow>
             ) : (
-              requests
+              filteredRequests
                 .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
-                .map((request) => {
-                  const {
-                    arrangement_id,
-                    wfh_date,
-                    wfh_type,
-                    approval_status,
-                    reason_description,
-                  } = request;
-
-                  return (
-                    <TableRow
-                      key={arrangement_id}
-                      sx={{ alignItems: "center" }}
-                    >
-                      <TableCell
-                        sx={{
-                          width: { xs: "30%", sm: "20%", md: "15%", lg: "15%" },
-                          padding: "15px",
-                        }}
-                      >
-                        <Chip
-                          color={getChipColor(approval_status)}
-                          label={capitalize(approval_status || "N/A")}
-                          sx={{ margin: "0" }}
-                        />
-                      </TableCell>
-
-                      <TableCell
-                        sx={{
-                          width: { xs: "30%", sm: "20%", md: "15%", lg: "15%" },
-                          padding: "10px",
-                        }}
-                      >
-                        <Chip
-                          color={getWfhTypeChipColor(wfh_type)}
-                          label={wfh_type ? wfh_type.toUpperCase() : "N/A"}
-                          sx={{ margin: "0" }}
-                        />
-                      </TableCell>
-                      <TableCell>{wfh_date || "N/A"}</TableCell>
-                      <TableCell>
-                        {reason_description
-                          ? reason_description.substring(0, 15)
-                          : "N/A"}
-                      </TableCell>
-                    </TableRow>
-                  );
-                })
+                .map((request) => (
+                  <TableRow key={request.arrangement_id}>
+                    <TableCell>
+                      <Chip
+                        color={getChipColor(request.approval_status)}
+                        label={request.approval_status.charAt(0).toUpperCase() + request.approval_status.slice(1)}
+                      />
+                    </TableCell>
+                    <TableCell>{request.wfh_type?.toUpperCase() || "N/A"}</TableCell>
+                    <TableCell>{request.wfh_date || "N/A"}</TableCell>
+                    <TableCell>{request.reason_description || "N/A"}</TableCell>
+                  </TableRow>
+                ))
             )}
           </TableBody>
         </Table>
       </TableContainer>
+
       <TablePagination
         component="div"
         rowsPerPageOptions={[10, 20, 30]}
-        count={requests.length}
+        count={filteredRequests.length}
         rowsPerPage={rowsPerPage}
         page={page}
         onPageChange={handleChangePage}
