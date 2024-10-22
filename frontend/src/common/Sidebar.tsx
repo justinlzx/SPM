@@ -1,4 +1,11 @@
+// src/common/Sidebar.tsx
 import * as React from "react";
+import { useContext } from "react";
+import { UserContext } from "../context/UserContextProvider";
+import { useNavigate, useLocation } from "react-router-dom";
+
+import InboxIcon from "@mui/icons-material/MoveToInbox";
+import PostAddIcon from '@mui/icons-material/PostAdd';
 import Box from "@mui/material/Box";
 import Divider from "@mui/material/Divider";
 import Drawer from "@mui/material/Drawer";
@@ -8,34 +15,18 @@ import ListItemButton from "@mui/material/ListItemButton";
 import ListItemIcon from "@mui/material/ListItemIcon";
 import ListItemText from "@mui/material/ListItemText";
 import Toolbar from "@mui/material/Toolbar";
-import { useContext } from "react";
-import { AppContext } from "../context/AppContextProvider";
-import { useNavigate } from "react-router-dom";
-import InboxIcon from "@mui/icons-material/MoveToInbox";
-import SpaceDashboardIcon from '@mui/icons-material/SpaceDashboard';
+import SpaceDashboardIcon from "@mui/icons-material/SpaceDashboard";
 import TeamIcon from "@mui/icons-material/Group";
-import WfhScheduleIcon from '@mui/icons-material/CalendarMonth';
-import SettingsIcon from "@mui/icons-material/Settings";
+import WfhScheduleIcon from "@mui/icons-material/CalendarMonth";
 
-// Define sideBarLabels here since it's only used by the Sidebar component
-enum sideBarLabels {
-  Dashboard = "Dashboard",
-  Requests = "Requests",
-  MyTeam = "My Team",
-  MyWFHSchedule = "My WFH Schedule",
-  Settings = "Settings",
-  DepartmentOverview = "Department Overview",
-  ReviewRequests = "Review Requests",
-}
 
 const drawerWidth = 240;
 
 const sideBarItems = [
-  { text: sideBarLabels.Dashboard, icon: <SpaceDashboardIcon />, route: "/home" },
-  { text: sideBarLabels.Requests, icon: <InboxIcon />, route: "/request" },
-  { text: sideBarLabels.MyTeam, icon: <TeamIcon />, route: "/team" },
-  { text: sideBarLabels.MyWFHSchedule, icon: <WfhScheduleIcon />, route: "/wfh-schedule" },
-  { text: sideBarLabels.Settings, icon: <SettingsIcon />, route: "/settings" },
+  { text: "Home", icon: <SpaceDashboardIcon />, route: "/home" },
+  { text: "My Team", icon: <TeamIcon />, route: "/team" },
+  { text: "My WFH Schedule", icon: <WfhScheduleIcon />, route: "/wfh-schedule" },
+  { text: "Create Request", icon: <PostAddIcon />, route: "/create-request" },
 ];
 
 interface SidebarProps {
@@ -44,36 +35,53 @@ interface SidebarProps {
   container?: Element | (() => Element | null) | null;
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, handleDrawerToggle, container }) => {
-  const { activeTab, setActiveTab } = useContext(AppContext);
+export const Sidebar: React.FC<SidebarProps> = ({
+  mobileOpen,
+  handleDrawerToggle,
+  container,
+}) => {
+  const { user } = useContext(UserContext);
   const navigate = useNavigate();
+  const location = useLocation(); // Use the useLocation hook to get the current route
 
   const handleButtonClick = (route: string) => {
-    setActiveTab(sideBarItems.findIndex((item) => item.route === route));
     navigate(route);
   };
 
+  const getSidebarItems = () => {
+    if (user?.role === 1) {
+      return [...sideBarItems, { text: "Review Team Requests", icon: <InboxIcon />, route: "/review-requests" }];
+    }
+    if (user?.role === 2) {
+      return [...sideBarItems, { text: "Department Overview", icon: <TeamIcon />, route: "/department-overview" }];
+    }
+    return sideBarItems;
+  };
+
   const drawer = (
-    <Box sx={{ bgcolor: "#f5f5f5", height: "100%"}}>
-      <Toolbar/>
+    <Box sx={{ bgcolor: "#f5f5f5", height: "100%" }}>
+      <Toolbar />
       <List>
-        {sideBarItems.map((item) => (
-          <ListItem key={item.text} disablePadding>
+        {getSidebarItems().map((item, index) => (
+          <ListItem key={index} disablePadding>
             <ListItemButton
               sx={{
                 textAlign: "left",
-                alignItems: "left",
-                backgroundColor: activeTab === sideBarItems.indexOf(item) ? "navy" : "#f5f5f5",
-                color: activeTab === sideBarItems.indexOf(item) ? "white" : "inherit",
-                '&:hover': {
-                  backgroundColor: activeTab === sideBarItems.indexOf(item) ? "navy" : "#e0e0e0",
-                }
+                backgroundColor: location.pathname === item.route ? "navy" : "#f5f5f5",
+                color: location.pathname === item.route ? "white" : "inherit",
+                "&:hover": {
+                  backgroundColor: location.pathname === item.route ? "navy" : "#e0e0e0",
+                },
               }}
               data-cy={item.text.toLowerCase().replace(/\s+/g, '-')} // Assign data-cy for all items dynamically
-              onClick={() => handleButtonClick(item.route || "")}
+              onClick={() => handleButtonClick(item.route)}
 
             >
-              <ListItemIcon sx={{ color: activeTab === sideBarItems.indexOf(item) ? "white" : "inherit" }}>
+              <ListItemIcon
+                sx={{
+                  color: location.pathname === item.route ? "white" : "inherit",
+                }}
+              >
                 {item.icon}
               </ListItemIcon>
               <ListItemText primary={item.text} />
@@ -81,34 +89,30 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, handleDrawerToggle
           </ListItem>
         ))}
       </List>
+      <Divider />
     </Box>
   );
 
   return (
     <>
-      {/* Temporary Drawer for Mobile Devices */}
       <Drawer
         container={container}
         variant="temporary"
         open={mobileOpen}
         onClose={handleDrawerToggle}
-        ModalProps={{
-          keepMounted: true,
-        }}
+        ModalProps={{ keepMounted: true }}
         sx={{
           display: { xs: "block", sm: "block", md: "none" },
           "& .MuiDrawer-paper": {
             boxSizing: "border-box",
             width: drawerWidth,
             bgcolor: "#f5f5f5",
-            pt:-1
           },
         }}
       >
         {drawer}
       </Drawer>
-      
-      {/* Permanent Drawer for Desktop Devices */}
+
       <Drawer
         variant="permanent"
         sx={{
@@ -117,7 +121,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, handleDrawerToggle
             boxSizing: "border-box",
             width: drawerWidth,
             bgcolor: "#f5f5f5",
-            pt:-1
           },
         }}
         open
@@ -127,3 +130,5 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, handleDrawerToggle
     </>
   );
 };
+
+export default Sidebar;

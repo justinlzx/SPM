@@ -1,5 +1,6 @@
 import pytest
-from src.arrangements.exceptions import ArrangementNotFoundError, ArrangementActionNotAllowedError
+from src.arrangements.exceptions import (ArrangementActionNotAllowedException,
+                                         ArrangementNotFoundException)
 
 
 def test_arrangement_not_found_error():
@@ -7,8 +8,8 @@ def test_arrangement_not_found_error():
     arrangement_id = 42
 
     # When & Then
-    with pytest.raises(ArrangementNotFoundError) as exc_info:
-        raise ArrangementNotFoundError(arrangement_id)
+    with pytest.raises(ArrangementNotFoundException) as exc_info:
+        raise ArrangementNotFoundException(arrangement_id)
 
     # Assert
     assert str(exc_info.value) == f"Arrangement with ID {arrangement_id} not found"
@@ -20,8 +21,8 @@ def test_arrangement_action_not_allowed_error_approve():
     action = "approve"
 
     # When & Then
-    with pytest.raises(ArrangementActionNotAllowedError) as exc_info:
-        raise ArrangementActionNotAllowedError(arrangement_id, action)
+    with pytest.raises(ArrangementActionNotAllowedException) as exc_info:
+        raise ArrangementActionNotAllowedException(arrangement_id, action)
 
     # Assert
     assert str(exc_info.value) == f"Arrangement with ID {arrangement_id} is not in pending status"
@@ -33,8 +34,8 @@ def test_arrangement_action_not_allowed_error_reject():
     action = "reject"
 
     # When & Then
-    with pytest.raises(ArrangementActionNotAllowedError) as exc_info:
-        raise ArrangementActionNotAllowedError(arrangement_id, action)
+    with pytest.raises(ArrangementActionNotAllowedException) as exc_info:
+        raise ArrangementActionNotAllowedException(arrangement_id, action)
 
     # Assert
     assert str(exc_info.value) == f"Arrangement with ID {arrangement_id} is not in pending status"
@@ -46,8 +47,8 @@ def test_arrangement_action_not_allowed_error_default():
     action = "other_action"
 
     # When & Then
-    with pytest.raises(ArrangementActionNotAllowedError) as exc_info:
-        raise ArrangementActionNotAllowedError(arrangement_id, action)
+    with pytest.raises(ArrangementActionNotAllowedException) as exc_info:
+        raise ArrangementActionNotAllowedException(arrangement_id, action)
 
     # Assert
     assert str(exc_info.value) == "Default message"

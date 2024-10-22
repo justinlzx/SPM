@@ -7,4 +7,5 @@
     "black-formatter.args": [
         "--config=${workspaceFolder}/config/black.toml",
     ],
+    "CodeGPT.apiKey": "Ollama",
 }

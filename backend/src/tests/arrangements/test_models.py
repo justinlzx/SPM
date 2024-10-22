@@ -1,7 +1,8 @@
 import pytest
-from src.arrangements.models import ArrangementLog, LatestArrangement, RecurringRequest
-from src.tests.test_utils import mock_db_session
+from src.arrangements.models import (ArrangementLog, LatestArrangement,
+                                     RecurringRequest)
 from src.employees.models import Employee
+from src.tests.test_utils import mock_db_session
 
 
 @pytest.fixture
@@ -70,7 +71,7 @@ def test_arrangement_log_fields(mock_db_session, mock_arrangement_log):
     """Test that ArrangementLog object has valid fields."""
     assert mock_arrangement_log.requester_staff_id == 1
     assert mock_arrangement_log.wfh_type == "full"
-    assert mock_arrangement_log.approval_status == "pending"
+    assert mock_arrangement_log.approval_status == "pending approval"
     assert mock_arrangement_log.batch_id is None
 
 

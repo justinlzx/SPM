@@ -38,9 +38,7 @@ class ArrangementCreate(ArrangementBase):
                 )
         return v
 
-    approving_officer: Optional[int] = Field(
-        ..., title="Staff ID of the approving officer"
-    )
+    approving_officer: Optional[int] = Field(..., title="Staff ID of the approving officer")
     reason_description: str = Field(..., title="Reason for requesting the WFH")
 
     update_datetime: SkipJsonSchema[datetime] = Field(
@@ -48,9 +46,9 @@ class ArrangementCreate(ArrangementBase):
         exclude=True,
         title="Datetime that the request was created",
     )
-    current_approval_status: Literal[
-        "pending", "approved", "rejected", "cancelled", "withdrawn"
-    ] = Field(default="pending", title="Approval status of the request")
+    current_approval_status: SkipJsonSchema[str] = Field(
+        default="pending approval", exclude=True, title="Approval status of the request"
+    )
     is_recurring: Optional[bool] = Field(
         default=False, title="Flag to indicate if the request is recurring"
     )
@@ -66,9 +64,7 @@ class ArrangementCreate(ArrangementBase):
     recurring_occurrences: Optional[int] = Field(
         default=None, title="Number of occurrences of the recurring WFH request"
     )
-    batch_id: Optional[int] = Field(
-        default=None, title="Unique identifier for the batch, if any"
-    )
+    batch_id: Optional[int] = Field(default=None, title="Unique identifier for the batch, if any")
 
     def model_dump(self, **kwargs):
         data = super().model_dump(**kwargs)
@@ -103,21 +99,18 @@ class ArrangementCreateWithFile(ArrangementCreate):
 class ArrangementCreateResponse(ArrangementCreateWithFile):
     arrangement_id: int
     requester_info: Optional[employee_schemas.EmployeeBase]
+    approval_status: Literal[
+        "pending approval", "pending withdrawal", "approved", "rejected", "withdrawn", "cancelled"
+    ] = Field(..., title="Current status of the WFH request", alias="current_approval_status")
 
 
 class ArrangementUpdate(ArrangementBase):
-    action: Literal["approve", "reject", "withdraw", "cancel"] = Field(
+    action: Literal["approve", "reject", "withdraw", "allow withdraw", "cancel"] = Field(
         exclude=True, title="Action to be taken on the WFH request"
     )
-    approving_officer: int = Field(
-        exclude=True, title="Staff ID of the approving officer"
-    )
-    reason_description: Optional[str] = Field(
-        None, title="Reason for the status update"
-    )
-    arrangement_id: SkipJsonSchema[int] = Field(
-        None, title="Unique identifier for the arrangement"
-    )
+    approving_officer: int = Field(exclude=True, title="Staff ID of the approving officer")
+    reason_description: Optional[str] = Field(None, title="Reason for the status update")
+    arrangement_id: SkipJsonSchema[int] = Field(None, title="Unique identifier for the arrangement")
     staff_id: SkipJsonSchema[int] = Field(
         None,
         title="Staff ID of the employee who made the request",
@@ -147,7 +140,7 @@ class ArrangementLog(ArrangementBase):
     arrangement_id: int = Field(..., title="Unique identifier for the arrangement")
     update_datetime: datetime = Field(..., title="Datetime of the arrangement update")
     approval_status: Literal[
-        "pending", "approved", "rejected", "withdrawn", "cancelled"
+        "pending approval", "pending withdrawal", "approved", "rejected", "withdrawn", "cancelled"
     ] = Field(..., title="Current status of the WFH request")
     reason_description: str = Field(..., title="Reason for the status update")
     batch_id: Optional[int] = Field(
@@ -156,15 +149,9 @@ class ArrangementLog(ArrangementBase):
     requester_info: Optional[employee_schemas.EmployeeBase] = Field(
         None, exclude=True, title="Information about the requester"
     )
-    supporting_doc_1: Optional[str] = Field(
-        None, title="URL of the first supporting document"
-    )
-    supporting_doc_2: Optional[str] = Field(
-        None, title="URL of the second supporting document"
-    )
-    supporting_doc_3: Optional[str] = Field(
-        None, title="URL of the third supporting document"
-    )
+    supporting_doc_1: Optional[str] = Field(None, title="URL of the first supporting document")
+    supporting_doc_2: Optional[str] = Field(None, title="URL of the second supporting document")
+    supporting_doc_3: Optional[str] = Field(None, title="URL of the third supporting document")
 
     class Config:
         from_attributes = True
@@ -172,23 +159,26 @@ class ArrangementLog(ArrangementBase):
 
 class ArrangementQueryParams(BaseModel):
     current_approval_status: Optional[
-        List[Literal["pending", "approved", "rejected", "withdrawn", "cancelled"]]
+        List[
+            Literal[
+                "pending approval",
+                "pending withdrawal",
+                "approved",
+                "rejected",
+                "withdrawn",
+                "cancelled",
+            ]
+        ]
     ] = Field([], title="Filter by the current approval status")
-    requester_staff_id: Optional[int] = Field(
-        None, title="Filter by the staff ID of the requester"
-    )
+    requester_staff_id: Optional[int] = Field(None, title="Filter by the staff ID of the requester")
 
 
 class ArrangementResponse(ArrangementCreateWithFile):
     arrangement_id: int = Field(..., title="Unique identifier for the arrangement")
-    update_datetime: datetime = Field(
-        exclude=True, title="Datetime of the arrangement update"
-    )
+    update_datetime: datetime = Field(exclude=True, title="Datetime of the arrangement update")
     approval_status: Literal[
-        "pending", "approved", "rejected", "withdrawn", "cancelled"
-    ] = Field(
-        ..., title="Current status of the WFH request", alias="current_approval_status"
-    )
+        "pending approval", "pending withdrawal", "approved", "rejected", "withdrawn", "cancelled"
+    ] = Field(..., title="Current status of the WFH request", alias="current_approval_status")
     approving_officer: Optional[int] = Field(
         None, title="Staff ID of the approving officer"
     )  # Allow None

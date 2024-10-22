@@ -1,3 +1,6 @@
+import csv
+from datetime import datetime
+
 import pandas as pd
 from sqlalchemy.orm import Session
 
@@ -6,8 +9,6 @@ from ..auth.models import Auth
 from ..auth.utils import hash_password
 from ..database import SessionLocal
 from ..employees.models import Employee
-from datetime import datetime
-import csv
 
 
 # Function to load employee data from employee.csv
@@ -126,9 +127,7 @@ def load_latest_arrangement_data_from_csv(file_path: str):
                         requester_staff_id=int(row["requester_staff_id"]),
                         current_approval_status=row["current_approval_status"],
                         approving_officer=(
-                            int(row["approving_officer"])
-                            if row["approving_officer"]
-                            else None
+                            int(row["approving_officer"]) if row["approving_officer"] else None
                         ),
                         update_datetime=update_datetime,
                         batch_id=int(row["batch_id"]) if row["batch_id"] else None,
@@ -143,9 +142,7 @@ def load_latest_arrangement_data_from_csv(file_path: str):
                 except ValueError as ve:
                     print(f"Data conversion error: {str(ve)}")
                 except Exception as e:
-                    print(
-                        f"An unexpected error occurred while processing row: {str(e)}"
-                    )
+                    print(f"An unexpected error occurred while processing row: {str(e)}")
                     # Handle errors for specific rows without rolling back the entire transaction
                     continue
 

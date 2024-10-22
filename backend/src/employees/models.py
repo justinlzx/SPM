@@ -1,9 +1,10 @@
-from sqlalchemy import CheckConstraint, Column, ForeignKey, Integer, String, DateTime, Enum
-from sqlalchemy.orm import relationship
 import enum
 from datetime import datetime
-from src.arrangements.models import LatestArrangement
 
+from sqlalchemy import (CheckConstraint, Column, DateTime, Enum, ForeignKey,
+                        Integer, String)
+from sqlalchemy.orm import relationship
+from src.arrangements.models import LatestArrangement
 
 from ..database import Base
 
@@ -54,6 +55,7 @@ class DelegationStatus(enum.Enum):
     pending = "pending"
     accepted = "accepted"
     rejected = "rejected"
+    undelegated = "undelegated"
 
 
 class DelegateLog(Base):

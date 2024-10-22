@@ -1,13 +1,13 @@
-import pandas as pd
-from src.init_db.load_data import (
-    load_employee_data_from_csv,
-    load_auth_data_from_csv,
-    load_arrangement_data_from_csv,
-)
-from ...auth.utils import hash_password
-from datetime import datetime
 import os
+from datetime import datetime
+
+import pandas as pd
+from src.init_db.load_data import (load_auth_data_from_csv,
+                                   load_employee_data_from_csv,
+                                   load_latest_arrangement_data_from_csv)
 from src.tests.test_utils import mock_db_session
+
+from ...auth.utils import hash_password
 
 # -------------------------------- Employee Data Tests --------------------------------
 
@@ -170,20 +170,20 @@ def test_load_auth_data_generic_exception(mock_db_session, mocker, capsys):
 # -------------------------------- Arrangement Data Tests --------------------------------
 
 
-import pytest
-from unittest.mock import MagicMock
-import pandas as pd
-from sqlalchemy.orm import Session
-from src.init_db.load_data import load_arrangement_data_from_csv
-from datetime import datetime
-import os
-from unittest.mock import mock_open
 import csv
+import os
+from datetime import datetime
+from unittest.mock import MagicMock, mock_open
+
+import pandas as pd
+import pytest
+from sqlalchemy.orm import Session
+from src.init_db.load_data import load_latest_arrangement_data_from_csv
 
 # -------------------------------- Arrangement Data Tests --------------------------------
 
 
-def test_load_arrangement_data_from_csv(mock_db_session, mocker):
+def test_load_latest_arrangement_data_from_csv(mock_db_session, mocker):
     # Get the directory of the current test file
     current_dir = os.path.dirname(os.path.abspath(__file__))
 
@@ -200,7 +200,7 @@ def test_load_arrangement_data_from_csv(mock_db_session, mocker):
     mock_arrangement_log = mocker.patch("src.init_db.load_data.ArrangementLog")
 
     # Call the function with the actual CSV path
-    load_arrangement_data_from_csv(csv_path)
+    load_latest_arrangement_data_from_csv(csv_path)
 
     # Check that the correct number of ArrangementLog objects were added to the session
     assert mock_db_session.add.call_count == len(
@@ -228,7 +228,7 @@ def test_load_arrangement_data_from_csv(mock_db_session, mocker):
 
 
 def test_load_arrangement_data_file_not_found(mock_db_session, capsys):
-    load_arrangement_data_from_csv("src/tests/init_db/non_existent_file.csv")
+    load_latest_arrangement_data_from_csv("src/tests/init_db/non_existent_file.csv")
     captured = capsys.readouterr()
     assert (
         "Error: The file 'src/tests/init_db/non_existent_file.csv' was not found." in captured.out
@@ -238,7 +238,7 @@ def test_load_arrangement_data_file_not_found(mock_db_session, capsys):
 def test_load_arrangement_data_empty_file(mock_db_session, mocker, capsys):
     # Mock pandas to simulate an empty CSV file
     mocker.patch("pandas.read_csv", side_effect=pd.errors.EmptyDataError)
-    load_arrangement_data_from_csv("src/tests/init_db/empty.csv")
+    load_latest_arrangement_data_from_csv("src/tests/init_db/empty.csv")
     captured = capsys.readouterr()
     assert "Error: The file 'src/tests/init_db/empty.csv' is empty." in captured.out
 
@@ -247,7 +247,7 @@ def test_load_arrangement_data_key_error(mock_db_session, mocker, capsys):
     # Mock the ArrangementLog model to raise a KeyError during instantiation
     mocker.patch("src.init_db.load_data.ArrangementLog", side_effect=KeyError("Test KeyError"))
 
-    load_arrangement_data_from_csv("src/tests/init_db/test_arrangement.csv")
+    load_latest_arrangement_data_from_csv("src/tests/init_db/test_arrangement.csv")
     captured = capsys.readouterr()
     assert "Missing expected column in CSV: 'Test KeyError'" in captured.out
 
@@ -256,18 +256,18 @@ def test_load_arrangement_data_value_error(mock_db_session, mocker, capsys):
     # Mock the ArrangementLog model to raise a ValueError during instantiation
     mocker.patch("src.init_db.load_data.ArrangementLog", side_effect=ValueError("Test ValueError"))
 
-    load_arrangement_data_from_csv("src/tests/init_db/test_arrangement.csv")
+    load_latest_arrangement_data_from_csv("src/tests/init_db/test_arrangement.csv")
     captured = capsys.readouterr()
     assert "Data conversion error: Test ValueError" in captured.out
 
 
-def test_load_arrangement_data_from_csv_exception(mock_db_session, mocker, capsys):
+def test_load_latest_arrangement_data_from_csv_exception(mock_db_session, mocker, capsys):
     # Mock pandas.read_csv to raise an exception to trigger the rollback logic
     mocker.patch("pandas.read_csv", side_effect=Exception("Test Exception"))
 
     # Call the function with a mock CSV path
     try:
-        load_arrangement_data_from_csv("src/tests/init_db/test_arrangement.csv")
+        load_latest_arrangement_data_from_csv("src/tests/init_db/test_arrangement.csv")
     except Exception:
         # This is expected because we are forcing an exception
         pass
@@ -290,7 +290,7 @@ def test_load_arrangement_data_generic_exception(mock_db_session, mocker, capsys
     mocker.patch("pandas.read_csv", side_effect=Exception("Generic read exception"))
 
     # Call the function to trigger the exception
-    load_arrangement_data_from_csv("src/tests/init_db/test_arrangement.csv")
+    load_latest_arrangement_data_from_csv("src/tests/init_db/test_arrangement.csv")
 
     # Capture the stdout and stderr
     captured = capsys.readouterr()
@@ -306,7 +306,7 @@ def test_load_arrangement_data_empty_dataframe(mock_db_session, mocker, capsys):
     # Mock pandas to return an empty DataFrame
     mocker.patch("pandas.read_csv", return_value=pd.DataFrame())
 
-    load_arrangement_data_from_csv("src/tests/init_db/empty.csv")
+    load_latest_arrangement_data_from_csv("src/tests/init_db/empty.csv")
     captured = capsys.readouterr()
     assert "Error: The file 'src/tests/init_db/empty.csv' is empty." in captured.out
 
@@ -341,7 +341,7 @@ def test_load_arrangement_data_row_exception(mock_db_session, mocker, capsys):
     )
 
     # Call the function with a mock CSV path
-    load_arrangement_data_from_csv("src/tests/init_db/test_arrangement.csv")
+    load_latest_arrangement_data_from_csv("src/tests/init_db/test_arrangement.csv")
     captured = capsys.readouterr()
 
     # Assert the correct message is printed when an exception occurs in row processing
