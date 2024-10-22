@@ -65,7 +65,7 @@ export const MyWfhSchedulePage: React.FC = () => {
     };
 
 
-    fetchWFHRequests();
+    fetchRequests();
   }, [user, userId]);
 
   const handleApplyFilters = (filters: {
