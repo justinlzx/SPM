@@ -121,7 +121,7 @@ def load_latest_arrangement_data_from_csv(file_path: str):
                     )
 
                     latest_arrangement = LatestArrangement(
-                        wfh_date=row["wfh_date"],
+                        wfh_date=(datetime.strptime(row["wfh_date"], "%Y-%m-%d")),
                         wfh_type=row["wfh_type"],
                         reason_description=row["reason_description"],
                         requester_staff_id=int(row["requester_staff_id"]),

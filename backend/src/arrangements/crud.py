@@ -17,38 +17,24 @@ def get_arrangement_by_id(db: Session, arrangement_id: int) -> models.LatestArra
     return db.query(models.LatestArrangement).get(arrangement_id)
 
 
-def get_arrangements_by_filter(
-    db: Session,
-    requester_staff_id: int = None,
-    current_approval_status: List[str] = None,
-) -> List[models.LatestArrangement]:
-    query = db.query(models.LatestArrangement)
-
-    if requester_staff_id:
-        query = query.filter(models.LatestArrangement.requester_staff_id == requester_staff_id)
-    if current_approval_status:
-        if len(current_approval_status) > 1:
-            query = query.filter(
-                models.LatestArrangement.current_approval_status.in_(current_approval_status)
-            )
-        else:
-            query = query.filter(
-                models.LatestArrangement.current_approval_status == current_approval_status[0]
-            )
-
-    return query.all()
-
-
 def get_arrangements_by_staff_ids(
     db: Session,
     staff_ids: List[int],
     current_approval_status: List[
-        Literal["pending", "approved", "rejected", "cancelled", "withdrawn"]
+        Literal[
+            "pending approval",
+            "pending withdrawal",
+            "approved",
+            "rejected",
+            "cancelled",
+            "withdrawn",
+        ]
     ] = None,
     name: str = None,
-    type: Literal["full", "am", "pm"] = None,
+    wfh_type: Literal["full", "am", "pm"] = None,
     start_date: datetime = None,
     end_date: datetime = None,
+    reason: str = None,
 ) -> List[schemas.ArrangementCreateResponse]:
     """Fetch the WFH requests for a list of staff IDs with optional filters.
 
@@ -60,7 +46,7 @@ def get_arrangements_by_staff_ids(
         type: Optional arrangement type (full/am/pm)
         start_date: Optional start date filter
         end_date: Optional end date filter
-        limit: Optional limit for pagination
+        reason: Optional reason filter
         page_num: Optional page number for pagination
 
     Returns:
@@ -84,8 +70,8 @@ def get_arrangements_by_staff_ids(
             models.LatestArrangement.current_approval_status.in_(current_approval_status)
         )
 
-    if type:
-        query = query.filter(models.LatestArrangement.wfh_type == type)
+    if wfh_type:
+        query = query.filter(models.LatestArrangement.wfh_type == wfh_type)
 
     if start_date:
         query = query.filter(func.date(models.LatestArrangement.wfh_date) >= start_date)
@@ -93,7 +79,12 @@ def get_arrangements_by_staff_ids(
     if end_date:
         query = query.filter(func.date(models.LatestArrangement.wfh_date) <= end_date)
 
+    if reason:
+        query = query.filter(models.LatestArrangement.reason.ilike(reason))
+
     result = query.all()
+
+    print(f"Result: {result}")
 
     return result
 

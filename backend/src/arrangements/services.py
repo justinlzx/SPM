@@ -79,10 +79,10 @@ def get_subordinates_arrangements(
     db: Session,
     manager_id: int,
     current_approval_status: List[str],
-    name=None,
+    name: str = None,
     start_date: datetime = None,
     end_date: datetime = None,
-    type=None,
+    wfh_type=None,
     items_per_page=10,
     page_num=1,
 ) -> List[ManagerPendingRequestResponse]:
@@ -102,7 +102,7 @@ def get_subordinates_arrangements(
         employees_under_manager_ids,
         current_approval_status,
         name,
-        type,
+        wfh_type,
         start_date,
         end_date,
     )
@@ -135,10 +135,21 @@ def get_subordinates_arrangements(
         )
         for arrangement in arrangements_schema
     ]
-    arrangements_by_date = group_arrangements_by_date(arrangements_schema)
+    arrangements_by_date: List[ManagerPendingRequests] = group_arrangements_by_date(
+        arrangements_schema
+    )
 
+    # pagination logic
     total_count = len(arrangements_by_date)
     total_pages = ceil(total_count / items_per_page)
+
+    arrangements_by_date = arrangements_by_date[
+        (page_num - 1) * items_per_page : page_num * items_per_page
+    ]
+
+    print("dog", len(arrangements_by_date))
+
+    print("services by date:", arrangements_by_date)
 
     return arrangements_by_date, {
         "total_count": total_count,
@@ -150,7 +161,7 @@ def get_subordinates_arrangements(
 
 def group_arrangements_by_date(
     arrangements_schema: List[ArrangementCreateResponse],
-):
+) -> List[ManagerPendingRequests]:
     arrangements_dict = {}
 
     for arrangement in arrangements_schema:

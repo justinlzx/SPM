@@ -1,8 +1,7 @@
 from datetime import date, datetime
 from typing import Annotated, Dict, List, Literal, Optional
 
-from fastapi import (APIRouter, Depends, File, Form, HTTPException, Query,
-                     UploadFile)
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
 from fastapi.responses import JSONResponse
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
@@ -90,9 +89,9 @@ def get_personal_arrangements_by_filter(
 def get_subordinates_arrangements(
     manager_id: int,
     name: Optional[str] = Query(None, description="Name of the employee"),
-    start_date: Optional[date] = Query(None, description="Start Date"),
-    end_date: Optional[date] = Query(None, description="End Date"),
-    type: Optional[Literal["full", "am", "pm"]] = Query(
+    start_date: Optional[datetime] = Query(None, description="Start Date"),
+    end_date: Optional[datetime] = Query(None, description="End Date"),
+    wfh_type: Optional[Literal["full", "am", "pm"]] = Query(
         None, description="Type of WFH arrangement"
     ),
     current_approval_status: Optional[
@@ -111,7 +110,6 @@ def get_subordinates_arrangements(
     page_num: int = Query(1, description="Page Number"),
     db: Session = Depends(get_db),
 ):
-
     try:
         logger.info(f"Fetching arrangements for employees under manager ID: {manager_id}")
         arrangements, pagination_meta = services.get_subordinates_arrangements(
@@ -121,7 +119,7 @@ def get_subordinates_arrangements(
             name,
             start_date,
             end_date,
-            type,
+            wfh_type,
             items_per_page,
             page_num,
         )
