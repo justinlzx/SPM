@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta
 from math import ceil
-from typing import Dict, List
+from typing import Dict, List, Literal
 
 import boto3
 from dateutil.relativedelta import relativedelta
@@ -83,6 +83,7 @@ def get_subordinates_arrangements(
     start_date: datetime = None,
     end_date: datetime = None,
     wfh_type=None,
+    reason=None,
     items_per_page=10,
     page_num=1,
 ) -> List[ManagerPendingRequestResponse]:
@@ -105,6 +106,7 @@ def get_subordinates_arrangements(
         wfh_type,
         start_date,
         end_date,
+        reason,
     )
 
     arrangements_schema: List[ArrangementCreateResponse] = utils.convert_model_to_pydantic_schema(
@@ -143,13 +145,10 @@ def get_subordinates_arrangements(
     total_count = len(arrangements_by_date)
     total_pages = ceil(total_count / items_per_page)
 
+    # slice the list based on page number and items per page
     arrangements_by_date = arrangements_by_date[
         (page_num - 1) * items_per_page : page_num * items_per_page
     ]
-
-    print("dog", len(arrangements_by_date))
-
-    print("services by date:", arrangements_by_date)
 
     return arrangements_by_date, {
         "total_count": total_count,
@@ -201,7 +200,23 @@ def group_arrangements_by_employee(
 
 
 def get_team_arrangements(
-    db: Session, staff_id: int, current_approval_status: List[str]
+    db: Session,
+    staff_id: int,
+    current_approval_status: List[
+        Literal[
+            "pending approval",
+            "pending withdrawal",
+            "approved",
+            "rejected",
+            "cancelled",
+            "withdrawn",
+        ]
+    ] = None,
+    name: str = None,
+    wfh_type: Literal["full", "am", "pm"] = None,
+    start_date: datetime = None,
+    end_date: datetime = None,
+    reason: str = None,
 ) -> Dict[str, List[ArrangementResponse]]:
 
     arrangements: Dict[str, List[ArrangementResponse]] = {}
@@ -212,7 +227,14 @@ def get_team_arrangements(
         db, staff_id
     )
     peer_arrangements: List[models.LatestArrangement] = crud.get_arrangements_by_staff_ids(
-        db, [peer.staff_id for peer in peer_employees], current_approval_status
+        db,
+        [peer.staff_id for peer in peer_employees],
+        current_approval_status,
+        name,
+        wfh_type,
+        start_date,
+        end_date,
+        reason,
     )
     peer_arrangements: List[ArrangementResponse] = utils.convert_model_to_pydantic_schema(
         peer_arrangements, ArrangementResponse
