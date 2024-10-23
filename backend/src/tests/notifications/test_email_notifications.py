@@ -336,6 +336,26 @@ class TestCraftEmailContent:
                 "[All-In-One] Your WFH Request Has Been Rejected",
                 "[All-In-One] You Have Rejected a WFH Request",
             ),
+            (
+                "withdraw",
+                "[All-In-One] You Have Requested to Withdraw Your WFH",
+                "[All-In-One] Your Staff Has Requested to Withdraw Their WFH",
+            ),
+            (
+                "allow withdraw",
+                "[All-In-One] Your WFH Request Has Been Withdrawn",
+                "[All-In-One] You Have Approved a WFH Request Withdrawal",
+            ),
+            (
+                "reject withdraw",
+                "[All-In-One] Your WFH Request Withdrawal Has Been Rejected",
+                "[All-In-One] You Have Rejected a WFH Request Withdrawal",
+            ),
+            (
+                "cancel",
+                "[All-In-One] Your WFH Request Has Been Cancelled",
+                "[All-In-One] You Have Cancelled a WFH Request",
+            ),
         ],
     )
     def test_success_messages_single_arrangement(
