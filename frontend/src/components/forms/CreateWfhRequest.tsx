@@ -305,7 +305,6 @@ export const CreateWfhRequest: React.FC = () => {
                 name="reason"
                 as="textarea"
                 fullwidth="true"
-                required
                 disabled={loading}
                 className="border border-gray-300 rounded p-2 w-full"
               />
