@@ -73,7 +73,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   backgroundColor: location.pathname === item.route ? "navy" : "#e0e0e0",
                 },
               }}
-              data-cy={item.text.toLowerCase().replace(/\s+/g, '-')} // Assign data-cy for all items dynamically
+              data-cy={item.text.toLowerCase().replace(/\s+/g, '-')} // This line adds the data-cy attribute
               onClick={() => handleButtonClick(item.route)}
 
             >
