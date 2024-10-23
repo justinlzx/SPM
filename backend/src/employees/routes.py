@@ -12,10 +12,8 @@ from ..database import get_db
 from ..email.routes import send_email
 from ..employees import services as employee_services
 from ..employees.models import DelegateLog, DelegationStatus, Employee
-from ..employees.schemas import (DelegateLogCreate, EmployeeBase,
-                                 EmployeePeerResponse)
-from ..notifications.email_notifications import \
-    craft_email_content_for_delegation
+from ..employees.schemas import DelegateLogCreate, EmployeeBase, EmployeePeerResponse
+from ..notifications.email_notifications import craft_email_content_for_delegation
 from . import exceptions, models, schemas, services
 
 router = APIRouter()
@@ -288,7 +286,9 @@ async def undelegate_manager(staff_id: int, db: Session = Depends(get_db)):
             .filter(
                 arrangement_models.LatestArrangement.delegate_approving_officer
                 == delegation_log.delegate_manager_id,
-                arrangement_models.LatestArrangement.current_approval_status == "pending",
+                arrangement_models.LatestArrangement.current_approval_status.in_(
+                    ["pending approval", "pending withdrawal"]
+                ),
             )
             .all()
         )
