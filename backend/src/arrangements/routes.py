@@ -1,8 +1,7 @@
 from datetime import date, datetime
 from typing import Annotated, Dict, List, Literal, Optional
 
-from fastapi import (APIRouter, Depends, File, Form, HTTPException, Query,
-                     UploadFile)
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
 from fastapi.responses import JSONResponse
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
@@ -176,52 +175,6 @@ def get_team_arrangements(
         )
     except SQLAlchemyError as e:
         raise HTTPException(status_code=500, detail=str(e))
-
-
-# @router.post("/request")
-# async def create_wfh_request(
-#     requester_staff_id: int = Form(..., title="Staff ID of the requester"),
-#     wfh_date: str = Form(..., title="Date of the WFH request"),
-#     wfh_type: Literal["full", "am", "pm"] = Form(..., title="Type of WFH arrangement"),
-#     reason_description: str = Form(..., title="Reason for requesting the WFH"),
-#     is_recurring: Optional[bool] = Form(
-#         False, title="Flag to indicate if the request is recurring"
-#     ),
-#     recurring_end_date: Optional[str] = Form(None, title="End date of a recurring WFH request"),
-#     recurring_frequency_number: Optional[int] = Form(
-#         None, title="Numerical frequency of the recurring WFH request"
-#     ),
-#     recurring_frequency_unit: Optional[Literal["week", "month"]] = Form(
-#         None, title="Unit of the frequency of the recurring WFH request"
-#     ),
-#     recurring_occurrences: Optional[int] = Form(
-#         None, title="Number of occurrences of the recurring WFH request"
-#     ),
-#     batch_id: Optional[int] = Form(None, title="Unique identifier for the batch, if any"),
-#     supporting_docs: Annotated[Optional[list[UploadFile]], File(upload_multiple=True)] = [],
-#     db: Session = Depends(get_db),
-# ):
-
-#     update_datetime = datetime.now()
-#     current_approval_status = "pending approval"
-
-#     wfh_request: ArrangementCreate = {
-#         "reason_description": reason_description,
-#         "is_recurring": is_recurring,
-#         "recurring_end_date": recurring_end_date,
-#         "recurring_frequency_number": recurring_frequency_number,
-#         "recurring_frequency_unit": recurring_frequency_unit,
-#         "recurring_occurrences": recurring_occurrences,
-#         "batch_id": batch_id,
-#         "update_datetime": update_datetime,
-#         "current_approval_status": current_approval_status,
-#         "wfh_date": wfh_date,
-#         "wfh_type": wfh_type,
-#         "staff_id": requester_staff_id,
-#         "approving_officer": None,
-#     }
-
-#     return await services.create_arrangements_from_request(db, wfh_request, supporting_docs)
 
 
 @router.post("/request")
