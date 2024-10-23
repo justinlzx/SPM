@@ -1,6 +1,8 @@
 from datetime import date, datetime
 from typing import Annotated, Dict, List, Literal, Optional
 
+from sqlalchemy import Date
+
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
 from fastapi.responses import JSONResponse
 from sqlalchemy.exc import SQLAlchemyError
@@ -89,8 +91,8 @@ def get_personal_arrangements_by_filter(
 def get_subordinates_arrangements(
     manager_id: int,
     name: Optional[str] = Query(None, description="Name of the employee"),
-    start_date: Optional[datetime] = Query(None, description="Start Date"),
-    end_date: Optional[datetime] = Query(None, description="End Date"),
+    start_date: Optional[date] = Query(None, description="Start Date"),
+    end_date: Optional[date] = Query(None, description="End Date"),
     wfh_type: Optional[Literal["full", "am", "pm"]] = Query(
         None, description="Type of WFH arrangement"
     ),
@@ -180,7 +182,7 @@ def get_team_arrangements(
 @router.post("/request")
 async def create_wfh_request(
     requester_staff_id: int = Form(..., title="Staff ID of the requester"),
-    wfh_date: str = Form(..., title="Date of the WFH request"),
+    wfh_date: date = Form(..., title="Date of the WFH request"),
     wfh_type: Literal["full", "am", "pm"] = Form(..., title="Type of WFH arrangement"),
     reason_description: str = Form(..., title="Reason for requesting the WFH"),
     is_recurring: Optional[bool] = Form(

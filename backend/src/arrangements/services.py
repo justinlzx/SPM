@@ -265,8 +265,9 @@ async def create_arrangements_from_request(
     created_arrangements = []
 
     try:
-        # Auto Approve Jack Sim's requests
         wfh_request = ArrangementCreateWithFile.model_validate(wfh_request)
+
+        # Auto Approve Jack Sim's requests
 
         if wfh_request.staff_id == 130002:
             wfh_request.current_approval_status = "approved"

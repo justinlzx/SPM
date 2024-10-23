@@ -15,7 +15,7 @@ class ArrangementBase(BaseSchema):
         alias="requester_staff_id",
     )
 
-    wfh_date: str = Field(
+    wfh_date: date = Field(
         ...,
         title="Date of an adhoc WFH request or the start date of a recurring WFH request",
     )
