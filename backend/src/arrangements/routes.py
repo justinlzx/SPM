@@ -16,8 +16,7 @@ from ..notifications import exceptions as notification_exceptions
 from ..notifications.email_notifications import craft_and_send_email
 from . import exceptions as arrangement_exceptions
 from . import schemas, services
-from .schemas import (ArrangementCreate, ArrangementResponse,
-                      ArrangementUpdate, ManagerPendingRequests)
+from .schemas import ArrangementCreate, ArrangementResponse, ArrangementUpdate
 
 router = APIRouter()
 
@@ -37,7 +36,7 @@ def get_arrangement_by_id(arrangement_id: int, db: Session = Depends(get_db)):
                 },
             },
         )
-    except ArrangementNotFoundError as e:
+    except arrangement_exceptions as e:
         raise HTTPException(status_code=404, detail=str(e))
     except SQLAlchemyError as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -50,7 +49,14 @@ def get_arrangement_by_id(arrangement_id: int, db: Session = Depends(get_db)):
 def get_personal_arrangements_by_filter(
     staff_id: int,
     current_approval_status: List[
-        Literal["pending approval", "pending withdrawal", "approved", "rejected", "withdrawn", "cancelled"]
+        Literal[
+            "pending approval",
+            "pending withdrawal",
+            "approved",
+            "rejected",
+            "withdrawn",
+            "cancelled",
+        ]
     ] = Query(None, description="Filter by status"),
     db: Session = Depends(get_db),
 ):
@@ -90,7 +96,16 @@ def get_subordinates_arrangements(
         None, description="Type of WFH arrangement"
     ),
     current_approval_status: Optional[
-        List[Literal["pending approval", "pending withdrawal", "approved", "rejected", "withdrawn", "cancelled"]]
+        List[
+            Literal[
+                "pending approval",
+                "pending withdrawal",
+                "approved",
+                "rejected",
+                "withdrawn",
+                "cancelled",
+            ]
+        ]
     ] = Query(None, description="Filter by status"),
     items_per_page: int = Query(10, description="Items per Page"),
     page_num: int = Query(1, description="Page Number"),
@@ -134,9 +149,9 @@ def get_subordinates_arrangements(
 )
 def get_team_arrangements(
     staff_id: int,
-    current_approval_status: Optional[Literal["pending approval","pending withdrawal", "approved"]] = Query(
-        None, description="Filter by status"
-    ),
+    current_approval_status: Optional[
+        Literal["pending approval", "pending withdrawal", "approved"]
+    ] = Query(None, description="Filter by status"),
     db: Session = Depends(get_db),
 ):
     try:

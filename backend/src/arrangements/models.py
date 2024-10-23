@@ -1,5 +1,5 @@
-from sqlalchemy import (CheckConstraint, Column, Date, DateTime, ForeignKey,
-                        Integer, String)
+from sqlalchemy import (CheckConstraint, Column, DateTime, ForeignKey, Integer,
+                        String)
 from sqlalchemy.orm import relationship
 
 from ..database import Base
@@ -25,7 +25,7 @@ class ArrangementLog(Base):
         doc="Staff ID of the employee who made the request",
     )
     wfh_date = Column(
-        Date,
+        String,
         nullable=False,
         doc="Date of the WFH arrangement",
     )

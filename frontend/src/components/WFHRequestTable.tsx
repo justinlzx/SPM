@@ -69,8 +69,8 @@ const ConfirmationModal: React.FC<{
       <Typography mb={2}>Are you sure you want to {action === "cancel" ? "cancel" : "withdraw"} this request?</Typography>
       {action === "withdraw" && <TextField label="Reason for withdrawal (Optional)" fullWidth value={reason} onChange={(e) => setReason(e.target.value)} margin="normal" />}
       <Box mt={2} display="flex" justifyContent="flex-end">
-        <Button onClick={handleClose} variant="outlined" color="secondary" sx={{ mr: 2 }}>No</Button>
-        <Button onClick={handleConfirm} variant="contained" color="primary" disabled={loading}>{loading ? <CircularProgress size={24} color="inherit" /> : "Yes"}</Button>
+        <Button onClick={handleClose} variant="outlined" color="secondary" data-cy="no-button" sx={{ mr: 2 }}>No</Button>
+        <Button onClick={handleConfirm} variant="contained" color="primary" data-cy="yes-button" disabled={loading}>{loading ? <CircularProgress size={24} color="inherit" /> : "Yes"}</Button>
       </Box>
     </Box>
   </Modal>
@@ -206,7 +206,7 @@ export const WFHRequestTable: React.FC<TWFHRequestTableProps> = ({ requests, han
                   </TableCell>
                   <TableCell>
                     {request.approval_status === ApprovalStatus.PendingApproval && (
-                      <Button size="small" variant="outlined" color="primary" onClick={() => handleOpen(request.arrangement_id, "cancel")}>
+                      <Button size="small" variant="outlined" color="primary" data-cy={`cancel-button-${request.arrangement_id}`} onClick={() => handleOpen(request.arrangement_id, "cancel")}>
                         Cancel
                       </Button>
                     )}
