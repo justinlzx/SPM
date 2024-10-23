@@ -1,8 +1,7 @@
 from datetime import date, datetime
 from typing import Annotated, Dict, List, Literal, Optional
 
-from fastapi import (APIRouter, Depends, File, Form, HTTPException, Query,
-                     UploadFile)
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
 from fastapi.responses import JSONResponse
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
@@ -206,6 +205,38 @@ async def create_wfh_request(
     update_datetime = datetime.now()
     current_approval_status = "pending approval"
 
+    # Step 1: Fetch the usual approving officer (Reporting Manager) for the requester
+    employee_record = (
+        db.query(employee_models.Employee)
+        .filter(employee_models.Employee.staff_id == requester_staff_id)
+        .first()
+    )
+
+    if not employee_record:
+        raise HTTPException(status_code=404, detail="Employee record not found")
+
+    approving_officer = employee_record.reporting_manager
+
+    # Step 2: Check if the approving officer is on leave and fetch the delegate
+    delegate_approving_officer = None
+    delegation_log = (
+        db.query(employee_models.DelegateLog)
+        .filter(employee_models.DelegateLog.manager_id == approving_officer)
+        .filter(
+            employee_models.DelegateLog.status_of_delegation.in_(
+                [
+                    employee_models.DelegationStatus.pending,
+                    employee_models.DelegationStatus.accepted,
+                ]
+            )
+        )
+        .first()
+    )
+
+    if delegation_log:
+        delegate_approving_officer = delegation_log.delegate_manager_id
+
+    # Step 3: Create the WFH request data structure
     wfh_request: ArrangementCreate = {
         "reason_description": reason_description,
         "is_recurring": is_recurring,
@@ -219,9 +250,11 @@ async def create_wfh_request(
         "wfh_date": wfh_date,
         "wfh_type": wfh_type,
         "staff_id": requester_staff_id,
-        "approving_officer": None,
+        "approving_officer": approving_officer,
+        "delegate_approving_officer": delegate_approving_officer,  # New field added here
     }
 
+    # Step 4: Call the service to create the arrangements
     return await services.create_arrangements_from_request(db, wfh_request, supporting_docs)
 
 
