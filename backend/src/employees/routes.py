@@ -6,17 +6,17 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import EmailStr
 from sqlalchemy.orm import Session
 
-from ..email.routes import send_email
-import traceback
 from .. import utils
+from ..arrangements import models as arrangement_models
 from ..database import get_db
-from ..employees.models import Employee
-from ..employees.schemas import EmployeeBase, EmployeePeerResponse, DelegateLogCreate
-from . import exceptions, models, schemas, services
-from ..arrangements import models as arrangement_models, services as arrangement_services
-from ..employees.models import DelegateLog, DelegationStatus
-from ..notifications.email_notifications import craft_email_content_for_delegation
+from ..email.routes import send_email
 from ..employees import services as employee_services
+from ..employees.models import DelegateLog, DelegationStatus, Employee
+from ..employees.schemas import (DelegateLogCreate, EmployeeBase,
+                                 EmployeePeerResponse)
+from ..notifications.email_notifications import \
+    craft_email_content_for_delegation
+from . import exceptions, models, schemas, services
 
 router = APIRouter()
 
@@ -105,7 +105,7 @@ def get_subordinates_by_manager_id(staff_id: int, db: Session = Depends(get_db))
         raise HTTPException(status_code=404, detail=str(e))
 
 
-@router.put("/manager/delegate/{staff_id}", response_model=DelegateLogCreate)
+@router.post("/manager/delegate/{staff_id}", response_model=DelegateLogCreate)
 async def delegate_manager(staff_id: int, delegate_manager_id: int, db: Session = Depends(get_db)):
     """
     Delegates the approval responsibility of a manager to another staff member.
@@ -212,7 +212,9 @@ async def update_delegation_status(
                 .filter(
                     arrangement_models.LatestArrangement.approving_officer
                     == delegation_log.manager_id,
-                    arrangement_models.LatestArrangement.current_approval_status == "pending",
+                    arrangement_models.LatestArrangement.current_approval_status.in_(
+                        ["pending approval", "pending withdrawal"]
+                    ),
                 )
                 .all()
             )

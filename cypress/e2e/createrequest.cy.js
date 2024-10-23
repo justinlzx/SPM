@@ -7,8 +7,8 @@ describe('Testing requests page', () => {
         cy.get('[data-cy="password"]').type('password')
         cy.get('[data-cy="submit"]').click()
         cy.url().should('eq', 'http://localhost:3000/home');
-        cy.get('[data-cy="requests"]').first().click({ force: true });
-        cy.url().should('eq', 'http://localhost:3000/request');
+        cy.get('[data-cy="create-request"]').first().click({ force: true });
+        cy.url().should('eq', 'http://localhost:3000/create-request');
         // Fill in the form
         cy.get('[name="reason"]').type('Working on project X');
 
@@ -33,8 +33,8 @@ describe('Testing requests page', () => {
         cy.get('[data-cy="password"]').type('password')
         cy.get('[data-cy="submit"]').click()
         cy.url().should('eq', 'http://localhost:3000/home');
-        cy.get('[data-cy="requests"]').first().click({ force: true });
-        cy.url().should('eq', 'http://localhost:3000/request');
+        cy.get('[data-cy="create-request"]').first().click({ force: true });
+        cy.url().should('eq', 'http://localhost:3000/create-request');
         // Fill in the form
         cy.get('[name="reason"]').type('Working on project X recurringly');
 
@@ -63,8 +63,8 @@ describe('Testing requests page', () => {
         cy.get('[data-cy="password"]').type('password')
         cy.get('[data-cy="submit"]').click()
         cy.url().should('eq', 'http://localhost:3000/home');
-        cy.get('[data-cy="requests"]').first().click({ force: true });
-        cy.url().should('eq', 'http://localhost:3000/request');
+        cy.get('[data-cy="create-request"]').first().click({ force: true });
+        cy.url().should('eq', 'http://localhost:3000/create-request');
         // Fill in the form
         cy.get('[name="reason"]').type('Working on project X');
 
@@ -89,8 +89,8 @@ describe('Testing requests page', () => {
         cy.get('[data-cy="password"]').type('password')
         cy.get('[data-cy="submit"]').click()
         cy.url().should('eq', 'http://localhost:3000/home');
-        cy.get('[data-cy="requests"]').first().click({ force: true });
-        cy.url().should('eq', 'http://localhost:3000/request');
+        cy.get('[data-cy="create-request"]').first().click({ force: true });
+        cy.url().should('eq', 'http://localhost:3000/create-request');
 
         // Interact with Material-UI select for WFH Type
         cy.get('[data-cy="wfhType"]').click(); // Open the dropdown
@@ -114,8 +114,8 @@ describe('Testing requests page', () => {
         cy.get('[data-cy="password"]').type('password')
         cy.get('[data-cy="submit"]').click()
         cy.url().should('eq', 'http://localhost:3000/home');
-        cy.get('[data-cy="requests"]').first().click({ force: true });
-        cy.url().should('eq', 'http://localhost:3000/request');
+        cy.get('[data-cy="create-request"]').first().click({ force: true });
+        cy.url().should('eq', 'http://localhost:3000/create-request');
         // Fill in the form
         cy.get('[name="reason"]').type('Working on project X');
 
@@ -135,10 +135,10 @@ describe('Testing requests page', () => {
         cy.get('[data-cy="password"]').type('password')
         cy.get('[data-cy="submit"]').click()
         cy.url().should('eq', 'http://localhost:3000/home');
-        cy.get('[data-cy="requests"]').first().click({ force: true });
-        cy.url().should('eq', 'http://localhost:3000/request');
+        cy.get('[data-cy="create-request"]').first().click({ force: true });
+        cy.url().should('eq', 'http://localhost:3000/create-request');
         cy.get('[data-cy="submit-request"]').click()
-        cy.url().should('eq', 'http://localhost:3000/request');
+        cy.url().should('eq', 'http://localhost:3000/create-request');
         // Assert the error message is shown for the reason field
         cy.get('.MuiFormHelperText-root').should('contain', 'Reason is required');
         // Assert the error message is shown for WFH type
@@ -157,12 +157,12 @@ describe('Testing requests page', () => {
         cy.get('[data-cy="password"]').type('password')
         cy.get('[data-cy="submit"]').click()
         cy.url().should('eq', 'http://localhost:3000/home');
-        cy.get('[data-cy="requests"]').first().click({ force: true });
-        cy.url().should('eq', 'http://localhost:3000/request');
+        cy.get('[data-cy="create-request"]').first().click({ force: true });
+        cy.url().should('eq', 'http://localhost:3000/create-request');
         // Fill in the form
         cy.get('[name="reason"]').type('Working on project X');
         cy.get('[data-cy="submit-request"]').click();
-        cy.url().should('eq', 'http://localhost:3000/request');
+        cy.url().should('eq', 'http://localhost:3000/create-request');
         // Assert the error message is shown for WFH type
         cy.get('input[name="wfhType"]').then(($input) => {
             // Check if the error message is displayed
@@ -179,13 +179,13 @@ describe('Testing requests page', () => {
         cy.get('[data-cy="password"]').type('password')
         cy.get('[data-cy="submit"]').click()
         cy.url().should('eq', 'http://localhost:3000/home');
-        cy.get('[data-cy="requests"]').first().click({ force: true });
-        cy.url().should('eq', 'http://localhost:3000/request');
+        cy.get('[data-cy="create-request"]').first().click({ force: true });
+        cy.url().should('eq', 'http://localhost:3000/create-request');
         // Interact with Material-UI select for WFH Type
         cy.get('[data-cy="wfhType"]').click(); // Open the dropdown
         cy.get('li[data-value="full"]').click(); // Select "Full-day" option
         cy.get('[data-cy="submit-request"]').click();
-        cy.url().should('eq', 'http://localhost:3000/request');
+        cy.url().should('eq', 'http://localhost:3000/create-request');
         // Assert the error message is shown for the reason field
         cy.get('.MuiFormHelperText-root').should('contain', 'Reason is required');
         // Assert the error message is shown for the date field
@@ -199,15 +199,15 @@ describe('Testing requests page', () => {
         cy.get('[data-cy="password"]').type('password')
         cy.get('[data-cy="submit"]').click()
         cy.url().should('eq', 'http://localhost:3000/home');
-        cy.get('[data-cy="requests"]').first().click({ force: true });
-        cy.url().should('eq', 'http://localhost:3000/request');
+        cy.get('[data-cy="create-request"]').first().click({ force: true });
+        cy.url().should('eq', 'http://localhost:3000/create-request');
         // Open the date picker input
         cy.get('[data-cy="start-datepicker"]').click(); // Click the custom input for the date picker
 
         // Select a specific future date (ensure the date class matches your DatePicker setup)
         cy.get('.react-datepicker__day--028').click(); // Adjust the day selection as necessary
         cy.get('[data-cy="submit-request"]').click();
-        cy.url().should('eq', 'http://localhost:3000/request');
+        cy.url().should('eq', 'http://localhost:3000/create-request');
         // Assert the error message is shown for the reason field
         cy.get('.MuiFormHelperText-root').should('contain', 'Reason is required');
         // Assert the error message is shown for WFH type
@@ -224,8 +224,8 @@ describe('Testing requests page', () => {
         cy.get('[data-cy="password"]').type('password')
         cy.get('[data-cy="submit"]').click()
         cy.url().should('eq', 'http://localhost:3000/home');
-        cy.get('[data-cy="requests"]').first().click({ force: true });
-        cy.url().should('eq', 'http://localhost:3000/request');
+        cy.get('[data-cy="create-request"]').first().click({ force: true });
+        cy.url().should('eq', 'http://localhost:3000/create-request');
         cy.get('[data-cy="cancel"]').click();
         cy.url().should('eq', 'http://localhost:3000/home');
 
