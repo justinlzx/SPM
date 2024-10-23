@@ -96,10 +96,30 @@ async def craft_and_send_email(
                 f"Arrangement is missing required attributes: {', '.join(missing_arrangement_attributes)}"
             )
 
-    if action not in ["create", "approve", "reject"]:
+    if action not in [
+        "create",
+        "approve",
+        "reject",
+        "withdraw",
+        "allow withdraw",
+        "reject withdraw",
+        "cancel",
+    ]:
         raise ValueError(f"Invalid action: {action}")
 
-    if action in ["create", "approve", "reject"] and not manager:
+    if (
+        action
+        in [
+            "create",
+            "approve",
+            "reject",
+            "withdraw",
+            "allow withdraw",
+            "reject withdraw",
+            "cancel",
+        ]
+        and not manager
+    ):
         raise ValueError("Manager is required for the specified action.")
 
     if error_message is not None and error_message == "":
@@ -222,8 +242,8 @@ def craft_email_content(
                 "create": "Your Staff Created a WFH Request",
                 "approve": "You Have Approved a WFH Request",
                 "reject": "You Have Rejected a WFH Request",
-                "withdraw": "Your Staff Has Request to Withdraw Their WFH",
-                "allow withdraw": "You Have Withdrawn a WFH Request",
+                "withdraw": "Your Staff Has Requested to Withdraw Their WFH",
+                "allow withdraw": "You Have Approved a WFH Request Withdrawal",
                 "reject withdraw": "You Have Rejected a WFH Request Withdrawal",
                 "cancel": "You Have Cancelled a WFH Request",
             },

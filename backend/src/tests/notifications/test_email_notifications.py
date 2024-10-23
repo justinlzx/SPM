@@ -30,18 +30,11 @@ class MockArrangement(MagicMock):
 
 
 @pytest.fixture
-def mock_create_arrangement():
-    return MockArrangement(current_approval_status="pending")
+def mock_arrangement_factory():
+    def _create_mock_arrangement(current_approval_status="pending"):
+        return MockArrangement(current_approval_status=current_approval_status)
 
-
-@pytest.fixture
-def mock_approve_arrangement():
-    return MockArrangement(current_approval_status="approved")
-
-
-@pytest.fixture
-def mock_reject_arrangement():
-    return MockArrangement(current_approval_status="rejected")
+    return _create_mock_arrangement
 
 
 @pytest.fixture
@@ -271,12 +264,12 @@ class TestSendEmail:
 
 
 class TestCraftEmailContent:
-    def test_error_message(self, mock_staff, mock_manager, mock_create_arrangement):
+    def test_error_message(self, mock_staff, mock_manager, mock_arrangement_factory):
         error_message = "Some error occurred"
 
         email_subject_content = notifications.craft_email_content(
             employee=mock_staff,
-            arrangements=[mock_create_arrangement],
+            arrangements=[mock_arrangement_factory("pending")],
             action="create",
             error_message=error_message,
             manager=mock_manager,
@@ -289,11 +282,12 @@ class TestCraftEmailContent:
         )
         assert error_message in employee["content"]
 
-    def test_empty_description(self, mock_staff, mock_manager, mock_create_arrangement):
-        mock_create_arrangement.reason_description = ""
+    def test_empty_description(self, mock_staff, mock_manager, mock_arrangement_factory):
+        mock_arrangement = mock_arrangement_factory("pending")
+        mock_arrangement.reason_description = ""
         email_subject_content = notifications.craft_email_content(
             employee=mock_staff,
-            arrangements=[mock_create_arrangement],
+            arrangements=[mock_arrangement],
             action="create",
             manager=mock_manager,
         )
@@ -301,10 +295,10 @@ class TestCraftEmailContent:
 
         assert "Reason for WFH Request: \n" in employee["content"]
 
-    def test_formatted_details(self, mock_staff, mock_manager, mock_create_arrangement):
+    def test_formatted_details(self, mock_staff, mock_manager, mock_arrangement_factory):
         email_subject_content = notifications.craft_email_content(
             employee=mock_staff,
-            arrangements=[mock_create_arrangement],
+            arrangements=[mock_arrangement_factory("pending")],
             action="create",
             manager=mock_manager,
         )
@@ -362,14 +356,14 @@ class TestCraftEmailContent:
         self,
         mock_staff,
         mock_manager,
-        mock_create_arrangement,
+        mock_arrangement_factory,
         action,
         expected_employee_subject,
         expected_manager_subject,
     ):
         email_subject_content = notifications.craft_email_content(
             employee=mock_staff,
-            arrangements=[mock_create_arrangement],
+            arrangements=[mock_arrangement_factory("pending")],
             action=action,
             manager=mock_manager,
         )
@@ -384,8 +378,8 @@ class TestCraftEmailContent:
         assert expected_manager_subject == manager["subject"]
         assert "Dear Michael Scott" in manager["content"]
 
-    def test_multiple_arrangements(self, mock_staff, mock_manager, mock_create_arrangement):
-        arrangements = [mock_create_arrangement] * 2
+    def test_multiple_arrangements(self, mock_staff, mock_manager, mock_arrangement_factory):
+        arrangements = [mock_arrangement_factory("pending")] * 2
         email_subject_content = notifications.craft_email_content(
             employee=mock_staff, arrangements=arrangements, action="create", manager=mock_manager
         )
@@ -401,14 +395,16 @@ class TestCraftEmailContent:
 
 class TestCraftAndSendEmail:
     @pytest.mark.asyncio
-    async def test_missing_required_positional_arguments(self, mock_staff, mock_create_arrangement):
+    async def test_missing_required_positional_arguments(
+        self, mock_staff, mock_arrangement_factory
+    ):
         required_args = [
             (
                 (None, None, None),
                 "craft_email_content() missing 3 required positional argument(s): employee, arrangements, action",
             ),
             (
-                (None, [mock_create_arrangement], "create"),
+                (None, [mock_arrangement_factory("pending")], "create"),
                 "craft_email_content() missing 1 required positional argument(s): employee",
             ),
             (
@@ -420,7 +416,7 @@ class TestCraftAndSendEmail:
                 "craft_email_content() missing 1 required positional argument(s): arrangements",
             ),
             (
-                (mock_staff, [mock_create_arrangement], None),
+                (mock_staff, [mock_arrangement_factory("pending")], None),
                 "craft_email_content() missing 1 required positional argument(s): action",
             ),
         ]
@@ -433,13 +429,13 @@ class TestCraftAndSendEmail:
     # REVIEW: may not be needed as required employee attributes should be validated by the Pydantic model
     @pytest.mark.asyncio
     async def test_missing_employee_attributes(
-        self, mock_staff, mock_manager, mock_create_arrangement
+        self, mock_staff, mock_manager, mock_arrangement_factory
     ):
         mock_staff.staff_fname = None
         with pytest.raises(AttributeError) as exc_info:
             await notifications.craft_and_send_email(
                 employee=mock_staff,
-                arrangements=[mock_create_arrangement],
+                arrangements=[mock_arrangement_factory("pending")],
                 action="create",
                 manager=mock_manager,
             )
@@ -451,7 +447,7 @@ class TestCraftAndSendEmail:
         with pytest.raises(AttributeError) as exc_info:
             await notifications.craft_and_send_email(
                 employee=mock_staff,
-                arrangements=[mock_create_arrangement],
+                arrangements=[mock_arrangement_factory("pending")],
                 action="create",
                 manager=mock_manager,
             )
@@ -464,33 +460,38 @@ class TestCraftAndSendEmail:
     # TODO: Test missing arrangement attributes
 
     @pytest.mark.asyncio
-    @pytest.mark.parametrize("action", ["create", "approve", "reject"])
-    async def test_missing_manager(self, mock_staff, mock_create_arrangement, action):
+    @pytest.mark.parametrize(
+        "action",
+        ["create", "approve", "reject", "withdraw", "allow withdraw", "reject withdraw", "cancel"],
+    )
+    async def test_missing_manager(self, mock_staff, mock_arrangement_factory, action):
         """Test crafting email content with missing manager for different actions."""
         with pytest.raises(ValueError) as exc_info:
             await notifications.craft_and_send_email(
-                employee=mock_staff, arrangements=[mock_create_arrangement], action=action
+                employee=mock_staff,
+                arrangements=[mock_arrangement_factory("pending")],
+                action=action,
             )
         assert str(exc_info.value) == "Manager is required for the specified action."
 
     @pytest.mark.asyncio
-    async def test_invalid_action(self, mock_staff, mock_create_arrangement, mock_manager):
+    async def test_invalid_action(self, mock_staff, mock_arrangement_factory, mock_manager):
         with pytest.raises(ValueError) as excinfo:
             await notifications.craft_and_send_email(
                 employee=mock_staff,
-                arrangements=[mock_create_arrangement],
+                arrangements=[mock_arrangement_factory("pending")],
                 action="invalid_action",
                 manager=mock_manager,
             )
         assert str(excinfo.value) == "Invalid action: invalid_action"
 
     @pytest.mark.asyncio
-    async def test_empty_error_message(self, mock_staff, mock_manager, mock_create_arrangement):
+    async def test_empty_error_message(self, mock_staff, mock_manager, mock_arrangement_factory):
         """Test crafting email content for failure scenario with an empty error message."""
         with pytest.raises(ValueError) as exc_info:
             await notifications.craft_and_send_email(
                 employee=mock_staff,
-                arrangements=[mock_create_arrangement],
+                arrangements=[mock_arrangement_factory("pending")],
                 action="create",
                 error_message="",
                 manager=mock_manager,
@@ -499,24 +500,34 @@ class TestCraftAndSendEmail:
 
     @pytest.mark.asyncio
     @pytest.mark.parametrize(
-        "action, mock_arrangement_fixture",
+        "action, approval_status",
         [
-            ("create", "mock_create_arrangement"),
-            ("approve", "mock_approve_arrangement"),
-            ("reject", "mock_reject_arrangement"),
+            ("create", "pending"),
+            ("approve", "approved"),
+            ("reject", "rejected"),
+            ("withdraw", "pending withdrawal"),
+            ("allow withdraw", "withdrawn"),
+            ("reject withdraw", "approved"),
+            ("cancel", "cancelled"),
         ],
     )
     @patch("src.notifications.email_notifications.send_email", return_value=True)
     async def test_success(
-        self, mock_send_email, mock_staff, mock_manager, request, action, mock_arrangement_fixture
+        self,
+        mock_send_email,
+        mock_staff,
+        mock_manager,
+        mock_arrangement_factory,
+        action,
+        approval_status,
     ):
         """Test crafting and sending email for different actions."""
-        # Get the appropriate mock arrangement fixture
-        mock_arrangement = request.getfixturevalue(mock_arrangement_fixture)
+        # Create the appropriate mock arrangement using the factory
+        mock_arrangement = mock_arrangement_factory(current_approval_status=approval_status)
 
         result = await notifications.craft_and_send_email(
             employee=mock_staff,
-            arrangements=mock_arrangement,
+            arrangements=[mock_arrangement],
             action=action,
             manager=mock_manager,
         )
@@ -530,13 +541,13 @@ class TestCraftAndSendEmail:
         side_effect=HTTPException(status_code=500),
     )
     async def test_email_failure(
-        self, mock_send_email, mock_staff, mock_create_arrangement, mock_manager
+        self, mock_send_email, mock_staff, mock_arrangement_factory, mock_manager
     ):
 
         with pytest.raises(notification_exceptions.EmailNotificationException) as exc_info:
             await notifications.craft_and_send_email(
                 employee=mock_staff,
-                arrangements=mock_create_arrangement,
+                arrangements=mock_arrangement_factory("pending"),
                 action="create",
                 manager=mock_manager,
             )
@@ -550,9 +561,9 @@ class TestCraftAndSendEmail:
     @pytest.mark.asyncio
     @patch("src.notifications.email_notifications.send_email", return_value=True)
     async def test_create_multiple_arrangements_success(
-        self, mock_send_email, mock_staff, mock_manager, mock_create_arrangement
+        self, mock_send_email, mock_staff, mock_manager, mock_arrangement_factory
     ):
-        mock_arrangements = [mock_create_arrangement] * 2
+        mock_arrangements = [mock_arrangement_factory("pending")] * 2
 
         result = await notifications.craft_and_send_email(
             employee=mock_staff,
