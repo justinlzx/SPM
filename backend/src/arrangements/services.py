@@ -15,21 +15,27 @@ from .. import utils
 from ..employees import exceptions as employee_exceptions
 from ..employees import models as employee_models
 from ..employees import services as employee_services
+
 # from src.employees.schemas import EmployeeBase
 from ..logger import logger
 from . import crud, exceptions, models
 from .models import LatestArrangement
-from .schemas import (ArrangementCreate, ArrangementCreateResponse,
-                      ArrangementCreateWithFile, ArrangementResponse,
-                      ArrangementUpdate, ManagerPendingRequestResponse,
-                      ManagerPendingRequests)
+from .schemas import (
+    ArrangementCreate,
+    ArrangementCreateResponse,
+    ArrangementCreateWithFile,
+    ArrangementResponse,
+    ArrangementUpdate,
+    ManagerPendingRequestResponse,
+    ManagerPendingRequests,
+)
 from .utils import create_presigned_url
 
 STATUS = {
     "approve": "approved",
     "reject": "rejected",
     "withdraw": "pending withdrawal",
-    "allow withdraw" : "withdrawn",
+    "allow withdraw": "withdrawn",
     "cancel": "cancelled",
 }
 
@@ -73,12 +79,12 @@ def get_subordinates_arrangements(
     db: Session,
     manager_id: int,
     current_approval_status: List[str],
-    name,
-    start_date: datetime,
-    end_date: datetime,
-    type,
-    items_per_page,
-    page_num,
+    name: str = None,
+    start_date: datetime = None,
+    end_date: datetime = None,
+    wfh_type: str = None,
+    items_per_page: int = 10,
+    page_num: int = 1,
 ) -> List[ManagerPendingRequestResponse]:
 
     # Check if the employee is a manager
@@ -96,7 +102,7 @@ def get_subordinates_arrangements(
         employees_under_manager_ids,
         current_approval_status,
         name,
-        type,
+        wfh_type,
         start_date,
         end_date,
     )
@@ -145,6 +151,15 @@ def get_subordinates_arrangements(
 def group_arrangements_by_employee(
     arrangements_schema: List[ArrangementCreateResponse],
 ) -> List[ManagerPendingRequests]:
+    """
+    The function `group_arrangements_by_employee` organizes a list of arrangements by employee, creating
+    a list of ManagerPendingRequests objects for each employee with their corresponding arrangements.
+
+    :param arrangements_schema: `arrangements_schema` is a list of `ArrangementCreateResponse` objects
+    :type arrangements_schema: List[ArrangementCreateResponse]
+    :return: A list of `ManagerPendingRequests` objects, where each object contains information about an
+    employee and their pending arrangements.
+    """
 
     arrangements_dict = {}
 
@@ -165,7 +180,15 @@ def group_arrangements_by_employee(
 
 
 def get_team_arrangements(
-    db: Session, staff_id: int, current_approval_status: List[str]
+    db: Session,
+    staff_id: int,
+    current_approval_status: List[str],
+    name: str = None,
+    wfh_type: str = None,
+    start_date: datetime = None,
+    end_date: datetime = None,
+    items_per_page: int = 10,
+    page_num: int = 1,
 ) -> Dict[str, List[ArrangementResponse]]:
 
     arrangements: Dict[str, List[ArrangementResponse]] = {}
@@ -176,7 +199,13 @@ def get_team_arrangements(
         db, staff_id
     )
     peer_arrangements: List[models.LatestArrangement] = crud.get_arrangements_by_staff_ids(
-        db, [peer.staff_id for peer in peer_employees], current_approval_status
+        db,
+        [peer.staff_id for peer in peer_employees],
+        current_approval_status,
+        name,
+        wfh_type,
+        start_date,
+        end_date,
     )
     peer_arrangements: List[ArrangementResponse] = utils.convert_model_to_pydantic_schema(
         peer_arrangements, ArrangementResponse
@@ -186,13 +215,20 @@ def get_team_arrangements(
 
     try:
         # If employee is manager, get arrangements of subordinates
-        subordinates_arrangements: List[models.LatestArrangement] = get_subordinates_arrangements(
-            db, staff_id, current_approval_status
+        subordinates_arrangements: List[ManagerPendingRequestResponse] = (
+            get_subordinates_arrangements(
+                db,
+                staff_id,
+                current_approval_status,
+                name,
+                start_date,
+                end_date,
+                wfh_type,
+                items_per_page,
+                page_num,
+            )
         )
 
-        subordinates_arrangements: List[ArrangementResponse] = (
-            utils.convert_model_to_pydantic_schema(subordinates_arrangements, ArrangementResponse)
-        )
         arrangements["subordinates"] = subordinates_arrangements
     except employee_exceptions.ManagerWithIDNotFoundException:
         pass
@@ -409,7 +445,6 @@ def update_arrangement_approval_status(
     # if arrangement.current_approval_status == "approved" and wfh_update.action != "cancel":
     #     raise exceptions.ArrangementActionNotAllowed(f"Cannot {wfh_update.action} an already approved arrangement")
 
-    
     # Update arrangement fields
     new_status = STATUS.get(wfh_update.action)
     if new_status is None:

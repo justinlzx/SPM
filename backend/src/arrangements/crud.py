@@ -1,9 +1,8 @@
-from datetime import date, datetime
-from math import ceil
+from datetime import datetime
 from typing import List, Literal
 
 # from pydantic import ValidationError
-from sqlalchemy import Date, DateTime, cast, func, or_
+from sqlalchemy import func, or_
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 from src.employees.models import Employee
@@ -46,7 +45,7 @@ def get_arrangements_by_staff_ids(
         Literal["pending", "approved", "rejected", "cancelled", "withdrawn"]
     ] = None,
     name: str = None,
-    type: Literal["full", "am", "pm"] = None,
+    wfh_type: Literal["full", "am", "pm"] = None,
     start_date: datetime = None,
     end_date: datetime = None,
 ) -> List[schemas.ArrangementCreateResponse]:
@@ -84,8 +83,8 @@ def get_arrangements_by_staff_ids(
             models.LatestArrangement.current_approval_status.in_(current_approval_status)
         )
 
-    if type:
-        query = query.filter(models.LatestArrangement.wfh_type == type)
+    if wfh_type:
+        query = query.filter(models.LatestArrangement.wfh_type == wfh_type)
 
     if start_date:
         query = query.filter(func.date(models.LatestArrangement.wfh_date) >= start_date)

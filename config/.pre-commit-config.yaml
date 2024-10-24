@@ -15,6 +15,13 @@ repos:
       - id: requirements-txt-fixer # Sorts entries in requirements.txt and constraints.txt and removes incorrect entry for pkg-resources==0.0.0
       # - id: trailing-whitespace # Trims trailing whitespace.
 
+  - repo: https://github.com/PyCQA/isort
+    rev: 5.13.2
+    hooks:
+      - id: isort
+        files: ^backend/
+        args: ["--profile", "black"]
+
   - repo: https://github.com/psf/black
     rev: 24.8.0
     hooks:
@@ -22,12 +29,13 @@ repos:
         files: ^backend/
         args: ["--config=config/black.toml"]
 
-  - repo: https://github.com/PyCQA/isort
-    rev: 5.13.2
+  - repo: https://github.com/pycqa/autoflake
+    rev: v2.3.1
     hooks:
-      - id: isort
+      - id: autoflake
         files: ^backend/
-  
+        args: ["--in-place", "--remove-all-unused-imports", "--remove-duplicate-keys", "--expand-star-imports", "--remove-unused-variables"]
+
   - repo: https://github.com/pycqa/flake8
     rev: 7.1.1
     hooks:

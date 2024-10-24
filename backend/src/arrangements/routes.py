@@ -151,11 +151,27 @@ def get_team_arrangements(
     current_approval_status: Optional[
         Literal["pending approval", "pending withdrawal", "approved"]
     ] = Query(None, description="Filter by status"),
+    name: Optional[str] = Query(None, description="Name of the employee"),
+    wfh_type: Optional[Literal["full", "am", "pm"]] = Query(
+        None, description="Type of WFH arrangement"
+    ),
+    start_date: Optional[date] = Query(None, description="Start Date"),
+    end_date: Optional[date] = Query(None, description="End Date"),
+    items_per_page: int = Query(10, description="Items per Page"),
+    page_num: int = Query(1, description="Page Number"),
     db: Session = Depends(get_db),
 ):
     try:
         arrangements: Dict[str, List[ArrangementResponse]] = services.get_team_arrangements(
-            db, staff_id, current_approval_status
+            db,
+            staff_id,
+            current_approval_status,
+            name,
+            wfh_type,
+            start_date,
+            end_date,
+            items_per_page,
+            page_num,
         )
         return JSONResponse(
             status_code=200,
