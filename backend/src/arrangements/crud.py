@@ -16,7 +16,7 @@ def get_arrangement_by_id(db: Session, arrangement_id: int) -> models.LatestArra
     return db.query(models.LatestArrangement).get(arrangement_id)
 
 
-def get_arrangements_by_staff_ids(
+def get_arrangements(
     db: Session,
     staff_ids: List[int],
     current_approval_status: List[
@@ -79,11 +79,11 @@ def get_arrangements_by_staff_ids(
         query = query.filter(func.date(models.LatestArrangement.wfh_date) <= end_date)
 
     if reason:
-        query = query.filter(models.LatestArrangement.reason.ilike(reason))
+        query = query.filter(models.LatestArrangement.reason_description.like(reason))
 
     result = query.all()
 
-    print(f"Result: {result}")
+    print("dog", str(query))
 
     return result
 

@@ -1,29 +1,126 @@
 from datetime import datetime
-from unittest import mock
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, Mock
 
 import pytest
 from sqlalchemy.exc import SQLAlchemyError
 from src.arrangements import crud, models, schemas
 
+from sqlalchemy.orm import Session, Query
+
 
 @pytest.fixture
 def mock_arrangement():
     return models.LatestArrangement(
-        arrangement_id=1, requester_staff_id=12345, current_approval_status="pending"
+        arrangement_id=1,
+        requester_staff_id=140001,
+        wfh_date=datetime(2024, 1, 15),
+        wfh_type="full",
+        approving_officer=151408,
+        reason_description="Work from home request",
+        update_datetime=datetime(2024, 1, 15),
+        current_approval_status="pending",
+        batch_id=1,
+        supporting_doc_1=None,
+        supporting_doc_2=None,
+        supporting_doc_3=None,
+        latest_log_id=789,
+        requester_info=None,
     )
 
 
 @pytest.fixture
 def mock_arrangements():
     return [
-        models.LatestArrangement(
-            arrangement_id=1, requester_staff_id=12345, current_approval_status="pending"
-        ),
-        models.LatestArrangement(
-            arrangement_id=2, requester_staff_id=130002, current_approval_status="pending"
-        ),
+        {
+            "arrangement_id": 1,
+            "requester_staff_id": 140001,
+            "wfh_date": datetime(2024, 1, 15),
+            "wfh_type": "full",
+            "approving_officer": 151408,
+            "reason_description": "Work from home request",
+            "update_datetime": datetime(2024, 1, 15),
+            "current_approval_status": "pending approval",
+            "batch_id": 1,
+            "supporting_doc_1": None,
+            "supporting_doc_2": None,
+            "supporting_doc_3": None,
+            "latest_log_id": 789,
+            "requester_info": {
+                "staff_id": 140001,
+                "staff_fname": "Derek",
+                "staff_lname": "Tan",
+                "email": "Derek.Tan@allinone.com.sg",
+            },
+        },
+        {
+            "arrangement_id": 2,
+            "requester_staff_id": 151408,
+            "wfh_date": datetime(2024, 1, 15),
+            "wfh_type": "pm",
+            "approving_officer": 130002,
+            "reason_description": "Work from home request",
+            "update_datetime": datetime(2024, 1, 16),
+            "current_approval_status": "pending",
+            "batch_id": 1,
+            "supporting_doc_1": None,
+            "supporting_doc_2": None,
+            "supporting_doc_3": None,
+            "latest_log_id": 123,
+            "requester_info": {
+                "staff_id": 151408,
+                "staff_fname": "Philip",
+                "staff_lname": "Lee",
+                "email": "Philip.Lee@allinone.com.sg",
+            },
+        },
+        {
+            "arrangement_id": 3,
+            "requester_staff_id": 151408,
+            "wfh_date": datetime(2024, 1, 15),
+            "wfh_type": "am",
+            "approving_officer": 130002,
+            "reason_description": "OOO",
+            "update_datetime": datetime(2024, 1, 17),
+            "current_approval_status": "rejected",
+            "batch_id": 1,
+            "supporting_doc_1": None,
+            "supporting_doc_2": None,
+            "supporting_doc_3": None,
+            "latest_log_id": 123,
+            "requester_info": {
+                "staff_id": 151408,
+                "staff_fname": "Philip",
+                "staff_lname": "Lee",
+                "email": "Philip.Lee@allinone.com.sg",
+            },
+        },
     ]
+
+
+@pytest.fixture
+def mock_db(mock_arrangements):
+    """Create a mock database session with chainable query methods"""
+    db = Mock(spec=Session)
+    query = Mock(spec=Query)
+
+    # Make all query methods chainable
+    query.join.return_value = query
+    query.filter.return_value = query
+    query.all.return_value = mock_arrangements
+
+    # Store the original filter method for verification
+    query._filter = query.filter
+
+    # Create a more sophisticated filter that can handle our actual filters
+    def filtered_results(*args, **kwargs):
+        # You could implement actual filtering logic here if needed
+        query.filter_args = getattr(query, "filter_args", []) + [args]
+        return query
+
+    query.filter.side_effect = filtered_results
+    db.query.return_value = query
+
+    return db, query
 
 
 @pytest.fixture
@@ -55,45 +152,57 @@ def test_get_arrangement_by_id(mock_db_session, mock_arrangement):
     assert result == mock_arrangement
 
 
-def test_get_arrangements_by_filter(mock_db_session, mock_arrangements):
-    mock_query = MagicMock()
-    mock_db_session.query.return_value = mock_query
-    mock_query.filter.return_value = mock_query
-    mock_query.all.return_value = mock_arrangements
+@pytest.mark.parametrize(
+    "staff_ids, filters, expected_arrangement_ids",
+    [
+        # Test vase 0: No filters
+        ([], {}, [1, 2]),  # One filter call for staff_ids
+        # Test case: Basic staff_ids only
+        ([140001], {}, [1]),  # One filter call for staff_ids
+        ([140001, 151408], {}, [1, 2]),  # One filter call for staff_ids
+        # Test case: Name filter
+        ([], {"name": "Philip"}, [2]),
+        ([], {"name": "Sim"}, [1]),
+        # Test case: Current_approval_status filter
+        ([], {"current_approval_status": ["rejected"]}, [3]),
+        ([], {"current_approval_status": ["pending", "rejected"]}, [1, 3]),
+        # Test case: wfh_type filter
+        ([], {"wfh_type": "full"}, [1]),
+        ([], {"wfh_type": "am"}, [2]),
+        ([], {"wfh_type": "pm"}, [3]),
+        # Test case: start_date filter
+        ([], {"start_date": datetime(2024, 1, 16)}, [2, 3]),
+        # Test case: end_date filter
+        ([], {"end_date": datetime(2024, 1, 15)}, [1, 2]),
+        ([], {"end_date": datetime(2024, 1, 17)}, [1, 2, 3]),
+        # Test case: start_date and end_date filter
+        ([], {"start_date": datetime(2024, 1, 15), "end_date": datetime(2024, 1, 16)}, [1, 2]),
+        # Test case 7:reason == OOO filter
+        ([], {"reason": "OOO"}, [3]),
+    ],
+)
+def test_get_arrangements(mock_db, staff_ids, filters, mock_arrangements, expected_arrangement_ids):
 
-    result = crud.get_arrangements_by_filter(
-        mock_db_session, requester_staff_id=12345, current_approval_status=["pending"]
-    )
+    # Unpack mock_db_session fixture
+    db, query = mock_db
 
-    mock_db_session.query.assert_called_once()
-    mock_query.filter.assert_called()
-    assert len(result) == 2
+    filtered_query = query
 
+    if staff_ids:
+        filtered_query = filtered_query.filter.return_value
 
-def test_get_arrangements_by_staff_ids(mock_db_session, mock_arrangements):
-    # Mock the query object behavior
-    mock_query = MagicMock()
-    mock_db_session.query.return_value = mock_query
-    mock_query.join.return_value = mock_query  # Mock join
-    mock_query.filter.return_value = mock_query  # Mock filter
-    mock_query.all.return_value = mock_arrangements  # Return mocked arrangements
+    filtered_query.all.return_value = [
+        arrangement
+        for arrangement in mock_arrangements
+        if arrangement["arrangement_id"] in expected_arrangement_ids
+    ]
 
-    # Call the function
-    result = crud.get_arrangements_by_staff_ids(
-        mock_db_session,
-        staff_ids=[12345, 130002],
-        current_approval_status=["pending"],
-        name=None,
-        type=None,
-        start_date=None,
-        end_date=None,
-    )
+    # Call the function with test parameters
+    results = crud.get_arrangements(db, staff_ids, **filters)
 
-    # Assertions on the final result
-    mock_db_session.query.assert_called_once_with(models.LatestArrangement)
-    mock_query.join.assert_called_once()
-    assert len(mock_query.filter.call_args_list) == 2  # Ensure filter was used twice
-    assert result == mock_arrangements  # Ensure the result matches
+    result_ids = [result["arrangement_id"] for result in results]
+    # Verify final result
+    assert result_ids == expected_arrangement_ids
 
 
 def test_create_arrangement_log(mock_db_session, mock_arrangement, mock_arrangement_log):
@@ -214,21 +323,6 @@ def test_create_recurring_request(mock_db_session):
     mock_db_session.refresh.assert_called_once_with(mock_batch)
 
 
-def test_get_arrangements_by_filter_multiple_status(mock_db_session, mock_arrangements):
-    mock_query = MagicMock()
-    mock_db_session.query.return_value = mock_query
-    mock_query.filter.return_value = mock_query
-    mock_query.all.return_value = mock_arrangements
-
-    result = crud.get_arrangements_by_filter(
-        mock_db_session, current_approval_status=["pending", "approved"]
-    )
-
-    mock_db_session.query.assert_called_once()
-    mock_query.filter.assert_called_once()
-    assert len(result) == 2
-
-
 def test_create_arrangements_auto_approve_jack_sim(mock_db_session, mock_arrangement_log):
     jack_sim_arrangement = models.LatestArrangement(
         arrangement_id=3, requester_staff_id=130002, current_approval_status="pending"
@@ -250,7 +344,7 @@ def test_create_arrangements_auto_approve_jack_sim(mock_db_session, mock_arrange
     mock_db_session.refresh.assert_called()
 
 
-def test_get_arrangements_by_staff_ids_multiple_status(mock_db_session, mock_arrangements):
+def test_get_arrangements_multiple_status(mock_db_session, mock_arrangements):
     # Mock the query object behavior
     mock_query = MagicMock()
     mock_db_session.query.return_value = mock_query
@@ -259,7 +353,7 @@ def test_get_arrangements_by_staff_ids_multiple_status(mock_db_session, mock_arr
     mock_query.all.return_value = mock_arrangements  # Return mocked arrangements
 
     # Call the function with multiple approval statuses
-    result = crud.get_arrangements_by_staff_ids(
+    result = crud.get_arrangements(
         mock_db_session, staff_ids=[12345, 130002], current_approval_status=["pending", "approved"]
     )
 
@@ -302,21 +396,6 @@ def test_create_recurring_request_with_recurring(mock_db_session):
     mock_db_session.refresh.assert_called_once_with(mock_batch)
 
 
-def test_get_arrangements_by_filter_no_requester(mock_db_session, mock_arrangements):
-    mock_query = MagicMock()
-    mock_db_session.query.return_value = mock_query
-    mock_query.filter.return_value = mock_query
-    mock_query.all.return_value = mock_arrangements
-
-    result = crud.get_arrangements_by_filter(
-        mock_db_session, requester_staff_id=None, current_approval_status=["pending"]
-    )
-
-    mock_db_session.query.assert_called_once()
-    mock_query.filter.assert_called()
-    assert len(result) == 2
-
-
 def test_create_arrangements_non_jack_sim(mock_db_session, mock_arrangements, mock_arrangement_log):
     mock_arrangement = models.LatestArrangement(
         arrangement_id=4, requester_staff_id=12345, current_approval_status="pending"
@@ -338,23 +417,7 @@ def test_create_arrangements_non_jack_sim(mock_db_session, mock_arrangements, mo
     mock_db_session.refresh.assert_called()
 
 
-def test_get_arrangements_by_filter_no_approval_status(mock_db_session, mock_arrangements):
-    mock_query = MagicMock()
-    mock_db_session.query.return_value = mock_query
-    mock_query.filter.return_value = mock_query
-    mock_query.all.return_value = mock_arrangements
-
-    # Call the function without current_approval_status
-    result = crud.get_arrangements_by_filter(
-        mock_db_session, requester_staff_id=12345, current_approval_status=None
-    )
-
-    mock_db_session.query.assert_called_once()
-    mock_query.filter.assert_called_once_with(mock.ANY)  # Skip exact comparison
-    assert len(result) == 2
-
-
-def test_get_arrangements_by_staff_ids_no_approval_status(mock_db_session, mock_arrangements):
+def test_get_arrangements_no_approval_status(mock_db_session, mock_arrangements):
     # Mock the query object behavior
     mock_query = MagicMock()
     mock_db_session.query.return_value = mock_query
@@ -363,7 +426,7 @@ def test_get_arrangements_by_staff_ids_no_approval_status(mock_db_session, mock_
     mock_query.all.return_value = mock_arrangements  # Return mocked arrangements
 
     # Call the function without current_approval_status
-    result = crud.get_arrangements_by_staff_ids(
+    result = crud.get_arrangements(
         mock_db_session, staff_ids=[12345, 130002], current_approval_status=None
     )
 
