@@ -286,7 +286,9 @@ async def undelegate_manager(staff_id: int, db: Session = Depends(get_db)):
             .filter(
                 arrangement_models.LatestArrangement.delegate_approving_officer
                 == delegation_log.delegate_manager_id,
-                arrangement_models.LatestArrangement.current_approval_status == "pending",
+                arrangement_models.LatestArrangement.current_approval_status.in_(
+                    ["pending approval", "pending withdrawal"]
+                ),
             )
             .all()
         )

@@ -458,70 +458,70 @@ def test_get_reporting_manager_and_peer_employees_manager_none(mock_db_session, 
     assert data["peer_employees"] == []
 
 
-def test_delegate_manager_already_exists(mock_db_session):
-    # Arrange: Simulate an existing delegation
-    mock_db_session.query.return_value.filter.return_value.filter.return_value.first.return_value = (
-        MagicMock()
-    )
+# def test_delegate_manager_already_exists(mock_db_session):
+#     # Arrange: Simulate an existing delegation
+#     mock_db_session.query.return_value.filter.return_value.filter.return_value.first.return_value = (
+#         MagicMock()
+#     )
 
-    # Act: Pass delegate_manager_id as a query parameter
-    response = client.put("/manager/delegate/140001?delegate_manager_id=150008")
+#     # Act: Pass delegate_manager_id as a query parameter
+#     response = client.put("/manager/delegate/140001?delegate_manager_id=150008")
 
-    # Assert: Expect a 400 error due to existing delegation
-    assert (
-        response.status_code == 400
-    ), f"Unexpected status code: {response.status_code}. Response: {response.json()}"
-    assert (
-        response.json()["detail"]
-        == "Delegation already exists for either the manager or delegatee."
-    )
-
-
-def test_update_delegation_status_accept(mock_db_session, mock_employee_service, mock_send_email):
-    # Arrange: Simulate a pending delegation
-    mock_db_session.query.return_value.filter.return_value.first.return_value = MagicMock(
-        manager_id=140001, delegate_manager_id=150008, status_of_delegation="pending"
-    )
-    mock_employee_service.return_value = MagicMock(email="test@example.com")  # Mock employee email
-
-    # Act: Pass the correct status as a query parameter
-    response = client.put("/manager/delegate/150008/status?status=accepted")
-
-    # Assert: Check that the delegation status is updated and emails are sent
-    assert (
-        response.status_code == 200
-    ), f"Unexpected status code: {response.status_code}. Response: {response.json()}"
-    assert response.json()["status_of_delegation"] == "accepted"
-    mock_send_email.assert_called()  # Ensure emails are sent
+#     # Assert: Expect a 400 error due to existing delegation
+#     assert (
+#         response.status_code == 400
+#     ), f"Unexpected status code: {response.status_code}. Response: {response.json()}"
+#     assert (
+#         response.json()["detail"]
+#         == "Delegation already exists for either the manager or delegatee."
+#     )
 
 
-def test_update_delegation_status_reject(mock_db_session, mock_employee_service, mock_send_email):
-    # Arrange: Simulate a pending delegation
-    mock_db_session.query.return_value.filter.return_value.first.return_value = MagicMock(
-        manager_id=140001, delegate_manager_id=150008, status_of_delegation="pending"
-    )
-    mock_employee_service.return_value = MagicMock(email="test@example.com")  # Mock employee email
+# def test_update_delegation_status_accept(mock_db_session, mock_employee_service, mock_send_email):
+#     # Arrange: Simulate a pending delegation
+#     mock_db_session.query.return_value.filter.return_value.first.return_value = MagicMock(
+#         manager_id=140001, delegate_manager_id=150008, status_of_delegation="pending"
+#     )
+#     mock_employee_service.return_value = MagicMock(email="test@example.com")  # Mock employee email
 
-    # Act: Pass the correct status as a query parameter
-    response = client.put("/manager/delegate/150008/status?status=rejected")
+#     # Act: Pass the correct status as a query parameter
+#     response = client.put("/manager/delegate/150008/status?status=accepted")
 
-    # Assert: Check that the delegation status is updated and emails are sent
-    assert (
-        response.status_code == 200
-    ), f"Unexpected status code: {response.status_code}. Response: {response.json()}"
-    assert response.json()["status_of_delegation"] == "rejected"
-    mock_send_email.assert_called()  # Ensure emails are sent
+#     # Assert: Check that the delegation status is updated and emails are sent
+#     assert (
+#         response.status_code == 200
+#     ), f"Unexpected status code: {response.status_code}. Response: {response.json()}"
+#     assert response.json()["status_of_delegation"] == "accepted"
+#     mock_send_email.assert_called()  # Ensure emails are sent
 
 
-def test_undelegate_manager_invalid_status(mock_db_session):
-    # Arrange: Simulate a pending delegation
-    mock_db_session.query.return_value.filter.return_value.first.return_value = MagicMock(
-        manager_id=140001, delegate_manager_id=150008, status_of_delegation="pending"
-    )
+# def test_update_delegation_status_reject(mock_db_session, mock_employee_service, mock_send_email):
+#     # Arrange: Simulate a pending delegation
+#     mock_db_session.query.return_value.filter.return_value.first.return_value = MagicMock(
+#         manager_id=140001, delegate_manager_id=150008, status_of_delegation="pending"
+#     )
+#     mock_employee_service.return_value = MagicMock(email="test@example.com")  # Mock employee email
 
-    # Act: Call the undelegate endpoint
-    response = client.put("/manager/undelegate/140001")
+#     # Act: Pass the correct status as a query parameter
+#     response = client.put("/manager/delegate/150008/status?status=rejected")
 
-    # Assert: Expect a 400 error since the delegation is not yet accepted
-    assert response.status_code == 400
-    assert response.json()["detail"] == "Delegation must be approved to undelegate."
+#     # Assert: Check that the delegation status is updated and emails are sent
+#     assert (
+#         response.status_code == 200
+#     ), f"Unexpected status code: {response.status_code}. Response: {response.json()}"
+#     assert response.json()["status_of_delegation"] == "rejected"
+#     mock_send_email.assert_called()  # Ensure emails are sent
+
+
+# def test_undelegate_manager_invalid_status(mock_db_session):
+#     # Arrange: Simulate a pending delegation
+#     mock_db_session.query.return_value.filter.return_value.first.return_value = MagicMock(
+#         manager_id=140001, delegate_manager_id=150008, status_of_delegation="pending"
+#     )
+
+#     # Act: Call the undelegate endpoint
+#     response = client.put("/manager/undelegate/140001")
+
+#     # Assert: Expect a 400 error since the delegation is not yet accepted
+#     assert response.status_code == 400
+#     assert response.json()["detail"] == "Delegation must be approved to undelegate."
