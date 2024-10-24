@@ -61,11 +61,11 @@ def get_arrangement_by_id(db: Session, arrangement_id: int) -> ArrangementRespon
     return arrangements_schema[0]
 
 
-def get_personal_arrangements_by_filter(
+def get_personal_arrangements(
     db: Session, staff_id: int, current_approval_status: List[str]
 ) -> List[ArrangementResponse]:
 
-    arrangements: List[models.LatestArrangement] = crud.get_arrangements_by_filter(
+    arrangements: List[models.LatestArrangement] = crud.get_arrangements(
         db, staff_id, current_approval_status
     )
     arrangements_schema: List[ArrangementResponse] = utils.convert_model_to_pydantic_schema(
@@ -98,7 +98,7 @@ def get_subordinates_arrangements(
 
     employees_under_manager_ids = [employee.staff_id for employee in employees_under_manager]
 
-    arrangements = crud.get_arrangements_by_staff_ids(
+    arrangements = crud.get_arrangements(
         db,
         employees_under_manager_ids,
         current_approval_status,
@@ -237,7 +237,7 @@ def get_team_arrangements(
     peer_employees: List[employee_models.Employee] = employee_services.get_peers_by_staff_id(
         db, staff_id
     )
-    peer_arrangements: List[models.LatestArrangement] = crud.get_arrangements_by_staff_ids(
+    peer_arrangements: List[models.LatestArrangement] = crud.get_arrangements(
         db,
         [peer.staff_id for peer in peer_employees],
         current_approval_status,

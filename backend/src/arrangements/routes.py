@@ -48,7 +48,7 @@ def get_arrangement_by_id(arrangement_id: int, db: Session = Depends(get_db)):
     "/personal/{staff_id}",
     summary="Get personal arrangements by an employee's staff_id",
 )
-def get_personal_arrangements_by_filter(
+def get_personal_arrangements(
     staff_id: int,
     current_approval_status: List[
         Literal[
@@ -64,8 +64,8 @@ def get_personal_arrangements_by_filter(
 ):
     try:
         logger.info(f"Fetching personal arrangements for staff ID: {staff_id}")
-        arrangements: List[schemas.ArrangementResponse] = (
-            services.get_personal_arrangements_by_filter(db, staff_id, current_approval_status)
+        arrangements: List[schemas.ArrangementResponse] = services.get_personal_arrangements(
+            db, staff_id, current_approval_status
         )
 
         return JSONResponse(

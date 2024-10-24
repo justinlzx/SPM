@@ -22,7 +22,7 @@ from src.arrangements.services import (
     expand_recurring_arrangement,
     get_approving_officer,
     get_arrangement_by_id,
-    get_personal_arrangements_by_filter,
+    get_personal_arrangements,
     get_subordinates_arrangements,
     get_team_arrangements,
     update_arrangement_approval_status,
@@ -122,27 +122,34 @@ def mock_manager_pending_request_response(mock_arrangement_data):
     }
 
 
-def test_get_arrangement_by_id_success(mock_db_session, mock_arrangement_data):
-    # Create mock arrangement with all required fields
+@patch("src.arrangements.services.get_arrangement_by_id")
+@patch("src.utils.convert_model_to_pydantic_schema")
+@pytest.mark.parametrize(
+    "mock_arrangement_data",
+    [
+        (mock_arrangement_data),
+    ],
+)
+def test_get_arrangement_by_id(
+    mock_convert, mock_get_arrangement, mock_db_session, mock_arrangement_data
+):
+    # Create mock arrangement
     mock_arrangement = MagicMock(spec=arrangement_models.LatestArrangement)
-    mock_arrangement.__dict__ = mock_arrangement_data
+    mock_arrangement.__dict__.update(mock_arrangement_data)
 
-    # Mock the crud.get_arrangement_by_id call
-    with patch("src.arrangements.crud.get_arrangement_by_id", return_value=mock_arrangement):
-        # Mock the utils.convert_model_to_pydantic_schema call
-        with patch("src.utils.convert_model_to_pydantic_schema") as mock_convert:
-            # Set up the mock conversion return value
-            expected_response = ArrangementResponse(**mock_arrangement.__dict__)
-            mock_convert.return_value = expected_response
+    # Set up the mock return values
+    mock_get_arrangement.return_value = mock_arrangement
+    expected_response = ArrangementResponse(**mock_arrangement_data)
+    mock_convert.return_value = expected_response
 
-            # Call the function being tested
-            result = get_arrangement_by_id(mock_db_session, arrangement_id=1)
+    result = get_arrangement_by_id(mock_db_session, arrangement_id=1)
 
-            # Verify the conversion function was called correctly
-            mock_convert.assert_called_once_with(mock_arrangement, ArrangementResponse)
+    # Verify the mocks were called correctly
+    mock_get_arrangement.assert_called_once_with(mock_db_session, 1)
+    mock_convert.assert_called_once_with(mock_arrangement, ArrangementResponse)
 
-            # Verify the result matches expected
-            assert result == expected_response
+    # Verify the result matches expected
+    assert result == expected_response
 
 
 def test_get_arrangement_by_id_not_found(mock_db_session):
@@ -151,23 +158,21 @@ def test_get_arrangement_by_id_not_found(mock_db_session):
             get_arrangement_by_id(mock_db_session, arrangement_id=1)
 
 
-def test_get_personal_arrangements_by_filter_success(mock_db_session):
+def test_get_personal_arrangements_success(mock_db_session):
     mock_arrangements = [MagicMock(spec=arrangement_models.LatestArrangement)]
     with patch("src.arrangements.crud.get_arrangements_by_filter", return_value=mock_arrangements):
         with patch(
             "src.utils.convert_model_to_pydantic_schema", return_value=["arrangement_schema"]
         ):
-            result = get_personal_arrangements_by_filter(
+            result = get_personal_arrangements(
                 mock_db_session, staff_id=1, current_approval_status=[]
             )
             assert result == ["arrangement_schema"]
 
 
-def test_get_personal_arrangements_by_filter_empty(mock_db_session):
+def test_get_personal_arrangements_empty(mock_db_session):
     with patch("src.arrangements.crud.get_arrangements_by_filter", return_value=[]):
-        result = get_personal_arrangements_by_filter(
-            mock_db_session, staff_id=1, current_approval_status=[]
-        )
+        result = get_personal_arrangements(mock_db_session, staff_id=1, current_approval_status=[])
         assert result == []
 
 
@@ -180,9 +185,7 @@ def test_get_subordinates_arrangements_success_no_filters(
     with patch(
         "src.employees.services.get_subordinates_by_manager_id", return_value=[mock_employee]
     ):
-        with patch(
-            "src.arrangements.crud.get_arrangements_by_staff_ids", return_value=mock_arrangements
-        ):
+        with patch("src.arrangements.crud.get_arrangements", return_value=mock_arrangements):
             with patch(
                 "src.arrangements.services.create_presigned_url",
                 side_effect=mock_create_presigned_url,
@@ -222,7 +225,7 @@ def test_get_team_arrangements_success(
 
     with patch("src.employees.services.get_peers_by_staff_id", return_value=[mock_employee]):
         with patch(
-            "src.arrangements.crud.get_arrangements_by_staff_ids",
+            "src.arrangements.crud.get_arrangements",
             return_value=[mock_arrangements],
         ):
             with patch(
@@ -240,9 +243,6 @@ def test_get_team_arrangements_success(
                         result = get_team_arrangements(
                             mock_db_session, staff_id=1, current_approval_status=[]
                         )
-
-    print("dog", result)
-    print(type(result["peers"][0]))
 
     assert isinstance(result, dict)
     assert "peers" in result
@@ -313,7 +313,6 @@ async def test_create_arrangements_with_file_upload_success(mock_db_session, moc
                                             files=files,
                                         )
 
-    print("dog", response.json())
     response_data = response.json()
     assert response.status_code == 200
     assert isinstance(response_data, list)
@@ -534,9 +533,7 @@ def test_get_team_arrangements_employee_is_manager(
     mock_arrangements = [mock_db_arrangement]
 
     with patch("src.employees.services.get_peers_by_staff_id", return_value=[mock_employee]):
-        with patch(
-            "src.arrangements.crud.get_arrangements_by_staff_ids", return_value=mock_arrangements
-        ):
+        with patch("src.arrangements.crud.get_arrangements", return_value=mock_arrangements):
             with patch(
                 "src.employees.services.get_subordinates_by_manager_id",
                 return_value=[mock_employee],
@@ -548,11 +545,6 @@ def test_get_team_arrangements_employee_is_manager(
                     result = get_team_arrangements(
                         mock_db_session, staff_id=1, current_approval_status=[]
                     )
-
-    print(result)
-    print()
-    print(result["subordinates"])
-    print(len(result["subordinates"]))
 
     assert isinstance(result, dict)
     assert "peers" in result
@@ -823,7 +815,7 @@ async def test_create_arrangements_from_request_missing_required_fields(
 def test_get_team_arrangements_no_peers_or_subordinates(mock_db_session):
     with patch("src.employees.services.get_peers_by_staff_id", return_value=[]):
         with patch("src.employees.services.get_subordinates_by_manager_id", return_value=[]):
-            with patch("src.arrangements.crud.get_arrangements_by_staff_ids", return_value=[]):
+            with patch("src.arrangements.crud.get_arrangements", return_value=[]):
                 result = get_team_arrangements(
                     mock_db_session, staff_id=1, current_approval_status=[]
                 )
