@@ -1,7 +1,6 @@
 import pytest
 from sqlalchemy.sql import elements
 from src.employees import crud, models
-from src.tests.test_utils import mock_db_session
 
 
 @pytest.fixture

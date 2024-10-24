@@ -3,7 +3,6 @@ from unittest.mock import MagicMock
 
 import pytest
 from src.employees.models import DelegateLog, DelegationStatus, Employee
-from src.tests.test_utils import mock_db_session
 
 
 def test_create_employee(mock_db_session):

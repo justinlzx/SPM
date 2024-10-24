@@ -2,7 +2,7 @@
 
 echo "Running pre-commit hook..."
 if [ "$FULL_SCAN" = "true" ]; then
-  echo "Mode: Full codebase scan"
+  echo "Mode: Full codebase scan (excluding .gitignore files)"
 else
   echo "Mode: Staged files only"
 fi
@@ -15,7 +15,8 @@ FRONTEND_HOOKS_EXIT_CODE=0
 # Run general hooks
 echo "Running general hooks..."
 if [ "$FULL_SCAN" = "true" ]; then
-  pre-commit run --all-files --config config/.pre-commit-config.yaml
+  ALL_FILES=$(git ls-files)
+  pre-commit run --files $ALL_FILES --config config/.pre-commit-config.yaml
 else
   pre-commit run --hook-stage commit --config config/.pre-commit-config.yaml
 fi

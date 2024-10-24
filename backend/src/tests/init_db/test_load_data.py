@@ -2,10 +2,11 @@ import os
 from datetime import datetime
 
 import pandas as pd
-from src.init_db.load_data import (load_auth_data_from_csv,
-                                   load_employee_data_from_csv,
-                                   load_latest_arrangement_data_from_csv)
-from src.tests.test_utils import mock_db_session
+from src.init_db.load_data import (
+    load_auth_data_from_csv,
+    load_employee_data_from_csv,
+    load_latest_arrangement_data_from_csv,
+)
 
 from ...auth.utils import hash_password
 
@@ -170,19 +171,6 @@ def test_load_auth_data_generic_exception(mock_db_session, mocker, capsys):
 # -------------------------------- Arrangement Data Tests --------------------------------
 
 
-import csv
-import os
-from datetime import datetime
-from unittest.mock import MagicMock, mock_open
-
-import pandas as pd
-import pytest
-from sqlalchemy.orm import Session
-from src.init_db.load_data import load_latest_arrangement_data_from_csv
-
-# -------------------------------- Arrangement Data Tests --------------------------------
-
-
 def test_load_latest_arrangement_data_from_csv(mock_db_session, mocker):
     # Get the directory of the current test file
     current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -319,21 +307,21 @@ def test_load_arrangement_data_empty_dataframe(mock_db_session, mocker, capsys):
 # Test when an exception is raised while processing a row in the arrangement data CSV
 def test_load_arrangement_data_row_exception(mock_db_session, mocker, capsys):
     # Mock the csv.DictReader to return valid rows
-    mock_csv_reader = mocker.patch(
-        "csv.DictReader",
-        return_value=[
-            {
-                "update_datetime": "2024-10-05 23:00:00",
-                "wfh_date": "2024-10-05",
-                "wfh_type": "WFH",
-                "reason_description": "Reason",
-                "requester_staff_id": "1",
-                "approval_status": "approved",
-                "approving_officer": "2",
-                "batch_id": "100",
-            }
-        ],
-    )
+    # mock_csv_reader = mocker.patch(
+    #     "csv.DictReader",
+    #     return_value=[
+    #         {
+    #             "update_datetime": "2024-10-05 23:00:00",
+    #             "wfh_date": "2024-10-05",
+    #             "wfh_type": "WFH",
+    #             "reason_description": "Reason",
+    #             "requester_staff_id": "1",
+    #             "approval_status": "approved",
+    #             "approving_officer": "2",
+    #             "batch_id": "100",
+    #         }
+    #     ],
+    # )
 
     # Mock ArrangementLog to raise a generic exception during instantiation
     mocker.patch(

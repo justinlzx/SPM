@@ -2,14 +2,11 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy.orm import Session
 from src.app import app
 from src.database import get_db  # Import get_db to override the dependency
 from src.employees import exceptions, services
-from src.employees.exceptions import EmployeeNotFoundException, ManagerNotFoundException
 from src.employees.routes import router
 from src.tests.test_utils import mock_db_session
-from src.employees.models import DelegationStatus
 
 client = TestClient(app)
 

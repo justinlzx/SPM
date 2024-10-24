@@ -1,14 +1,14 @@
-import pytest
 from datetime import datetime
+
+import pytest
 from pydantic import ValidationError
 from src.arrangements.schemas import (
     ArrangementCreate,
     ArrangementCreateWithFile,
-    ArrangementUpdate,
     ArrangementLog,
     ArrangementResponse,
+    ArrangementUpdate,
 )
-from src.tests.test_utils import mock_db_session
 
 
 # Test ArrangementCreate schema with valid data

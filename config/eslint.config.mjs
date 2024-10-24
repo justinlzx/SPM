@@ -19,6 +19,7 @@ export default [
       ...pluginJs.configs.recommended.rules,
       ...pluginReact.configs.flat.recommended.rules,
       ...pluginTypeScript.configs.recommended.rules,
+      "@typescript-eslint/no-unused-vars": "off",
     }
   
   }

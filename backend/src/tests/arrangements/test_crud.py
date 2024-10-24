@@ -5,7 +5,6 @@ from unittest.mock import MagicMock
 import pytest
 from sqlalchemy.exc import SQLAlchemyError
 from src.arrangements import crud, models, schemas
-from src.tests.test_utils import mock_db_session
 
 
 @pytest.fixture

@@ -1,14 +1,14 @@
+import os
 from typing import Dict
 
+import boto3
+from botocore.exceptions import ClientError
 from fastapi import HTTPException
-from ..logger import logger
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from sqlalchemy.ext.declarative import DeclarativeMeta
-from botocore.exceptions import ClientError
 
-import boto3
-import os
+from ..logger import logger
 
 
 def fit_schema_to_model(
@@ -103,9 +103,7 @@ async def upload_file(staff_id, update_datetime, file_obj, s3_client=None):
         raise HTTPException(status_code=400, detail="File size exceeds 5MB")
 
     S3_BUCKET_NAME = os.getenv("AWS_S3_BUCKET_NAME")
-    object_name = (
-        f"{staff_id}/{update_datetime}/{file_obj.filename}"  # Use the original filename
-    )
+    object_name = f"{staff_id}/{update_datetime}/{file_obj.filename}"  # Use the original filename
 
     # Upload the file
     s3_client = boto3.client("s3")
@@ -134,7 +132,7 @@ async def upload_file(staff_id, update_datetime, file_obj, s3_client=None):
 
 
 async def delete_file(staff_id, update_datetime, s3_client=None):
-    """Delete a file from an S3 bucket
+    """Delete a file from an S3 bucket.
 
     :param bucket: Bucket to delete from
     :return: True if file was deleted, else False
@@ -159,7 +157,7 @@ async def delete_file(staff_id, update_datetime, s3_client=None):
 
 
 def create_presigned_url(object_name):
-    """Generate a presigned URL to share an S3 object
+    """Generate a presigned URL to share an S3 object.
 
     :param bucket_name: string
     :param object_name: string
