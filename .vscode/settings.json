@@ -4,7 +4,7 @@
     ],
     "eslint.format.enable": true,
     "eslint.options": {
-        "overrideConfigFile": "/Users/nathaniel/PROJECTS/SPM/config/eslint.config.js"
+        "overrideConfigFile": "./config/eslint.config.js"
     },
     "eslint.useFlatConfig": true,
     "eslint.validate": [
