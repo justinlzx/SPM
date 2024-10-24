@@ -83,8 +83,6 @@ def get_arrangements(
 
     result = query.all()
 
-    print("dog", str(query))
-
     return result
 
 
@@ -142,7 +140,7 @@ def create_arrangements(
             db.add(arrangement)
             db.flush()
             created_arrangements.append(arrangement)
-            created_arrangement_log = create_arrangement_log(db, arrangement, "create")
+            created_arrangement_log: models.ArrangementLog = create_arrangement_log(db, arrangement, "create")
             arrangement.latest_log_id = created_arrangement_log.log_id
             db.add(created_arrangement_log)
             db.flush()

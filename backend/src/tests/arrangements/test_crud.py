@@ -1,5 +1,5 @@
 from datetime import datetime
-from unittest.mock import MagicMock, Mock
+from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 from sqlalchemy.exc import SQLAlchemyError
@@ -93,6 +93,39 @@ def mock_arrangements():
                 "staff_lname": "Lee",
                 "email": "Philip.Lee@allinone.com.sg",
             },
+        },
+    ]
+
+
+@pytest.fixture
+def mock_create_arrangements_payload():
+    """Create a sample arrangement payload"""
+    return [
+        {
+            "requester_staff_id": 151408,  # Using Jack Sim's ID to test auto-approval
+            "wfh_date": datetime(2024, 1, 15).date(),
+            "wfh_type": "full",
+            "approving_officer": 130002,
+            "delegate_approving_officer": None,
+            "reason_description": "Work from home request",
+            "supporting_doc_1": "testfile1.pdf",
+            "supporting_doc_2": "testfile2.pdf",
+            "supporting_doc_3": None,
+            "current_approval_status": "pending approval",
+            "latest_log_id": 789,
+        },
+        {
+            "requester_staff_id": 130002,  # Using Jack Sim's ID to test auto-approval
+            "wfh_date": datetime(2024, 1, 15).date(),
+            "wfh_type": "full",
+            "approving_officer": 130002,
+            "delegate_approving_officer": None,
+            "reason_description": "Work from home request",
+            "supporting_doc_1": "testfile1.pdf",
+            "supporting_doc_2": "testfile2.pdf",
+            "supporting_doc_3": None,
+            "current_approval_status": "pending approval",
+            "latest_log_id": 789,
         },
     ]
 
@@ -219,30 +252,64 @@ def test_create_arrangement_log(mock_db_session, mock_arrangement, mock_arrangem
     mock_db_session.flush.assert_called_once()
 
 
-def test_create_arrangements(mock_db_session, mock_arrangements, mock_arrangement_log):
-    mock_db_session.add = MagicMock()
-    mock_db_session.flush = MagicMock()
-    mock_db_session.commit = MagicMock()
-    mock_db_session.refresh = MagicMock()
+@patch("src.arrangements.crud.create_arrangement_log")
+@pytest.mark.parametrize(
+    "index, num_results, approval_status",
+    [
+        # test case non jack sim
+        (0, 1, "pending approval"),
+        # test case not jack sim multiple
+        (None, 2, "pending approval"),
+        # test case jack sim
+        (1, 1, "approved"),
+    ],
+)
+def test_create_arrangements_success(
+    mock_create_log,
+    mock_db_session,
+    index,
+    mock_create_arrangements_payload,
+    approval_status,
+    num_results,
+):
+    """Test successful creation of arrangements"""
+    # Arrange
+    mock_log = Mock()
+    mock_log.log_id = 123
+    mock_create_log.return_value = mock_log
 
-    crud.fit_model_to_model = MagicMock(return_value=mock_arrangement_log)
+    mock_create_arrangements_payload_schema = [
+        models.LatestArrangement(**arrangement) for arrangement in mock_create_arrangements_payload
+    ]
 
-    result = crud.create_arrangements(mock_db_session, mock_arrangements)
+    if index is not None:
+        mock_create_arrangements_payload_schema = [mock_create_arrangements_payload_schema[index]]
 
-    assert len(result) == 2
-    mock_db_session.add.assert_called()
-    mock_db_session.flush.assert_called()
-    mock_db_session.commit.assert_called_once()
-    mock_db_session.refresh.assert_called()
+    # Act
+    result = crud.create_arrangements(mock_db_session, mock_create_arrangements_payload_schema)
+
+    # Assert
+    assert len(result) == num_results
+    assert result == mock_create_arrangements_payload_schema
+    assert mock_create_arrangements_payload_schema[0].current_approval_status == approval_status
+    assert mock_create_arrangements_payload_schema[0].latest_log_id == 123
 
 
-def test_create_arrangements_sqlalchemy_error(mock_db_session, mock_arrangements):
-    mock_db_session.add.side_effect = SQLAlchemyError("Database Error")
+@patch("src.arrangements.crud.create_arrangement_log")
+def test_create_arrangements_sqlalchemy_error(mock_db_session, mock_create_arrangements_payload):
+    """Test handling of database errors"""
+    mock_create_arrangements_payload_schema = [
+        models.LatestArrangement(**arrangement) for arrangement in mock_create_arrangements_payload
+    ]
+    # Arrange
+    mock_db_session.flush.side_effect = SQLAlchemyError("Database error")
 
+    # Act & Assert
     with pytest.raises(SQLAlchemyError):
-        crud.create_arrangements(mock_db_session, mock_arrangements)
+        crud.create_arrangements(mock_db_session, mock_create_arrangements_payload_schema)
 
     mock_db_session.rollback.assert_called_once()
+    mock_db_session.commit.assert_not_called()
 
 
 def test_update_arrangement_approval_status(
