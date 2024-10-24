@@ -39,27 +39,33 @@ else
   BACKEND_HOOKS_EXIT_CODE=0
 fi
 
-# Check if there are staged files in the frontend folder
-if [ "$FULL_SCAN" = "true" ] || git diff --cached --name-only | grep -q '^frontend/'; then
-  if [ "$FULL_SCAN" = "true" ]; then
-    echo "\nScanning all frontend files..."
-  else
-    echo "\nFrontend files detected. Running lint-staged..."
-  fi
-  
-  cd frontend
-  if [ "$FULL_SCAN" = "true" ]; then
-    # Run lint commands on all files instead of just staged ones
-    npx eslint .
-    FRONTEND_HOOKS_EXIT_CODE=$?
-    # Add any other frontend linting commands here
-  else
-    npx lint-staged
-    FRONTEND_HOOKS_EXIT_CODE=$?
-  fi
-else
-  echo "No frontend files detected."
+# Check if the SKIP_FRONTEND_HOOKS environment variable is set
+if [ "$SKIP_FRONTEND" = "true" ]; then
+  echo "Skipping frontend pre-commit hooks."
   FRONTEND_HOOKS_EXIT_CODE=0
+else
+  # Check if there are staged files in the frontend folder
+  if [ "$FULL_SCAN" = "true" ] || git diff --cached --name-only | grep -q '^frontend/'; then
+    if [ "$FULL_SCAN" = "true" ]; then
+      echo "\nScanning all frontend files..."
+    else
+      echo "\nFrontend files detected. Running lint-staged..."
+    fi
+    
+    cd frontend
+    if [ "$FULL_SCAN" = "true" ]; then
+      # Run lint commands on all files instead of just staged ones
+      npx eslint . --config ../config/eslint.config.js
+      FRONTEND_HOOKS_EXIT_CODE=$?
+      # Add any other frontend linting commands here
+    else
+      npx lint-staged
+      FRONTEND_HOOKS_EXIT_CODE=$?
+    fi
+  else
+    echo "No frontend files detected."
+    FRONTEND_HOOKS_EXIT_CODE=0
+  fi
 fi
 
 # Abort the commit if any hook fails

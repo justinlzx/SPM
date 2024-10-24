@@ -1,3 +1,4 @@
+import csv
 import os
 from datetime import datetime
 
@@ -176,38 +177,44 @@ def test_load_latest_arrangement_data_from_csv(mock_db_session, mocker):
     current_dir = os.path.dirname(os.path.abspath(__file__))
 
     # Construct the full path to the CSV file
-    csv_path = os.path.join(current_dir, "test_arrangement.csv")
+    csv_path = os.path.join(current_dir, "test_latest_arrangement.csv")
 
     # Ensure the file exists
     assert os.path.exists(csv_path), f"Test file not found: {csv_path}"
 
     # Read the actual CSV file
-    df = pd.read_csv(csv_path)
+    with open(csv_path, mode="r") as file:
+        reader = csv.DictReader(file)
+        df = pd.DataFrame(reader)
 
-    # Mock the ArrangementLog model
-    mock_arrangement_log = mocker.patch("src.init_db.load_data.ArrangementLog")
+    # Mock the LatestArrangement model
+    mock_arrangement_log = mocker.patch("src.init_db.load_data.LatestArrangement")
 
     # Call the function with the actual CSV path
     load_latest_arrangement_data_from_csv(csv_path)
 
-    # Check that the correct number of ArrangementLog objects were added to the session
+    # Check that the correct number of LatestArrangement objects were added to the session
     assert mock_db_session.add.call_count == len(
         df
     ), f"Expected {len(df)} calls to session.add, but got {mock_db_session.add.call_count}"
 
-    # Verify the calls to ArrangementLog
-    for i, row in df.iterrows():
+    # Verify the calls to LatestArrangement
+    for _, row in df.iterrows():
         mock_arrangement_log.assert_any_call(
-            update_datetime=datetime.strptime(row["update_datetime"], "%Y-%m-%d %H:%M:%S"),
-            requester_staff_id=row["requester_staff_id"],
             wfh_date=row["wfh_date"],
             wfh_type=row["wfh_type"],
-            approval_status=row["approval_status"],
+            reason_description=row["reason_description"],
+            requester_staff_id=int(row["requester_staff_id"]),
+            current_approval_status=row["current_approval_status"],
             approving_officer=(
                 int(row["approving_officer"]) if pd.notna(row["approving_officer"]) else None
             ),
-            reason_description=row["reason_description"],
+            update_datetime=datetime.strptime(row["update_datetime"], "%Y-%m-%dT%H:%M:%SZ"),
             batch_id=int(row["batch_id"]) if pd.notna(row["batch_id"]) else None,
+            supporting_doc_1=None,
+            supporting_doc_2=None,
+            supporting_doc_3=None,
+            latest_log_id=row["latest_log_id"],
         )
 
     # Verify that commit and close were called on the session
@@ -232,19 +239,21 @@ def test_load_arrangement_data_empty_file(mock_db_session, mocker, capsys):
 
 
 def test_load_arrangement_data_key_error(mock_db_session, mocker, capsys):
-    # Mock the ArrangementLog model to raise a KeyError during instantiation
-    mocker.patch("src.init_db.load_data.ArrangementLog", side_effect=KeyError("Test KeyError"))
+    # Mock the LatestArrangement model to raise a KeyError during instantiation
+    mocker.patch("src.init_db.load_data.LatestArrangement", side_effect=KeyError("Test KeyError"))
 
-    load_latest_arrangement_data_from_csv("src/tests/init_db/test_arrangement.csv")
+    load_latest_arrangement_data_from_csv("src/tests/init_db/test_latest_arrangement.csv")
     captured = capsys.readouterr()
     assert "Missing expected column in CSV: 'Test KeyError'" in captured.out
 
 
 def test_load_arrangement_data_value_error(mock_db_session, mocker, capsys):
-    # Mock the ArrangementLog model to raise a ValueError during instantiation
-    mocker.patch("src.init_db.load_data.ArrangementLog", side_effect=ValueError("Test ValueError"))
+    # Mock the LatestArrangement model to raise a ValueError during instantiation
+    mocker.patch(
+        "src.init_db.load_data.LatestArrangement", side_effect=ValueError("Test ValueError")
+    )
 
-    load_latest_arrangement_data_from_csv("src/tests/init_db/test_arrangement.csv")
+    load_latest_arrangement_data_from_csv("src/tests/init_db/test_latest_arrangement.csv")
     captured = capsys.readouterr()
     assert "Data conversion error: Test ValueError" in captured.out
 
@@ -255,7 +264,7 @@ def test_load_latest_arrangement_data_from_csv_exception(mock_db_session, mocker
 
     # Call the function with a mock CSV path
     try:
-        load_latest_arrangement_data_from_csv("src/tests/init_db/test_arrangement.csv")
+        load_latest_arrangement_data_from_csv("src/tests/init_db/test_latest_arrangement.csv")
     except Exception:
         # This is expected because we are forcing an exception
         pass
@@ -278,7 +287,7 @@ def test_load_arrangement_data_generic_exception(mock_db_session, mocker, capsys
     mocker.patch("pandas.read_csv", side_effect=Exception("Generic read exception"))
 
     # Call the function to trigger the exception
-    load_latest_arrangement_data_from_csv("src/tests/init_db/test_arrangement.csv")
+    load_latest_arrangement_data_from_csv("src/tests/init_db/test_latest_arrangement.csv")
 
     # Capture the stdout and stderr
     captured = capsys.readouterr()
@@ -323,13 +332,13 @@ def test_load_arrangement_data_row_exception(mock_db_session, mocker, capsys):
     #     ],
     # )
 
-    # Mock ArrangementLog to raise a generic exception during instantiation
+    # Mock LatestArrangement to raise a generic exception during instantiation
     mocker.patch(
-        "src.init_db.load_data.ArrangementLog", side_effect=Exception("Test Row Exception")
+        "src.init_db.load_data.LatestArrangement", side_effect=Exception("Test Row Exception")
     )
 
     # Call the function with a mock CSV path
-    load_latest_arrangement_data_from_csv("src/tests/init_db/test_arrangement.csv")
+    load_latest_arrangement_data_from_csv("src/tests/init_db/test_latest_arrangement.csv")
     captured = capsys.readouterr()
 
     # Assert the correct message is printed when an exception occurs in row processing

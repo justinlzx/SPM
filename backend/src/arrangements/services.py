@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta
 from math import ceil
-from typing import Dict, List
+from typing import Dict, List, Literal
 
 import boto3
 from dateutil.relativedelta import relativedelta
@@ -55,10 +55,10 @@ def get_arrangement_by_id(db: Session, arrangement_id: int) -> ArrangementRespon
         raise exceptions.ArrangementNotFoundException(arrangement_id)
 
     arrangements_schema: ArrangementResponse = utils.convert_model_to_pydantic_schema(
-        arrangement, ArrangementResponse
+        [arrangement], ArrangementResponse
     )
 
-    return arrangements_schema
+    return arrangements_schema[0]
 
 
 def get_personal_arrangements_by_filter(
@@ -83,6 +83,7 @@ def get_subordinates_arrangements(
     start_date: datetime = None,
     end_date: datetime = None,
     wfh_type: str = None,
+    reason: str = None,
     items_per_page: int = 10,
     page_num: int = 1,
 ) -> List[ManagerPendingRequestResponse]:
@@ -105,6 +106,7 @@ def get_subordinates_arrangements(
         wfh_type,
         start_date,
         end_date,
+        reason,
     )
 
     arrangements_schema: List[ArrangementCreateResponse] = utils.convert_model_to_pydantic_schema(
@@ -135,17 +137,44 @@ def get_subordinates_arrangements(
         )
         for arrangement in arrangements_schema
     ]
-    arrangements_by_employee = group_arrangements_by_employee(arrangements_schema)
+    arrangements_by_date: List[ManagerPendingRequests] = group_arrangements_by_date(
+        arrangements_schema
+    )
 
-    total_count = len(arrangements_by_employee)
+    # pagination logic
+    total_count = len(arrangements_by_date)
     total_pages = ceil(total_count / items_per_page)
 
-    return arrangements_by_employee, {
+    # slice the list based on page number and items per page
+    arrangements_by_date = arrangements_by_date[
+        (page_num - 1) * items_per_page : page_num * items_per_page
+    ]
+
+    return arrangements_by_date, {
         "total_count": total_count,
         "page_size": items_per_page,
         "page_num": page_num,
         "total_pages": total_pages,
     }
+
+
+def group_arrangements_by_date(
+    arrangements_schema: List[ArrangementCreateResponse],
+) -> List[ManagerPendingRequests]:
+    arrangements_dict = {}
+
+    for arrangement in arrangements_schema:
+        wfh_date = arrangement.wfh_date
+        if wfh_date not in arrangements_dict:
+            arrangements_dict[str(wfh_date)] = []
+
+        arrangements_dict[wfh_date].append(arrangement)
+
+    result = []
+    for date, val in arrangements_dict.items():
+        result.append(ManagerPendingRequests(date=date, pending_arrangements=val))
+
+    return result
 
 
 def group_arrangements_by_employee(
@@ -182,11 +211,21 @@ def group_arrangements_by_employee(
 def get_team_arrangements(
     db: Session,
     staff_id: int,
-    current_approval_status: List[str],
+    current_approval_status: List[
+        Literal[
+            "pending approval",
+            "pending withdrawal",
+            "approved",
+            "rejected",
+            "cancelled",
+            "withdrawn",
+        ]
+    ] = None,
     name: str = None,
-    wfh_type: str = None,
+    wfh_type: Literal["full", "am", "pm"] = None,
     start_date: datetime = None,
     end_date: datetime = None,
+    reason: str = None,
     items_per_page: int = 10,
     page_num: int = 1,
 ) -> Dict[str, List[ArrangementResponse]]:
@@ -206,6 +245,7 @@ def get_team_arrangements(
         wfh_type,
         start_date,
         end_date,
+        reason,
     )
     peer_arrangements: List[ArrangementResponse] = utils.convert_model_to_pydantic_schema(
         peer_arrangements, ArrangementResponse
@@ -246,8 +286,9 @@ async def create_arrangements_from_request(
     created_arrangements = []
 
     try:
-        # Auto Approve Jack Sim's requests
         wfh_request = ArrangementCreateWithFile.model_validate(wfh_request)
+
+        # Auto Approve Jack Sim's requests
 
         if wfh_request.staff_id == 130002:
             wfh_request.current_approval_status = "approved"

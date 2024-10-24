@@ -12,6 +12,7 @@ from src.arrangements import models as arrangement_models
 from src.arrangements.schemas import (
     ArrangementCreateResponse,
     ArrangementCreateWithFile,
+    ArrangementResponse,
     ArrangementUpdate,
     ManagerPendingRequests,
 )
@@ -30,15 +31,6 @@ from src.employees import exceptions as employee_exceptions
 from src.employees.schemas import EmployeeBase
 
 client = TestClient(app)
-
-
-@pytest.fixture
-def mock_db_arrangement(mock_arrangement_data):
-    class MockDBArrangement:
-        def __init__(self, data):
-            self.__dict__.update(data)
-
-    return MockDBArrangement(mock_arrangement_data)
 
 
 @pytest.fixture
@@ -92,26 +84,65 @@ def mock_arrangement_data():
         "supporting_doc_1": "test_file_1.pdf",
         "supporting_doc_2": None,
         "supporting_doc_3": None,
-        "requester_info": EmployeeBase(
-            staff_id=123,
-            staff_fname="John",
-            staff_lname="Doe",
-            email="john.doe@example.com",
-            dept="IT",
-            position="Developer",
-            country="USA",
-            role=1,
-            reporting_manager=456,
-        ),
+        "requester_info": {
+            "staff_id": 123,
+            "staff_fname": "John",
+            "staff_lname": "Doe",
+            "email": "john.doe@example.com",
+            "dept": "IT",
+            "position": "Developer",
+            "country": "USA",
+            "role": 1,
+            "reporting_manager": 456,
+        },
         "latest_log_id": 1,
     }
 
 
-def test_get_arrangement_by_id_success(mock_db_session):
+@pytest.fixture
+def mock_db_arrangement(mock_arrangement_data):
+    class MockDBArrangement:
+        def __init__(self, data):
+            self.__dict__.update(data)
+
+    return MockDBArrangement(mock_arrangement_data)
+
+
+@pytest.fixture
+def mock_manager_pending_request_response(mock_arrangement_data):
+    return {
+        "date": "2024-10-12",
+        "pending_arrangements": [mock_arrangement_data],
+        "pagination_meta": {
+            "total_items": 1,
+            "total_pages": 1,
+            "current_page": 1,
+            "items_per_page": 10,
+        },
+    }
+
+
+def test_get_arrangement_by_id_success(mock_db_session, mock_arrangement_data):
+    # Create mock arrangement with all required fields
     mock_arrangement = MagicMock(spec=arrangement_models.LatestArrangement)
+    mock_arrangement.__dict__ = mock_arrangement_data
+
+    # Mock the crud.get_arrangement_by_id call
     with patch("src.arrangements.crud.get_arrangement_by_id", return_value=mock_arrangement):
-        result = get_arrangement_by_id(mock_db_session, arrangement_id=1)
-        assert result == mock_arrangement
+        # Mock the utils.convert_model_to_pydantic_schema call
+        with patch("src.utils.convert_model_to_pydantic_schema") as mock_convert:
+            # Set up the mock conversion return value
+            expected_response = ArrangementResponse(**mock_arrangement.__dict__)
+            mock_convert.return_value = expected_response
+
+            # Call the function being tested
+            result = get_arrangement_by_id(mock_db_session, arrangement_id=1)
+
+            # Verify the conversion function was called correctly
+            mock_convert.assert_called_once_with(mock_arrangement, ArrangementResponse)
+
+            # Verify the result matches expected
+            assert result == expected_response
 
 
 def test_get_arrangement_by_id_not_found(mock_db_session):
@@ -140,7 +171,7 @@ def test_get_personal_arrangements_by_filter_empty(mock_db_session):
         assert result == []
 
 
-def test_get_subordinates_arrangements_success(
+def test_get_subordinates_arrangements_success_no_filters(
     mock_db_session, mock_s3_client, mock_create_presigned_url, mock_arrangement_data, mock_employee
 ):
     mock_arrangement = ArrangementCreateResponse(**mock_arrangement_data)
@@ -157,40 +188,61 @@ def test_get_subordinates_arrangements_success(
                 side_effect=mock_create_presigned_url,
             ):
                 result = get_subordinates_arrangements(
-                    mock_db_session, manager_id=1, current_approval_status=[]
+                    mock_db_session,
+                    manager_id=1,
+                    current_approval_status=[],
+                    name=None,
+                    start_date=None,
+                    end_date=None,
+                    type=None,
+                    items_per_page=10,
+                    page_num=1,
                 )
 
-    assert isinstance(result, list)
-    assert len(result) == 1
-    assert isinstance(result[0], ManagerPendingRequests)
-    assert result[0].employee.staff_id == 123
-    assert len(result[0].pending_arrangements) == 1
+    assert isinstance(result, tuple)
+    assert len(result) == 2  # return data and pagination metadata
+    assert isinstance(result[0][0], ManagerPendingRequests)
+    assert result[0][0].pending_arrangements[0].staff_id == 123
+    assert len(result[0][0].pending_arrangements) == 1
     assert (
-        result[0].pending_arrangements[0].supporting_doc_1
+        result[0][0].pending_arrangements[0].supporting_doc_1
         == "https://example.com/presigned-url/test_file_1.pdf"
     )
 
 
 def test_get_team_arrangements_success(
-    mock_db_session, mock_s3_client, mock_create_presigned_url, mock_db_arrangement, mock_employee
+    mock_db_session,
+    mock_create_presigned_url,
+    mock_arrangement_data,
+    mock_employee,
+    mock_manager_pending_request_response,
 ):
-    mock_arrangements = [mock_db_arrangement]
+    mock_arrangements = ArrangementResponse(**mock_arrangement_data)
+    # mock_arrangements.__dict__ =
 
     with patch("src.employees.services.get_peers_by_staff_id", return_value=[mock_employee]):
         with patch(
-            "src.arrangements.crud.get_arrangements_by_staff_ids", return_value=mock_arrangements
+            "src.arrangements.crud.get_arrangements_by_staff_ids",
+            return_value=[mock_arrangements],
         ):
             with patch(
-                "src.employees.services.get_subordinates_by_manager_id",
-                return_value=[mock_employee],
+                "src.arrangements.services.get_subordinates_arrangements",
+                return_value=[mock_manager_pending_request_response],
             ):
                 with patch(
-                    "src.arrangements.services.create_presigned_url",
-                    side_effect=mock_create_presigned_url,
+                    "src.employees.services.get_subordinates_by_manager_id",
+                    return_value=[mock_employee],
                 ):
-                    result = get_team_arrangements(
-                        mock_db_session, staff_id=1, current_approval_status=[]
-                    )
+                    with patch(
+                        "src.arrangements.services.create_presigned_url",
+                        side_effect=mock_create_presigned_url,
+                    ):
+                        result = get_team_arrangements(
+                            mock_db_session, staff_id=1, current_approval_status=[]
+                        )
+
+    print("dog", result)
+    print(type(result["peers"][0]))
 
     assert isinstance(result, dict)
     assert "peers" in result
@@ -256,16 +308,14 @@ async def test_create_arrangements_with_file_upload_success(mock_db_session, moc
                                 with patch("src.database.SessionLocal", return_value=mock_db):
                                     with patch("sqlalchemy.orm.session.Session", mock_db):
                                         response = client.post(
-                                            "/arrangements/request",
+                                            "/arrangements/request?",
                                             data=data,
                                             files=files,
                                         )
 
-    print(f"Response status: {response.status_code}")
-    print(f"Response content: {response.content.decode()}")
-
-    assert response.status_code == 200
+    print("dog", response.json())
     response_data = response.json()
+    assert response.status_code == 200
     assert isinstance(response_data, list)
     assert len(response_data) == 1
     assert response_data[0] == "arrangement_schema"
@@ -499,11 +549,16 @@ def test_get_team_arrangements_employee_is_manager(
                         mock_db_session, staff_id=1, current_approval_status=[]
                     )
 
+    print(result)
+    print()
+    print(result["subordinates"])
+    print(len(result["subordinates"]))
+
     assert isinstance(result, dict)
     assert "peers" in result
     assert "subordinates" in result
     assert len(result["peers"]) == 1
-    assert len(result["subordinates"]) == 1
+    assert len(result["subordinates"][0]) == 1  # second item is the pagination meta data
     assert (
         result["peers"][0].supporting_doc_1 == "https://example.com/presigned-url/test_file_1.pdf"
     )

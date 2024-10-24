@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime
 from typing import List, Literal, Optional
 
 from pydantic import BaseModel, Field, ValidationInfo, field_validator
@@ -15,7 +15,7 @@ class ArrangementBase(BaseSchema):
         alias="requester_staff_id",
     )
 
-    wfh_date: str = Field(
+    wfh_date: date = Field(
         ...,
         title="Date of an adhoc WFH request or the start date of a recurring WFH request",
     )
@@ -47,9 +47,9 @@ class ArrangementCreate(ArrangementBase):
         exclude=True,
         title="Datetime that the request was created",
     )
-    current_approval_status: SkipJsonSchema[str] = Field(
-        default="pending approval", exclude=True, title="Approval status of the request"
-    )
+    current_approval_status: Literal[
+        "pending approval", "pending withdrawal", "approved", "rejected", "cancelled", "withdrawn"
+    ] = Field(default="pending approval", exclude=True, title="Approval status of the request")
     is_recurring: Optional[bool] = Field(
         default=False, title="Flag to indicate if the request is recurring"
     )
@@ -194,11 +194,19 @@ class ArrangementResponse(ArrangementCreateWithFile):
         None, title="Information about the requester"
     )
 
+    class Config:
+        arbitrary_types_allowed = True
+
+
+# class ManagerPendingRequests(BaseModel):
+#     employee: employee_schemas.EmployeeBase
+#     pending_arrangements: List[ArrangementCreateResponse]
+
 
 class ManagerPendingRequests(BaseModel):
-    employee: employee_schemas.EmployeeBase
-    pending_arrangements: List[ArrangementCreateResponse]
+    date: str
+    pending_arrangements: List[ArrangementResponse]
 
 
 class ManagerPendingRequestResponse(ManagerPendingRequests):
-    pass
+    pagination_meta: dict

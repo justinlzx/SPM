@@ -30,8 +30,7 @@ import CheckIcon from "@mui/icons-material/Check";
 import CloseIcon from "@mui/icons-material/Close";
 import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
-import { Search } from "../../components/Search"; // Import the Search component
-import { TEmployee } from "../../hooks/auth/employee/employee.utils";
+import { Filters as FilterToolBar } from "../../components/Filters";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 
@@ -50,6 +49,12 @@ type TAction = "approve" | "reject" | "allow withdraw";
 
 export type TWFHRequest = {
   staff_id: number;
+  requester_info: {
+    staff_fname: string;
+    staff_lname: string;
+    dept: string;
+    position: string;
+  };
   wfh_date: string;
   wfh_type: string;
   arrangement_id: number;
@@ -60,21 +65,51 @@ export type TWFHRequest = {
   supporting_doc_3: string;
 };
 
-type TArrangementByEmployee = {
-  employee: TEmployee;
+type TArrangementsByDate = {
+  date: string;
   pending_arrangements: TWFHRequest[];
 };
 
 export const PendingRequests = () => {
   const [requests, setRequests] = useState<TWFHRequest[]>([]);
-  const [actionRequests, setActionRequests] = useState<TArrangementByEmployee[]>([]);
-  const [filteredRequests, setFilteredRequests] = useState<TArrangementByEmployee[]>([]);
+  const [actionRequests, setActionRequests] = useState<TArrangementsByDate[]>(
+    []
+  );
+  const [searchTerm, setSearchTerm] = useState("");
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [filters, setFilters] = useState<{
+    startDate: Date | null;
+    endDate: Date | null;
+    wfhType: string;
+    requestStatus: string[];
+  }>({
+    startDate: null,
+    endDate: null,
+    wfhType: "",
+    requestStatus: [],
+  });
   const { user } = useContext(UserContext);
   const userId = user!.id;
 
-  // Fetch pending requests from subordinates
+  // Get personal pending requests
+  useEffect(() => {
+    const fetchRequests = async () => {
+      if (!user || !userId) return;
+      try {
+        const response = await axios.get(
+          `${BACKEND_URL}/arrangements/personal/${userId}`
+        );
+        // setActionRequests(response.data.data);
+        const paginationMeta = response.data.pagination_meta;
+        setRowsPerPage(paginationMeta.page_size);
+      } catch (error) {
+        console.error("Failed to fetch requests:", error);
+      }
+    };
+    fetchRequests();
+  }, [user, userId]);
+
   useEffect(() => {
     const fetchPendingRequestsFromSubordinates = async () => {
       if (!user || !userId) return;
@@ -87,10 +122,11 @@ export const PendingRequests = () => {
             },
           }
         );
-        console.log(response)
-        const pendingRequests: TArrangementByEmployee[] = response.data.data;
+        const pendingRequests: TArrangementsByDate[] = response.data.data;
+        const paginationMeta = response.data.pagination_meta;
+
         setActionRequests(pendingRequests);
-        setFilteredRequests(pendingRequests); 
+        setRowsPerPage(paginationMeta.page_size);
       } catch (error) {
         console.error("Failed to fetch subordinates' requests:", error);
       }
@@ -152,6 +188,15 @@ export const PendingRequests = () => {
     }
   };
 
+  const handleFiltersChange = (filters: {
+    startDate: Date | null;
+    endDate: Date | null;
+    wfhType: string;
+    requestStatus: string[];
+  }) => {
+    setFilters(filters);
+  };
+
   return (
         <>
           <Search data={actionRequests} onSearchResult={setFilteredRequests} />
@@ -163,6 +208,15 @@ export const PendingRequests = () => {
           >
             Action Required
           </Typography>
+          <TextField
+            label="Search"
+            variant="outlined"
+            fullWidth
+            margin="normal"
+            value={searchTerm}
+            onChange={handleSearch}
+          />
+          <FilterToolBar onApply={handleFiltersChange} />
           <TableContainer
             component={Paper}
             sx={{ marginTop: 3, textAlign: "center" }}
@@ -171,12 +225,10 @@ export const PendingRequests = () => {
               <TableHead>
                 <TableRow>
                   <TableCell></TableCell>
-                  <TableCell sx={{ fontWeight: "bold" }}>Staff ID</TableCell>
-                  <TableCell sx={{ fontWeight: "bold" }}>Name</TableCell>
-                  <TableCell sx={{ fontWeight: "bold" }}>Department</TableCell>
-                  <TableCell sx={{ fontWeight: "bold" }}>Position</TableCell>
-                  <TableCell sx={{ fontWeight: "bold" }}>Email</TableCell>
-                  <TableCell sx={{ fontWeight: "bold" }}>Pending</TableCell>
+                  <TableCell sx={{ fontWeight: "bold" }}>Date</TableCell>
+                  <TableCell sx={{ fontWeight: "bold" }}>
+                    No. of Requests
+                  </TableCell>
                 </TableRow>
               </TableHead>
               {filteredRequests.length === 0 ? (
@@ -188,8 +240,8 @@ export const PendingRequests = () => {
               ) : (
                 filteredRequests.map((request) => {
                   return (
-                    <EmployeeRow
-                      request={request}
+                    <DateRow
+                      date={request}
                       handleRequestAction={handleRequestAction}
                     />
                   );
@@ -204,7 +256,7 @@ export const PendingRequests = () => {
             count={filteredRequests.length}
             rowsPerPage={rowsPerPage}
             page={page}
-            onPageChange={(event, newPage) => setPage(newPage)}
+            onPageChange={(_, newPage) => setPage(newPage)}
             onRowsPerPageChange={(event) =>
               setRowsPerPage(parseInt(event.target.value, 10))
             }
@@ -213,17 +265,17 @@ export const PendingRequests = () => {
   );
 };
 
-// EmployeeRow Component
-const EmployeeRow = ({ request, handleRequestAction }: TEmployeeRow) => {
-  const {
-    employee: { staff_id, staff_fname, staff_lname, dept, position, email },
-  } = request;
+type TDateRow = {
+  date: TArrangementsByDate;
+  handleRequestAction: (
+    action: TAction,
+    arrangement_id: number,
+    reason_description: string
+  ) => {};
+};
 
-  const arrangements = request.pending_arrangements.filter(
-    (arrangement) => 
-      arrangement.approval_status === ApprovalStatus.PendingApproval ||
-      arrangement.approval_status === ApprovalStatus.PendingWithdrawal
-  );
+const DateRow = ({ date, handleRequestAction }: TDateRow) => {
+  const arrangements = date.pending_arrangements;
 
   const [isCollapsed, setIsCollapsed] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -236,19 +288,13 @@ const EmployeeRow = ({ request, handleRequestAction }: TEmployeeRow) => {
 
   return (
     <>
-      <TableRow key={request.employee.staff_id}>
+      <TableRow>
         <TableCell>
           <Button onClick={() => setIsCollapsed(!isCollapsed)}>
             {isCollapsed ? <ExpandMoreIcon /> : <ExpandLessIcon />}
           </Button>
         </TableCell>
-        <TableCell>{staff_id}</TableCell>
-        <TableCell>
-          {staff_fname} {staff_lname}
-        </TableCell>
-        <TableCell>{dept || "N/A"}</TableCell>
-        <TableCell>{position}</TableCell>
-        <TableCell>{email}</TableCell>
+        <TableCell>{date.date}</TableCell>
         <TableCell>
           <Chip label={arrangements.length} /> {/* Reintroducing the Chip component */}
         </TableCell>
@@ -261,7 +307,7 @@ const EmployeeRow = ({ request, handleRequestAction }: TEmployeeRow) => {
             paddingLeft: 40,
             paddingRight: 0,
           }}
-          colSpan={7}
+          colSpan={3}
         >
           <Collapse in={!isCollapsed} timeout="auto" unmountOnExit>
             <Box>
@@ -269,7 +315,11 @@ const EmployeeRow = ({ request, handleRequestAction }: TEmployeeRow) => {
                 <TableHead>
                   <TableRow className="bg-gray-100">
                     <TableCell></TableCell>
-                    <TableCell sx={{ fontWeight: "bold" }}>Date</TableCell>
+                    <TableCell>Staff ID</TableCell>
+                    <TableCell>Staff Name</TableCell>
+                    <TableCell>Department</TableCell>
+                    <TableCell>Position</TableCell>
+                    <TableCell>Email</TableCell>
                     <TableCell sx={{ fontWeight: "bold" }}>WFH Type</TableCell>
                     <TableCell sx={{ fontWeight: "bold" }}>Reason</TableCell>
                     <TableCell sx={{ fontWeight: "bold" }}>
@@ -282,7 +332,13 @@ const EmployeeRow = ({ request, handleRequestAction }: TEmployeeRow) => {
                   {arrangements.map((arrangement, idx) => {
                     const {
                       arrangement_id,
-                      wfh_date,
+                      staff_id,
+                      requester_info: {
+                        staff_fname,
+                        staff_lname,
+                        dept,
+                        position,
+                      },
                       wfh_type,
                       reason_description,
                       supporting_doc_1,
@@ -294,7 +350,12 @@ const EmployeeRow = ({ request, handleRequestAction }: TEmployeeRow) => {
                     return (
                       <TableRow key={arrangement_id}>
                         <TableCell>{idx + 1}</TableCell>
-                        <TableCell>{wfh_date}</TableCell>
+                        <TableCell>{staff_id}</TableCell>
+                        <TableCell>
+                          {staff_fname} {staff_lname}
+                        </TableCell>
+                        <TableCell>{dept}</TableCell>
+                        <TableCell>{position}</TableCell>
                         <TableCell>{wfh_type?.toUpperCase()}</TableCell>
                         <TableCell className="max-w-[200px]">
                           <Tooltip title="Scroll to view more">
