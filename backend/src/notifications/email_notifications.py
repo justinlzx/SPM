@@ -96,10 +96,30 @@ async def craft_and_send_email(
                 f"Arrangement is missing required attributes: {', '.join(missing_arrangement_attributes)}"
             )
 
-    if action not in ["create", "approve", "reject"]:
+    if action not in [
+        "create",
+        "approve",
+        "reject",
+        "withdraw",
+        "allow withdraw",
+        "reject withdraw",
+        "cancel",
+    ]:
         raise ValueError(f"Invalid action: {action}")
 
-    if action in ["create", "approve", "reject"] and not manager:
+    if (
+        action
+        in [
+            "create",
+            "approve",
+            "reject",
+            "withdraw",
+            "allow withdraw",
+            "reject withdraw",
+            "cancel",
+        ]
+        and not manager
+    ):
         raise ValueError("Manager is required for the specified action.")
 
     if error_message is not None and error_message == "":
@@ -149,16 +169,12 @@ async def craft_and_send_email(
     return True
 
 
-def craft_email_content(
-    employee: employee_models.Employee,
+def format_details(
     arrangements: Union[
         List[arrangement_schemas.ArrangementCreateResponse], arrangement_schemas.ArrangementUpdate
-    ],
-    action: str,
-    manager: employee_models.Employee = None,
-    error_message: str = None,
+    ]
 ):
-    formatted_details = "\n".join(
+    return "\n".join(
         [
             f"Request ID: {arrangement.arrangement_id}\n"
             f"WFH Date: {arrangement.wfh_date}\n"
@@ -172,89 +188,99 @@ def craft_email_content(
         ]
     )
 
-    email_subject_content = {
-        "create": {
-            "success": {
-                "employee": {
-                    "subject": "[All-In-One] Successful Creation of WFH Request",
-                    "content": (
-                        f"Dear {employee.staff_fname} {employee.staff_lname},\n\n"
-                        f"Your WFH request has been successfully created with the following details:\n\n"
-                        f"{formatted_details}\n\n"
-                        "This email is auto-generated. Please do not reply to this email. Thank you."
-                    ),
-                },
-                "manager": {
-                    "subject": "[All-In-One] Your Staff Created a WFH Request",
-                    "content": (
-                        f"Dear {manager.staff_fname} {manager.staff_lname},\n\n"
-                        f"{employee.staff_fname} {employee.staff_lname}, one of your staff members, has successfully created a WFH request with the following details:\n\n"
-                        f"{formatted_details}\n\n"
-                        "This email is auto-generated. Please do not reply to this email. Thank you."
-                    ),
-                },
+
+def format_email_subject(action_statement: str):
+    return f"[All-In-One] {action_statement}"
+
+
+def format_email_body(
+    employee: employee_models.Employee,
+    action_statement: str,
+    formatted_details: str,
+):
+    body = f"Dear {employee.staff_fname} {employee.staff_lname},\n\n"
+    body += f"{action_statement} with the following details:\n\n"
+    body += formatted_details
+    body += "\n\nThis email is auto-generated. Please do not reply to this email. Thank you."
+    return body
+
+
+def craft_email_content(
+    employee: employee_models.Employee,
+    arrangements: Union[
+        List[arrangement_schemas.ArrangementCreateResponse], arrangement_schemas.ArrangementUpdate
+    ],
+    action: str,
+    manager: employee_models.Employee = None,
+    error_message: str = None,
+):
+    formatted_details = format_details(arrangements)
+
+    action_statements_dict = {
+        "employee": {
+            "subject": {
+                "create": "Successful Creation of WFH Request",
+                "approve": "Your WFH Request Has Been Approved",
+                "reject": "Your WFH Request Has Been Rejected",
+                "withdraw": "You Have Requested to Withdraw Your WFH",
+                "allow withdraw": "Your WFH Request Has Been Withdrawn",
+                "reject withdraw": "Your WFH Request Withdrawal Has Been Rejected",
+                "cancel": "Your WFH Request Has Been Cancelled",
             },
-            "failure": {
-                "employee": {
-                    "subject": "[All-In-One] Unsuccessful Creation of WFH Request",
-                    "content": (
-                        f"Dear {employee.staff_fname} {employee.staff_lname},\n\n"
-                        "Unfortunately, there was an error processing your WFH request. "
-                        "Please try again later.\n\n"
-                        f"Error details: {error_message}\n\n"
-                        "This email is auto-generated. Please do not reply to this email. Thank you."
-                    ),
-                },
-            },
-        },
-        "approve": {
-            "employee": {
-                "subject": "[All-In-One] Your WFH Request Has Been Approved",
-                "content": (
-                    f"Dear {employee.staff_fname} {employee.staff_lname},\n\n"
-                    "Your WFH request has been approved with the following details:\n\n"
-                    f"{formatted_details}\n\n"
-                    "This email is auto-generated. Please do not reply to this email. Thank you."
-                ),
-            },
-            "manager": {
-                "subject": "[All-In-One] You Have Approved a WFH Request",
-                "content": (
-                    f"Dear {manager.staff_fname} {manager.staff_lname},\n\n"
-                    f"You have successfully approved a WFH request for {employee.staff_fname} {employee.staff_lname} "
-                    "with the following details:\n\n"
-                    f"{formatted_details}\n\n"
-                    "This email is auto-generated. Please do not reply to this email. Thank you."
-                ),
+            "body": {
+                "create": "Your WFH request has been successfully created with the following details:",
+                "approve": "Your WFH request has been approved with the following details:",
+                "reject": "Your WFH request has been rejected with the following details:",
+                "withdraw": "Your WFH request is pending withdrawal with the following details:",
+                "allow withdraw": "Your WFH request has been withdrawn with the following details:",
+                "reject withdraw": "Your WFH request withdrawal has been rejected with the following details:",
+                "cancel": "Your WFH request has been cancelled with the following details:",
             },
         },
-        "reject": {
-            "employee": {
-                "subject": "[All-In-One] Your WFH Request Has Been Rejected",
-                "content": (
-                    f"Dear {employee.staff_fname} {employee.staff_lname},\n\n"
-                    "Your WFH request has been rejected with the following details:\n\n"
-                    f"{formatted_details}\n\n"
-                    "This email is auto-generated. Please do not reply to this email. Thank you."
-                ),
+        "manager": {
+            "subject": {
+                "create": "Your Staff Created a WFH Request",
+                "approve": "You Have Approved a WFH Request",
+                "reject": "You Have Rejected a WFH Request",
+                "withdraw": "Your Staff Has Requested to Withdraw Their WFH",
+                "allow withdraw": "You Have Approved a WFH Request Withdrawal",
+                "reject withdraw": "You Have Rejected a WFH Request Withdrawal",
+                "cancel": "You Have Cancelled a WFH Request",
             },
-            "manager": {
-                "subject": "[All-In-One] You Have Rejected a WFH Request",
-                "content": (
-                    f"Dear {manager.staff_fname} {manager.staff_lname},\n\n"
-                    f"You have rejected a WFH request for {employee.staff_fname} {employee.staff_lname} "
-                    "with the following details:\n\n"
-                    f"{formatted_details}\n\n"
-                    "This email is auto-generated. Please do not reply to this email. Thank you."
-                ),
+            "body": {
+                "create": "One of your staff members has successfully created a WFH request with the following details:",
+                "approve": "You have successfully approved a WFH request for",
+                "reject": "You have rejected a WFH request for",
+                "withdraw": "has request to withdraw their WFH with the following details:",
+                "allow withdraw": "You have withdrawn a WFH request for",
+                "reject withdraw": "You have rejected a WFH request withdrawal for",
+                "cancel": "You have cancelled a WFH request for",
             },
         },
     }
 
-    result: dict = email_subject_content.get(action, None)
+    result = {
+        "employee": {
+            "subject": format_email_subject(action_statements_dict["employee"]["subject"][action]),
+            "content": format_email_body(
+                employee,
+                action_statements_dict["employee"]["subject"][action],
+                formatted_details,
+            ),
+        },
+        "manager": {
+            "subject": format_email_subject(action_statements_dict["manager"]["subject"][action]),
+            "content": format_email_body(
+                manager,
+                action_statements_dict["manager"]["subject"][action],
+                formatted_details,
+            ),
+        },
+    }
 
-    if action == "create":
-        result = result.get("failure") if error_message else result.get("success")
+    # TODO: Handle failed actions
+    # if action == "create":
+    #     result = result.get("failure") if error_message else result.get("success")
 
     return result
 
@@ -283,12 +309,12 @@ async def send_email(to_email: str, subject: str, content: str):
 def craft_email_content_for_delegation(
     employee: employee_models.Employee, counterpart_employee: employee_models.Employee, event: str
 ):
-    """
-    Helper function to craft email content for delegation events.
+    """Helper function to craft email content for delegation events.
 
     :param employee: The employee receiving the email (could be staff or delegate).
     :param counterpart_employee: The counterpart involved in the delegation (staff or delegate).
-    :param event: The event type ('delegate', 'delegated_to', 'undelegated', 'approved', 'rejected', 'withdrawn').
+    :param event: The event type ('delegate', 'delegated_to', 'undelegated', 'approved', 'rejected',
+        'withdrawn').
     :return: Tuple of (subject, content).
     """
     if event == "delegate":

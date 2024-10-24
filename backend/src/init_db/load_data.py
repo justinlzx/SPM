@@ -4,7 +4,7 @@ from datetime import datetime
 import pandas as pd
 from sqlalchemy.orm import Session
 
-from ..arrangements.models import ArrangementLog, LatestArrangement
+from ..arrangements.models import LatestArrangement
 from ..auth.models import Auth
 from ..auth.utils import hash_password
 from ..database import SessionLocal

@@ -82,10 +82,10 @@ def get_subordinates_arrangements(
     name: str = None,
     start_date: datetime = None,
     end_date: datetime = None,
-    wfh_type=None,
-    reason=None,
-    items_per_page=10,
-    page_num=1,
+    wfh_type: str = None,
+    reason: str = None,
+    items_per_page: int = 10,
+    page_num: int = 1,
 ) -> List[ManagerPendingRequestResponse]:
 
     # Check if the employee is a manager
@@ -180,6 +180,15 @@ def group_arrangements_by_date(
 def group_arrangements_by_employee(
     arrangements_schema: List[ArrangementCreateResponse],
 ) -> List[ManagerPendingRequests]:
+    """
+    The function `group_arrangements_by_employee` organizes a list of arrangements by employee, creating
+    a list of ManagerPendingRequests objects for each employee with their corresponding arrangements.
+
+    :param arrangements_schema: `arrangements_schema` is a list of `ArrangementCreateResponse` objects
+    :type arrangements_schema: List[ArrangementCreateResponse]
+    :return: A list of `ManagerPendingRequests` objects, where each object contains information about an
+    employee and their pending arrangements.
+    """
 
     arrangements_dict = {}
 
@@ -217,6 +226,8 @@ def get_team_arrangements(
     start_date: datetime = None,
     end_date: datetime = None,
     reason: str = None,
+    items_per_page: int = 10,
+    page_num: int = 1,
 ) -> Dict[str, List[ArrangementResponse]]:
 
     arrangements: Dict[str, List[ArrangementResponse]] = {}
@@ -244,8 +255,18 @@ def get_team_arrangements(
 
     try:
         # If employee is manager, get arrangements of subordinates
-        subordinates_arrangements: List[ManagerPendingRequests] = get_subordinates_arrangements(
-            db, staff_id, current_approval_status
+        subordinates_arrangements: List[ManagerPendingRequestResponse] = (
+            get_subordinates_arrangements(
+                db,
+                staff_id,
+                current_approval_status,
+                name,
+                start_date,
+                end_date,
+                wfh_type,
+                items_per_page,
+                page_num,
+            )
         )
 
         arrangements["subordinates"] = subordinates_arrangements

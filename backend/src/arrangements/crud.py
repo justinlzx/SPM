@@ -1,9 +1,8 @@
-from datetime import date, datetime
-from math import ceil
+from datetime import datetime
 from typing import List, Literal
 
 # from pydantic import ValidationError
-from sqlalchemy import Date, DateTime, cast, func, or_
+from sqlalchemy import func, or_
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 from src.employees.models import Employee

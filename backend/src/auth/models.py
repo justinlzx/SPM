@@ -1,9 +1,8 @@
 from sqlalchemy import Column, String
-from sqlalchemy.orm import relationship, Session
-
-from ..employees.models import Employee
+from sqlalchemy.orm import Session, relationship
 
 from ..database import Base
+from ..employees.models import Employee
 
 
 class Auth(Base):

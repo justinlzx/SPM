@@ -1,13 +1,11 @@
 import pytest
 from fastapi.testclient import TestClient
-from unittest.mock import MagicMock
+from src.app import app
+from src.auth.models import Auth
 from src.auth.routes import router as auth_router
 from src.auth.utils import hash_password
-from src.auth.models import Auth
-from src.employees.models import Employee
-from src.app import app
-from src.tests.test_utils import mock_db_session as mock_db_session_fixture
 from src.database import get_db
+from src.employees.models import Employee
 
 app.include_router(auth_router)
 

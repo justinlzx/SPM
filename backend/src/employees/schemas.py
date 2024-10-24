@@ -1,7 +1,7 @@
+from datetime import datetime
 from typing import List, Optional
 
 from ..base import BaseSchema
-from datetime import datetime
 from ..employees.models import DelegationStatus
 
 

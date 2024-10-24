@@ -1,6 +1,8 @@
 import pytest
-from src.arrangements.exceptions import (ArrangementActionNotAllowedException,
-                                         ArrangementNotFoundException)
+from src.arrangements.exceptions import (
+    ArrangementActionNotAllowedException,
+    ArrangementNotFoundException,
+)
 
 
 def test_arrangement_not_found_error():
