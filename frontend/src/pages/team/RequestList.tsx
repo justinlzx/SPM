@@ -1,9 +1,7 @@
-import React from 'react'
+import React from "react";
 
 export const RequestList = () => {
-  return (
-    <div>RequestList</div>
-  )
-}
+  return <div>RequestList</div>;
+};
 
-export default RequestList
+export default RequestList;

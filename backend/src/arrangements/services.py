@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta
 from math import ceil
-from typing import Dict, List
+from typing import Dict, List, Literal
 
 import boto3
 from dateutil.relativedelta import relativedelta
@@ -15,21 +15,27 @@ from .. import utils
 from ..employees import exceptions as employee_exceptions
 from ..employees import models as employee_models
 from ..employees import services as employee_services
+
 # from src.employees.schemas import EmployeeBase
 from ..logger import logger
 from . import crud, exceptions, models
 from .models import LatestArrangement
-from .schemas import (ArrangementCreate, ArrangementCreateResponse,
-                      ArrangementCreateWithFile, ArrangementResponse,
-                      ArrangementUpdate, ManagerPendingRequestResponse,
-                      ManagerPendingRequests)
+from .schemas import (
+    ArrangementCreate,
+    ArrangementCreateResponse,
+    ArrangementCreateWithFile,
+    ArrangementResponse,
+    ArrangementUpdate,
+    ManagerPendingRequestResponse,
+    ManagerPendingRequests,
+)
 from .utils import create_presigned_url
 
 STATUS = {
     "approve": "approved",
     "reject": "rejected",
     "withdraw": "pending withdrawal",
-    "allow withdraw" : "withdrawn",
+    "allow withdraw": "withdrawn",
     "cancel": "cancelled",
 }
 
@@ -49,10 +55,10 @@ def get_arrangement_by_id(db: Session, arrangement_id: int) -> ArrangementRespon
         raise exceptions.ArrangementNotFoundException(arrangement_id)
 
     arrangements_schema: ArrangementResponse = utils.convert_model_to_pydantic_schema(
-        arrangement, ArrangementResponse
+        [arrangement], ArrangementResponse
     )
 
-    return arrangements_schema
+    return arrangements_schema[0]
 
 
 def get_personal_arrangements_by_filter(
@@ -73,12 +79,13 @@ def get_subordinates_arrangements(
     db: Session,
     manager_id: int,
     current_approval_status: List[str],
-    name,
-    start_date: datetime,
-    end_date: datetime,
-    type,
-    items_per_page,
-    page_num,
+    name: str = None,
+    start_date: datetime = None,
+    end_date: datetime = None,
+    wfh_type=None,
+    reason=None,
+    items_per_page=10,
+    page_num=1,
 ) -> List[ManagerPendingRequestResponse]:
 
     # Check if the employee is a manager
@@ -96,9 +103,10 @@ def get_subordinates_arrangements(
         employees_under_manager_ids,
         current_approval_status,
         name,
-        type,
+        wfh_type,
         start_date,
         end_date,
+        reason,
     )
 
     arrangements_schema: List[ArrangementCreateResponse] = utils.convert_model_to_pydantic_schema(
@@ -129,17 +137,44 @@ def get_subordinates_arrangements(
         )
         for arrangement in arrangements_schema
     ]
-    arrangements_by_employee = group_arrangements_by_employee(arrangements_schema)
+    arrangements_by_date: List[ManagerPendingRequests] = group_arrangements_by_date(
+        arrangements_schema
+    )
 
-    total_count = len(arrangements_by_employee)
+    # pagination logic
+    total_count = len(arrangements_by_date)
     total_pages = ceil(total_count / items_per_page)
 
-    return arrangements_by_employee, {
+    # slice the list based on page number and items per page
+    arrangements_by_date = arrangements_by_date[
+        (page_num - 1) * items_per_page : page_num * items_per_page
+    ]
+
+    return arrangements_by_date, {
         "total_count": total_count,
         "page_size": items_per_page,
         "page_num": page_num,
         "total_pages": total_pages,
     }
+
+
+def group_arrangements_by_date(
+    arrangements_schema: List[ArrangementCreateResponse],
+) -> List[ManagerPendingRequests]:
+    arrangements_dict = {}
+
+    for arrangement in arrangements_schema:
+        wfh_date = arrangement.wfh_date
+        if wfh_date not in arrangements_dict:
+            arrangements_dict[str(wfh_date)] = []
+
+        arrangements_dict[wfh_date].append(arrangement)
+
+    result = []
+    for date, val in arrangements_dict.items():
+        result.append(ManagerPendingRequests(date=date, pending_arrangements=val))
+
+    return result
 
 
 def group_arrangements_by_employee(
@@ -165,7 +200,23 @@ def group_arrangements_by_employee(
 
 
 def get_team_arrangements(
-    db: Session, staff_id: int, current_approval_status: List[str]
+    db: Session,
+    staff_id: int,
+    current_approval_status: List[
+        Literal[
+            "pending approval",
+            "pending withdrawal",
+            "approved",
+            "rejected",
+            "cancelled",
+            "withdrawn",
+        ]
+    ] = None,
+    name: str = None,
+    wfh_type: Literal["full", "am", "pm"] = None,
+    start_date: datetime = None,
+    end_date: datetime = None,
+    reason: str = None,
 ) -> Dict[str, List[ArrangementResponse]]:
 
     arrangements: Dict[str, List[ArrangementResponse]] = {}
@@ -176,7 +227,14 @@ def get_team_arrangements(
         db, staff_id
     )
     peer_arrangements: List[models.LatestArrangement] = crud.get_arrangements_by_staff_ids(
-        db, [peer.staff_id for peer in peer_employees], current_approval_status
+        db,
+        [peer.staff_id for peer in peer_employees],
+        current_approval_status,
+        name,
+        wfh_type,
+        start_date,
+        end_date,
+        reason,
     )
     peer_arrangements: List[ArrangementResponse] = utils.convert_model_to_pydantic_schema(
         peer_arrangements, ArrangementResponse
@@ -186,13 +244,10 @@ def get_team_arrangements(
 
     try:
         # If employee is manager, get arrangements of subordinates
-        subordinates_arrangements: List[models.LatestArrangement] = get_subordinates_arrangements(
+        subordinates_arrangements: List[ManagerPendingRequests] = get_subordinates_arrangements(
             db, staff_id, current_approval_status
         )
 
-        subordinates_arrangements: List[ArrangementResponse] = (
-            utils.convert_model_to_pydantic_schema(subordinates_arrangements, ArrangementResponse)
-        )
         arrangements["subordinates"] = subordinates_arrangements
     except employee_exceptions.ManagerWithIDNotFoundException:
         pass
@@ -210,8 +265,9 @@ async def create_arrangements_from_request(
     created_arrangements = []
 
     try:
-        # Auto Approve Jack Sim's requests
         wfh_request = ArrangementCreateWithFile.model_validate(wfh_request)
+
+        # Auto Approve Jack Sim's requests
 
         if wfh_request.staff_id == 130002:
             wfh_request.current_approval_status = "approved"
@@ -409,7 +465,6 @@ def update_arrangement_approval_status(
     # if arrangement.current_approval_status == "approved" and wfh_update.action != "cancel":
     #     raise exceptions.ArrangementActionNotAllowed(f"Cannot {wfh_update.action} an already approved arrangement")
 
-    
     # Update arrangement fields
     new_status = STATUS.get(wfh_update.action)
     if new_status is None:

@@ -13,7 +13,7 @@ from ..employees import services as employee_services
 from ..logger import logger
 from ..notifications import exceptions as notification_exceptions
 from ..notifications.email_notifications import craft_and_send_email
-from . import exceptions as arrangement_exceptions
+from .exceptions import ArrangementActionNotAllowedException, ArrangementNotFoundException
 from . import schemas, services
 from .schemas import ArrangementCreate, ArrangementResponse, ArrangementUpdate
 
@@ -25,17 +25,17 @@ def get_arrangement_by_id(arrangement_id: int, db: Session = Depends(get_db)):
     try:
         arrangement: ArrangementResponse = services.get_arrangement_by_id(db, arrangement_id)
 
+        arrangement_dict = {
+            **arrangement.model_dump(),
+            "wfh_date": arrangement.wfh_date.isoformat(),
+            "update_datetime": arrangement.update_datetime.isoformat(),
+        }
+
         return JSONResponse(
             status_code=200,
-            content={
-                "message": "Arrangement retrieved successfully",
-                "data": {
-                    **arrangement.model_dump(),
-                    "update_datetime": (arrangement.update_datetime.isoformat()),
-                },
-            },
+            content={"message": "Arrangement retrieved successfully", "data": arrangement_dict},
         )
-    except arrangement_exceptions as e:
+    except ArrangementNotFoundException as e:
         raise HTTPException(status_code=404, detail=str(e))
     except SQLAlchemyError as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -91,7 +91,7 @@ def get_subordinates_arrangements(
     name: Optional[str] = Query(None, description="Name of the employee"),
     start_date: Optional[date] = Query(None, description="Start Date"),
     end_date: Optional[date] = Query(None, description="End Date"),
-    type: Optional[Literal["full", "am", "pm"]] = Query(
+    wfh_type: Optional[Literal["full", "am", "pm"]] = Query(
         None, description="Type of WFH arrangement"
     ),
     current_approval_status: Optional[
@@ -110,7 +110,6 @@ def get_subordinates_arrangements(
     page_num: int = Query(1, description="Page Number"),
     db: Session = Depends(get_db),
 ):
-
     try:
         logger.info(f"Fetching arrangements for employees under manager ID: {manager_id}")
         arrangements, pagination_meta = services.get_subordinates_arrangements(
@@ -120,7 +119,7 @@ def get_subordinates_arrangements(
             name,
             start_date,
             end_date,
-            type,
+            wfh_type,
             items_per_page,
             page_num,
         )
@@ -181,7 +180,7 @@ def get_team_arrangements(
 @router.post("/request")
 async def create_wfh_request(
     requester_staff_id: int = Form(..., title="Staff ID of the requester"),
-    wfh_date: str = Form(..., title="Date of the WFH request"),
+    wfh_date: date = Form(..., title="Date of the WFH request"),
     wfh_type: Literal["full", "am", "pm"] = Form(..., title="Type of WFH arrangement"),
     reason_description: str = Form(..., title="Reason for requesting the WFH"),
     is_recurring: Optional[bool] = Form(
@@ -317,10 +316,10 @@ async def update_wfh_request(
             },
         )
 
-    except arrangement_exceptions.ArrangementNotFoundException as e:
+    except ArrangementNotFoundException as e:
         raise HTTPException(status_code=404, detail=str(e))
 
-    except arrangement_exceptions.ArrangementActionNotAllowedException as e:
+    except ArrangementActionNotAllowedException as e:
         raise HTTPException(status_code=406, detail=str(e))
 
     except notification_exceptions.EmailNotificationException as e:
