@@ -55,10 +55,10 @@ def get_arrangement_by_id(db: Session, arrangement_id: int) -> ArrangementRespon
         raise exceptions.ArrangementNotFoundException(arrangement_id)
 
     arrangements_schema: ArrangementResponse = utils.convert_model_to_pydantic_schema(
-        arrangement, ArrangementResponse
+        [arrangement], ArrangementResponse
     )
 
-    return arrangements_schema
+    return arrangements_schema[0]
 
 
 def get_personal_arrangements_by_filter(

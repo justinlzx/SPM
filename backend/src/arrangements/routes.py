@@ -15,7 +15,7 @@ from ..employees import services as employee_services
 from ..logger import logger
 from ..notifications import exceptions as notification_exceptions
 from ..notifications.email_notifications import craft_and_send_email
-from . import exceptions as arrangement_exceptions
+from .exceptions import ArrangementNotFoundException
 from . import schemas, services
 from .schemas import ArrangementCreate, ArrangementResponse, ArrangementUpdate
 
@@ -27,17 +27,17 @@ def get_arrangement_by_id(arrangement_id: int, db: Session = Depends(get_db)):
     try:
         arrangement: ArrangementResponse = services.get_arrangement_by_id(db, arrangement_id)
 
+        arrangement_dict = {
+            **arrangement.model_dump(),
+            "wfh_date": arrangement.wfh_date.isoformat(),
+            "update_datetime": arrangement.update_datetime.isoformat(),
+        }
+
         return JSONResponse(
             status_code=200,
-            content={
-                "message": "Arrangement retrieved successfully",
-                "data": {
-                    **arrangement.model_dump(),
-                    "update_datetime": (arrangement.update_datetime.isoformat()),
-                },
-            },
+            content={"message": "Arrangement retrieved successfully", "data": arrangement_dict},
         )
-    except arrangement_exceptions as e:
+    except ArrangementNotFoundException as e:
         raise HTTPException(status_code=404, detail=str(e))
     except SQLAlchemyError as e:
         raise HTTPException(status_code=500, detail=str(e))

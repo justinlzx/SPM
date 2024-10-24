@@ -84,8 +84,6 @@ def get_arrangements_by_staff_ids(
 
     result = query.all()
 
-    print(f"Result: {result}")
-
     return result
 
 

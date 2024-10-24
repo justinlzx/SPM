@@ -193,6 +193,9 @@ class ArrangementResponse(ArrangementCreateWithFile):
         None, title="Information about the requester"
     )
 
+    class Config:
+        arbitrary_types_allowed = True
+
 
 # class ManagerPendingRequests(BaseModel):
 #     employee: employee_schemas.EmployeeBase
