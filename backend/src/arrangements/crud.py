@@ -16,7 +16,7 @@ def get_arrangement_by_id(db: Session, arrangement_id: int) -> models.LatestArra
     return db.query(models.LatestArrangement).get(arrangement_id)
 
 
-def get_arrangements_by_staff_ids(
+def get_arrangements(
     db: Session,
     staff_ids: List[int],
     current_approval_status: List[
@@ -79,11 +79,9 @@ def get_arrangements_by_staff_ids(
         query = query.filter(func.date(models.LatestArrangement.wfh_date) <= end_date)
 
     if reason:
-        query = query.filter(models.LatestArrangement.reason.ilike(reason))
+        query = query.filter(models.LatestArrangement.reason_description.like(reason))
 
     result = query.all()
-
-    print(f"Result: {result}")
 
     return result
 
@@ -142,7 +140,7 @@ def create_arrangements(
             db.add(arrangement)
             db.flush()
             created_arrangements.append(arrangement)
-            created_arrangement_log = create_arrangement_log(db, arrangement, "create")
+            created_arrangement_log: models.ArrangementLog = create_arrangement_log(db, arrangement, "create")
             arrangement.latest_log_id = created_arrangement_log.log_id
             db.add(created_arrangement_log)
             db.flush()
