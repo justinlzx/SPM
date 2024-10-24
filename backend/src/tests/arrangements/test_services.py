@@ -17,7 +17,7 @@ from src.arrangements.schemas import (
     ManagerPendingRequests,
 )
 from src.arrangements.services import (
-    ACTION,
+    STATUS,
     create_arrangements_from_request,
     expand_recurring_arrangement,
     get_approving_officer,
@@ -377,7 +377,7 @@ def test_update_arrangement_approval_status(mock_db_session):
 
     wfh_update = ArrangementUpdate(
         arrangement_id=1,
-        action="approve",
+        STATUS="approve",
         approving_officer=2,
         reason_description="Approved by manager",
     )
@@ -399,7 +399,7 @@ def test_update_arrangement_approval_status(mock_db_session):
 async def test_update_arrangement_approval_status_not_found(mock_db_session):
     wfh_update = ArrangementUpdate(
         arrangement_id=1,
-        action="approve",
+        STATUS="approve",
         approving_officer=2,
         reason_description="Approved by manager",
     )
@@ -576,7 +576,7 @@ def test_get_team_arrangements_employee_is_manager(
 
 
 @pytest.mark.parametrize(
-    "action, expected_status",
+    "STATUS, expected_status",
     [
         ("approve", "approved"),
         ("reject", "rejected"),
@@ -584,15 +584,15 @@ def test_get_team_arrangements_employee_is_manager(
         ("cancel", "cancelled"),
     ],
 )
-def test_update_arrangement_approval_status_actions(mock_db_session, action, expected_status):
+def test_update_arrangement_approval_status_STATUSs(mock_db_session, STATUS, expected_status):
     mock_arrangement = MagicMock(spec=arrangement_models.LatestArrangement)
     mock_arrangement.arrangement_id = 1
 
     wfh_update = ArrangementUpdate(
         arrangement_id=1,
-        action=action,
+        STATUS=STATUS,
         approving_officer=2,
-        reason_description="Action taken",
+        reason_description="STATUS taken",
     )
 
     with patch("src.arrangements.crud.get_arrangement_by_id", return_value=mock_arrangement):
@@ -605,23 +605,23 @@ def test_update_arrangement_approval_status_actions(mock_db_session, action, exp
             assert result.arrangement_id == 1
             assert result.current_approval_status == expected_status
             assert result.approving_officer == 2
-            assert result.reason_description == "Action taken"
+            assert result.reason_description == "STATUS taken"
 
 
-def test_update_arrangement_approval_status_invalid_action(mock_db_session):
+def test_update_arrangement_approval_status_invalid_STATUS(mock_db_session):
     mock_arrangement = MagicMock(spec=arrangement_models.LatestArrangement)
     mock_arrangement.arrangement_id = 1
 
     wfh_update = ArrangementUpdate(
         arrangement_id=1,
-        action="approve",  # Use a valid action
+        STATUS="approve",  # Use a valid STATUS
         approving_officer=2,
-        reason_description="Invalid action test",
+        reason_description="Invalid STATUS test",
     )
 
     with patch("src.arrangements.crud.get_arrangement_by_id", return_value=mock_arrangement):
-        with patch.dict(ACTION, {"approve": None}):  # Make 'approve' action invalid
-            with pytest.raises(ValueError, match="Invalid action: approve"):
+        with patch.dict(STATUS, {"approve": None}):  # Make 'approve' STATUS invalid
+            with pytest.raises(ValueError, match="Invalid STATUS: approve"):
                 update_arrangement_approval_status(mock_db_session, wfh_update)
 
 
@@ -718,7 +718,7 @@ def test_update_arrangement_approval_status_default_reason(mock_db_session):
 
     wfh_update = ArrangementUpdate(
         arrangement_id=1,
-        action="approve",
+        STATUS="approve",
         approving_officer=2,
         reason_description=None,
     )
@@ -774,15 +774,15 @@ def test_expand_recurring_arrangement_invalid_frequency_unit():
 
 
 # TODO: Fix this test
-# def test_update_arrangement_approval_status_invalid_action_exception(mock_db_session):
+# def test_update_arrangement_approval_status_invalid_STATUS_exception(mock_db_session):
 #     with pytest.raises(
 #         ValueError, match="Input should be 'approve', 'reject', 'withdraw' or 'cancel'"
 #     ):
 #         wfh_update = ArrangementUpdate(
 #             arrangement_id=1,
-#             action="invalid_action",
+#             STATUS="invalid_STATUS",
 #             approving_officer=2,
-#             reason_description="Invalid action test",
+#             reason_description="Invalid STATUS test",
 #         )
 
 

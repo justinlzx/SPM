@@ -6,18 +6,17 @@ import boto3
 from dateutil.relativedelta import relativedelta
 from fastapi import File, HTTPException
 from sqlalchemy.orm import Session
-from src.arrangements.utils import delete_file, upload_file
-from src.employees.crud import get_employee_by_staff_id
-from src.employees.models import LatestArrangement
-from src.notifications.email_notifications import fetch_manager_info
 
 from .. import utils
+from ..arrangements.utils import delete_file, upload_file
 from ..employees import exceptions as employee_exceptions
 from ..employees import models as employee_models
 from ..employees import services as employee_services
+from ..employees.crud import get_employee_by_staff_id
 
 # from src.employees.schemas import EmployeeBase
 from ..logger import logger
+from ..notifications.email_notifications import fetch_manager_info
 from . import crud, exceptions, models
 from .models import LatestArrangement
 from .schemas import (
