@@ -8,7 +8,7 @@ from fastapi import File, HTTPException
 from sqlalchemy.orm import Session
 from src.arrangements.utils import delete_file, upload_file
 from src.employees.crud import get_employee_by_staff_id
-from src.arrangements.models import LatestArrangement
+#from src.employees.models import LatestArrangement
 from src.notifications.email_notifications import fetch_manager_info
 
 from .. import utils
@@ -66,7 +66,7 @@ def get_personal_arrangements(
 ) -> List[ArrangementResponse]:
 
     arrangements: List[models.LatestArrangement] = crud.get_arrangements(
-        db, staff_id, current_approval_status
+        db, [staff_id], current_approval_status
     )
     arrangements_schema: List[ArrangementResponse] = utils.convert_model_to_pydantic_schema(
         arrangements, ArrangementResponse
