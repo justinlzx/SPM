@@ -4,6 +4,8 @@ from typing import List
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
+from src.arrangements.models import LatestArrangement
+
 from . import models
 
 
@@ -52,3 +54,50 @@ def create_delegation(db: Session, staff_id: int, delegate_manager_id: int):
     db.commit()
     db.refresh(new_delegation)
     return new_delegation
+
+
+def get_delegation_log_by_delegate(db: Session, staff_id: int):
+    """
+    Fetch the delegation log entry for a given delegate manager.
+    """
+    return (
+        db.query(models.DelegateLog)
+        .filter(models.DelegateLog.delegate_manager_id == staff_id)
+        .first()
+    )
+
+
+def update_delegation_status(
+    db: Session, delegation_log: models.DelegateLog, status: models.DelegationStatus
+):
+    """
+    Update the delegation log status and commit the change to the database.
+    """
+    delegation_log.status_of_delegation = status
+    db.commit()
+    db.refresh(delegation_log)
+    return delegation_log
+
+
+def update_pending_arrangements_for_delegate(
+    db: Session, manager_id: int, delegate_manager_id: int
+):
+    """
+    Update pending approval requests for the original manager to assign the delegate.
+    """
+    pending_arrangements = (
+        db.query(LatestArrangement)
+        .filter(
+            LatestArrangement.approving_officer == manager_id,
+            LatestArrangement.current_approval_status.in_(
+                ["pending approval", "pending withdrawal"]
+            ),
+        )
+        .all()
+    )
+
+    for arrangement in pending_arrangements:
+        arrangement.delegate_approving_officer = delegate_manager_id
+        db.add(arrangement)
+
+    db.commit()

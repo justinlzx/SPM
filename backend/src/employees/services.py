@@ -1,13 +1,19 @@
+from enum import Enum
 from typing import List
 
 from sqlalchemy.orm import Session
 
 from src.email.routes import send_email
-from src.notifications.email_notifications import (
-    craft_email_content_for_delegation
-)
+from src.notifications.email_notifications import craft_email_content_for_delegation
 
 from . import crud, exceptions, models
+
+
+# The class `DelegationApprovalStatus` defines an enumeration for delegation approval statuses with
+# values "accepted" and "rejected".
+class DelegationApprovalStatus(Enum):
+    accept = "accepted"
+    reject = "rejected"
 
 
 def get_manager_by_subordinate_id(db: Session, staff_id: int) -> models.Employee:
@@ -96,3 +102,51 @@ async def delegate_manager(staff_id: int, delegate_manager_id: int, db: Session)
     except Exception as e:
         db.rollback()
         raise e
+
+
+async def process_delegation_status(staff_id: int, status: DelegationApprovalStatus, db: Session):
+    """
+    Process the update of delegation status and handle notifications.
+    """
+    # Step 1: Fetch the delegation log
+    delegation_log = crud.get_delegation_log_by_delegate(db, staff_id)
+    if not delegation_log:
+        return "Delegation log not found."
+
+    # Step 2: Fetch manager and delegatee details for email notification
+    manager_employee = get_employee_by_id(db, delegation_log.manager_id)
+    delegatee_employee = get_employee_by_id(db, staff_id)
+
+    if status == DelegationApprovalStatus.accept:
+        # Approve delegation and update pending arrangements
+        delegation_log = crud.update_delegation_status(db, delegation_log, models.DelegationStatus.accepted)
+        crud.update_pending_arrangements_for_delegate(
+            db, delegation_log.manager_id, delegation_log.delegate_manager_id
+        )
+
+        # Send approval emails
+        manager_subject, manager_content = craft_email_content_for_delegation(
+            manager_employee, delegatee_employee, "approved"
+        )
+        await send_email(manager_employee.email, manager_subject, manager_content)
+
+        delegate_subject, delegate_content = craft_email_content_for_delegation(
+            delegatee_employee, manager_employee, "approved_for_delegate"
+        )
+        await send_email(delegatee_employee.email, delegate_subject, delegate_content)
+
+    elif status == DelegationApprovalStatus.reject:
+        # Reject delegation and send rejection emails
+        delegation_log = crud.update_delegation_status(db, delegation_log, models.DelegationStatus.rejected)
+
+        manager_subject, manager_content = craft_email_content_for_delegation(
+            manager_employee, delegatee_employee, "rejected"
+        )
+        await send_email(manager_employee.email, manager_subject, manager_content)
+
+        delegate_subject, delegate_content = craft_email_content_for_delegation(
+            delegatee_employee, manager_employee, "rejected_for_delegate"
+        )
+        await send_email(delegatee_employee.email, delegate_subject, delegate_content)
+
+    return delegation_log

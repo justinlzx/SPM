@@ -19,13 +19,6 @@ from . import exceptions, models, schemas, services
 router = APIRouter()
 
 
-# The class `DelegationApprovalStatus` defines an enumeration for delegation approval statuses with
-# values "accepted" and "rejected".
-class DelegationApprovalStatus(Enum):
-    accept = "accepted"
-    reject = "rejected"
-
-
 @router.get("/manager/peermanager/{staff_id}", response_model=EmployeePeerResponse)
 def get_reporting_manager_and_peer_employees(staff_id: int, db: Session = Depends(get_db)):
     """
@@ -530,3 +523,16 @@ async def delegate_manager_route(
         # If a message is returned, it indicates an existing delegation issue
         raise HTTPException(status_code=400, detail=result)
     return result  # Return the created delegation log if successful
+
+
+@router.put("/manager/delegate/{staff_id}/status", response_model=DelegateLogCreate)
+async def update_delegation_status_route(
+    staff_id: int, status: services.DelegationApprovalStatus, db: Session = Depends(get_db)
+):
+    """
+    API endpoint to update the delegation status of a manager's delegate.
+    """
+    result = await services.process_delegation_status(staff_id, status, db)
+    if isinstance(result, str):
+        raise HTTPException(status_code=404, detail=result)
+    return result  # Return the updated delegation log if successful
