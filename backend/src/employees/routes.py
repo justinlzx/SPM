@@ -171,90 +171,6 @@ def get_subordinates_by_manager_id(staff_id: int, db: Session = Depends(get_db))
         raise HTTPException(status_code=404, detail=str(e))
 
 
-# @router.get("/manager/viewdelegations/{staff_id}")
-# def view_delegations(staff_id: int, db: Session = Depends(get_db)):
-#     """
-#     The `view_delegations` function retrieves and returns delegation requests sent by a manager and
-#     those pending approval for the manager from the database.
-
-#     :param staff_id: The `staff_id` parameter represents the unique identifier of the manager whose sent
-#     and pending delegation requests we want to view
-#     :type staff_id: int
-#     :param db: The `db` parameter in the `view_delegations` function represents the database session. It
-#     is used to interact with the database to retrieve information about delegation requests sent by a
-#     manager and those pending approval for the manager. The `db` parameter is of type `Session`, which
-#     is typically an
-#     :type db: Session
-#     :return: The function `view_delegations` returns a JSON response containing two lists with the
-#     specified fields:
-#     - `sent_delegations`: All delegations sent by the manager without `manager_id`.
-#     - `pending_approval_delegations`: All delegations pending approval by the manager without
-#     `delegate_manager_id`.
-#     """
-#     try:
-#         # Retrieve sent delegations (with statuses pending and accepted) by the manager
-#         sent_delegations = (
-#             db.query(DelegateLog)
-#             .filter(
-#                 DelegateLog.manager_id == staff_id,
-#                 DelegateLog.status_of_delegation.in_(
-#                     [DelegationStatus.pending, DelegationStatus.accepted]
-#                 ),
-#             )
-#             .all()
-#         )
-
-#         # Retrieve delegations (with statuses pending and accepted) awaiting manager's approval
-#         pending_approval_delegations = (
-#             db.query(DelegateLog)
-#             .filter(
-#                 DelegateLog.delegate_manager_id == staff_id,
-#                 DelegateLog.status_of_delegation.in_(
-#                     [DelegationStatus.pending, DelegationStatus.accepted]
-#                 ),
-#             )
-#             .all()
-#         )
-
-#         # Helper function to retrieve full name for a given staff_id
-#         def get_full_name(staff_id):
-#             employee = db.query(Employee).filter(Employee.staff_id == staff_id).first()
-#             return f"{employee.staff_fname} {employee.staff_lname}" if employee else "Unknown"
-
-#         # Simplify the response to only include relevant fields with correct full names
-#         sent_delegations_data = [
-#             {
-#                 "staff_id": delegation.delegate_manager_id,  # Use delegate_manager_id for sent delegations
-#                 "full_name": get_full_name(
-#                     delegation.delegate_manager_id
-#                 ),  # Correct name for delegate_manager_id
-#                 "date_of_delegation": delegation.date_of_delegation,
-#                 "status_of_delegation": delegation.status_of_delegation,
-#             }
-#             for delegation in sent_delegations
-#         ]
-#         pending_approval_delegations_data = [
-#             {
-#                 "staff_id": delegation.manager_id,  # Use manager_id for pending approvals
-#                 "full_name": get_full_name(delegation.manager_id),  # Correct name for manager_id
-#                 "date_of_delegation": delegation.date_of_delegation,
-#                 "status_of_delegation": delegation.status_of_delegation,
-#             }
-#             for delegation in pending_approval_delegations
-#         ]
-
-#         # Return both lists, empty if no records found
-#         return {
-#             "sent_delegations": sent_delegations_data,
-#             "pending_approval_delegations": pending_approval_delegations_data,
-#         }
-#     except Exception as e:
-#         print(f"Unexpected error: {str(e)}")
-#         raise HTTPException(
-#             status_code=500, detail="An unexpected error occurred while fetching delegations."
-#         )
-
-
 # @router.get("/manager/viewalldelegations/{staff_id}")
 # def view_all_delegations(staff_id: int, db: Session = Depends(get_db)):
 #     """
@@ -417,7 +333,23 @@ async def undelegate_manager_route(staff_id: int, db: Session = Depends(get_db))
 @router.get("/manager/viewdelegations/{staff_id}")
 def view_delegations_route(staff_id: int, db: Session = Depends(get_db)):
     """
-    API endpoint to view delegations sent by the manager and pending approval delegations.
+    This Python function defines an API endpoint to view delegations sent by a manager and pending
+    approval delegations.
+
+    :param staff_id: The `staff_id` parameter in the `view_delegations_route` function represents the
+    unique identifier of the staff member for whom you want to view delegations. This parameter is
+    expected to be an integer value
+    :type staff_id: int
+    :param db: The `db` parameter in the `view_delegations_route` function is a dependency injection
+    parameter that provides a database session to the route function. It is used to interact with the
+    database within the route function to perform database operations like querying, updating, or
+    deleting data. In this case, the
+    :type db: Session
+    :return: The code is returning the result of the `services.view_delegations(staff_id, db)` function
+    call, which is responsible for fetching and returning delegations sent by the manager and pending
+    approval delegations for a specific staff member identified by `staff_id`. If an unexpected error
+    occurs during this process, a 500 status code HTTPException is raised with the detail message "An
+    unexpected error occurred while
     """
     try:
         return services.view_delegations(staff_id, db)
