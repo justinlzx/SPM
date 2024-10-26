@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { UserContext } from '../../context/UserContextProvider';
 import AddIcon from '@mui/icons-material/Add';
 import { Button, Box, Toolbar, Container, Typography } from '@mui/material';
-import DashboardCards from '../../components/staffView/DashboardCards';
+import DashboardCards from '../../common/DashboardCards';
 import { ApprovedTeamRequests } from '../team/ApprovedTeamRequests';
 
 type Request = {

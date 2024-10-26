@@ -22,10 +22,10 @@ import * as Yup from "yup";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import axios from "axios";
-import { Recurring } from "./Recurring";
+import { Recurring } from "../../components/forms/Recurring";
 import { DragAndDrop } from "../../common/DragAndDrop";
 
-export const CreateWfhRequest: React.FC = () => {
+export const CreateWfhRequestPage: React.FC = () => {
   const { user } = useContext(UserContext);
   const [scheduleType, setScheduleType] = useState<"adhoc" | "recurring">(
     "adhoc"
@@ -46,15 +46,12 @@ export const CreateWfhRequest: React.FC = () => {
   }
 
   const requesterStaffId = user.id;
-
   const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 
-  // Function to handle Snackbar close
   const handleCloseSnackBar = () => {
     setShowSnackbar(false);
   };
 
-  // Function to generate recurring dates
   const generateRecurringDates = (
     start: Date,
     end: Date,
@@ -72,7 +69,6 @@ export const CreateWfhRequest: React.FC = () => {
         weekendDates.push(new Date(current));
       }
 
-      // Increment date based on the repeat interval and unit
       if (unit === "week") {
         current = addWeeks(current, interval);
       } else if (unit === "month") {
@@ -83,17 +79,15 @@ export const CreateWfhRequest: React.FC = () => {
     return { recurringDates, weekendDates };
   };
 
-  // Handle form submission
   const handleSubmit = async (
     values: any,
     { resetForm }: { resetForm: () => void }
   ) => {
     setLoading(true);
     let recurringDates: Date[] = [];
-    const start = new Date(values.startDate);
-    const end = new Date(values.endDate);
-  
-    // Check if WFH limit has been exceeded
+    const start = values.startDate;
+    const end = values.endDate;
+
     if (wfhDaysTaken >= 2 && !proceedWithSubmission) {
       setAlertStatus(AlertStatus.Warning);
       setSnackbarMessage(
@@ -104,8 +98,7 @@ export const CreateWfhRequest: React.FC = () => {
       setLoading(false);
       return;
     }
-  
-    // Check if the start date is a weekend for ad-hoc requests
+
     if (scheduleType === "adhoc" && isWeekend(start)) {
       setAlertStatus(AlertStatus.Error);
       setSnackbarMessage("You cannot request WFH on a weekend.");
@@ -113,12 +106,11 @@ export const CreateWfhRequest: React.FC = () => {
       setLoading(false);
       return;
     }
-  
-    // Check for weekend dates in recurring schedules and ensure it's within 1 year
+
     if (scheduleType === "recurring") {
       const oneYearLater = new Date(start);
       oneYearLater.setFullYear(start.getFullYear() + 1);
-  
+
       if (end > oneYearLater) {
         setAlertStatus(AlertStatus.Error);
         setSnackbarMessage("End date is more than 1 year from start date.");
@@ -126,7 +118,7 @@ export const CreateWfhRequest: React.FC = () => {
         setLoading(false);
         return;
       }
-  
+
       const {
         recurringDates: validRecurringDates,
         weekendDates: removedWeekends,
@@ -136,10 +128,9 @@ export const CreateWfhRequest: React.FC = () => {
         values.repeatInterval,
         values.repeatIntervalUnit
       );
-  
+
       recurringDates = validRecurringDates;
-  
-      // Notify about removed weekend dates
+
       if (removedWeekends.length > 0) {
         setAlertStatus(AlertStatus.Warning);
         setSnackbarMessage(
@@ -149,7 +140,7 @@ export const CreateWfhRequest: React.FC = () => {
         );
         setShowSnackbar(true);
       }
-  
+
       if (recurringDates.length === 0) {
         setAlertStatus(AlertStatus.Error);
         setSnackbarMessage(
@@ -159,56 +150,56 @@ export const CreateWfhRequest: React.FC = () => {
         setLoading(false);
         return;
       }
+    }
+
+    const payload: any = {
+      requester_staff_id: requesterStaffId,
+      wfh_date: values.startDate,
+      wfh_type: values.wfhType.toLowerCase(),
+      reason_description: values.reason,
+      is_recurring: scheduleType === "recurring",
+      current_approval_status: "pending approval",
+      ...(scheduleType === "recurring" && {
+        recurring_end_date: values.endDate,
+        recurring_frequency_number: values.repeatInterval,
+        recurring_frequency_unit: values.repeatIntervalUnit,
+        recurring_occurrences: values.occurrences,
+      }),
     };
 
-    // Build the payload
-  const payload: any = {
-    requester_staff_id: requesterStaffId,
-    wfh_date: values.startDate.toISOString().split("T")[0],
-    wfh_type: values.wfhType.toLowerCase(),
-    reason_description: values.reason,
-    is_recurring: scheduleType === "recurring",
-    current_approval_status: "pending approval",
-    ...(scheduleType === "recurring" && {
-      recurring_end_date: values.endDate
-        ? values.endDate.toISOString().split("T")[0]
-        : null,
-      recurring_frequency_number: values.repeatInterval,
-      recurring_frequency_unit: values.repeatIntervalUnit,
-      recurring_occurrences: values.occurrences,
-    }),
-  };
+    try {
+      const form = new FormData();
+      Object.keys(payload).forEach((key) => {
+        const value = payload[key];
+        form.append(
+          key,
+          value instanceof Date ? value.toISOString().split("T")[0] : value
+        );
+      });
 
-  try {
-    const form = new FormData();
-    Object.keys(payload).forEach((key) => {
-      form.append(key, payload[key]);
-    });
+      supportingDocs.forEach((file) => {
+        form.append("supporting_docs", file);
+      });
 
-    supportingDocs.forEach((file) => {
-      form.append("supporting_docs", file);
-    });
-
-    await axios.post(`${BACKEND_URL}/arrangements/request`, form, {
-      headers: {
-        "Content-Type": "multipart/form-data",
-      },
-    });
-    setAlertStatus(AlertStatus.Success);
-    setSnackbarMessage("Your request was successfully submitted!");
-    setShowSnackbar(true);
+      await axios.post(`${BACKEND_URL}/arrangements/request`, form, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
+      setAlertStatus(AlertStatus.Success);
+      setSnackbarMessage("Your request was successfully submitted!");
+      setShowSnackbar(true);
       setSupportingDocs([]);
-    // Clear the form after submission
-    resetForm();
-  } catch (error) {
-    console.error("Error submitting the WFH arrangement:", error);
-    setAlertStatus(AlertStatus.Error);
-    setSnackbarMessage("An error occurred while submitting your request.");
-    setShowSnackbar(true);
-  } finally {
-    setLoading(false);
-  }
-};
+      resetForm();
+    } catch (error) {
+      console.error("Error submitting the WFH arrangement:", error);
+      setAlertStatus(AlertStatus.Error);
+      setSnackbarMessage("An error occurred while submitting your request.");
+      setShowSnackbar(true);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Yup form validation schema
   const validationSchema = Yup.object().shape({
@@ -304,7 +295,7 @@ export const CreateWfhRequest: React.FC = () => {
               <Field
                 name="reason"
                 as="textarea"
-                fullwidth="true"
+                fullWidth
                 disabled={loading}
                 className="border border-gray-300 rounded p-2 w-full"
               />
@@ -366,7 +357,7 @@ export const CreateWfhRequest: React.FC = () => {
                     <TextField data-cy="start-datepicker" fullWidth />
                   }
                   required
-                  minDate={addDays(new Date(), 1)} // Disable today and only allow future dates
+                  minDate={addDays(new Date(), 1)}
                   disabled={loading}
                 />
 
@@ -419,46 +410,23 @@ export const CreateWfhRequest: React.FC = () => {
         )}
       </Formik>
 
-      {/* Snackbar Component for Warning or Success */}
       <Snackbar
         open={showSnackbar}
         onClose={handleCloseSnackBar}
         anchorOrigin={{ vertical: "top", horizontal: "center" }}
-        autoHideDuration={
-          alertStatus === AlertStatus.Success &&
-          snackbarMessage.includes("successfully submitted")
-            ? null
-            : 6000
-        }
+        autoHideDuration={6000}
       >
         <Alert
           onClose={handleCloseSnackBar}
           severity={alertStatus}
-          sx={{
-            width: "100%",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-          }}
+          sx={{ width: "100%" }}
           action={
             alertStatus === AlertStatus.Success &&
             snackbarMessage.includes("successfully submitted") && (
               <Button
                 color="inherit"
                 size="small"
-                variant="contained"
                 onClick={() => navigate("/home")}
-                sx={{
-                  backgroundColor: "#006400",
-                  color: "#FFFFFF",
-                  textTransform: "none",
-                  lineHeight: "1.5",
-                  whiteSpace: "nowrap",
-                  "&:hover": {
-                    backgroundColor: "#004d00",
-                  },
-                  marginLeft: "auto",
-                }}
               >
                 Back to Home
               </Button>
@@ -472,4 +440,4 @@ export const CreateWfhRequest: React.FC = () => {
   );
 };
 
-export default CreateWfhRequest;
+export default CreateWfhRequestPage;

@@ -3,7 +3,7 @@ import { LoginPage } from "../pages/login-signup/LoginPage";
 import { SignUpPage } from "../pages/login-signup/SignUpPage";
 import { App } from "../App";
 import { Layout } from "../common/Layout";
-import { CreateWfhRequest } from "../components/forms/CreateWfhRequest";
+import { CreateWfhRequestPage } from "../pages/staff/CreateWfhRequest";
 import { ReviewRequests } from "../pages/manager/ReviewRequests";
 import { HomePage } from "../pages/staff/HomePage";
 import { TeamPage } from "../pages/team/TeamPage";
@@ -40,7 +40,7 @@ const routes: routesProps[] = [
           },
           {
             path: "/create-request",
-            element: <CreateWfhRequest />,
+            element: <CreateWfhRequestPage />,
           },
           {
             path: "/review-requests",
@@ -53,10 +53,6 @@ const routes: routesProps[] = [
           {
             path: "/wfh-schedule",
             element: <MyWfhSchedulePage />,
-          },
-          {
-            path: "/settings",
-            element: <Settings />,
           },
         ],
       },

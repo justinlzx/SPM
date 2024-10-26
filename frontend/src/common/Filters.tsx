@@ -13,7 +13,7 @@ import {
 } from "@mui/material";
 import CalendarTodayIcon from "@mui/icons-material/CalendarToday";
 
-type FilterDatePickerProps = {
+export type FilterDatePickerProps = {
   label: string;
   selectedDate: Date | null;
   onChange: (date: Date | null) => void;
@@ -74,14 +74,13 @@ export const Filters = ({ onApply }: TFilterProps) => {
       return;
     }
     setError(null);
-    // Pass the selected filter values to the parent component
     onApply({
       startDate,
       endDate,
       wfhType,
       requestStatus,
-      departments: [], // Assuming departments is not used here currently
-      workType: "", // Assuming workType is not used here currently
+      departments: [],
+      workType: "", 
     });
   };
 
