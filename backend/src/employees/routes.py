@@ -427,17 +427,22 @@ async def undelegate_manager(staff_id: int, db: Session = Depends(get_db)):
 @router.get("/manager/viewdelegations/{staff_id}")
 def view_delegations(staff_id: int, db: Session = Depends(get_db)):
     """
-    The function `view_delegations` retrieves and returns delegation requests sent by a manager and
+    The `view_delegations` function retrieves and returns delegation requests sent by a manager and
     those pending approval for the manager from the database.
-
+    
     :param staff_id: The `staff_id` parameter represents the unique identifier of the manager whose sent
-    and pending delegation requests we want to view.
+    and pending delegation requests we want to view
     :type staff_id: int
-    :param db: The `db` parameter represents the database session.
+    :param db: The `db` parameter in the `view_delegations` function represents the database session. It
+    is used to interact with the database to retrieve information about delegation requests sent by a
+    manager and those pending approval for the manager. The `db` parameter is of type `Session`, which
+    is typically an
     :type db: Session
-    :return: JSON response containing two lists with the specified fields:
+    :return: The function `view_delegations` returns a JSON response containing two lists with the
+    specified fields:
     - `sent_delegations`: All delegations sent by the manager without `manager_id`.
-    - `pending_approval_delegations`: All delegations pending approval by the manager without `delegate_manager_id`.
+    - `pending_approval_delegations`: All delegations pending approval by the manager without
+    `delegate_manager_id`.
     """
     try:
         # Retrieve sent delegations (with statuses pending and accepted) by the manager
@@ -508,23 +513,26 @@ def view_all_delegations(staff_id: int, db: Session = Depends(get_db)):
     """
     The function `view_all_delegations` retrieves and returns all delegations sent and received by a
     specified manager from the database.
-
+    
     :param staff_id: The `staff_id` parameter in the `view_all_delegations` function represents the
     unique identifier of the manager for whom you want to view all delegations, whether they were sent
-    or received by the manager.
+    or received by the manager. This ID helps identify the specific manager in the database for whom the
+    delegations need to
     :type staff_id: int
-    :param db: The `db` parameter in the `view_all_delegations` function represents the database session.
+    :param db: The `db` parameter in the `view_all_delegations` function represents the database
+    session. It is used to interact with the database to retrieve information about delegations sent and
+    received by a specified manager. The database session (`Session`) is typically created using a
+    dependency function like `get_db`
     :type db: Session
-    :return: The function `view_all_delegations` returns a JSON response containing two lists:
-    - `sent_delegations`: All delegations sent by the manager across all statuses.
-    - `received_delegations`: All delegations received by the manager across all statuses.
+    :return: The `view_all_delegations` function returns a JSON response containing two lists:
+    1. `sent_delegations`: All delegations sent by the specified manager across all statuses.
+    2. `received_delegations`: All delegations received by the specified manager across all statuses.
     """
     try:
-        # Retrieve the manager's first and last name
-        manager = db.query(Employee).filter(Employee.staff_id == staff_id).first()
-        if not manager:
-            raise HTTPException(status_code=404, detail="Manager not found.")
-        full_name = f"{manager.staff_fname} {manager.staff_lname}"
+        # Helper function to retrieve full name for a given staff_id
+        def get_full_name(staff_id):
+            employee = db.query(Employee).filter(Employee.staff_id == staff_id).first()
+            return f"{employee.staff_fname} {employee.staff_lname}" if employee else "Unknown"
 
         # Retrieve all delegations sent by the specified manager across all statuses
         sent_delegations = db.query(DelegateLog).filter(DelegateLog.manager_id == staff_id).all()
@@ -534,12 +542,29 @@ def view_all_delegations(staff_id: int, db: Session = Depends(get_db)):
             db.query(DelegateLog).filter(DelegateLog.delegate_manager_id == staff_id).all()
         )
 
-        # Convert to Pydantic models and add full_name to each record
         sent_delegations_data = [
-            {**delegation.__dict__, "full_name": full_name} for delegation in sent_delegations
+            {
+                "manager_id": delegation.manager_id,
+                "manager_name": get_full_name(delegation.manager_id),
+                "delegate_manager_id": delegation.delegate_manager_id,
+                "delegate_manager_name": get_full_name(delegation.delegate_manager_id),
+                "date_of_delegation": delegation.date_of_delegation,
+                "updated_datetime": delegation.update_datetime,
+                "status_of_delegation": delegation.status_of_delegation,
+            }
+            for delegation in sent_delegations
         ]
         received_delegations_data = [
-            {**delegation.__dict__, "full_name": full_name} for delegation in received_delegations
+            {
+                "manager_id": delegation.manager_id,
+                "manager_name": get_full_name(delegation.manager_id),
+                "delegate_manager_id": delegation.delegate_manager_id,
+                "delegate_manager_name": get_full_name(delegation.delegate_manager_id),
+                "date_of_delegation": delegation.date_of_delegation,
+                "updated_datetime": delegation.update_datetime,
+                "status_of_delegation": delegation.status_of_delegation,
+            }
+            for delegation in received_delegations
         ]
 
         # Return both lists, empty if no records found
