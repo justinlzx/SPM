@@ -430,19 +430,14 @@ def view_delegations(staff_id: int, db: Session = Depends(get_db)):
     The function `view_delegations` retrieves and returns delegation requests sent by a manager and
     those pending approval for the manager from the database.
 
-    :param staff_id: The `staff_id` parameter in the `view_delegations` function represents the unique
-    identifier of the manager whose sent and pending delegation requests we want to view. This parameter
-    is used to filter the delegation logs based on the manager's ID to retrieve the relevant information
-    for that specific manager
+    :param staff_id: The `staff_id` parameter represents the unique identifier of the manager whose sent
+    and pending delegation requests we want to view.
     :type staff_id: int
-    :param db: The `db` parameter in the `view_delegations` function represents the database session
-    used to interact with the database. It is of type `Session`, which is typically an instance of a
-    SQLAlchemy Session object. This parameter allows the function to perform database operations like
-    querying for delegation records based on the
+    :param db: The `db` parameter represents the database session.
     :type db: Session
-    :return: The function `view_delegations` returns a JSON response containing two lists:
-    - `sent_delegations`: All delegations sent by the manager.
-    - `pending_approval_delegations`: All delegations pending approval by the manager.
+    :return: JSON response containing two lists with the specified fields:
+    - `sent_delegations`: All delegations sent by the manager without `manager_id`.
+    - `pending_approval_delegations`: All delegations pending approval by the manager without `delegate_manager_id`.
     """
     try:
         # Retrieve sent delegations (with statuses pending and accepted) by the manager
@@ -469,12 +464,31 @@ def view_delegations(staff_id: int, db: Session = Depends(get_db)):
             .all()
         )
 
-        # Convert to Pydantic models
+        # Helper function to retrieve full name for a given staff_id
+        def get_full_name(staff_id):
+            employee = db.query(Employee).filter(Employee.staff_id == staff_id).first()
+            return f"{employee.staff_fname} {employee.staff_lname}" if employee else "Unknown"
+
+        # Simplify the response to only include relevant fields with correct full names
         sent_delegations_data = [
-            DelegateLogCreate(**delegation.__dict__) for delegation in sent_delegations
+            {
+                "staff_id": delegation.delegate_manager_id,  # Use delegate_manager_id for sent delegations
+                "full_name": get_full_name(
+                    delegation.delegate_manager_id
+                ),  # Correct name for delegate_manager_id
+                "date_of_delegation": delegation.date_of_delegation,
+                "status_of_delegation": delegation.status_of_delegation,
+            }
+            for delegation in sent_delegations
         ]
         pending_approval_delegations_data = [
-            DelegateLogCreate(**delegation.__dict__) for delegation in pending_approval_delegations
+            {
+                "staff_id": delegation.manager_id,  # Use manager_id for pending approvals
+                "full_name": get_full_name(delegation.manager_id),  # Correct name for manager_id
+                "date_of_delegation": delegation.date_of_delegation,
+                "status_of_delegation": delegation.status_of_delegation,
+            }
+            for delegation in pending_approval_delegations
         ]
 
         # Return both lists, empty if no records found
@@ -497,19 +511,21 @@ def view_all_delegations(staff_id: int, db: Session = Depends(get_db)):
 
     :param staff_id: The `staff_id` parameter in the `view_all_delegations` function represents the
     unique identifier of the manager for whom you want to view all delegations, whether they were sent
-    or received by the manager. This parameter is used to filter the delegations based on the specified
-    manager's ID
+    or received by the manager.
     :type staff_id: int
-    :param db: The `db` parameter in the `view_all_delegations` function represents the database session
-    used to interact with the database. In this case, it is a dependency that is injected into the
-    function using `Depends(get_db)`. This dependency ensures that the function has access to a database
-    session
+    :param db: The `db` parameter in the `view_all_delegations` function represents the database session.
     :type db: Session
     :return: The function `view_all_delegations` returns a JSON response containing two lists:
     - `sent_delegations`: All delegations sent by the manager across all statuses.
     - `received_delegations`: All delegations received by the manager across all statuses.
     """
     try:
+        # Retrieve the manager's first and last name
+        manager = db.query(Employee).filter(Employee.staff_id == staff_id).first()
+        if not manager:
+            raise HTTPException(status_code=404, detail="Manager not found.")
+        full_name = f"{manager.staff_fname} {manager.staff_lname}"
+
         # Retrieve all delegations sent by the specified manager across all statuses
         sent_delegations = db.query(DelegateLog).filter(DelegateLog.manager_id == staff_id).all()
 
@@ -518,12 +534,12 @@ def view_all_delegations(staff_id: int, db: Session = Depends(get_db)):
             db.query(DelegateLog).filter(DelegateLog.delegate_manager_id == staff_id).all()
         )
 
-        # Convert to Pydantic models
+        # Convert to Pydantic models and add full_name to each record
         sent_delegations_data = [
-            DelegateLogCreate(**delegation.__dict__) for delegation in sent_delegations
+            {**delegation.__dict__, "full_name": full_name} for delegation in sent_delegations
         ]
         received_delegations_data = [
-            DelegateLogCreate(**delegation.__dict__) for delegation in received_delegations
+            {**delegation.__dict__, "full_name": full_name} for delegation in received_delegations
         ]
 
         # Return both lists, empty if no records found
