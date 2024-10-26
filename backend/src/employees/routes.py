@@ -19,6 +19,13 @@ from . import exceptions, models, schemas, services
 router = APIRouter()
 
 
+# The class `DelegationApprovalStatus` defines an enumeration for delegation approval statuses with
+# values "accepted" and "rejected".
+class DelegationApprovalStatus(Enum):
+    accept = "accepted"
+    reject = "rejected"
+
+
 @router.get("/manager/peermanager/{staff_id}", response_model=EmployeePeerResponse)
 def get_reporting_manager_and_peer_employees(staff_id: int, db: Session = Depends(get_db)):
     """
@@ -171,409 +178,404 @@ def get_subordinates_by_manager_id(staff_id: int, db: Session = Depends(get_db))
         raise HTTPException(status_code=404, detail=str(e))
 
 
-@router.post("/manager/delegate/{staff_id}", response_model=DelegateLogCreate)
-async def delegate_manager(staff_id: int, delegate_manager_id: int, db: Session = Depends(get_db)):
-    """
-    The function `delegate_manager` delegates the approval responsibility of a manager to another staff
-    member and logs the delegation in the database.
+# @router.post("/manager/delegate/{staff_id}", response_model=DelegateLogCreate)
+# async def delegate_manager(staff_id: int, delegate_manager_id: int, db: Session = Depends(get_db)):
+#     """
+#     The function `delegate_manager` delegates the approval responsibility of a manager to another staff
+#     member and logs the delegation in the database.
 
-    :param staff_id: `staff_id` is the ID of the manager whose approval responsibility is being
-    delegated to another staff member
-    :type staff_id: int
-    :param delegate_manager_id: The `delegate_manager_id` parameter in the `delegate_manager` function
-    refers to the ID of the staff member to whom the approval responsibility of a manager is being
-    delegated. This parameter is used to identify the delegatee who will temporarily take over the
-    approval responsibilities from the manager
-    :type delegate_manager_id: int
-    :param db: The `db` parameter in the `delegate_manager` function is an instance of the database
-    session. It is used to interact with the database to perform operations like querying, adding,
-    committing, and rolling back transactions. In this case, it is being used to query the database for
-    existing delegations,
-    :type db: Session
-    :return: The code is returning the newly created delegation log after logging the delegation in the
-    `delegate_logs` table.
-    """
-    # Step 1: Check if either the staff_id or delegate_manager_id is already in `delegate_logs`
-    existing_delegation = (
-        db.query(DelegateLog)
-        .filter(
-            (DelegateLog.manager_id == staff_id)
-            | (DelegateLog.delegate_manager_id == delegate_manager_id)
-        )
-        .filter(
-            DelegateLog.status_of_delegation.in_(
-                [DelegationStatus.pending, DelegationStatus.accepted]
-            )
-        )
-        .first()
-    )
+#     :param staff_id: `staff_id` is the ID of the manager whose approval responsibility is being
+#     delegated to another staff member
+#     :type staff_id: int
+#     :param delegate_manager_id: The `delegate_manager_id` parameter in the `delegate_manager` function
+#     refers to the ID of the staff member to whom the approval responsibility of a manager is being
+#     delegated. This parameter is used to identify the delegatee who will temporarily take over the
+#     approval responsibilities from the manager
+#     :type delegate_manager_id: int
+#     :param db: The `db` parameter in the `delegate_manager` function is an instance of the database
+#     session. It is used to interact with the database to perform operations like querying, adding,
+#     committing, and rolling back transactions. In this case, it is being used to query the database for
+#     existing delegations,
+#     :type db: Session
+#     :return: The code is returning the newly created delegation log after logging the delegation in the
+#     `delegate_logs` table.
+#     """
+#     # Step 1: Check if either the staff_id or delegate_manager_id is already in `delegate_logs`
+#     existing_delegation = (
+#         db.query(DelegateLog)
+#         .filter(
+#             (DelegateLog.manager_id == staff_id)
+#             | (DelegateLog.delegate_manager_id == delegate_manager_id)
+#         )
+#         .filter(
+#             DelegateLog.status_of_delegation.in_(
+#                 [DelegationStatus.pending, DelegationStatus.accepted]
+#             )
+#         )
+#         .first()
+#     )
 
-    if existing_delegation:
-        raise HTTPException(
-            status_code=400,
-            detail="Delegation already exists for either the manager or delegatee.",
-        )
+#     if existing_delegation:
+#         raise HTTPException(
+#             status_code=400,
+#             detail="Delegation already exists for either the manager or delegatee.",
+#         )
 
-    # Step 2: Log the delegation in the `delegate_logs` table
-    try:
-        new_delegation = DelegateLog(
-            manager_id=staff_id,
-            delegate_manager_id=delegate_manager_id,
-            date_of_delegation=datetime.utcnow(),
-            status_of_delegation=DelegationStatus.pending,  # Default to pending
-        )
+#     # Step 2: Log the delegation in the `delegate_logs` table
+#     try:
+#         new_delegation = DelegateLog(
+#             manager_id=staff_id,
+#             delegate_manager_id=delegate_manager_id,
+#             date_of_delegation=datetime.utcnow(),
+#             status_of_delegation=DelegationStatus.pending,  # Default to pending
+#         )
 
-        db.add(new_delegation)
-        db.commit()
-        db.refresh(new_delegation)
+#         db.add(new_delegation)
+#         db.commit()
+#         db.refresh(new_delegation)
 
-        # Step 3: Fetch employee info for both manager and delegatee
-        manager_employee = employee_services.get_employee_by_id(db, staff_id)
-        delegatee_employee = employee_services.get_employee_by_id(db, delegate_manager_id)
+#         # Step 3: Fetch employee info for both manager and delegatee
+#         manager_employee = employee_services.get_employee_by_id(db, staff_id)
+#         delegatee_employee = employee_services.get_employee_by_id(db, delegate_manager_id)
 
-        # Step 4: Craft and send email notifications to both the manager and delegatee
-        manager_subject, manager_content = craft_email_content_for_delegation(
-            manager_employee, delegatee_employee, "delegate"
-        )
-        await send_email(manager_employee.email, manager_subject, manager_content)
+#         # Step 4: Craft and send email notifications to both the manager and delegatee
+#         manager_subject, manager_content = craft_email_content_for_delegation(
+#             manager_employee, delegatee_employee, "delegate"
+#         )
+#         await send_email(manager_employee.email, manager_subject, manager_content)
 
-        delegatee_subject, delegatee_content = craft_email_content_for_delegation(
-            delegatee_employee, manager_employee, "delegated_to"
-        )
-        await send_email(delegatee_employee.email, delegatee_subject, delegatee_content)
+#         delegatee_subject, delegatee_content = craft_email_content_for_delegation(
+#             delegatee_employee, manager_employee, "delegated_to"
+#         )
+#         await send_email(delegatee_employee.email, delegatee_subject, delegatee_content)
 
-        return new_delegation  # Returning the created delegation log
+#         return new_delegation  # Returning the created delegation log
 
-    except Exception as e:
-        db.rollback()
-        raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
-
-
-# The class `DelegationApprovalStatus` defines an enumeration for delegation approval statuses with
-# values "accepted" and "rejected".
-class DelegationApprovalStatus(Enum):
-    accept = "accepted"
-    reject = "rejected"
+#     except Exception as e:
+#         db.rollback()
+#         raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
 
 
-@router.put("/manager/delegate/{staff_id}/status", response_model=DelegateLogCreate)
-async def update_delegation_status(
-    staff_id: int,
-    status: DelegationApprovalStatus,
-    db: Session = Depends(get_db),
-):
-    """
-    The above functions handle updating and undelegating delegation statuses, including database
-    operations and email notifications.
+# @router.put("/manager/delegate/{staff_id}/status", response_model=DelegateLogCreate)
+# async def update_delegation_status(
+#     staff_id: int,
+#     status: DelegationApprovalStatus,
+#     db: Session = Depends(get_db),
+# ):
+#     """
+#     The above functions handle updating and undelegating delegation statuses, including database
+#     operations and email notifications.
 
-    :param staff_id: The `staff_id` parameter in the provided code snippets refers to the ID of the
-    staff member (manager or delegate) whose delegation status is being updated or who is being
-    undelegated. This ID is used to fetch the relevant delegation log entry from the database for the
-    specified staff member
-    :type staff_id: int
-    :param status: The `status` parameter in the `update_delegation_status` function and
-    `undelegate_manager` function represents the status of the delegation request. It can have two
-    possible values:
-    :type status: DelegationApprovalStatus
-    :param db: The `db` parameter in the provided code snippets is an instance of the database session.
-    It is used to interact with the database to perform operations like querying, updating, and
-    committing data. The database session is typically created and managed by the ORM (Object-Relational
-    Mapping) framework being used in
-    :type db: Session
-    :return: The `update_delegation_status` function returns an updated delegation log after updating
-    the status of a delegation request (accepted or rejected).
-    """
-    try:
-        # Fetch the delegation log entry for the given staff_id (delegate manager)
-        delegation_log = (
-            db.query(DelegateLog).filter(DelegateLog.delegate_manager_id == staff_id).first()
-        )
+#     :param staff_id: The `staff_id` parameter in the provided code snippets refers to the ID of the
+#     staff member (manager or delegate) whose delegation status is being updated or who is being
+#     undelegated. This ID is used to fetch the relevant delegation log entry from the database for the
+#     specified staff member
+#     :type staff_id: int
+#     :param status: The `status` parameter in the `update_delegation_status` function and
+#     `undelegate_manager` function represents the status of the delegation request. It can have two
+#     possible values:
+#     :type status: DelegationApprovalStatus
+#     :param db: The `db` parameter in the provided code snippets is an instance of the database session.
+#     It is used to interact with the database to perform operations like querying, updating, and
+#     committing data. The database session is typically created and managed by the ORM (Object-Relational
+#     Mapping) framework being used in
+#     :type db: Session
+#     :return: The `update_delegation_status` function returns an updated delegation log after updating
+#     the status of a delegation request (accepted or rejected).
+#     """
+#     try:
+#         # Fetch the delegation log entry for the given staff_id (delegate manager)
+#         delegation_log = (
+#             db.query(DelegateLog).filter(DelegateLog.delegate_manager_id == staff_id).first()
+#         )
 
-        if not delegation_log:
-            raise HTTPException(status_code=404, detail="Delegation log not found.")
+#         if not delegation_log:
+#             raise HTTPException(status_code=404, detail="Delegation log not found.")
 
-        # Fetch manager and delegatee details for email notification
-        manager_employee = employee_services.get_employee_by_id(db, delegation_log.manager_id)
-        delegatee_employee = employee_services.get_employee_by_id(db, staff_id)
+#         # Fetch manager and delegatee details for email notification
+#         manager_employee = employee_services.get_employee_by_id(db, delegation_log.manager_id)
+#         delegatee_employee = employee_services.get_employee_by_id(db, staff_id)
 
-        if status == DelegationApprovalStatus.accept:
-            delegation_log.status_of_delegation = DelegationStatus.accepted
+#         if status == DelegationApprovalStatus.accept:
+#             delegation_log.status_of_delegation = DelegationStatus.accepted
 
-            # Step 2: Update pending approval requests in `latest_arrangements`
-            pending_arrangements = (
-                db.query(arrangement_models.LatestArrangement)
-                .filter(
-                    arrangement_models.LatestArrangement.approving_officer
-                    == delegation_log.manager_id,
-                    arrangement_models.LatestArrangement.current_approval_status.in_(
-                        ["pending approval", "pending withdrawal"]
-                    ),
-                )
-                .all()
-            )
+#             # Step 2: Update pending approval requests in `latest_arrangements`
+#             pending_arrangements = (
+#                 db.query(arrangement_models.LatestArrangement)
+#                 .filter(
+#                     arrangement_models.LatestArrangement.approving_officer
+#                     == delegation_log.manager_id,
+#                     arrangement_models.LatestArrangement.current_approval_status.in_(
+#                         ["pending approval", "pending withdrawal"]
+#                     ),
+#                 )
+#                 .all()
+#             )
 
-            for arrangement in pending_arrangements:
-                arrangement.delegate_approving_officer = delegation_log.delegate_manager_id
-                db.add(arrangement)
+#             for arrangement in pending_arrangements:
+#                 arrangement.delegate_approving_officer = delegation_log.delegate_manager_id
+#                 db.add(arrangement)
 
-            db.commit()
+#             db.commit()
 
-            # Send email to staff for approval
-            staff_subject, staff_content = craft_email_content_for_delegation(
-                manager_employee, delegatee_employee, "approved"
-            )
-            await send_email(manager_employee.email, staff_subject, staff_content)
+#             # Send email to staff for approval
+#             staff_subject, staff_content = craft_email_content_for_delegation(
+#                 manager_employee, delegatee_employee, "approved"
+#             )
+#             await send_email(manager_employee.email, staff_subject, staff_content)
 
-            # Send email to delegate for approval
-            delegate_subject, delegate_content = craft_email_content_for_delegation(
-                delegatee_employee, manager_employee, "approved_for_delegate"
-            )
-            await send_email(delegatee_employee.email, delegate_subject, delegate_content)
+#             # Send email to delegate for approval
+#             delegate_subject, delegate_content = craft_email_content_for_delegation(
+#                 delegatee_employee, manager_employee, "approved_for_delegate"
+#             )
+#             await send_email(delegatee_employee.email, delegate_subject, delegate_content)
 
-        elif status == DelegationApprovalStatus.reject:
-            delegation_log.status_of_delegation = DelegationStatus.rejected
+#         elif status == DelegationApprovalStatus.reject:
+#             delegation_log.status_of_delegation = DelegationStatus.rejected
 
-            # Send email to staff for rejection
-            staff_subject, staff_content = craft_email_content_for_delegation(
-                manager_employee, delegatee_employee, "rejected"
-            )
-            await send_email(manager_employee.email, staff_subject, staff_content)
+#             # Send email to staff for rejection
+#             staff_subject, staff_content = craft_email_content_for_delegation(
+#                 manager_employee, delegatee_employee, "rejected"
+#             )
+#             await send_email(manager_employee.email, staff_subject, staff_content)
 
-            # Send email to delegate for rejection
-            delegate_subject, delegate_content = craft_email_content_for_delegation(
-                delegatee_employee, manager_employee, "rejected_for_delegate"
-            )
-            await send_email(delegatee_employee.email, delegate_subject, delegate_content)
+#             # Send email to delegate for rejection
+#             delegate_subject, delegate_content = craft_email_content_for_delegation(
+#                 delegatee_employee, manager_employee, "rejected_for_delegate"
+#             )
+#             await send_email(delegatee_employee.email, delegate_subject, delegate_content)
 
-        db.commit()
-        db.refresh(delegation_log)
+#         db.commit()
+#         db.refresh(delegation_log)
 
-        return delegation_log
-    except Exception as e:
-        db.rollback()
-        raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
-
-
-@router.put("/manager/undelegate/{staff_id}", response_model=DelegateLogCreate)
-async def undelegate_manager(staff_id: int, db: Session = Depends(get_db)):
-    try:
-        # Step 1: Fetch the delegation log entry for the given staff_id (manager who initiated the delegation)
-        delegation_log = db.query(DelegateLog).filter(DelegateLog.manager_id == staff_id).first()
-
-        if not delegation_log:
-            raise HTTPException(status_code=404, detail="Delegation log not found.")
-
-        # Fetch manager and delegatee details for email notification
-        manager_employee = employee_services.get_employee_by_id(db, delegation_log.manager_id)
-        delegatee_employee = employee_services.get_employee_by_id(
-            db, delegation_log.delegate_manager_id
-        )
-
-        # Step 2: Check if the status of the delegation is 'accepted'
-        if delegation_log.status_of_delegation != DelegationStatus.accepted:
-            raise HTTPException(
-                status_code=400, detail="Delegation must be approved to undelegate."
-            )
-
-        # Step 3: Update the `latest_arrangements` to remove the delegation and restore the original manager
-        pending_arrangements = (
-            db.query(arrangement_models.LatestArrangement)
-            .filter(
-                arrangement_models.LatestArrangement.delegate_approving_officer
-                == delegation_log.delegate_manager_id,
-                arrangement_models.LatestArrangement.current_approval_status.in_(
-                    ["pending approval", "pending withdrawal"]
-                ),
-            )
-            .all()
-        )
-
-        for arrangement in pending_arrangements:
-            arrangement.delegate_approving_officer = None  # Remove the delegate manager
-            db.add(arrangement)
-
-        # Step 4: Mark the delegation as 'undelegated' (new status)
-        delegation_log.status_of_delegation = DelegationStatus.undelegated
-
-        # Step 5: Commit the changes to the database
-        db.commit()
-        db.refresh(delegation_log)
-
-        # Send email to the manager informing them that the delegation has been withdrawn
-        manager_subject, manager_content = craft_email_content_for_delegation(
-            manager_employee, delegatee_employee, "withdrawn"
-        )
-        await send_email(manager_employee.email, manager_subject, manager_content)
-
-        # Send email to the delegatee informing them that the delegation has been withdrawn
-        delegatee_subject, delegatee_content = craft_email_content_for_delegation(
-            delegatee_employee, manager_employee, "withdrawn_for_delegate"
-        )
-        await send_email(delegatee_employee.email, delegatee_subject, delegatee_content)
-
-        return delegation_log
-
-    except HTTPException as http_exc:
-        # Log HTTPException details and re-raise it
-        print(f"HTTPException occurred: {http_exc.detail}")
-        raise http_exc
-    except Exception as e:
-        # Log any unexpected errors and raise 500
-        print(f"Unexpected error: {str(e)}")
-        db.rollback()
-        raise HTTPException(status_code=500, detail="An unexpected error occurred.")
+#         return delegation_log
+#     except Exception as e:
+#         db.rollback()
+#         raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
 
 
-@router.get("/manager/viewdelegations/{staff_id}")
-def view_delegations(staff_id: int, db: Session = Depends(get_db)):
-    """
-    The `view_delegations` function retrieves and returns delegation requests sent by a manager and
-    those pending approval for the manager from the database.
-    
-    :param staff_id: The `staff_id` parameter represents the unique identifier of the manager whose sent
-    and pending delegation requests we want to view
-    :type staff_id: int
-    :param db: The `db` parameter in the `view_delegations` function represents the database session. It
-    is used to interact with the database to retrieve information about delegation requests sent by a
-    manager and those pending approval for the manager. The `db` parameter is of type `Session`, which
-    is typically an
-    :type db: Session
-    :return: The function `view_delegations` returns a JSON response containing two lists with the
-    specified fields:
-    - `sent_delegations`: All delegations sent by the manager without `manager_id`.
-    - `pending_approval_delegations`: All delegations pending approval by the manager without
-    `delegate_manager_id`.
-    """
-    try:
-        # Retrieve sent delegations (with statuses pending and accepted) by the manager
-        sent_delegations = (
-            db.query(DelegateLog)
-            .filter(
-                DelegateLog.manager_id == staff_id,
-                DelegateLog.status_of_delegation.in_(
-                    [DelegationStatus.pending, DelegationStatus.accepted]
-                ),
-            )
-            .all()
-        )
+# @router.put("/manager/undelegate/{staff_id}", response_model=DelegateLogCreate)
+# async def undelegate_manager(staff_id: int, db: Session = Depends(get_db)):
+#     try:
+#         # Step 1: Fetch the delegation log entry for the given staff_id (manager who initiated the delegation)
+#         delegation_log = db.query(DelegateLog).filter(DelegateLog.manager_id == staff_id).first()
 
-        # Retrieve delegations (with statuses pending and accepted) awaiting manager's approval
-        pending_approval_delegations = (
-            db.query(DelegateLog)
-            .filter(
-                DelegateLog.delegate_manager_id == staff_id,
-                DelegateLog.status_of_delegation.in_(
-                    [DelegationStatus.pending, DelegationStatus.accepted]
-                ),
-            )
-            .all()
-        )
+#         if not delegation_log:
+#             raise HTTPException(status_code=404, detail="Delegation log not found.")
 
-        # Helper function to retrieve full name for a given staff_id
-        def get_full_name(staff_id):
-            employee = db.query(Employee).filter(Employee.staff_id == staff_id).first()
-            return f"{employee.staff_fname} {employee.staff_lname}" if employee else "Unknown"
+#         # Fetch manager and delegatee details for email notification
+#         manager_employee = employee_services.get_employee_by_id(db, delegation_log.manager_id)
+#         delegatee_employee = employee_services.get_employee_by_id(
+#             db, delegation_log.delegate_manager_id
+#         )
 
-        # Simplify the response to only include relevant fields with correct full names
-        sent_delegations_data = [
-            {
-                "staff_id": delegation.delegate_manager_id,  # Use delegate_manager_id for sent delegations
-                "full_name": get_full_name(
-                    delegation.delegate_manager_id
-                ),  # Correct name for delegate_manager_id
-                "date_of_delegation": delegation.date_of_delegation,
-                "status_of_delegation": delegation.status_of_delegation,
-            }
-            for delegation in sent_delegations
-        ]
-        pending_approval_delegations_data = [
-            {
-                "staff_id": delegation.manager_id,  # Use manager_id for pending approvals
-                "full_name": get_full_name(delegation.manager_id),  # Correct name for manager_id
-                "date_of_delegation": delegation.date_of_delegation,
-                "status_of_delegation": delegation.status_of_delegation,
-            }
-            for delegation in pending_approval_delegations
-        ]
+#         # Step 2: Check if the status of the delegation is 'accepted'
+#         if delegation_log.status_of_delegation != DelegationStatus.accepted:
+#             raise HTTPException(
+#                 status_code=400, detail="Delegation must be approved to undelegate."
+#             )
 
-        # Return both lists, empty if no records found
-        return {
-            "sent_delegations": sent_delegations_data,
-            "pending_approval_delegations": pending_approval_delegations_data,
-        }
-    except Exception as e:
-        print(f"Unexpected error: {str(e)}")
-        raise HTTPException(
-            status_code=500, detail="An unexpected error occurred while fetching delegations."
-        )
+#         # Step 3: Update the `latest_arrangements` to remove the delegation and restore the original manager
+#         pending_arrangements = (
+#             db.query(arrangement_models.LatestArrangement)
+#             .filter(
+#                 arrangement_models.LatestArrangement.delegate_approving_officer
+#                 == delegation_log.delegate_manager_id,
+#                 arrangement_models.LatestArrangement.current_approval_status.in_(
+#                     ["pending approval", "pending withdrawal"]
+#                 ),
+#             )
+#             .all()
+#         )
+
+#         for arrangement in pending_arrangements:
+#             arrangement.delegate_approving_officer = None  # Remove the delegate manager
+#             db.add(arrangement)
+
+#         # Step 4: Mark the delegation as 'undelegated' (new status)
+#         delegation_log.status_of_delegation = DelegationStatus.undelegated
+
+#         # Step 5: Commit the changes to the database
+#         db.commit()
+#         db.refresh(delegation_log)
+
+#         # Send email to the manager informing them that the delegation has been withdrawn
+#         manager_subject, manager_content = craft_email_content_for_delegation(
+#             manager_employee, delegatee_employee, "withdrawn"
+#         )
+#         await send_email(manager_employee.email, manager_subject, manager_content)
+
+#         # Send email to the delegatee informing them that the delegation has been withdrawn
+#         delegatee_subject, delegatee_content = craft_email_content_for_delegation(
+#             delegatee_employee, manager_employee, "withdrawn_for_delegate"
+#         )
+#         await send_email(delegatee_employee.email, delegatee_subject, delegatee_content)
+
+#         return delegation_log
+
+#     except HTTPException as http_exc:
+#         # Log HTTPException details and re-raise it
+#         print(f"HTTPException occurred: {http_exc.detail}")
+#         raise http_exc
+#     except Exception as e:
+#         # Log any unexpected errors and raise 500
+#         print(f"Unexpected error: {str(e)}")
+#         db.rollback()
+#         raise HTTPException(status_code=500, detail="An unexpected error occurred.")
 
 
-@router.get("/manager/viewalldelegations/{staff_id}")
-def view_all_delegations(staff_id: int, db: Session = Depends(get_db)):
-    """
-    The function `view_all_delegations` retrieves and returns all delegations sent and received by a
-    specified manager from the database.
-    
-    :param staff_id: The `staff_id` parameter in the `view_all_delegations` function represents the
-    unique identifier of the manager for whom you want to view all delegations, whether they were sent
-    or received by the manager. This ID helps identify the specific manager in the database for whom the
-    delegations need to
-    :type staff_id: int
-    :param db: The `db` parameter in the `view_all_delegations` function represents the database
-    session. It is used to interact with the database to retrieve information about delegations sent and
-    received by a specified manager. The database session (`Session`) is typically created using a
-    dependency function like `get_db`
-    :type db: Session
-    :return: The `view_all_delegations` function returns a JSON response containing two lists:
-    1. `sent_delegations`: All delegations sent by the specified manager across all statuses.
-    2. `received_delegations`: All delegations received by the specified manager across all statuses.
-    """
-    try:
-        # Helper function to retrieve full name for a given staff_id
-        def get_full_name(staff_id):
-            employee = db.query(Employee).filter(Employee.staff_id == staff_id).first()
-            return f"{employee.staff_fname} {employee.staff_lname}" if employee else "Unknown"
+# @router.get("/manager/viewdelegations/{staff_id}")
+# def view_delegations(staff_id: int, db: Session = Depends(get_db)):
+#     """
+#     The `view_delegations` function retrieves and returns delegation requests sent by a manager and
+#     those pending approval for the manager from the database.
 
-        # Retrieve all delegations sent by the specified manager across all statuses
-        sent_delegations = db.query(DelegateLog).filter(DelegateLog.manager_id == staff_id).all()
+#     :param staff_id: The `staff_id` parameter represents the unique identifier of the manager whose sent
+#     and pending delegation requests we want to view
+#     :type staff_id: int
+#     :param db: The `db` parameter in the `view_delegations` function represents the database session. It
+#     is used to interact with the database to retrieve information about delegation requests sent by a
+#     manager and those pending approval for the manager. The `db` parameter is of type `Session`, which
+#     is typically an
+#     :type db: Session
+#     :return: The function `view_delegations` returns a JSON response containing two lists with the
+#     specified fields:
+#     - `sent_delegations`: All delegations sent by the manager without `manager_id`.
+#     - `pending_approval_delegations`: All delegations pending approval by the manager without
+#     `delegate_manager_id`.
+#     """
+#     try:
+#         # Retrieve sent delegations (with statuses pending and accepted) by the manager
+#         sent_delegations = (
+#             db.query(DelegateLog)
+#             .filter(
+#                 DelegateLog.manager_id == staff_id,
+#                 DelegateLog.status_of_delegation.in_(
+#                     [DelegationStatus.pending, DelegationStatus.accepted]
+#                 ),
+#             )
+#             .all()
+#         )
 
-        # Retrieve all delegations received by the specified manager across all statuses
-        received_delegations = (
-            db.query(DelegateLog).filter(DelegateLog.delegate_manager_id == staff_id).all()
-        )
+#         # Retrieve delegations (with statuses pending and accepted) awaiting manager's approval
+#         pending_approval_delegations = (
+#             db.query(DelegateLog)
+#             .filter(
+#                 DelegateLog.delegate_manager_id == staff_id,
+#                 DelegateLog.status_of_delegation.in_(
+#                     [DelegationStatus.pending, DelegationStatus.accepted]
+#                 ),
+#             )
+#             .all()
+#         )
 
-        sent_delegations_data = [
-            {
-                "manager_id": delegation.manager_id,
-                "manager_name": get_full_name(delegation.manager_id),
-                "delegate_manager_id": delegation.delegate_manager_id,
-                "delegate_manager_name": get_full_name(delegation.delegate_manager_id),
-                "date_of_delegation": delegation.date_of_delegation,
-                "updated_datetime": delegation.update_datetime,
-                "status_of_delegation": delegation.status_of_delegation,
-            }
-            for delegation in sent_delegations
-        ]
-        received_delegations_data = [
-            {
-                "manager_id": delegation.manager_id,
-                "manager_name": get_full_name(delegation.manager_id),
-                "delegate_manager_id": delegation.delegate_manager_id,
-                "delegate_manager_name": get_full_name(delegation.delegate_manager_id),
-                "date_of_delegation": delegation.date_of_delegation,
-                "updated_datetime": delegation.update_datetime,
-                "status_of_delegation": delegation.status_of_delegation,
-            }
-            for delegation in received_delegations
-        ]
+#         # Helper function to retrieve full name for a given staff_id
+#         def get_full_name(staff_id):
+#             employee = db.query(Employee).filter(Employee.staff_id == staff_id).first()
+#             return f"{employee.staff_fname} {employee.staff_lname}" if employee else "Unknown"
 
-        # Return both lists, empty if no records found
-        return {
-            "sent_delegations": sent_delegations_data,
-            "received_delegations": received_delegations_data,
-        }
-    except Exception as e:
-        print(f"Unexpected error: {str(e)}")
-        raise HTTPException(
-            status_code=500, detail="An unexpected error occurred while fetching delegations."
-        )
+#         # Simplify the response to only include relevant fields with correct full names
+#         sent_delegations_data = [
+#             {
+#                 "staff_id": delegation.delegate_manager_id,  # Use delegate_manager_id for sent delegations
+#                 "full_name": get_full_name(
+#                     delegation.delegate_manager_id
+#                 ),  # Correct name for delegate_manager_id
+#                 "date_of_delegation": delegation.date_of_delegation,
+#                 "status_of_delegation": delegation.status_of_delegation,
+#             }
+#             for delegation in sent_delegations
+#         ]
+#         pending_approval_delegations_data = [
+#             {
+#                 "staff_id": delegation.manager_id,  # Use manager_id for pending approvals
+#                 "full_name": get_full_name(delegation.manager_id),  # Correct name for manager_id
+#                 "date_of_delegation": delegation.date_of_delegation,
+#                 "status_of_delegation": delegation.status_of_delegation,
+#             }
+#             for delegation in pending_approval_delegations
+#         ]
+
+#         # Return both lists, empty if no records found
+#         return {
+#             "sent_delegations": sent_delegations_data,
+#             "pending_approval_delegations": pending_approval_delegations_data,
+#         }
+#     except Exception as e:
+#         print(f"Unexpected error: {str(e)}")
+#         raise HTTPException(
+#             status_code=500, detail="An unexpected error occurred while fetching delegations."
+#         )
+
+
+# @router.get("/manager/viewalldelegations/{staff_id}")
+# def view_all_delegations(staff_id: int, db: Session = Depends(get_db)):
+#     """
+#     The function `view_all_delegations` retrieves and returns all delegations sent and received by a
+#     specified manager from the database.
+
+#     :param staff_id: The `staff_id` parameter in the `view_all_delegations` function represents the
+#     unique identifier of the manager for whom you want to view all delegations, whether they were sent
+#     or received by the manager. This ID helps identify the specific manager in the database for whom the
+#     delegations need to
+#     :type staff_id: int
+#     :param db: The `db` parameter in the `view_all_delegations` function represents the database
+#     session. It is used to interact with the database to retrieve information about delegations sent and
+#     received by a specified manager. The database session (`Session`) is typically created using a
+#     dependency function like `get_db`
+#     :type db: Session
+#     :return: The `view_all_delegations` function returns a JSON response containing two lists:
+#     1. `sent_delegations`: All delegations sent by the specified manager across all statuses.
+#     2. `received_delegations`: All delegations received by the specified manager across all statuses.
+#     """
+#     try:
+#         # Helper function to retrieve full name for a given staff_id
+#         def get_full_name(staff_id):
+#             employee = db.query(Employee).filter(Employee.staff_id == staff_id).first()
+#             return f"{employee.staff_fname} {employee.staff_lname}" if employee else "Unknown"
+
+#         # Retrieve all delegations sent by the specified manager across all statuses
+#         sent_delegations = db.query(DelegateLog).filter(DelegateLog.manager_id == staff_id).all()
+
+#         # Retrieve all delegations received by the specified manager across all statuses
+#         received_delegations = (
+#             db.query(DelegateLog).filter(DelegateLog.delegate_manager_id == staff_id).all()
+#         )
+
+#         sent_delegations_data = [
+#             {
+#                 "manager_id": delegation.manager_id,
+#                 "manager_name": get_full_name(delegation.manager_id),
+#                 "delegate_manager_id": delegation.delegate_manager_id,
+#                 "delegate_manager_name": get_full_name(delegation.delegate_manager_id),
+#                 "date_of_delegation": delegation.date_of_delegation,
+#                 "updated_datetime": delegation.update_datetime,
+#                 "status_of_delegation": delegation.status_of_delegation,
+#             }
+#             for delegation in sent_delegations
+#         ]
+#         received_delegations_data = [
+#             {
+#                 "manager_id": delegation.manager_id,
+#                 "manager_name": get_full_name(delegation.manager_id),
+#                 "delegate_manager_id": delegation.delegate_manager_id,
+#                 "delegate_manager_name": get_full_name(delegation.delegate_manager_id),
+#                 "date_of_delegation": delegation.date_of_delegation,
+#                 "updated_datetime": delegation.update_datetime,
+#                 "status_of_delegation": delegation.status_of_delegation,
+#             }
+#             for delegation in received_delegations
+#         ]
+
+#         # Return both lists, empty if no records found
+#         return {
+#             "sent_delegations": sent_delegations_data,
+#             "received_delegations": received_delegations_data,
+#         }
+#     except Exception as e:
+#         print(f"Unexpected error: {str(e)}")
+#         raise HTTPException(
+#             status_code=500, detail="An unexpected error occurred while fetching delegations."
+#         )
+
+
