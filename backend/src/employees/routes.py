@@ -429,7 +429,7 @@ def view_delegations(staff_id: int, db: Session = Depends(get_db)):
     """
     The function `view_delegations` retrieves and returns delegation requests sent by a manager and
     those pending approval for the manager from the database.
-    
+
     :param staff_id: The `staff_id` parameter in the `view_delegations` function represents the unique
     identifier of the manager whose sent and pending delegation requests we want to view. This parameter
     is used to filter the delegation logs based on the manager's ID to retrieve the relevant information
@@ -494,7 +494,7 @@ def view_all_delegations(staff_id: int, db: Session = Depends(get_db)):
     """
     The function `view_all_delegations` retrieves and returns all delegations sent and received by a
     specified manager from the database.
-    
+
     :param staff_id: The `staff_id` parameter in the `view_all_delegations` function represents the
     unique identifier of the manager for whom you want to view all delegations, whether they were sent
     or received by the manager. This parameter is used to filter the delegations based on the specified
