@@ -101,3 +101,42 @@ def update_pending_arrangements_for_delegate(
         db.add(arrangement)
 
     db.commit()
+
+
+def get_delegation_log_by_manager(db: Session, staff_id: int):
+    """
+    Fetch the delegation log entry for a given manager.
+    """
+    return db.query(models.DelegateLog).filter(models.DelegateLog.manager_id == staff_id).first()
+
+
+def remove_delegate_from_arrangements(db: Session, delegate_manager_id: int):
+    """
+    Update pending approval requests by removing the delegate and restoring the original manager.
+    """
+    pending_arrangements = (
+        db.query(LatestArrangement)
+        .filter(
+            LatestArrangement.delegate_approving_officer == delegate_manager_id,
+            LatestArrangement.current_approval_status.in_(
+                ["pending approval", "pending withdrawal"]
+            ),
+        )
+        .all()
+    )
+
+    for arrangement in pending_arrangements:
+        arrangement.delegate_approving_officer = None  # Remove the delegate manager
+        db.add(arrangement)
+
+    db.commit()
+
+
+def mark_delegation_as_undelegated(db: Session, delegation_log: models.DelegateLog):
+    """
+    Mark the delegation as 'undelegated' and commit the changes.
+    """
+    delegation_log.status_of_delegation = models.DelegationStatus.undelegated
+    db.commit()
+    db.refresh(delegation_log)
+    return delegation_log

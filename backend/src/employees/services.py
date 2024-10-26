@@ -119,7 +119,9 @@ async def process_delegation_status(staff_id: int, status: DelegationApprovalSta
 
     if status == DelegationApprovalStatus.accept:
         # Approve delegation and update pending arrangements
-        delegation_log = crud.update_delegation_status(db, delegation_log, models.DelegationStatus.accepted)
+        delegation_log = crud.update_delegation_status(
+            db, delegation_log, models.DelegationStatus.accepted
+        )
         crud.update_pending_arrangements_for_delegate(
             db, delegation_log.manager_id, delegation_log.delegate_manager_id
         )
@@ -137,7 +139,9 @@ async def process_delegation_status(staff_id: int, status: DelegationApprovalSta
 
     elif status == DelegationApprovalStatus.reject:
         # Reject delegation and send rejection emails
-        delegation_log = crud.update_delegation_status(db, delegation_log, models.DelegationStatus.rejected)
+        delegation_log = crud.update_delegation_status(
+            db, delegation_log, models.DelegationStatus.rejected
+        )
 
         manager_subject, manager_content = craft_email_content_for_delegation(
             manager_employee, delegatee_employee, "rejected"
@@ -148,5 +152,42 @@ async def process_delegation_status(staff_id: int, status: DelegationApprovalSta
             delegatee_employee, manager_employee, "rejected_for_delegate"
         )
         await send_email(delegatee_employee.email, delegate_subject, delegate_content)
+
+    return delegation_log
+
+
+async def undelegate_manager(staff_id: int, db: Session):
+    """
+    Process the undelegation of a manager, update arrangements, and send notifications.
+    """
+    # Step 1: Fetch the delegation log for the manager
+    delegation_log = crud.get_delegation_log_by_manager(db, staff_id)
+    if not delegation_log:
+        return "Delegation log not found."
+
+    # Step 2: Check if the delegation status is 'accepted'
+    if delegation_log.status_of_delegation != models.DelegationStatus.accepted:
+        return "Delegation must be approved to undelegate."
+
+    # Step 3: Remove delegate from arrangements
+    crud.remove_delegate_from_arrangements(db, delegation_log.delegate_manager_id)
+
+    # Step 4: Mark the delegation as 'undelegated'
+    delegation_log = crud.mark_delegation_as_undelegated(db, delegation_log)
+
+    # Step 5: Fetch manager and delegatee info for notifications
+    manager_employee = get_employee_by_id(db, delegation_log.manager_id)
+    delegatee_employee = get_employee_by_id(db, delegation_log.delegate_manager_id)
+
+    # Send notification emails
+    manager_subject, manager_content = craft_email_content_for_delegation(
+        manager_employee, delegatee_employee, "withdrawn"
+    )
+    await send_email(manager_employee.email, manager_subject, manager_content)
+
+    delegate_subject, delegate_content = craft_email_content_for_delegation(
+        delegatee_employee, manager_employee, "withdrawn_for_delegate"
+    )
+    await send_email(delegatee_employee.email, delegate_subject, delegate_content)
 
     return delegation_log

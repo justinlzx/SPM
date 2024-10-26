@@ -456,3 +456,16 @@ async def update_delegation_status_route(
     if isinstance(result, str):
         raise HTTPException(status_code=404, detail=result)
     return result  # Return the updated delegation log if successful
+
+
+@router.put("/manager/undelegate/{staff_id}", response_model=DelegateLogCreate)
+async def undelegate_manager_route(staff_id: int, db: Session = Depends(get_db)):
+    """
+    API endpoint to undelegate a manager's delegation and remove the delegate's approval rights.
+    """
+    result = await services.undelegate_manager(staff_id, db)
+    if isinstance(result, str):
+        # Handle specific error messages from the service
+        status_code = 404 if "not found" in result else 400
+        raise HTTPException(status_code=status_code, detail=result)
+    return result  # Return the updated delegation log if successful
