@@ -171,104 +171,6 @@ def get_subordinates_by_manager_id(staff_id: int, db: Session = Depends(get_db))
         raise HTTPException(status_code=404, detail=str(e))
 
 
-# @router.put("/manager/delegate/{staff_id}/status", response_model=DelegateLogCreate)
-# async def update_delegation_status(
-#     staff_id: int,
-#     status: DelegationApprovalStatus,
-#     db: Session = Depends(get_db),
-# ):
-#     """
-#     The above functions handle updating and undelegating delegation statuses, including database
-#     operations and email notifications.
-
-#     :param staff_id: The `staff_id` parameter in the provided code snippets refers to the ID of the
-#     staff member (manager or delegate) whose delegation status is being updated or who is being
-#     undelegated. This ID is used to fetch the relevant delegation log entry from the database for the
-#     specified staff member
-#     :type staff_id: int
-#     :param status: The `status` parameter in the `update_delegation_status` function and
-#     `undelegate_manager` function represents the status of the delegation request. It can have two
-#     possible values:
-#     :type status: DelegationApprovalStatus
-#     :param db: The `db` parameter in the provided code snippets is an instance of the database session.
-#     It is used to interact with the database to perform operations like querying, updating, and
-#     committing data. The database session is typically created and managed by the ORM (Object-Relational
-#     Mapping) framework being used in
-#     :type db: Session
-#     :return: The `update_delegation_status` function returns an updated delegation log after updating
-#     the status of a delegation request (accepted or rejected).
-#     """
-#     try:
-#         # Fetch the delegation log entry for the given staff_id (delegate manager)
-#         delegation_log = (
-#             db.query(DelegateLog).filter(DelegateLog.delegate_manager_id == staff_id).first()
-#         )
-
-#         if not delegation_log:
-#             raise HTTPException(status_code=404, detail="Delegation log not found.")
-
-#         # Fetch manager and delegatee details for email notification
-#         manager_employee = employee_services.get_employee_by_id(db, delegation_log.manager_id)
-#         delegatee_employee = employee_services.get_employee_by_id(db, staff_id)
-
-#         if status == DelegationApprovalStatus.accept:
-#             delegation_log.status_of_delegation = DelegationStatus.accepted
-
-#             # Step 2: Update pending approval requests in `latest_arrangements`
-#             pending_arrangements = (
-#                 db.query(arrangement_models.LatestArrangement)
-#                 .filter(
-#                     arrangement_models.LatestArrangement.approving_officer
-#                     == delegation_log.manager_id,
-#                     arrangement_models.LatestArrangement.current_approval_status.in_(
-#                         ["pending approval", "pending withdrawal"]
-#                     ),
-#                 )
-#                 .all()
-#             )
-
-#             for arrangement in pending_arrangements:
-#                 arrangement.delegate_approving_officer = delegation_log.delegate_manager_id
-#                 db.add(arrangement)
-
-#             db.commit()
-
-#             # Send email to staff for approval
-#             staff_subject, staff_content = craft_email_content_for_delegation(
-#                 manager_employee, delegatee_employee, "approved"
-#             )
-#             await send_email(manager_employee.email, staff_subject, staff_content)
-
-#             # Send email to delegate for approval
-#             delegate_subject, delegate_content = craft_email_content_for_delegation(
-#                 delegatee_employee, manager_employee, "approved_for_delegate"
-#             )
-#             await send_email(delegatee_employee.email, delegate_subject, delegate_content)
-
-#         elif status == DelegationApprovalStatus.reject:
-#             delegation_log.status_of_delegation = DelegationStatus.rejected
-
-#             # Send email to staff for rejection
-#             staff_subject, staff_content = craft_email_content_for_delegation(
-#                 manager_employee, delegatee_employee, "rejected"
-#             )
-#             await send_email(manager_employee.email, staff_subject, staff_content)
-
-#             # Send email to delegate for rejection
-#             delegate_subject, delegate_content = craft_email_content_for_delegation(
-#                 delegatee_employee, manager_employee, "rejected_for_delegate"
-#             )
-#             await send_email(delegatee_employee.email, delegate_subject, delegate_content)
-
-#         db.commit()
-#         db.refresh(delegation_log)
-
-#         return delegation_log
-#     except Exception as e:
-#         db.rollback()
-#         raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
-
-
 # @router.put("/manager/undelegate/{staff_id}", response_model=DelegateLogCreate)
 # async def undelegate_manager(staff_id: int, db: Session = Depends(get_db)):
 #     try:
@@ -530,7 +432,25 @@ async def update_delegation_status_route(
     staff_id: int, status: services.DelegationApprovalStatus, db: Session = Depends(get_db)
 ):
     """
-    API endpoint to update the delegation status of a manager's delegate.
+    The above functions handle updating and undelegating delegation statuses, including database
+    operations and email notifications.
+
+    :param staff_id: The `staff_id` parameter in the provided code snippets refers to the ID of the
+    staff member (manager or delegate) whose delegation status is being updated or who is being
+    undelegated. This ID is used to fetch the relevant delegation log entry from the database for the
+    specified staff member
+    :type staff_id: int
+    :param status: The `status` parameter in the `update_delegation_status` function and
+    `undelegate_manager` function represents the status of the delegation request. It can have two
+    possible values:
+    :type status: DelegationApprovalStatus
+    :param db: The `db` parameter in the provided code snippets is an instance of the database session.
+    It is used to interact with the database to perform operations like querying, updating, and
+    committing data. The database session is typically created and managed by the ORM (Object-Relational
+    Mapping) framework being used in
+    :type db: Session
+    :return: The `update_delegation_status` function returns an updated delegation log after updating
+    the status of a delegation request (accepted or rejected).
     """
     result = await services.process_delegation_status(staff_id, status, db)
     if isinstance(result, str):
