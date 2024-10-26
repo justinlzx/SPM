@@ -22,9 +22,23 @@ router = APIRouter()
 @router.get("/manager/peermanager/{staff_id}", response_model=EmployeePeerResponse)
 def get_reporting_manager_and_peer_employees(staff_id: int, db: Session = Depends(get_db)):
     """
-    Retrieve the reporting manager and peer employees for a given staff ID.
+    This function retrieves the reporting manager and peer employees for a given staff ID, handling
+    exceptions for employee and manager not found cases.
+
+    :param staff_id: The `staff_id` parameter in the `get_reporting_manager_and_peer_employees` function
+    represents the unique identifier of a staff member for whom you want to retrieve the reporting
+    manager and peer employees. This function is designed to fetch the manager and unlocked peers
+    associated with the given staff ID
+    :type staff_id: int
+    :param db: The `db` parameter in the `get_reporting_manager_and_peer_employees` function is of type
+    `Session` and is used to interact with the database. It is passed as a dependency using
+    `Depends(get_db)`, which means that it will be provided by a dependency resolver function named `
+    :type db: Session
+    :return: The function `get_reporting_manager_and_peer_employees` returns an instance of the
+    `EmployeePeerResponse` model. This response includes the `manager_id` and a list of `peer_employees`
+    for a given staff ID. If the staff ID is 130002, the function returns an `EmployeePeerResponse` with
+    `manager_id` set to `None` and an empty list for `
     """
-    # Auto Approve for Jack Sim and Skip manager check
     if staff_id == 130002:
         return EmployeePeerResponse(manager_id=None, peer_employees=[])
 
