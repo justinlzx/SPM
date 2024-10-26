@@ -321,7 +321,7 @@ def craft_email_content_for_delegation(
         subject = "[All-In-One] You have delegated approval responsibilities"
         content = (
             f"Dear {employee.staff_fname} {employee.staff_lname},\n\n"
-            f"You have successfully delegated your approval responsibilities to "
+            f"You have delegated your approval responsibilities to "
             f"{counterpart_employee.staff_fname} {counterpart_employee.staff_lname}.\n\n"
             f"This delegation will take effect immediately upon acceptance. Any pending approvals will "
             f"be handled by {counterpart_employee.staff_fname} once they accept the delegation.\n"

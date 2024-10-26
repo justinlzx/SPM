@@ -579,3 +579,15 @@ def get_subordinates_by_manager_id(staff_id: int, db: Session = Depends(get_db))
 #         )
 
 
+@router.post("/manager/delegate/{staff_id}", response_model=DelegateLogCreate)
+async def delegate_manager_route(
+    staff_id: int, delegate_manager_id: int, db: Session = Depends(get_db)
+):
+    """
+    API endpoint to delegate the approval responsibility of a manager to another staff member.
+    """
+    result = await services.delegate_manager(staff_id, delegate_manager_id, db)
+    if isinstance(result, str):
+        # If a message is returned, it indicates an existing delegation issue
+        raise HTTPException(status_code=400, detail=result)
+    return result  # Return the created delegation log if successful
