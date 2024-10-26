@@ -117,11 +117,15 @@ def create_delegation(db: Session, staff_id: int, delegate_manager_id: int):
     :return: The function `create_delegation` returns the newly created delegation record after adding
     it to the database, committing the changes, and refreshing the object.
     """
-    new_delegation = models.DelegateLog(
+    existing_delegation = get_existing_delegation(db, staff_id, delegate_manager_id)
+    if existing_delegation:
+        return existing_delegation  # Prevent duplicate
+    # Proceed to create a new delegation if none exists
+    new_delegation = DelegateLog(
         manager_id=staff_id,
         delegate_manager_id=delegate_manager_id,
         date_of_delegation=datetime.utcnow(),
-        status_of_delegation=models.DelegationStatus.pending,  # Default to pending
+        status_of_delegation=DelegationStatus.pending,
     )
     db.add(new_delegation)
     db.commit()
