@@ -5,7 +5,7 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from src.arrangements.models import LatestArrangement
-from src.employees.models import DelegateLog, Employee
+from src.employees.models import DelegateLog, DelegationStatus, Employee
 
 from . import models
 
@@ -69,12 +69,14 @@ def get_delegation_log_by_delegate(db: Session, staff_id: int):
 
 
 def update_delegation_status(
-    db: Session, delegation_log: models.DelegateLog, status: models.DelegationStatus
+    db: Session, delegation_log: DelegateLog, status: DelegationStatus, description: str = None
 ):
     """
-    Update the delegation log status and commit the change to the database.
+    Update the delegation log status and save the description if provided.
     """
     delegation_log.status_of_delegation = status
+    if description:
+        delegation_log.description = description  # Add description to the log
     db.commit()
     db.refresh(delegation_log)
     return delegation_log

@@ -104,9 +104,11 @@ async def delegate_manager(staff_id: int, delegate_manager_id: int, db: Session)
         raise e
 
 
-async def process_delegation_status(staff_id: int, status: DelegationApprovalStatus, db: Session):
+async def process_delegation_status(
+    staff_id: int, status: DelegationApprovalStatus, db: Session, description: str = None
+):
     """
-    Process the update of delegation status and handle notifications.
+    Process the update of delegation status, save the description, and handle notifications.
     """
     # Step 1: Fetch the delegation log
     delegation_log = crud.get_delegation_log_by_delegate(db, staff_id)
@@ -118,9 +120,9 @@ async def process_delegation_status(staff_id: int, status: DelegationApprovalSta
     delegatee_employee = get_employee_by_id(db, staff_id)
 
     if status == DelegationApprovalStatus.accept:
-        # Approve delegation and update pending arrangements
+        # Approve delegation, update pending arrangements, and save the optional description
         delegation_log = crud.update_delegation_status(
-            db, delegation_log, models.DelegationStatus.accepted
+            db, delegation_log, models.DelegationStatus.accepted, description=description
         )
         crud.update_pending_arrangements_for_delegate(
             db, delegation_log.manager_id, delegation_log.delegate_manager_id
@@ -138,11 +140,12 @@ async def process_delegation_status(staff_id: int, status: DelegationApprovalSta
         await send_email(delegatee_employee.email, delegate_subject, delegate_content)
 
     elif status == DelegationApprovalStatus.reject:
-        # Reject delegation and send rejection emails
+        # Reject delegation and save the required description
         delegation_log = crud.update_delegation_status(
-            db, delegation_log, models.DelegationStatus.rejected
+            db, delegation_log, models.DelegationStatus.rejected, description=description
         )
 
+        # Send rejection emails
         manager_subject, manager_content = craft_email_content_for_delegation(
             manager_employee, delegatee_employee, "rejected"
         )

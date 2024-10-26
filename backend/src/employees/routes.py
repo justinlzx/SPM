@@ -2,7 +2,7 @@ from datetime import datetime
 from enum import Enum
 from typing import List
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, Form, HTTPException
 from pydantic import EmailStr
 from sqlalchemy.orm import Session
 
@@ -202,9 +202,43 @@ async def delegate_manager_route(
     return result  # Return the created delegation log if successful
 
 
+# @router.put("/manager/delegate/{staff_id}/status", response_model=DelegateLogCreate)
+# async def update_delegation_status_route(
+#     staff_id: int, status: services.DelegationApprovalStatus, db: Session = Depends(get_db)
+# ):
+#     """
+#     The above functions handle updating and undelegating delegation statuses, including database
+#     operations and email notifications.
+
+#     :param staff_id: The `staff_id` parameter in the provided code snippets refers to the ID of the
+#     staff member (manager or delegate) whose delegation status is being updated or who is being
+#     undelegated. This ID is used to fetch the relevant delegation log entry from the database for the
+#     specified staff member
+#     :type staff_id: int
+#     :param status: The `status` parameter in the `update_delegation_status` function and
+#     `undelegate_manager` function represents the status of the delegation request. It can have two
+#     possible values:
+#     :type status: DelegationApprovalStatus
+#     :param db: The `db` parameter in the provided code snippets is an instance of the database session.
+#     It is used to interact with the database to perform operations like querying, updating, and
+#     committing data. The database session is typically created and managed by the ORM (Object-Relational
+#     Mapping) framework being used in
+#     :type db: Session
+#     :return: The `update_delegation_status` function returns an updated delegation log after updating
+#     the status of a delegation request (accepted or rejected).
+#     """
+#     result = await services.process_delegation_status(staff_id, status, db)
+#     if isinstance(result, str):
+#         raise HTTPException(status_code=404, detail=result)
+#     return result  # Return the updated delegation log if successful
+
+
 @router.put("/manager/delegate/{staff_id}/status", response_model=DelegateLogCreate)
 async def update_delegation_status_route(
-    staff_id: int, status: services.DelegationApprovalStatus, db: Session = Depends(get_db)
+    staff_id: int,
+    status: services.DelegationApprovalStatus,
+    db: Session = Depends(get_db),
+    description: str = Form(None),
 ):
     """
     The above functions handle updating and undelegating delegation statuses, including database
@@ -227,9 +261,16 @@ async def update_delegation_status_route(
     :return: The `update_delegation_status` function returns an updated delegation log after updating
     the status of a delegation request (accepted or rejected).
     """
-    result = await services.process_delegation_status(staff_id, status, db)
+    # Check if comment is required and missing for rejected status
+    if status == services.DelegationApprovalStatus.reject and not description:
+        raise HTTPException(status_code=400, detail="Comment is required for rejected status.")
+
+    # Process the delegation status update
+    result = await services.process_delegation_status(staff_id, status, db, description)
     if isinstance(result, str):
+        # If a message is returned, it indicates an error (e.g., delegation not found)
         raise HTTPException(status_code=404, detail=result)
+
     return result  # Return the updated delegation log if successful
 
 
