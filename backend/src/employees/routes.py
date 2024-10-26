@@ -22,53 +22,28 @@ router = APIRouter()
 @router.get("/manager/peermanager/{staff_id}", response_model=EmployeePeerResponse)
 def get_reporting_manager_and_peer_employees(staff_id: int, db: Session = Depends(get_db)):
     """
-    This function retrieves the reporting manager and peer employees of an employee based on their staff
-    ID, handling exceptions for employee and manager not found cases.
-
-    :param staff_id: The `staff_id` parameter in the `get_reporting_manager_and_peer_employees` function
-    represents the unique identifier of an employee for whom we want to retrieve the reporting manager
-    and peer employees. This parameter is used to query the database and fetch the necessary information
-    about the employee, their manager, and their
-    :type staff_id: int
-    :param db: The `db` parameter in the `get_reporting_manager_and_peer_employees` function is of type
-    `Session` and is used to interact with the database. It is passed as a dependency using
-    `Depends(get_db)`, which means that it will be provided by the dependency injection system (most
-    :type db: Session
-    :return: The code is returning the reporting manager and peer employees of an employee identified by
-    their staff_id. If the employee reports to themselves, the manager will be set to None. The response
-    includes the manager's staff_id and a list of peer employees in a Pydantic model format. If the
-    employee or manager is not found, a 404 HTTP exception is raised with the corresponding error
-    message.
+    Retrieve the reporting manager and peer employees for a given staff ID.
     """
-
     # Auto Approve for Jack Sim and Skip manager check
     if staff_id == 130002:
         return EmployeePeerResponse(manager_id=None, peer_employees=[])
 
     try:
-        # Get manager
-        manager: models.Employee = services.get_manager_by_subordinate_id(db, staff_id)
+        # Get manager and unlocked peers
+        manager, unlocked_peers = services.get_manager_by_subordinate_id(db, staff_id)
 
         if not manager:
             return EmployeePeerResponse(manager_id=None, peer_employees=[])
 
-        # Get list of peer employees
-        peer_employees: List[models.Employee] = services.get_subordinates_by_manager_id(
-            db, manager.staff_id
-        )
-
-        # Filter out the manager from the peer employees
-        peer_employees = [peer for peer in peer_employees if peer.staff_id != manager.staff_id]
-
-        # Convert peer employees to Pydantic model
+        # Convert unlocked peers to Pydantic model
         peer_employees_pydantic: List[schemas.EmployeeBase] = (
-            utils.convert_model_to_pydantic_schema(peer_employees, schemas.EmployeeBase)
+            utils.convert_model_to_pydantic_schema(unlocked_peers, schemas.EmployeeBase)
         )
 
-        print(f"Num results: {len(peer_employees)}")
+        print(f"Num results: {len(unlocked_peers)}")
 
         # Format to response model
-        response = schemas.EmployeePeerResponse(
+        response = EmployeePeerResponse(
             manager_id=manager.staff_id, peer_employees=peer_employees_pydantic
         )
 

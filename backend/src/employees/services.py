@@ -17,19 +17,38 @@ class DelegationApprovalStatus(Enum):
 
 
 def get_manager_by_subordinate_id(db: Session, staff_id: int) -> models.Employee:
+    """
+    Retrieve the manager for a given subordinate ID, ensuring the manager's peer employees are
+    not locked in an active delegation relationship, and excluding the specific ID 130002.
+    """
     # Auto Approve for Jack Sim and bypass manager check
     if staff_id == 130002:
-        return None  # Keep the auto-approve for Jack Sim
+        return None  # Auto-approve for Jack Sim
 
-    emp: models.Employee = get_employee_by_id(db, staff_id)
-    print(f"staff id: {emp.staff_id}")
-    manager: models.Employee = emp.manager
+    # Retrieve the employee
+    emp = get_employee_by_id(db, staff_id)
+    if not emp:
+        raise exceptions.EmployeeNotFoundException("Employee not found.")
 
-    # If employee reports to themselves, set manager to None
-    if manager and manager.staff_id == emp.staff_id:
-        manager = None
+    # Get the manager of the employee
+    manager = crud.get_manager_of_employee(db, emp)
+    if not manager:
+        return None  # Return None if there's no valid manager
 
-    return manager
+    # Retrieve all peers reporting to the manager
+    all_peers = crud.get_peer_employees(db, manager.staff_id)
+
+    # Filter out peers who are either locked in a delegation relationship or have the ID 130002
+    unlocked_peers = [
+        peer
+        for peer in all_peers
+        if not crud.is_employee_locked_in_delegation(db, peer.staff_id) and peer.staff_id != 130002
+    ]
+
+    print(
+        f"Unlocked peers for manager {manager.staff_id}: {[peer.staff_id for peer in unlocked_peers]}"
+    )
+    return manager, unlocked_peers
 
 
 def get_employee_by_id(db: Session, staff_id: int) -> models.Employee:

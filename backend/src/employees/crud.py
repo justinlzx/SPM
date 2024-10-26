@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import List
 
-from sqlalchemy import func
+from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
 
 from src.arrangements.models import LatestArrangement
@@ -205,3 +205,39 @@ def get_employee_full_name(db: Session, staff_id: int):
     """
     employee = db.query(Employee).filter(Employee.staff_id == staff_id).first()
     return f"{employee.staff_fname} {employee.staff_lname}" if employee else "Unknown"
+
+
+def get_manager_of_employee(db: Session, emp: Employee) -> Employee:
+    """
+    Get the manager of a given employee, handling self-reporting cases.
+    """
+    if emp.manager and emp.manager.staff_id != emp.staff_id:
+        return emp.manager
+    return None
+
+
+def get_peer_employees(db: Session, manager_id: int) -> list[Employee]:
+    """
+    Retrieve all peer employees reporting to the specified manager ID.
+    """
+    return db.query(Employee).filter(Employee.reporting_manager == manager_id).all()
+
+
+def is_employee_locked_in_delegation(db: Session, employee_id: int) -> bool:
+    """
+    Check if an employee is locked in any active delegation (either as a manager or delegate).
+    """
+    return (
+        db.query(DelegateLog)
+        .filter(
+            or_(
+                DelegateLog.manager_id == employee_id,
+                DelegateLog.delegate_manager_id == employee_id,
+            ),
+            DelegateLog.status_of_delegation.in_(
+                [DelegationStatus.pending, DelegationStatus.accepted]
+            ),
+        )
+        .first()
+        is not None
+    )
