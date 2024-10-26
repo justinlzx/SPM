@@ -178,84 +178,6 @@ def get_subordinates_by_manager_id(staff_id: int, db: Session = Depends(get_db))
         raise HTTPException(status_code=404, detail=str(e))
 
 
-# @router.post("/manager/delegate/{staff_id}", response_model=DelegateLogCreate)
-# async def delegate_manager(staff_id: int, delegate_manager_id: int, db: Session = Depends(get_db)):
-#     """
-#     The function `delegate_manager` delegates the approval responsibility of a manager to another staff
-#     member and logs the delegation in the database.
-
-#     :param staff_id: `staff_id` is the ID of the manager whose approval responsibility is being
-#     delegated to another staff member
-#     :type staff_id: int
-#     :param delegate_manager_id: The `delegate_manager_id` parameter in the `delegate_manager` function
-#     refers to the ID of the staff member to whom the approval responsibility of a manager is being
-#     delegated. This parameter is used to identify the delegatee who will temporarily take over the
-#     approval responsibilities from the manager
-#     :type delegate_manager_id: int
-#     :param db: The `db` parameter in the `delegate_manager` function is an instance of the database
-#     session. It is used to interact with the database to perform operations like querying, adding,
-#     committing, and rolling back transactions. In this case, it is being used to query the database for
-#     existing delegations,
-#     :type db: Session
-#     :return: The code is returning the newly created delegation log after logging the delegation in the
-#     `delegate_logs` table.
-#     """
-#     # Step 1: Check if either the staff_id or delegate_manager_id is already in `delegate_logs`
-#     existing_delegation = (
-#         db.query(DelegateLog)
-#         .filter(
-#             (DelegateLog.manager_id == staff_id)
-#             | (DelegateLog.delegate_manager_id == delegate_manager_id)
-#         )
-#         .filter(
-#             DelegateLog.status_of_delegation.in_(
-#                 [DelegationStatus.pending, DelegationStatus.accepted]
-#             )
-#         )
-#         .first()
-#     )
-
-#     if existing_delegation:
-#         raise HTTPException(
-#             status_code=400,
-#             detail="Delegation already exists for either the manager or delegatee.",
-#         )
-
-#     # Step 2: Log the delegation in the `delegate_logs` table
-#     try:
-#         new_delegation = DelegateLog(
-#             manager_id=staff_id,
-#             delegate_manager_id=delegate_manager_id,
-#             date_of_delegation=datetime.utcnow(),
-#             status_of_delegation=DelegationStatus.pending,  # Default to pending
-#         )
-
-#         db.add(new_delegation)
-#         db.commit()
-#         db.refresh(new_delegation)
-
-#         # Step 3: Fetch employee info for both manager and delegatee
-#         manager_employee = employee_services.get_employee_by_id(db, staff_id)
-#         delegatee_employee = employee_services.get_employee_by_id(db, delegate_manager_id)
-
-#         # Step 4: Craft and send email notifications to both the manager and delegatee
-#         manager_subject, manager_content = craft_email_content_for_delegation(
-#             manager_employee, delegatee_employee, "delegate"
-#         )
-#         await send_email(manager_employee.email, manager_subject, manager_content)
-
-#         delegatee_subject, delegatee_content = craft_email_content_for_delegation(
-#             delegatee_employee, manager_employee, "delegated_to"
-#         )
-#         await send_email(delegatee_employee.email, delegatee_subject, delegatee_content)
-
-#         return new_delegation  # Returning the created delegation log
-
-#     except Exception as e:
-#         db.rollback()
-#         raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
-
-
 # @router.put("/manager/delegate/{staff_id}/status", response_model=DelegateLogCreate)
 # async def update_delegation_status(
 #     staff_id: int,
@@ -584,7 +506,24 @@ async def delegate_manager_route(
     staff_id: int, delegate_manager_id: int, db: Session = Depends(get_db)
 ):
     """
-    API endpoint to delegate the approval responsibility of a manager to another staff member.
+    The function `delegate_manager` delegates the approval responsibility of a manager to another staff
+    member and logs the delegation in the database.
+
+    :param staff_id: `staff_id` is the ID of the manager whose approval responsibility is being
+    delegated to another staff member
+    :type staff_id: int
+    :param delegate_manager_id: The `delegate_manager_id` parameter in the `delegate_manager` function
+    refers to the ID of the staff member to whom the approval responsibility of a manager is being
+    delegated. This parameter is used to identify the delegatee who will temporarily take over the
+    approval responsibilities from the manager
+    :type delegate_manager_id: int
+    :param db: The `db` parameter in the `delegate_manager` function is an instance of the database
+    session. It is used to interact with the database to perform operations like querying, adding,
+    committing, and rolling back transactions. In this case, it is being used to query the database for
+    existing delegations,
+    :type db: Session
+    :return: The code is returning the newly created delegation log after logging the delegation in the
+    `delegate_logs` table.
     """
     result = await services.delegate_manager(staff_id, delegate_manager_id, db)
     if isinstance(result, str):
