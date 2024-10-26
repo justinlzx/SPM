@@ -171,77 +171,6 @@ def get_subordinates_by_manager_id(staff_id: int, db: Session = Depends(get_db))
         raise HTTPException(status_code=404, detail=str(e))
 
 
-# @router.get("/manager/viewalldelegations/{staff_id}")
-# def view_all_delegations(staff_id: int, db: Session = Depends(get_db)):
-#     """
-#     The function `view_all_delegations` retrieves and returns all delegations sent and received by a
-#     specified manager from the database.
-
-#     :param staff_id: The `staff_id` parameter in the `view_all_delegations` function represents the
-#     unique identifier of the manager for whom you want to view all delegations, whether they were sent
-#     or received by the manager. This ID helps identify the specific manager in the database for whom the
-#     delegations need to
-#     :type staff_id: int
-#     :param db: The `db` parameter in the `view_all_delegations` function represents the database
-#     session. It is used to interact with the database to retrieve information about delegations sent and
-#     received by a specified manager. The database session (`Session`) is typically created using a
-#     dependency function like `get_db`
-#     :type db: Session
-#     :return: The `view_all_delegations` function returns a JSON response containing two lists:
-#     1. `sent_delegations`: All delegations sent by the specified manager across all statuses.
-#     2. `received_delegations`: All delegations received by the specified manager across all statuses.
-#     """
-#     try:
-#         # Helper function to retrieve full name for a given staff_id
-#         def get_full_name(staff_id):
-#             employee = db.query(Employee).filter(Employee.staff_id == staff_id).first()
-#             return f"{employee.staff_fname} {employee.staff_lname}" if employee else "Unknown"
-
-#         # Retrieve all delegations sent by the specified manager across all statuses
-#         sent_delegations = db.query(DelegateLog).filter(DelegateLog.manager_id == staff_id).all()
-
-#         # Retrieve all delegations received by the specified manager across all statuses
-#         received_delegations = (
-#             db.query(DelegateLog).filter(DelegateLog.delegate_manager_id == staff_id).all()
-#         )
-
-#         sent_delegations_data = [
-#             {
-#                 "manager_id": delegation.manager_id,
-#                 "manager_name": get_full_name(delegation.manager_id),
-#                 "delegate_manager_id": delegation.delegate_manager_id,
-#                 "delegate_manager_name": get_full_name(delegation.delegate_manager_id),
-#                 "date_of_delegation": delegation.date_of_delegation,
-#                 "updated_datetime": delegation.update_datetime,
-#                 "status_of_delegation": delegation.status_of_delegation,
-#             }
-#             for delegation in sent_delegations
-#         ]
-#         received_delegations_data = [
-#             {
-#                 "manager_id": delegation.manager_id,
-#                 "manager_name": get_full_name(delegation.manager_id),
-#                 "delegate_manager_id": delegation.delegate_manager_id,
-#                 "delegate_manager_name": get_full_name(delegation.delegate_manager_id),
-#                 "date_of_delegation": delegation.date_of_delegation,
-#                 "updated_datetime": delegation.update_datetime,
-#                 "status_of_delegation": delegation.status_of_delegation,
-#             }
-#             for delegation in received_delegations
-#         ]
-
-#         # Return both lists, empty if no records found
-#         return {
-#             "sent_delegations": sent_delegations_data,
-#             "received_delegations": received_delegations_data,
-#         }
-#     except Exception as e:
-#         print(f"Unexpected error: {str(e)}")
-#         raise HTTPException(
-#             status_code=500, detail="An unexpected error occurred while fetching delegations."
-#         )
-
-
 @router.post("/manager/delegate/{staff_id}", response_model=DelegateLogCreate)
 async def delegate_manager_route(
     staff_id: int, delegate_manager_id: int, db: Session = Depends(get_db)
@@ -363,7 +292,22 @@ def view_delegations_route(staff_id: int, db: Session = Depends(get_db)):
 @router.get("/manager/viewalldelegations/{staff_id}")
 def view_all_delegations_route(staff_id: int, db: Session = Depends(get_db)):
     """
-    API endpoint to view all delegations sent and received by a specified manager.
+    The function `view_all_delegations` retrieves and returns all delegations sent and received by a
+    specified manager from the database.
+
+    :param staff_id: The `staff_id` parameter in the `view_all_delegations` function represents the
+    unique identifier of the manager for whom you want to view all delegations, whether they were sent
+    or received by the manager. This ID helps identify the specific manager in the database for whom the
+    delegations need to
+    :type staff_id: int
+    :param db: The `db` parameter in the `view_all_delegations` function represents the database
+    session. It is used to interact with the database to retrieve information about delegations sent and
+    received by a specified manager. The database session (`Session`) is typically created using a
+    dependency function like `get_db`
+    :type db: Session
+    :return: The `view_all_delegations` function returns a JSON response containing two lists:
+    1. `sent_delegations`: All delegations sent by the specified manager across all statuses.
+    2. `received_delegations`: All delegations received by the specified manager across all statuses.
     """
     try:
         return services.view_all_delegations(staff_id, db)
