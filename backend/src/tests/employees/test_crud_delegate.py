@@ -15,12 +15,16 @@ from src.arrangements.models import LatestArrangement
 from src.auth.models import Auth
 from src.employees.crud import (
     get_delegation_log_by_delegate,
+    get_delegation_log_by_manager,
     get_employee_by_email,
     get_employee_by_staff_id,
     get_employee_full_name,
     get_existing_delegation,
     create_delegation,
+    get_sent_delegations,
     get_subordinates_by_manager_id,
+    mark_delegation_as_undelegated,
+    remove_delegate_from_arrangements,
     update_delegation_status,
     update_pending_arrangements_for_delegate,
 )
@@ -322,3 +326,86 @@ def test_create_delegation_with_maximum_values(test_db):
     assert new_delegation is not None
     assert new_delegation.manager_id == max_staff_id
     assert new_delegation.delegate_manager_id == max_delegate_manager_id
+
+
+def test_update_pending_arrangements_for_delegate_with_pending_arrangements(test_db, seed_data):
+    # Arrange: Add a pending arrangement with a specific manager_id
+    arrangement = LatestArrangement(
+        update_datetime=datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S"),
+        requester_staff_id=3,
+        wfh_date="2023-10-26",
+        wfh_type="full",
+        current_approval_status="pending approval",
+        approving_officer=1,  # Original manager
+        reason_description="WFH arrangement due to personal reasons",
+    )
+    test_db.add(arrangement)
+    test_db.commit()
+
+    # Act: Update pending arrangements for delegate
+    update_pending_arrangements_for_delegate(test_db, manager_id=1, delegate_manager_id=2)
+
+    # Assert: Check if the arrangement was updated to use the delegate manager
+    updated_arrangement = test_db.query(LatestArrangement).filter_by(requester_staff_id=3).first()
+    assert updated_arrangement.delegate_approving_officer == 2
+
+
+def test_get_delegation_log_by_manager_found(test_db, seed_data):
+    # Act: Call function with existing manager_id
+    result = get_delegation_log_by_manager(test_db, staff_id=1)
+
+    # Assert: Check that result is not None and matches expected values
+    assert result is not None
+    assert result.manager_id == 1
+
+
+def test_remove_delegate_from_arrangements(test_db, seed_data):
+    # Arrange: Add an arrangement with a delegate assigned
+    arrangement = LatestArrangement(
+        update_datetime=datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S"),
+        requester_staff_id=4,
+        wfh_date="2023-10-26",
+        wfh_type="full",  # Use a valid value according to the CHECK constraint
+        current_approval_status="pending approval",
+        delegate_approving_officer=2,
+        reason_description="WFH arrangement for full day",
+    )
+    test_db.add(arrangement)
+    test_db.commit()
+
+    # Act: Remove delegate from arrangements
+    remove_delegate_from_arrangements(test_db, delegate_manager_id=2)
+
+    # Assert: Ensure delegate_approving_officer is set to None
+    updated_arrangement = test_db.query(LatestArrangement).filter_by(requester_staff_id=4).first()
+    assert updated_arrangement.delegate_approving_officer is None
+
+
+def test_mark_delegation_as_undelegated(test_db, seed_data):
+    # Arrange: Use an existing delegation log
+    delegation_log = (
+        test_db.query(DelegateLog).filter_by(manager_id=1, delegate_manager_id=2).first()
+    )
+
+    # Act: Mark delegation as undelegated
+    updated_log = mark_delegation_as_undelegated(test_db, delegation_log)
+
+    # Assert: Verify that status is updated to 'undelegated'
+    assert updated_log.status_of_delegation == DelegationStatus.undelegated
+
+
+def test_get_sent_delegations(test_db, seed_data):
+    # Act: Retrieve sent delegations for manager
+    result = get_sent_delegations(test_db, staff_id=1)
+
+    # Assert: Ensure result is not None and contains expected values
+    assert result is not None
+    assert result[0].manager_id == 1
+
+
+def test_get_employee_full_name_exists(test_db, seed_data):
+    # Act: Retrieve full name for existing employee
+    result = get_employee_full_name(test_db, staff_id=1)
+
+    # Assert: Check full name is correct
+    assert result == "John Doe"
