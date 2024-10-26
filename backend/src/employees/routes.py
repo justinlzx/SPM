@@ -358,3 +358,17 @@ def view_delegations_route(staff_id: int, db: Session = Depends(get_db)):
         raise HTTPException(
             status_code=500, detail="An unexpected error occurred while fetching delegations."
         )
+
+
+@router.get("/manager/viewalldelegations/{staff_id}")
+def view_all_delegations_route(staff_id: int, db: Session = Depends(get_db)):
+    """
+    API endpoint to view all delegations sent and received by a specified manager.
+    """
+    try:
+        return services.view_all_delegations(staff_id, db)
+    except Exception as e:
+        print(f"Unexpected error: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail="An unexpected error occurred while fetching delegations."
+        )

@@ -228,3 +228,50 @@ def view_delegations(staff_id: int, db: Session):
         "sent_delegations": sent_delegations_data,
         "pending_approval_delegations": pending_approval_delegations_data,
     }
+
+
+def view_all_delegations(staff_id: int, db: Session):
+    """
+    Retrieve all delegations sent and received by a specified manager, formatting each with relevant fields.
+    """
+    # Retrieve all delegations sent by the manager
+    sent_delegations = crud.get_all_sent_delegations(db, staff_id)
+    # Retrieve all delegations received by the manager
+    received_delegations = crud.get_all_received_delegations(db, staff_id)
+
+    # Format sent delegations data
+    sent_delegations_data = [
+        {
+            "manager_id": delegation.manager_id,
+            "manager_name": crud.get_employee_full_name(db, delegation.manager_id),
+            "delegate_manager_id": delegation.delegate_manager_id,
+            "delegate_manager_name": crud.get_employee_full_name(
+                db, delegation.delegate_manager_id
+            ),
+            "date_of_delegation": delegation.date_of_delegation,
+            "updated_datetime": delegation.update_datetime,
+            "status_of_delegation": delegation.status_of_delegation,
+        }
+        for delegation in sent_delegations
+    ]
+
+    # Format received delegations data
+    received_delegations_data = [
+        {
+            "manager_id": delegation.manager_id,
+            "manager_name": crud.get_employee_full_name(db, delegation.manager_id),
+            "delegate_manager_id": delegation.delegate_manager_id,
+            "delegate_manager_name": crud.get_employee_full_name(
+                db, delegation.delegate_manager_id
+            ),
+            "date_of_delegation": delegation.date_of_delegation,
+            "updated_datetime": delegation.update_datetime,
+            "status_of_delegation": delegation.status_of_delegation,
+        }
+        for delegation in received_delegations
+    ]
+
+    return {
+        "sent_delegations": sent_delegations_data,
+        "received_delegations": received_delegations_data,
+    }

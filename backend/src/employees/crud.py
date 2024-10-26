@@ -5,7 +5,7 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from src.arrangements.models import LatestArrangement
-from src.employees.models import Employee
+from src.employees.models import DelegateLog, Employee
 
 from . import models
 
@@ -173,6 +173,28 @@ def get_pending_approval_delegations(db: Session, staff_id: int):
         )
         .all()
     )
+
+
+def get_employee_full_name(db: Session, staff_id: int):
+    """
+    Fetch the full name of an employee given their staff_id.
+    """
+    employee = db.query(Employee).filter(Employee.staff_id == staff_id).first()
+    return f"{employee.staff_fname} {employee.staff_lname}" if employee else "Unknown"
+
+
+def get_all_sent_delegations(db: Session, staff_id: int):
+    """
+    Retrieve all delegations sent by the specified manager, across all statuses.
+    """
+    return db.query(DelegateLog).filter(DelegateLog.manager_id == staff_id).all()
+
+
+def get_all_received_delegations(db: Session, staff_id: int):
+    """
+    Retrieve all delegations received by the specified manager, across all statuses.
+    """
+    return db.query(DelegateLog).filter(DelegateLog.delegate_manager_id == staff_id).all()
 
 
 def get_employee_full_name(db: Session, staff_id: int):
