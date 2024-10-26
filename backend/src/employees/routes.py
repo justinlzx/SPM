@@ -508,7 +508,7 @@ def view_delegations(staff_id: int, db: Session = Depends(get_db)):
         )
 
 
-@router.get("/manager/alldelegations/{staff_id}")
+@router.get("/manager/viewalldelegations/{staff_id}")
 def view_all_delegations(staff_id: int, db: Session = Depends(get_db)):
     """
     The function `view_all_delegations` retrieves and returns all delegations sent and received by a
