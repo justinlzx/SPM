@@ -171,76 +171,6 @@ def get_subordinates_by_manager_id(staff_id: int, db: Session = Depends(get_db))
         raise HTTPException(status_code=404, detail=str(e))
 
 
-# @router.put("/manager/undelegate/{staff_id}", response_model=DelegateLogCreate)
-# async def undelegate_manager(staff_id: int, db: Session = Depends(get_db)):
-#     try:
-#         # Step 1: Fetch the delegation log entry for the given staff_id (manager who initiated the delegation)
-#         delegation_log = db.query(DelegateLog).filter(DelegateLog.manager_id == staff_id).first()
-
-#         if not delegation_log:
-#             raise HTTPException(status_code=404, detail="Delegation log not found.")
-
-#         # Fetch manager and delegatee details for email notification
-#         manager_employee = employee_services.get_employee_by_id(db, delegation_log.manager_id)
-#         delegatee_employee = employee_services.get_employee_by_id(
-#             db, delegation_log.delegate_manager_id
-#         )
-
-#         # Step 2: Check if the status of the delegation is 'accepted'
-#         if delegation_log.status_of_delegation != DelegationStatus.accepted:
-#             raise HTTPException(
-#                 status_code=400, detail="Delegation must be approved to undelegate."
-#             )
-
-#         # Step 3: Update the `latest_arrangements` to remove the delegation and restore the original manager
-#         pending_arrangements = (
-#             db.query(arrangement_models.LatestArrangement)
-#             .filter(
-#                 arrangement_models.LatestArrangement.delegate_approving_officer
-#                 == delegation_log.delegate_manager_id,
-#                 arrangement_models.LatestArrangement.current_approval_status.in_(
-#                     ["pending approval", "pending withdrawal"]
-#                 ),
-#             )
-#             .all()
-#         )
-
-#         for arrangement in pending_arrangements:
-#             arrangement.delegate_approving_officer = None  # Remove the delegate manager
-#             db.add(arrangement)
-
-#         # Step 4: Mark the delegation as 'undelegated' (new status)
-#         delegation_log.status_of_delegation = DelegationStatus.undelegated
-
-#         # Step 5: Commit the changes to the database
-#         db.commit()
-#         db.refresh(delegation_log)
-
-#         # Send email to the manager informing them that the delegation has been withdrawn
-#         manager_subject, manager_content = craft_email_content_for_delegation(
-#             manager_employee, delegatee_employee, "withdrawn"
-#         )
-#         await send_email(manager_employee.email, manager_subject, manager_content)
-
-#         # Send email to the delegatee informing them that the delegation has been withdrawn
-#         delegatee_subject, delegatee_content = craft_email_content_for_delegation(
-#             delegatee_employee, manager_employee, "withdrawn_for_delegate"
-#         )
-#         await send_email(delegatee_employee.email, delegatee_subject, delegatee_content)
-
-#         return delegation_log
-
-#     except HTTPException as http_exc:
-#         # Log HTTPException details and re-raise it
-#         print(f"HTTPException occurred: {http_exc.detail}")
-#         raise http_exc
-#     except Exception as e:
-#         # Log any unexpected errors and raise 500
-#         print(f"Unexpected error: {str(e)}")
-#         db.rollback()
-#         raise HTTPException(status_code=500, detail="An unexpected error occurred.")
-
-
 # @router.get("/manager/viewdelegations/{staff_id}")
 # def view_delegations(staff_id: int, db: Session = Depends(get_db)):
 #     """
@@ -461,7 +391,20 @@ async def update_delegation_status_route(
 @router.put("/manager/undelegate/{staff_id}", response_model=DelegateLogCreate)
 async def undelegate_manager_route(staff_id: int, db: Session = Depends(get_db)):
     """
-    API endpoint to undelegate a manager's delegation and remove the delegate's approval rights.
+    This function is an API endpoint in Python that undelegates a manager's delegation and removes the
+    delegate's approval rights.
+
+    :param staff_id: The `staff_id` parameter in the `undelegate_manager_route` function represents the
+    unique identifier of the manager whose delegation is being undelegated. This parameter is used to
+    identify the specific manager whose delegation is being removed and whose delegate's approval rights
+    are being revoked
+    :type staff_id: int
+    :param db: The `db` parameter in the `undelegate_manager_route` function is of type `Session` and is
+    used to interact with the database. It is passed as a dependency using the `Depends` function, which
+    ensures that a new database session is created and made available within the scope of the
+    :type db: Session
+    :return: The updated delegation log is being returned if the operation to undelegate a manager is
+    successful.
     """
     result = await services.undelegate_manager(staff_id, db)
     if isinstance(result, str):
