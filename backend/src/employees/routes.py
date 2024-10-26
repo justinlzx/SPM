@@ -412,3 +412,17 @@ async def undelegate_manager_route(staff_id: int, db: Session = Depends(get_db))
         status_code = 404 if "not found" in result else 400
         raise HTTPException(status_code=status_code, detail=result)
     return result  # Return the updated delegation log if successful
+
+
+@router.get("/manager/viewdelegations/{staff_id}")
+def view_delegations_route(staff_id: int, db: Session = Depends(get_db)):
+    """
+    API endpoint to view delegations sent by the manager and pending approval delegations.
+    """
+    try:
+        return services.view_delegations(staff_id, db)
+    except Exception as e:
+        print(f"Unexpected error: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail="An unexpected error occurred while fetching delegations."
+        )

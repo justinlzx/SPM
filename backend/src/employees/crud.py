@@ -5,6 +5,7 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from src.arrangements.models import LatestArrangement
+from src.employees.models import Employee
 
 from . import models
 
@@ -140,3 +141,43 @@ def mark_delegation_as_undelegated(db: Session, delegation_log: models.DelegateL
     db.commit()
     db.refresh(delegation_log)
     return delegation_log
+
+
+def get_sent_delegations(db: Session, staff_id: int):
+    """
+    Retrieve delegations sent by the manager with statuses pending and accepted.
+    """
+    return (
+        db.query(models.DelegateLog)
+        .filter(
+            models.DelegateLog.manager_id == staff_id,
+            models.DelegateLog.status_of_delegation.in_(
+                [models.DelegationStatus.pending, models.DelegationStatus.accepted]
+            ),
+        )
+        .all()
+    )
+
+
+def get_pending_approval_delegations(db: Session, staff_id: int):
+    """
+    Retrieve delegations awaiting manager's approval with statuses pending and accepted.
+    """
+    return (
+        db.query(models.DelegateLog)
+        .filter(
+            models.DelegateLog.delegate_manager_id == staff_id,
+            models.DelegateLog.status_of_delegation.in_(
+                [models.DelegationStatus.pending, models.DelegationStatus.accepted]
+            ),
+        )
+        .all()
+    )
+
+
+def get_employee_full_name(db: Session, staff_id: int):
+    """
+    Fetch the full name of an employee given their staff_id.
+    """
+    employee = db.query(Employee).filter(Employee.staff_id == staff_id).first()
+    return f"{employee.staff_fname} {employee.staff_lname}" if employee else "Unknown"

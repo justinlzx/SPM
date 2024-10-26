@@ -191,3 +191,40 @@ async def undelegate_manager(staff_id: int, db: Session):
     await send_email(delegatee_employee.email, delegate_subject, delegate_content)
 
     return delegation_log
+
+
+def view_delegations(staff_id: int, db: Session):
+    """
+    Retrieve delegations sent by a manager and those pending approval, formatting each with relevant fields.
+    """
+    # Retrieve sent delegations by the manager
+    sent_delegations = crud.get_sent_delegations(db, staff_id)
+    # Retrieve delegations pending approval by the manager
+    pending_approval_delegations = crud.get_pending_approval_delegations(db, staff_id)
+
+    # Format the sent delegations data
+    sent_delegations_data = [
+        {
+            "staff_id": delegation.delegate_manager_id,
+            "full_name": crud.get_employee_full_name(db, delegation.delegate_manager_id),
+            "date_of_delegation": delegation.date_of_delegation,
+            "status_of_delegation": delegation.status_of_delegation,
+        }
+        for delegation in sent_delegations
+    ]
+
+    # Format the pending approval delegations data
+    pending_approval_delegations_data = [
+        {
+            "staff_id": delegation.manager_id,
+            "full_name": crud.get_employee_full_name(db, delegation.manager_id),
+            "date_of_delegation": delegation.date_of_delegation,
+            "status_of_delegation": delegation.status_of_delegation,
+        }
+        for delegation in pending_approval_delegations
+    ]
+
+    return {
+        "sent_delegations": sent_delegations_data,
+        "pending_approval_delegations": pending_approval_delegations_data,
+    }
