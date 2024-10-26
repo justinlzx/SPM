@@ -21,7 +21,7 @@ export type TAction = "approve" | "reject" | "allow withdraw";
       dept: string;
       position: string;
     };
-    wfh_date: string;
+    wfh_date: Date;
     wfh_type: string;
     arrangement_id: number;
     reason_description: string;

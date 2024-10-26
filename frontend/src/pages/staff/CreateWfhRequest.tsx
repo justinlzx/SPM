@@ -3,7 +3,6 @@ import { UserContext } from "../../context/UserContextProvider";
 import { useNavigate } from "react-router-dom";
 import { Formik, Form, Field, ErrorMessage } from "formik";
 import { addDays, addWeeks, addMonths, isAfter, isWeekend } from "date-fns";
-import { SnackBarComponent, AlertStatus } from "../../common/SnackBar";
 import {
   Box,
   Container,
@@ -18,18 +17,18 @@ import {
   Snackbar,
   Alert,
 } from "@mui/material";
+import { SnackBarComponent, AlertStatus } from "../../common/SnackBar";
+import serialize from "serialize-javascript";
 import * as Yup from "yup";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import axios from "axios";
-import { Recurring } from "../../components/forms/Recurring";
+import { Recurring } from "../../components/requests/Recurring";
 import { DragAndDrop } from "../../common/DragAndDrop";
 
 export const CreateWfhRequestPage: React.FC = () => {
   const { user } = useContext(UserContext);
-  const [scheduleType, setScheduleType] = useState<"adhoc" | "recurring">(
-    "adhoc"
-  );
+  const [scheduleType, setScheduleType] = useState<"adhoc" | "recurring">("adhoc");
   const [wfhDaysTaken] = useState(1);
   const [showSnackbar, setShowSnackbar] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState("");
@@ -38,26 +37,18 @@ export const CreateWfhRequestPage: React.FC = () => {
   const [proceedWithSubmission, setProceedWithSubmission] = useState(false);
   const [supportingDocs, setSupportingDocs] = useState<File[]>([]);
   const navigate = useNavigate();
-
-  if (!user) {
-    return (
-      <Typography variant="h4">Please log in to access this page</Typography>
-    );
-  }
-
-  const requesterStaffId = user.id;
+  const requesterStaffId = user?.id;
   const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 
-  const handleCloseSnackBar = () => {
-    setShowSnackbar(false);
-  };
+  if (!user) {
+    return <Typography variant="h4">Please log in to access this page</Typography>;
+  }
 
-  const generateRecurringDates = (
-    start: Date,
-    end: Date,
-    interval: number,
-    unit: string
-  ) => {
+  // Function to handle Snackbar close
+  const handleCloseSnackBar = () => setShowSnackbar(false);
+
+  // Function to generate recurring dates
+  const generateRecurringDates = (start: Date, end: Date, interval: number, unit: string) => {
     let current = new Date(start);
     const recurringDates: Date[] = [];
     const weekendDates: Date[] = [];
@@ -69,36 +60,31 @@ export const CreateWfhRequestPage: React.FC = () => {
         weekendDates.push(new Date(current));
       }
 
-      if (unit === "week") {
-        current = addWeeks(current, interval);
-      } else if (unit === "month") {
-        current = addMonths(current, interval);
-      }
+      // Increment date based on the repeat interval and unit
+      if (unit === "week") current = addWeeks(current, interval);
+      else if (unit === "month") current = addMonths(current, interval);
     }
-
     return { recurringDates, weekendDates };
   };
 
-  const handleSubmit = async (
-    values: any,
-    { resetForm }: { resetForm: () => void }
-  ) => {
+  // Handle form submission
+  const handleSubmit = async (values: any, { resetForm }: { resetForm: () => void }) => {
     setLoading(true);
-    let recurringDates: Date[] = [];
-    const start = values.startDate;
-    const end = values.endDate;
+    let recurringDates: string[] = [];
+    const start = new Date(values.startDate);
+    const end = new Date(values.endDate);
 
+    // Check if WFH limit has been exceeded
     if (wfhDaysTaken >= 2 && !proceedWithSubmission) {
       setAlertStatus(AlertStatus.Warning);
-      setSnackbarMessage(
-        "You have already used 2 WFH days this month. Are you sure you want to proceed?"
-      );
+      setSnackbarMessage("You have already used 2 WFH days this month. Are you sure you want to proceed?");
       setShowSnackbar(true);
       setProceedWithSubmission(true);
       setLoading(false);
       return;
     }
 
+    // Check if the start date is a weekend for ad-hoc requests
     if (scheduleType === "adhoc" && isWeekend(start)) {
       setAlertStatus(AlertStatus.Error);
       setSnackbarMessage("You cannot request WFH on a weekend.");
@@ -107,6 +93,7 @@ export const CreateWfhRequestPage: React.FC = () => {
       return;
     }
 
+    // Check for weekend dates in recurring schedules and ensure it's within 1 year
     if (scheduleType === "recurring") {
       const oneYearLater = new Date(start);
       oneYearLater.setFullYear(start.getFullYear() + 1);
@@ -119,23 +106,20 @@ export const CreateWfhRequestPage: React.FC = () => {
         return;
       }
 
-      const {
-        recurringDates: validRecurringDates,
-        weekendDates: removedWeekends,
-      } = generateRecurringDates(
+      const { recurringDates: validRecurringDates, weekendDates: removedWeekends } = generateRecurringDates(
         start,
         end,
         values.repeatInterval,
         values.repeatIntervalUnit
       );
 
-      recurringDates = validRecurringDates;
+      recurringDates = validRecurringDates.map(date => date.toISOString().split("T")[0]);
 
       if (removedWeekends.length > 0) {
         setAlertStatus(AlertStatus.Warning);
         setSnackbarMessage(
           `Some dates fall on a weekend and have been removed: ${removedWeekends
-            .map((date) => date.toISOString().split("T")[0])
+            .map(date => date.toISOString().split("T")[0])
             .join(", ")}`
         );
         setShowSnackbar(true);
@@ -143,49 +127,45 @@ export const CreateWfhRequestPage: React.FC = () => {
 
       if (recurringDates.length === 0) {
         setAlertStatus(AlertStatus.Error);
-        setSnackbarMessage(
-          "No valid dates after removing weekends. Please adjust your schedule."
-        );
+        setSnackbarMessage("No valid dates after removing weekends. Please adjust your schedule.");
         setShowSnackbar(true);
         setLoading(false);
         return;
       }
     }
 
+    // Build the payload
     const payload: any = {
       requester_staff_id: requesterStaffId,
-      wfh_date: values.startDate,
+      wfh_date: start.toISOString().split("T")[0],
       wfh_type: values.wfhType.toLowerCase(),
       reason_description: values.reason,
       is_recurring: scheduleType === "recurring",
       current_approval_status: "pending approval",
       ...(scheduleType === "recurring" && {
-        recurring_end_date: values.endDate,
+        recurring_end_date: end ? end.toISOString().split("T")[0] : null,
         recurring_frequency_number: values.repeatInterval,
         recurring_frequency_unit: values.repeatIntervalUnit,
         recurring_occurrences: values.occurrences,
+        wfh_dates: recurringDates,
       }),
     };
 
+    console.log("Payload being sent:", payload);
+
     try {
       const form = new FormData();
-      Object.keys(payload).forEach((key) => {
+      Object.keys(payload).forEach(key => {
         const value = payload[key];
-        form.append(
-          key,
-          value instanceof Date ? value.toISOString().split("T")[0] : value
-        );
+        form.append(key, value instanceof Date ? value.toISOString().split("T")[0] : value);
       });
 
-      supportingDocs.forEach((file) => {
-        form.append("supporting_docs", file);
-      });
+      supportingDocs.forEach(file => form.append("supporting_docs", file));
 
       await axios.post(`${BACKEND_URL}/arrangements/request`, form, {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
+        headers: { "Content-Type": "multipart/form-data" },
       });
+
       setAlertStatus(AlertStatus.Success);
       setSnackbarMessage("Your request was successfully submitted!");
       setShowSnackbar(true);
@@ -206,64 +186,41 @@ export const CreateWfhRequestPage: React.FC = () => {
     reason: Yup.string().required("Reason is required"),
     startDate: Yup.date()
       .required("Start date is required")
-      .min(
-        addDays(new Date(), 1),
-        "Start date must be at least 1 day from today"
-      ),
+      .min(addDays(new Date(), 1), "Start date must be at least 1 day from today"),
     wfhType: Yup.string().required("You must select AM, PM, or Full-day"),
     endDate: Yup.date()
       .nullable()
-      .test(
-        "is-recurring-end-date",
-        "End date is required for recurring schedules",
-        function (value) {
-          const { scheduleType } = this.parent;
-          return scheduleType === "recurring" ? !!value : true;
+      .test("is-recurring-end-date", "End date is required for recurring schedules", function (value) {
+        const { scheduleType } = this.parent;
+        return scheduleType === "recurring" ? !!value : true;
+      })
+      .test("is-within-1-year", "End date must be within 1 year from start date", function (value) {
+        const { scheduleType, startDate } = this.parent;
+        if (scheduleType === "recurring" && value) {
+          const oneYearLater = new Date(startDate);
+          oneYearLater.setFullYear(startDate.getFullYear() + 1);
+          return value <= oneYearLater;
         }
-      )
-      .test(
-        "is-within-1-year",
-        "End date must be within 1 year from start date",
-        function (value) {
-          const { scheduleType, startDate } = this.parent;
-          if (scheduleType === "recurring" && value) {
-            const oneYearLater = new Date(startDate);
-            oneYearLater.setFullYear(startDate.getFullYear() + 1);
-            return value <= oneYearLater;
-          }
-          return true;
-        }
-      ),
+        return true;
+      }),
     repeatInterval: Yup.number()
       .nullable()
-      .test(
-        "is-recurring-repeat-interval",
-        "Repeat interval is required for recurring schedules",
-        function (value) {
-          const { scheduleType } = this.parent;
-          return scheduleType === "recurring" ? !!value : true;
-        }
-      ),
+      .test("is-recurring-repeat-interval", "Repeat interval is required for recurring schedules", function (value) {
+        const { scheduleType } = this.parent;
+        return scheduleType === "recurring" ? !!value : true;
+      }),
     occurrences: Yup.number()
       .nullable()
-      .test(
-        "is-recurring-occurrences",
-        "Occurrences are required for recurring schedules",
-        function (value) {
-          const { scheduleType } = this.parent;
-          return scheduleType === "recurring" ? !!value : true;
-        }
-      ),
+      .test("is-recurring-occurrences", "Occurrences are required for recurring schedules", function (value) {
+        const { scheduleType } = this.parent;
+        return scheduleType === "recurring" ? !!value : true;
+      }),
     repeatIntervalUnit: Yup.string()
       .nullable()
-      .test(
-        "is-recurring-repeat-interval-unit",
-        "Repeat interval unit is required for recurring schedules",
-        function (value) {
-          const { scheduleType } = this.parent;
-          return scheduleType === "recurring" ? !!value : true;
-        }
-      ),
+      .test("is-recurring-repeat-interval-unit", "Repeat interval unit is required for recurring schedules", function (value) {
+        const { scheduleType } = this.parent;
+        return scheduleType === "recurring" ? !!value : true;
+      }),
   });
 
   return (
@@ -292,16 +249,8 @@ export const CreateWfhRequestPage: React.FC = () => {
             {/* Reason */}
             <FormControl fullWidth sx={{ mb: 2 }}>
               <Typography variant="subtitle1">Reason for WFH</Typography>
-              <Field
-                name="reason"
-                as="textarea"
-                fullWidth
-                disabled={loading}
-                className="border border-gray-300 rounded p-2 w-full"
-              />
-              <FormHelperText error>
-                <ErrorMessage data-cy="reason-error" name="reason" />
-              </FormHelperText>
+              <Field name="reason" as="textarea" fullWidth disabled={loading} className="border border-gray-300 rounded p-2 w-full" />
+              <FormHelperText error><ErrorMessage data-cy="reason-error" name="reason" /></FormHelperText>
             </FormControl>
 
             {/* WFH Type */}
@@ -311,20 +260,16 @@ export const CreateWfhRequestPage: React.FC = () => {
                 name="wfhType"
                 data-cy="wfhType"
                 value={values.wfhType}
-                onChange={(e) => setFieldValue("wfhType", e.target.value)}
+                onChange={e => setFieldValue("wfhType", e.target.value)}
                 fullWidth
                 disabled={loading}
               >
-                <MenuItem value="" disabled>
-                  Select WFH Type
-                </MenuItem>
+                <MenuItem value="" disabled>Select WFH Type</MenuItem>
                 <MenuItem value="full">Full-day</MenuItem>
                 <MenuItem value="am">AM</MenuItem>
                 <MenuItem value="pm">PM</MenuItem>
               </Select>
-              <FormHelperText error>
-                <ErrorMessage name="wfhType" />
-              </FormHelperText>
+              <FormHelperText error><ErrorMessage name="wfhType" /></FormHelperText>
             </FormControl>
 
             {/* Schedule Type */}
@@ -334,9 +279,7 @@ export const CreateWfhRequestPage: React.FC = () => {
                 name="scheduleType"
                 data-cy="scheduleType"
                 value={scheduleType}
-                onChange={(e) =>
-                  setScheduleType(e.target.value as "adhoc" | "recurring")
-                }
+                onChange={e => setScheduleType(e.target.value as "adhoc" | "recurring")}
                 fullWidth
                 disabled={loading}
               >
@@ -351,58 +294,38 @@ export const CreateWfhRequestPage: React.FC = () => {
                 <Typography variant="subtitle1">WFH Date</Typography>
                 <DatePicker
                   selected={values.startDate}
-                  onChange={(date) => setFieldValue("startDate", date)}
+                  onChange={date => setFieldValue("startDate", date)}
                   dateFormat="dd/MM/yyyy"
-                  customInput={
-                    <TextField data-cy="start-datepicker" fullWidth />
-                  }
+                  customInput={<TextField data-cy="start-datepicker" fullWidth />}
                   required
                   minDate={addDays(new Date(), 1)}
                   disabled={loading}
                 />
-
-                <FormHelperText error>
-                  <ErrorMessage name="startDate" />
-                </FormHelperText>
+                <FormHelperText error><ErrorMessage name="startDate" /></FormHelperText>
               </FormControl>
             )}
 
             {/* Recurring Fields */}
             {scheduleType === "recurring" && <Recurring disabled={loading} />}
 
+            {/* Supporting Documents */}
             <FormControl fullWidth sx={{ mb: 2 }}>
-              <Typography variant="subtitle1">
-                Upload Supporting Documents
-              </Typography>
+              <Typography variant="subtitle1">Upload Supporting Documents</Typography>
               <DragAndDrop
                 files={supportingDocs}
                 maxFileSize={5 * 1000 * 1000}
                 maxFiles={3}
                 multiple={true}
-                onFileAccepted={(files: File[]) => {
-                  setSupportingDocs(files);
-                }}
+                onFileAccepted={files => setSupportingDocs(files)}
               />
             </FormControl>
 
             {/* Submit Button */}
             <Box sx={{ display: "flex", justifyContent: "flex-end", mt: 4 }}>
-              <Button
-                data-cy="cancel"
-                variant="outlined"
-                color="primary"
-                onClick={() => navigate(-1)}
-                sx={{ mr: 2 }}
-              >
+              <Button data-cy="cancel" variant="outlined" color="primary" onClick={() => navigate(-1)} sx={{ mr: 2 }}>
                 Cancel
               </Button>
-              <Button
-                type="submit"
-                variant="contained"
-                data-cy="submit-request"
-                color="primary"
-                disabled={loading}
-              >
+              <Button type="submit" variant="contained" data-cy="submit-request" color="primary" disabled={loading}>
                 {loading ? "Submitting..." : "Submit"}
               </Button>
             </Box>
@@ -410,23 +333,35 @@ export const CreateWfhRequestPage: React.FC = () => {
         )}
       </Formik>
 
+      {/* Snackbar Component for Warning or Success */}
       <Snackbar
         open={showSnackbar}
         onClose={handleCloseSnackBar}
         anchorOrigin={{ vertical: "top", horizontal: "center" }}
-        autoHideDuration={6000}
+        autoHideDuration={
+          alertStatus === AlertStatus.Success && snackbarMessage.includes("successfully submitted") ? null : 6000
+        }
       >
         <Alert
           onClose={handleCloseSnackBar}
           severity={alertStatus}
-          sx={{ width: "100%" }}
+          sx={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between" }}
           action={
-            alertStatus === AlertStatus.Success &&
-            snackbarMessage.includes("successfully submitted") && (
+            alertStatus === AlertStatus.Success && snackbarMessage.includes("successfully submitted") && (
               <Button
                 color="inherit"
                 size="small"
+                variant="contained"
                 onClick={() => navigate("/home")}
+                sx={{
+                  backgroundColor: "#006400",
+                  color: "#FFFFFF",
+                  textTransform: "none",
+                  lineHeight: "1.5",
+                  whiteSpace: "nowrap",
+                  "&:hover": { backgroundColor: "#004d00" },
+                  marginLeft: "auto",
+                }}
               >
                 Back to Home
               </Button>

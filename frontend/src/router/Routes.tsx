@@ -7,9 +7,8 @@ import { CreateWfhRequestPage } from "../pages/staff/CreateWfhRequest";
 import { ReviewRequests } from "../pages/manager/ReviewRequests";
 import { HomePage } from "../pages/staff/HomePage";
 import { TeamPage } from "../pages/team/TeamPage";
-import { Settings } from "../pages/staff/Settings";
 import { MyWfhSchedulePage } from "../pages/staff/MyWfhSchedulePage";
-
+import { DelegateManagerPage } from "../pages/manager/DelegateManagerPage";
 
 type routesProps = {
   path: string;
@@ -54,6 +53,10 @@ const routes: routesProps[] = [
             path: "/wfh-schedule",
             element: <MyWfhSchedulePage />,
           },
+          {
+            path: "/delegate",
+            element: <DelegateManagerPage />
+          }
         ],
       },
     ],

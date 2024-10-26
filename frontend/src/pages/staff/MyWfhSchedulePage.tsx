@@ -12,6 +12,7 @@ export const MyWfhSchedulePage: React.FC = () => {
   const [requests, setRequests] = useState<TWFHRequest[]>([]);
   const [openSnackbar, setOpenSnackbar] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState("");
+  const [snackbarSeverity, setSnackbarSeverity] = useState<"success" | "error">("success");
 
   const { user } = useContext(UserContext);
   const userId = user!.id;
@@ -19,21 +20,28 @@ export const MyWfhSchedulePage: React.FC = () => {
   useEffect(() => {
     const fetchRequests = async () => {
       if (!user || !userId) return;
+
       try {
         const response = await axios.get(
           `${BACKEND_URL}/arrangements/personal/${userId}`
         );
+
+        // Process the response to maintain wfh_date as a Date object
         const allRequests: TWFHRequest[] = response.data.data.map(
           (request: any) => ({
             ...request,
             approval_status: ApprovalStatus[request.approval_status as keyof typeof ApprovalStatus],
-            wfh_date: new Date(request.wfh_date).toISOString(),  
+            wfh_date: new Date(request.wfh_date),  // Keep as Date object
           })
         );
-        console.log(allRequests);
+
+        console.log(allRequests);  // Check the transformed requests
         setRequests(allRequests);
       } catch (error) {
         console.error("Failed to fetch WFH requests:", error);
+        setSnackbarMessage("Failed to fetch WFH requests. Please try again later.");
+        setSnackbarSeverity("error");  // Set severity to error
+        setOpenSnackbar(true);
       }
     };
 
@@ -59,6 +67,7 @@ export const MyWfhSchedulePage: React.FC = () => {
         ? "Your WFH request has been successfully cancelled!"
         : "Withdrawal Request has been sent to your manager for review."
     );
+    setSnackbarSeverity("success");  // Set severity to success
     setOpenSnackbar(true);
   };
 
@@ -77,7 +86,7 @@ export const MyWfhSchedulePage: React.FC = () => {
         onClose={handleCloseSnackBar}
         anchorOrigin={{ vertical: "top", horizontal: "center" }}
       >
-        <Alert onClose={handleCloseSnackBar} severity="success">
+        <Alert onClose={handleCloseSnackBar} severity={snackbarSeverity}>
           {snackbarMessage}
         </Alert>
       </Snackbar>
