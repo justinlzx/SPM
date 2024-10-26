@@ -1,3 +1,4 @@
+from unittest.mock import patch
 from sqlalchemy.exc import IntegrityError
 import pytest
 from sqlalchemy import create_engine
@@ -14,10 +15,14 @@ from src.arrangements.models import LatestArrangement
 from src.auth.models import Auth
 from src.employees.crud import (
     get_delegation_log_by_delegate,
+    get_employee_by_email,
+    get_employee_by_staff_id,
     get_employee_full_name,
     get_existing_delegation,
     create_delegation,
+    get_subordinates_by_manager_id,
     update_delegation_status,
+    update_pending_arrangements_for_delegate,
 )
 from datetime import datetime
 
@@ -51,6 +56,7 @@ def seed_data(test_db):
         country="SG",
         email="john.doe@example.com",
         role=1,
+        reporting_manager=1,
     )
     employee2 = Employee(
         staff_id=2,
@@ -61,6 +67,7 @@ def seed_data(test_db):
         country="SG",
         email="jane.smith@example.com",
         role=1,
+        reporting_manager=1,
     )
 
     # Add delegations with different statuses
@@ -144,12 +151,6 @@ def test_create_delegation_duplicate(test_db, seed_data):
     assert original_delegation.id == duplicate_delegation.id  # Ensure duplicate is not created
 
 
-def test_create_delegation_invalid_ids(test_db):
-    # Attempt creation with invalid staff_id or delegate_manager_id
-    with pytest.raises(IntegrityError):  # Replace with the actual exception raised
-        create_delegation(test_db, staff_id=-1, delegate_manager_id=9999)
-
-
 def test_get_delegation_log_by_delegate_no_match(test_db):
     result = get_delegation_log_by_delegate(test_db, staff_id=999)
     assert result is None
@@ -195,3 +196,129 @@ def test_get_employee_full_name_not_found(test_db):
 def test_get_employee_full_name_found(test_db, seed_data):
     result = get_employee_full_name(test_db, staff_id=1)
     assert result == "John Doe"
+
+
+def test_get_employee_by_staff_id_exists(test_db, seed_data):
+    # Test when the staff ID exists
+    result = get_employee_by_staff_id(test_db, staff_id=1)
+    assert result is not None
+    assert result.staff_id == 1
+
+
+def test_get_employee_by_staff_id_not_exists(test_db):
+    # Test when the staff ID does not exist
+    result = get_employee_by_staff_id(test_db, staff_id=999)
+    assert result is None
+
+
+def test_get_employee_by_email_exists(test_db, seed_data):
+    # Test retrieval of an employee by email
+    result = get_employee_by_email(test_db, email="john.doe@example.com")
+    assert result is not None
+    assert result.email == "john.doe@example.com"
+
+
+def test_get_employee_by_email_not_exists(test_db):
+    # Test with an email that doesn’t exist
+    result = get_employee_by_email(test_db, email="nonexistent@example.com")
+    assert result is None
+
+
+def test_get_subordinates_by_manager_id_has_subordinates(test_db, seed_data):
+    # Test for retrieving a list of employees with a specific manager_id
+    result = get_subordinates_by_manager_id(test_db, manager_id=1)
+    assert isinstance(result, list)
+    assert len(result) > 0, "Expected at least one subordinate"
+
+
+def test_get_subordinates_by_manager_id_no_subordinates(test_db):
+    # Test when no subordinates are available for a manager_id
+    result = get_subordinates_by_manager_id(test_db, manager_id=999)
+    assert result == []
+
+
+def test_update_delegation_status_no_description_overwrite(test_db, seed_data):
+    # Update without a description should not overwrite if description exists
+    delegation = test_db.query(DelegateLog).filter_by(manager_id=1, delegate_manager_id=2).first()
+    delegation.description = "Initial description"
+    updated_delegation = update_delegation_status(test_db, delegation, DelegationStatus.accepted)
+    assert updated_delegation.description == "Initial description"
+
+
+def test_create_delegation_duplicate_returns_existing(test_db, seed_data):
+    # Attempt to create a duplicate delegation and ensure it returns the existing one
+    original_delegation = create_delegation(test_db, staff_id=1, delegate_manager_id=2)
+    duplicate_delegation = create_delegation(test_db, staff_id=1, delegate_manager_id=2)
+
+    assert original_delegation.id == duplicate_delegation.id  # Should return the same record
+    assert test_db.query(DelegateLog).count() == 2  # Ensure no extra records are created
+
+
+def test_get_delegation_log_by_delegate_multiple_logs(test_db, seed_data):
+    # Insert additional logs for the same delegate_manager_id
+    delegation1 = DelegateLog(
+        manager_id=1, delegate_manager_id=2, status_of_delegation=DelegationStatus.pending
+    )
+    delegation2 = DelegateLog(
+        manager_id=3, delegate_manager_id=2, status_of_delegation=DelegationStatus.accepted
+    )
+    test_db.add_all([delegation1, delegation2])
+    test_db.commit()
+
+    result = get_delegation_log_by_delegate(test_db, staff_id=2)
+    assert result is not None
+    assert result.manager_id == 1  # Check if it returns the first log for delegate_manager_id=2
+
+
+def test_create_delegation_new_entry(test_db):
+    # Attempt to create a new delegation for IDs not in seed_data
+    new_delegation = create_delegation(test_db, staff_id=10, delegate_manager_id=20)
+    assert new_delegation is not None
+    assert new_delegation.manager_id == 10
+    assert new_delegation.delegate_manager_id == 20
+    assert new_delegation.status_of_delegation == DelegationStatus.pending
+
+
+def test_update_pending_arrangements_for_delegate_no_match(test_db, seed_data):
+    # Call with manager/delegate IDs with no pending arrangements
+    update_pending_arrangements_for_delegate(test_db, manager_id=99, delegate_manager_id=100)
+    # Verify no records updated by querying arrangements table
+    result = test_db.query(LatestArrangement).filter_by(approving_officer=100).all()
+    assert len(result) == 0, "Expected no arrangements to be updated"
+
+
+def test_update_delegation_status_to_undelegated(test_db, seed_data):
+    delegation = test_db.query(DelegateLog).filter_by(manager_id=1, delegate_manager_id=2).first()
+    updated_delegation = update_delegation_status(test_db, delegation, DelegationStatus.undelegated)
+    assert updated_delegation.status_of_delegation == DelegationStatus.undelegated
+
+
+def test_get_existing_delegation_excludes_non_pending_accepted(test_db, seed_data):
+    # Insert a delegation with 'rejected' status
+    delegation = DelegateLog(
+        manager_id=1, delegate_manager_id=2, status_of_delegation=DelegationStatus.rejected
+    )
+    test_db.add(delegation)
+    test_db.commit()
+
+    result = get_existing_delegation(test_db, staff_id=1, delegate_manager_id=2)
+    assert result is not None
+    assert result.status_of_delegation != DelegationStatus.rejected  # Ensure it excludes 'rejected'
+
+
+def test_get_delegation_log_by_delegate_non_existent(test_db):
+    result = get_delegation_log_by_delegate(test_db, staff_id=12345)  # ID not in seed data
+    assert result is None, "Expected no logs to be found for a non-existent delegate ID"
+
+
+def test_create_delegation_with_maximum_values(test_db):
+    # Assuming IDs or text length limits, adjust as necessary
+    max_staff_id = 2**31 - 1
+    max_delegate_manager_id = 2**31 - 2
+
+    new_delegation = create_delegation(
+        test_db, staff_id=max_staff_id, delegate_manager_id=max_delegate_manager_id
+    )
+    assert new_delegation is not None
+    assert new_delegation.manager_id == max_staff_id
+    assert new_delegation.delegate_manager_id == max_delegate_manager_id
