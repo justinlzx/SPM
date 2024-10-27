@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react';
+import { format } from 'date-fns';
 import { FormControl, Typography, TextField, FormHelperText, Select, MenuItem } from '@mui/material';
 import { ErrorMessage, useFormikContext } from 'formik';
 import DatePicker from 'react-datepicker';
@@ -50,7 +51,7 @@ export const Recurring: React.FC<RecurringProps> = ({ disabled }) => {
         <FormControl fullWidth sx={{ mb: 2 }}>
           <Typography variant="subtitle1">End Date</Typography>
           <TextField
-            value={values.endDate ? new Intl.DateTimeFormat('en-GB').format(values.endDate) : ''}
+            value={values.endDate ? format(values.endDate, 'dd/MM/yyyy') : ''}
             fullWidth
             disabled // Always disabled as it's a read-only field
           />
