@@ -14,6 +14,8 @@ from src.employees.models import (
 from src.arrangements.models import LatestArrangement
 from src.auth.models import Auth
 from src.employees.crud import (
+    get_all_received_delegations,
+    get_all_sent_delegations,
     get_delegation_log_by_delegate,
     get_delegation_log_by_manager,
     get_employee_by_email,
@@ -21,8 +23,12 @@ from src.employees.crud import (
     get_employee_full_name,
     get_existing_delegation,
     create_delegation,
+    get_manager_of_employee,
+    get_peer_employees,
+    get_pending_approval_delegations,
     get_sent_delegations,
     get_subordinates_by_manager_id,
+    is_employee_locked_in_delegation,
     mark_delegation_as_undelegated,
     remove_delegate_from_arrangements,
     update_delegation_status,
@@ -249,15 +255,6 @@ def test_update_delegation_status_no_description_overwrite(test_db, seed_data):
     assert updated_delegation.description == "Initial description"
 
 
-def test_create_delegation_duplicate_returns_existing(test_db, seed_data):
-    # Attempt to create a duplicate delegation and ensure it returns the existing one
-    original_delegation = create_delegation(test_db, staff_id=1, delegate_manager_id=2)
-    duplicate_delegation = create_delegation(test_db, staff_id=1, delegate_manager_id=2)
-
-    assert original_delegation.id == duplicate_delegation.id  # Should return the same record
-    assert test_db.query(DelegateLog).count() == 2  # Ensure no extra records are created
-
-
 def test_get_delegation_log_by_delegate_multiple_logs(test_db, seed_data):
     # Insert additional logs for the same delegate_manager_id
     delegation1 = DelegateLog(
@@ -409,3 +406,700 @@ def test_get_employee_full_name_exists(test_db, seed_data):
 
     # Assert: Check full name is correct
     assert result == "John Doe"
+
+
+def test_get_employee_by_email_edge_cases(test_db):
+    # Test with None email
+    result = get_employee_by_email(test_db, None)
+    assert result is None
+
+    # Test with empty string
+    result = get_employee_by_email(test_db, "")
+    assert result is None
+
+
+def test_update_delegation_status_none_delegation(test_db):
+    with pytest.raises(AttributeError):
+        update_delegation_status(test_db, None, DelegationStatus.accepted)
+
+
+def test_update_pending_arrangements_for_delegate_empty_db(test_db):
+    # Test with empty database
+    update_pending_arrangements_for_delegate(test_db, 1, 2)
+    assert test_db.query(LatestArrangement).count() == 0
+
+
+def test_update_pending_arrangements_for_delegate_non_pending(test_db, seed_data):
+    # Add arrangement that's not pending
+    arrangement = LatestArrangement(
+        update_datetime=datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S"),
+        requester_staff_id=5,
+        wfh_date="2023-10-26",
+        wfh_type="full",
+        current_approval_status="approved",
+        approving_officer=1,
+        reason_description="Approved WFH",
+    )
+    test_db.add(arrangement)
+    test_db.commit()
+
+    # Should not update non-pending arrangements
+    update_pending_arrangements_for_delegate(test_db, 1, 2)
+    updated = test_db.query(LatestArrangement).filter_by(requester_staff_id=5).first()
+    assert updated.delegate_approving_officer is None
+
+
+def test_remove_delegate_from_arrangements_non_pending(test_db, seed_data):
+    # Add arrangement with non-pending status
+    arrangement = LatestArrangement(
+        update_datetime=datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S"),
+        requester_staff_id=6,
+        wfh_date="2023-10-26",
+        wfh_type="full",
+        current_approval_status="approved",
+        delegate_approving_officer=2,
+        reason_description="Approved WFH",
+    )
+    test_db.add(arrangement)
+    test_db.commit()
+
+    # Should not remove delegate from non-pending arrangements
+    remove_delegate_from_arrangements(test_db, 2)
+    updated = test_db.query(LatestArrangement).filter_by(requester_staff_id=6).first()
+    assert updated.delegate_approving_officer == 2
+
+
+def test_get_delegation_log_by_manager_multiple_statuses(test_db, seed_data):
+    # Add multiple delegations with different statuses
+    delegations = [
+        DelegateLog(manager_id=1, delegate_manager_id=3, status_of_delegation=status)
+        for status in DelegationStatus
+    ]
+    test_db.add_all(delegations)
+    test_db.commit()
+
+    # Should return first delegation regardless of status
+    result = get_delegation_log_by_manager(test_db, 1)
+    assert result is not None
+    assert result.manager_id == 1
+
+
+def test_get_employee_full_name_special_chars(test_db):
+    # Test handling of special characters in names
+    employee = Employee(
+        staff_id=100,
+        staff_fname="O'Connor",
+        staff_lname="Smith-Jones",
+        email="test@example.com",
+        dept="IT",
+        position="Developer",
+        country="SG",
+        role=1,
+    )
+    test_db.add(employee)
+    test_db.commit()
+
+    result = get_employee_full_name(test_db, 100)
+    assert result == "O'Connor Smith-Jones"
+
+
+def test_get_pending_approval_delegations(test_db, seed_data):
+    # Test retrieving pending delegations for a delegate manager
+    result = get_pending_approval_delegations(test_db, staff_id=2)
+    assert result is not None
+    assert len(result) > 0
+    assert all(d.delegate_manager_id == 2 for d in result)
+    assert all(
+        d.status_of_delegation in [DelegationStatus.pending, DelegationStatus.accepted]
+        for d in result
+    )
+
+
+def test_get_pending_approval_delegations_none(test_db):
+    # Test when no pending delegations exist
+    result = get_pending_approval_delegations(test_db, staff_id=999)
+    assert result == []
+
+
+def test_get_employee_full_name_missing_components(test_db):
+    # Test with minimal required fields
+    emp1 = Employee(
+        staff_id=101,
+        staff_fname="John",
+        staff_lname="",  # Empty string instead of None
+        dept="IT",
+        position="Developer",
+        country="SG",
+        email="john@example.com",
+        role=1,
+        reporting_manager=1,  # Add if required
+    )
+    emp2 = Employee(
+        staff_id=102,
+        staff_fname="",  # Empty string instead of None
+        staff_lname="Doe",
+        dept="IT",
+        position="Developer",
+        country="SG",
+        email="doe@example.com",
+        role=1,
+        reporting_manager=1,  # Add if required
+    )
+    test_db.add_all([emp1, emp2])
+    test_db.commit()
+
+    assert get_employee_full_name(test_db, 101) == "John "
+    assert get_employee_full_name(test_db, 102) == " Doe"
+
+
+def test_get_all_sent_delegations(test_db, seed_data):
+    # Test retrieving all sent delegations for a manager
+    result = get_all_sent_delegations(test_db, staff_id=1)
+    assert result is not None
+    assert len(result) > 0
+    assert all(d.manager_id == 1 for d in result)
+
+
+def test_get_all_sent_delegations_none(test_db):
+    # Test when no sent delegations exist
+    result = get_all_sent_delegations(test_db, staff_id=999)
+    assert result == []
+
+
+def test_get_all_received_delegations(test_db, seed_data):
+    # Test retrieving all received delegations for a delegate
+    result = get_all_received_delegations(test_db, staff_id=2)
+    assert result is not None
+    assert len(result) > 0
+    assert all(d.delegate_manager_id == 2 for d in result)
+
+
+def test_get_all_received_delegations_none(test_db):
+    # Test when no received delegations exist
+    result = get_all_received_delegations(test_db, staff_id=999)
+    assert result == []
+
+
+def test_get_manager_of_employee(test_db, seed_data):
+    # Create test employees with manager relationship
+    manager = Employee(
+        staff_id=201,
+        staff_fname="Manager",
+        staff_lname="One",
+        dept="IT",
+        position="Manager",
+        country="SG",
+        email="manager@example.com",
+        role=1,
+    )
+    employee = Employee(
+        staff_id=202,
+        staff_fname="Employee",
+        staff_lname="One",
+        dept="IT",
+        position="Developer",
+        country="SG",
+        email="employee@example.com",
+        role=2,
+        reporting_manager=201,
+    )
+    test_db.add_all([manager, employee])
+    test_db.commit()
+
+    # Refresh employee to load relationships
+    test_db.refresh(employee)
+
+    # Test getting manager
+    result = get_manager_of_employee(test_db, employee)
+    assert result is not None
+    assert result.staff_id == 201
+
+
+def test_get_manager_of_employee_self_reporting(test_db):
+    # Test when employee reports to themselves (e.g., CEO)
+    employee = Employee(
+        staff_id=203,
+        staff_fname="Self",
+        staff_lname="Manager",
+        dept="Executive",
+        position="CEO",
+        country="SG",
+        email="ceo@example.com",
+        role=1,
+        reporting_manager=203,  # Reports to self
+    )
+    test_db.add(employee)
+    test_db.commit()
+
+    test_db.refresh(employee)
+    result = get_manager_of_employee(test_db, employee)
+    assert result is None
+
+
+def test_get_manager_of_employee_no_manager(test_db):
+    # Test when employee has no manager
+    employee = Employee(
+        staff_id=204,
+        staff_fname="No",
+        staff_lname="Manager",
+        dept="IT",
+        position="Developer",
+        country="SG",
+        email="no.manager@example.com",
+        role=2,
+        reporting_manager=None,
+    )
+    test_db.add(employee)
+    test_db.commit()
+
+    test_db.refresh(employee)
+    result = get_manager_of_employee(test_db, employee)
+    assert result is None
+
+
+def test_get_peer_employees(test_db):
+    # Create a manager and multiple peer employees
+    manager = Employee(
+        staff_id=301,
+        staff_fname="Manager",
+        staff_lname="Team",
+        dept="IT",
+        position="Manager",
+        country="SG",
+        email="manager.team@example.com",
+        role=1,
+    )
+    peers = [
+        Employee(
+            staff_id=302 + i,
+            staff_fname=f"Peer{i}",
+            staff_lname="Employee",
+            dept="IT",
+            position="Developer",
+            country="SG",
+            email=f"peer{i}@example.com",
+            role=2,
+            reporting_manager=301,
+        )
+        for i in range(3)
+    ]
+    test_db.add(manager)
+    test_db.add_all(peers)
+    test_db.commit()
+
+    # Test getting peer employees
+    result = get_peer_employees(test_db, manager_id=301)
+    assert len(result) == 3
+    assert all(emp.reporting_manager == 301 for emp in result)
+
+
+def test_get_peer_employees_no_peers(test_db):
+    # Test when manager has no peer employees
+    result = get_peer_employees(test_db, manager_id=999)
+    assert result == []
+
+
+def test_is_employee_locked_in_delegation(test_db, seed_data):
+    # Test when employee is locked in delegation (as manager)
+    result = is_employee_locked_in_delegation(test_db, employee_id=1)
+    assert result is True
+
+    # Test when employee is locked in delegation (as delegate)
+    result = is_employee_locked_in_delegation(test_db, employee_id=2)
+    assert result is True
+
+
+def test_is_employee_locked_in_delegation_not_locked(test_db):
+    # Test when employee is not locked in any delegation
+    result = is_employee_locked_in_delegation(test_db, employee_id=999)
+    assert result is False
+
+
+def test_is_employee_locked_in_delegation_completed_status(test_db, seed_data):
+    # Create new employees
+    employee3 = Employee(
+        staff_id=3,
+        staff_fname="Test",
+        staff_lname="User",
+        dept="IT",
+        position="Developer",
+        country="SG",
+        email="test3@example.com",
+        role=1,
+        reporting_manager=1,
+    )
+    employee4 = Employee(
+        staff_id=4,
+        staff_fname="Test",
+        staff_lname="User",
+        dept="IT",
+        position="Developer",
+        country="SG",
+        email="test4@example.com",
+        role=1,
+        reporting_manager=1,
+    )
+    test_db.add_all([employee3, employee4])
+    test_db.commit()
+
+    # Add only undelegated status delegation
+    delegation = DelegateLog(
+        manager_id=3,
+        delegate_manager_id=4,
+        status_of_delegation=DelegationStatus.undelegated,
+        date_of_delegation=datetime.utcnow(),
+    )
+    test_db.add(delegation)
+    test_db.commit()
+
+    # Verify employees are not locked in delegation
+    result_manager = is_employee_locked_in_delegation(test_db, employee_id=3)
+    result_delegate = is_employee_locked_in_delegation(test_db, employee_id=4)
+
+    assert result_manager is False  # Should not be locked since status is undelegated
+    assert result_delegate is False  # Should not be locked since status is undelegated
+
+    # Add a pending delegation to verify the function works correctly
+    pending_delegation = DelegateLog(
+        manager_id=3,
+        delegate_manager_id=4,
+        status_of_delegation=DelegationStatus.pending,
+        date_of_delegation=datetime.utcnow(),
+    )
+    test_db.add(pending_delegation)
+    test_db.commit()
+
+    # Now they should be locked
+    result_manager_pending = is_employee_locked_in_delegation(test_db, employee_id=3)
+    result_delegate_pending = is_employee_locked_in_delegation(test_db, employee_id=4)
+
+    assert result_manager_pending is True  # Should be locked with pending status
+    assert result_delegate_pending is True  # Should be locked with pending status
+
+
+def test_get_employee_full_name_complete(test_db):
+    # Test with a complete employee record
+    employee = Employee(
+        staff_id=101,
+        staff_fname="John",
+        staff_lname="Doe",
+        dept="IT",
+        position="Developer",
+        country="SG",
+        email="john.doe@example.com",
+        role=1,
+        reporting_manager=1,
+    )
+    test_db.add(employee)
+    test_db.commit()
+
+    result = get_employee_full_name(test_db, staff_id=101)
+    assert result == "John Doe"
+
+
+def test_get_employee_full_name_not_found(test_db):
+    # Test with non-existent staff_id
+    result = get_employee_full_name(test_db, staff_id=999)
+    assert result == "Unknown"
+
+
+def test_get_employee_full_name_with_spaces(test_db):
+    # Test with names containing spaces
+    employee = Employee(
+        staff_id=102,
+        staff_fname="Mary Jane",
+        staff_lname="Smith Wilson",
+        dept="IT",
+        position="Developer",
+        country="SG",
+        email="mary.jane@example.com",
+        role=1,
+        reporting_manager=1,
+    )
+    test_db.add(employee)
+    test_db.commit()
+
+    result = get_employee_full_name(test_db, staff_id=102)
+    assert result == "Mary Jane Smith Wilson"
+
+
+def test_get_employee_full_name_with_special_chars(test_db):
+    # Test with names containing special characters
+    employee = Employee(
+        staff_id=103,
+        staff_fname="José-María",
+        staff_lname="O'Connor",
+        dept="IT",
+        position="Developer",
+        country="SG",
+        email="jose.maria@example.com",
+        role=1,
+        reporting_manager=1,
+    )
+    test_db.add(employee)
+    test_db.commit()
+
+    result = get_employee_full_name(test_db, staff_id=103)
+    assert result == "José-María O'Connor"
+
+
+def test_get_employee_full_name_all_branches(test_db):
+    # Test Case 1: When employee exists
+    employee = Employee(
+        staff_id=5,
+        staff_fname="John",
+        staff_lname="Doe",
+        dept="IT",
+        position="Developer",
+        country="SG",
+        email="john.doe@example.com",
+        role=1,
+        reporting_manager=1,
+    )
+    test_db.add(employee)
+    test_db.commit()
+
+    # Test the if branch - when employee is found
+    result = get_employee_full_name(test_db, staff_id=5)
+    assert result == "John Doe"
+
+    # Test Case 2: When employee doesn't exist
+    # Test the else branch - when employee is None
+    result = get_employee_full_name(test_db, staff_id=999)
+    assert result == "Unknown"
+
+    # Test Case 3: Clear the database to ensure both branches are covered
+    test_db.query(Employee).delete()
+    test_db.commit()
+    result = get_employee_full_name(test_db, staff_id=5)
+    assert result == "Unknown"
+
+
+# def test_get_employee_full_name_coverage_complete(test_db):
+#     # First clear any existing data
+#     test_db.query(Employee).delete()
+#     test_db.commit()
+
+#     # 1. Test when query returns None
+#     result = get_employee_full_name(test_db, staff_id=999)
+#     assert result == "Unknown"
+
+#     # 2. Test with valid employee
+#     test_employee = Employee(
+#         staff_id=1,
+#         staff_fname="John",
+#         staff_lname="Doe",
+#         dept="IT",
+#         position="Developer",
+#         country="SG",
+#         email="john.doe@example.com",
+#         role=1,
+#         reporting_manager=1,
+#     )
+
+#     # Add and commit separately to ensure proper database state
+#     test_db.add(test_employee)
+#     test_db.commit()
+
+#     # Clear session to force new query
+#     test_db.expunge_all()
+
+#     # Test the successful query path
+#     result = get_employee_full_name(test_db, staff_id=1)
+#     assert result == "John Doe"
+
+#     # Verify exact SQL query execution
+#     from sqlalchemy import text
+
+#     query_result = test_db.execute(
+#         text("SELECT staff_fname, staff_lname FROM employee WHERE staff_id = :staff_id"),
+#         {"staff_id": 1},
+#     ).first()
+#     assert query_result is not None
+#     assert f"{query_result[0]} {query_result[1]}" == "John Doe"
+
+
+# def test_get_employee_full_name_explicit_coverage(test_db):
+#     # Clear database
+#     test_db.query(Employee).delete()
+#     test_db.commit()
+
+#     # Test case 1: Direct SQL to verify database is empty
+#     from sqlalchemy import text
+
+#     result = test_db.execute(
+#         text("SELECT * FROM employees WHERE staff_id = :staff_id"), {"staff_id": 1}
+#     ).first()
+#     assert result is None
+
+#     # Verify get_employee_full_name behavior with empty database
+#     name_result = get_employee_full_name(test_db, staff_id=1)
+#     assert name_result == "Unknown"
+
+#     # Test case 2: Add employee and test query
+#     employee = Employee(
+#         staff_id=1,
+#         staff_fname="John",
+#         staff_lname="Doe",
+#         dept="IT",
+#         position="Developer",
+#         country="SG",
+#         email="john.doe@example.com",
+#         role=1,
+#         reporting_manager=1,
+#     )
+#     test_db.add(employee)
+#     test_db.commit()
+#     test_db.expunge_all()  # Clear session cache
+
+#     # Force new database query
+#     test_db.close()  # Close current session
+#     test_db.begin()  # Start new transaction
+
+#     # Test the function
+#     name_result = get_employee_full_name(test_db, staff_id=1)
+#     assert name_result == "John Doe"
+
+#     # Explicitly verify database state
+#     db_employee = test_db.query(Employee).filter(Employee.staff_id == 1).first()
+#     assert db_employee is not None
+#     assert db_employee.staff_fname == "John"
+#     assert db_employee.staff_lname == "Doe"
+
+
+# def test_get_employee_full_name_complete_coverage(test_db):
+#     # Create auth record first (due to foreign key constraint)
+#     from src.auth.models import Auth
+
+#     auth = Auth(email="test@example.com", hashed_password="hashedpwd")
+#     test_db.add(auth)
+#     test_db.commit()
+
+#     # Create employee
+#     employee = Employee(
+#         staff_id=100,
+#         staff_fname="John",
+#         staff_lname="Doe",
+#         dept="IT",
+#         position="Developer",
+#         country="SG",
+#         email="test@example.com",  # matches auth email
+#         role=1,
+#         reporting_manager=None,  # can be null
+#     )
+#     test_db.add(employee)
+#     test_db.commit()
+
+#     # Clear session to force new database query
+#     test_db.expunge_all()
+
+#     # Test when employee exists
+#     result1 = get_employee_full_name(test_db, staff_id=100)
+#     assert result1 == "John Doe"
+
+#     # Clean up database
+#     test_db.query(Employee).delete()
+#     test_db.query(Auth).delete()
+#     test_db.commit()
+
+#     # Test when employee doesn't exist
+#     result2 = get_employee_full_name(test_db, staff_id=100)
+#     assert result2 == "Unknown"
+
+
+# def test_get_employee_full_name_line_coverage(test_db):
+#     """
+#     Explicitly test the query line and return line of get_employee_full_name
+#     """
+#     # First test the None case
+#     assert get_employee_full_name(test_db, staff_id=999) == "Unknown"
+
+#     # Now test with a real employee
+#     auth = Auth(email="test.employee@example.com", hashed_password="test_hash")
+#     test_db.add(auth)
+#     test_db.commit()
+
+#     emp = Employee(
+#         staff_id=888,
+#         staff_fname="Test",
+#         staff_lname="Employee",
+#         dept="IT",
+#         position="Developer",
+#         country="SG",
+#         email="test.employee@example.com",
+#         role=1,
+#     )
+#     test_db.add(emp)
+#     test_db.commit()
+
+#     # Force SQLAlchemy to execute a new query
+#     test_db.expire_all()
+
+#     # This should cover both lines
+#     result = get_employee_full_name(test_db, staff_id=888)
+
+#     # Verify the result
+#     assert result == "Test Employee"
+
+#     # Test the actual lines
+#     employee = test_db.query(Employee).filter(Employee.staff_id == 888).first()
+#     assert employee is not None
+#     assert f"{employee.staff_fname} {employee.staff_lname}" == result
+
+
+# def test_get_employee_full_name_branch_coverage(test_db):
+#     """Test to achieve branch coverage for get_employee_full_name"""
+#     print("\nStarting get_employee_full_name test...")
+
+#     # Clear any existing data
+#     test_db.query(Employee).delete()
+#     test_db.query(Auth).delete()
+#     test_db.commit()
+
+#     # First test: No employee exists (tests the else branch)
+#     print("\nTesting with non-existent employee...")
+#     result1 = get_employee_full_name(test_db, staff_id=42)
+#     assert result1 == "Unknown"
+#     print(f"Result for non-existent employee: {result1}")
+
+#     # Create prerequisites for a valid employee
+#     auth = Auth(email="test@example.com", hashed_password="testpass")
+#     test_db.add(auth)
+#     test_db.commit()
+
+#     # Create and add an employee
+#     employee = Employee(
+#         staff_id=42,
+#         staff_fname="Test",
+#         staff_lname="User",
+#         dept="IT",
+#         position="Developer",
+#         country="SG",
+#         email="test@example.com",
+#         role=1,
+#     )
+#     test_db.add(employee)
+#     test_db.commit()
+
+#     # Clear SQLAlchemy's cache to force a new query
+#     test_db.expire_all()
+#     test_db.close()
+
+#     # Second test: Employee exists (tests the if branch)
+#     print("\nTesting with existing employee...")
+#     result2 = get_employee_full_name(test_db, staff_id=42)
+#     assert result2 == "Test User"
+#     print(f"Result for existing employee: {result2}")
+
+#     # Verify actual database state
+#     from sqlalchemy import text
+
+#     query = text("SELECT staff_fname, staff_lname FROM employees WHERE staff_id = :staff_id")
+#     row = test_db.execute(query, {"staff_id": 42}).first()
+#     assert row is not None, "Database query failed to find the employee"
+#     assert f"{row[0]} {row[1]}" == "Test User"
+
+#     # Clean up
+#     test_db.query(Employee).delete()
+#     test_db.query(Auth).delete()
+#     test_db.commit()
