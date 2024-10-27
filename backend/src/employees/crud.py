@@ -349,25 +349,6 @@ def get_pending_approval_delegations(db: Session, staff_id: int):
     )
 
 
-def get_employee_full_name(db: Session, staff_id: int):
-    """
-    This function retrieves the full name of an employee from a database based on their staff ID.
-
-    :param db: Session object from SQLAlchemy, used to interact with the database
-    :type db: Session
-    :param staff_id: The `staff_id` parameter is an integer that represents the unique identifier of an
-    employee in the database. It is used to query the database and retrieve the employee's full name
-    based on this identifier
-    :type staff_id: int
-    :return: The function `get_employee_full_name` returns the full name of an employee with the given
-    `staff_id` from the database. If the employee is found, it returns the concatenation of the
-    employee's first name (`staff_fname`) and last name (`staff_lname`). If the employee is not found,
-    it returns "Unknown".
-    """
-    employee = db.query(Employee).filter(Employee.staff_id == staff_id).first()
-    return f"{employee.staff_fname} {employee.staff_lname}" if employee else "Unknown"
-
-
 def get_all_sent_delegations(db: Session, staff_id: int):
     """
     This function retrieves all delegation logs associated with a specific staff member from the
