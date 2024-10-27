@@ -10,3 +10,9 @@ class ArrangementActionNotAllowedException(Exception):
         if action == "approve" or action == "reject":
             self.message = f"Arrangement with ID {arrangement_id} is not in pending status"
         super().__init__(self.message)
+
+
+class S3UploadFailedException(Exception):
+    def __init__(self, message: str):
+        self.message = message
+        super().__init__(self.message)
