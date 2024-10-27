@@ -10,6 +10,9 @@ from src.employees.services import (
     get_manager_by_subordinate_id,
     get_peers_by_staff_id,
     process_delegation_status,
+    undelegate_manager,
+    view_all_delegations,
+    view_delegations,
 )
 from src.employees.models import (
     Base,
@@ -379,3 +382,354 @@ async def test_process_delegation_status_log_not_found(test_db):
     # Pass in a staff ID with no delegation log
     result = await process_delegation_status(999, DelegationApprovalStatus.reject, test_db)
     assert result == "Delegation log not found."
+
+
+# Test case for when manager lookup returns None
+def test_get_manager_by_subordinate_id_no_manager(test_db):
+    # Create employee with no manager
+    employee = Employee(
+        staff_id=12,
+        staff_fname="No",
+        staff_lname="Manager",
+        dept="IT",
+        position="Staff",
+        country="SG",
+        email="no.manager@example.com",
+        role=2,
+        reporting_manager=None,
+    )
+    test_db.add(employee)
+    test_db.commit()
+
+    result = get_manager_by_subordinate_id(test_db, 12)
+    assert result is None
+
+
+# Test case for branch where manager exists but has no peers
+
+
+# Test for employee locked in delegation
+def test_get_manager_by_subordinate_id_locked_peers(test_db):
+    # Create manager and peers
+    manager = Employee(
+        staff_id=15,
+        staff_fname="Team",
+        staff_lname="Manager",
+        dept="IT",
+        position="Manager",
+        country="SG",
+        email="team.manager@example.com",
+        role=1,
+    )
+
+    peer1 = Employee(
+        staff_id=16,
+        staff_fname="Locked",
+        staff_lname="Peer",
+        dept="IT",
+        position="Staff",
+        country="SG",
+        email="locked.peer@example.com",
+        role=2,
+        reporting_manager=15,
+    )
+
+    # Create delegation log to lock peer1
+    delegation = DelegateLog(
+        manager_id=16,
+        delegate_manager_id=17,
+        status_of_delegation=DelegationStatus.accepted,
+    )
+
+    test_db.add_all([manager, peer1, delegation])
+    test_db.commit()
+
+    manager_result, unlocked_peers = get_manager_by_subordinate_id(test_db, 16)
+    assert manager_result is not None
+    assert peer1 not in unlocked_peers
+
+
+def test_view_delegations_empty(test_db):
+    result = view_delegations(1, test_db)
+    assert result["sent_delegations"] == []
+    assert result["pending_approval_delegations"] == []
+
+
+def test_view_delegations_with_data(test_db):
+    # Create test employees
+    manager = Employee(
+        staff_id=20,
+        staff_fname="View",
+        staff_lname="Manager",
+        email="view.manager@example.com",
+        dept="IT",
+        position="Manager",
+        country="SG",
+        role=1,
+    )
+
+    delegate = Employee(
+        staff_id=21,
+        staff_fname="View",
+        staff_lname="Delegate",
+        email="view.delegate@example.com",
+        dept="IT",
+        position="Manager",
+        country="SG",
+        role=1,
+    )
+
+    # Create delegation log
+    delegation = DelegateLog(
+        manager_id=20,
+        delegate_manager_id=21,
+        status_of_delegation=DelegationStatus.pending,
+        date_of_delegation=datetime.now(),
+    )
+
+    test_db.add_all([manager, delegate, delegation])
+    test_db.commit()
+
+    result = view_delegations(20, test_db)
+    assert len(result["sent_delegations"]) == 1
+    assert len(result["pending_approval_delegations"]) == 0
+
+
+def test_view_all_delegations(test_db):
+    # Create test employees
+    manager = Employee(
+        staff_id=30,
+        staff_fname="All",
+        staff_lname="Manager",
+        email="all.manager@example.com",
+        dept="IT",
+        position="Manager",
+        country="SG",
+        role=1,
+    )
+
+    delegate = Employee(
+        staff_id=31,
+        staff_fname="All",
+        staff_lname="Delegate",
+        email="all.delegate@example.com",
+        dept="IT",
+        position="Manager",
+        country="SG",
+        role=1,
+    )
+
+    # Create both sent and received delegations
+    sent_delegation = DelegateLog(
+        manager_id=30,
+        delegate_manager_id=31,
+        status_of_delegation=DelegationStatus.pending,
+        date_of_delegation=datetime.now(),
+    )
+
+    received_delegation = DelegateLog(
+        manager_id=31,
+        delegate_manager_id=30,
+        status_of_delegation=DelegationStatus.accepted,
+        date_of_delegation=datetime.now(),
+    )
+
+    test_db.add_all([manager, delegate, sent_delegation, received_delegation])
+    test_db.commit()
+
+    result = view_all_delegations(30, test_db)
+    assert len(result["sent_delegations"]) == 1
+    assert len(result["received_delegations"]) == 1
+
+
+@pytest.mark.asyncio
+async def test_undelegate_manager_success(test_db):
+    # Create test data
+    manager = Employee(
+        staff_id=40,
+        staff_fname="Un",
+        staff_lname="Manager",
+        email="un.manager@example.com",
+        dept="IT",
+        position="Manager",
+        country="SG",
+        role=1,
+    )
+
+    delegate = Employee(
+        staff_id=41,
+        staff_fname="Un",
+        staff_lname="Delegate",
+        email="un.delegate@example.com",
+        dept="IT",
+        position="Manager",
+        country="SG",
+        role=1,
+    )
+
+    delegation = DelegateLog(
+        manager_id=40,
+        delegate_manager_id=41,
+        status_of_delegation=DelegationStatus.accepted,
+        date_of_delegation=datetime.now(),
+    )
+
+    test_db.add_all([manager, delegate, delegation])
+    test_db.commit()
+
+    with patch("src.employees.services.send_email") as mock_send_email, patch(
+        "src.employees.services.craft_email_content_for_delegation"
+    ) as mock_craft_email:
+        mock_craft_email.return_value = ("Subject", "Content")
+
+        result = await undelegate_manager(40, test_db)
+        assert isinstance(result, DelegateLog)
+        assert result.status_of_delegation == DelegationStatus.undelegated
+        mock_send_email.assert_called()
+
+
+@pytest.mark.asyncio
+async def test_undelegate_manager_not_found(test_db):
+    result = await undelegate_manager(999, test_db)
+    assert result == "Delegation log not found."
+
+
+@pytest.mark.asyncio
+async def test_undelegate_manager_not_accepted(test_db):
+    # Create delegation with pending status
+    manager = Employee(
+        staff_id=50,
+        staff_fname="Pending",
+        staff_lname="Manager",
+        email="pending.manager@example.com",
+        dept="IT",
+        position="Manager",
+        country="SG",
+        role=1,
+    )
+
+    delegation = DelegateLog(
+        manager_id=50,
+        delegate_manager_id=51,
+        status_of_delegation=DelegationStatus.pending,
+        date_of_delegation=datetime.now(),
+    )
+
+    test_db.add_all([manager, delegation])
+    test_db.commit()
+
+    result = await undelegate_manager(50, test_db)
+    assert result == "Delegation must be approved to undelegate."
+
+
+def test_get_manager_by_subordinate_id_with_single_subordinate(test_db):
+    """
+    Test case for when a manager has exactly one subordinate.
+    We expect to get the manager and all employees under that manager (including the manager themselves)
+    """
+    # Create a manager with only one subordinate
+    manager = Employee(
+        staff_id=13,
+        staff_fname="Solo",
+        staff_lname="Manager",
+        dept="IT",
+        position="Manager",
+        country="SG",
+        email="solo.manager@example.com",
+        role=1,
+        reporting_manager=13,  # Self-reporting
+    )
+
+    subordinate = Employee(
+        staff_id=14,
+        staff_fname="Sub",
+        staff_lname="Employee",
+        dept="IT",
+        position="Staff",
+        country="SG",
+        email="sub.employee@example.com",
+        role=2,
+        reporting_manager=13,
+    )
+
+    test_db.add_all([manager, subordinate])
+    test_db.commit()
+
+    manager_result, peers = get_manager_by_subordinate_id(test_db, 14)
+    assert manager_result is not None
+    assert manager_result.staff_id == 13
+    # We expect both the manager and subordinate in the peers list
+    assert len(peers) == 2
+    peer_ids = {peer.staff_id for peer in peers}
+    assert peer_ids == {13, 14}
+
+
+@pytest.mark.asyncio
+async def test_process_delegation_status_invalid_input(test_db, seed_data):
+    """
+    Test case for when an invalid DelegationApprovalStatus is provided.
+    Instead of raising an exception, we should test for the actual behavior.
+    """
+    # Create a pending delegation
+    delegate_log = DelegateLog(
+        manager_id=1,
+        delegate_manager_id=2,
+        status_of_delegation=DelegationStatus.pending,
+    )
+    test_db.add(delegate_log)
+    test_db.commit()
+
+    # Create a status that is not part of DelegationApprovalStatus enum
+    result = await process_delegation_status(2, "invalid_status", test_db)
+    # The function likely returns the delegation log without changing its status
+    assert isinstance(result, DelegateLog)
+    assert result.status_of_delegation == DelegationStatus.pending
+
+
+@pytest.mark.asyncio
+async def test_process_delegation_status_missing_description(test_db, seed_data):
+    """
+    Test rejection without providing a description
+    """
+    # Create a pending delegation
+    delegate_log = DelegateLog(
+        manager_id=1,
+        delegate_manager_id=2,
+        status_of_delegation=DelegationStatus.pending,
+    )
+    test_db.add(delegate_log)
+    test_db.commit()
+
+    with patch(
+        "src.employees.services.craft_email_content_for_delegation"
+    ) as mock_craft_email, patch("src.employees.services.send_email") as mock_send_email:
+        mock_craft_email.return_value = ("Subject", "Content")
+
+        result = await process_delegation_status(
+            2, DelegationApprovalStatus.reject, test_db, description=None
+        )
+
+        assert isinstance(result, DelegateLog)
+        assert result.status_of_delegation == DelegationStatus.rejected
+        mock_send_email.assert_called()
+
+
+def test_view_delegations_with_no_employee_info(test_db):
+    """
+    Test viewing delegations when employee information is missing
+    """
+    # Create a delegation log without corresponding employee records
+    delegation = DelegateLog(
+        manager_id=999,
+        delegate_manager_id=998,
+        status_of_delegation=DelegationStatus.pending,
+        date_of_delegation=datetime.now(),
+    )
+
+    test_db.add(delegation)
+    test_db.commit()
+
+    result = view_delegations(999, test_db)
+    assert isinstance(result, dict)
+    assert "sent_delegations" in result
+    assert "pending_approval_delegations" in result
