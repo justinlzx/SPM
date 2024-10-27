@@ -31,6 +31,7 @@ from src.arrangements.services import (
 )
 from src.employees import exceptions as employee_exceptions
 from src.employees.schemas import EmployeeBase
+from src.tests.test_utils import mock_db_session  # noqa: F401, E261
 
 client = TestClient(app)
 
@@ -168,36 +169,34 @@ async def mock_get(*args, **kwargs):
 
 
 class TestGetArrangementById:
-    @patch("src.arrangements.services.get_arrangement_by_id")
     @patch("src.utils.convert_model_to_pydantic_schema")
-    @pytest.mark.parametrize(
-        "mock_arrangement_data",
-        [
-            (mock_arrangement_data),
-        ],
-    )
-    def test_success(
-        self, mock_get_arrangement, mock_convert, mock_db_session, mock_arrangement_data
-    ):
-        # Create mock arrangement
-        mock_arrangement = MagicMock(spec=arrangement_models.LatestArrangement)
-        mock_arrangement.__dict__.update(mock_arrangement_data)
+    @patch("src.arrangements.crud.get_arrangement_by_id")
+    def test_success(self, mock_get_arrangement, mock_convert, mock_db_session):
+        # Arrange
+        mock_get_arrangement.return_value = MagicMock(spec=arrangement_models.LatestArrangement)
+        mock_convert.return_value = [MagicMock(spec=ArrangementResponse)]
 
-        # Set up the mock return values
-        mock_get_arrangement.return_value = mock_arrangement
-        expected_response = ArrangementResponse(**mock_arrangement_data)
-        mock_convert.return_value = expected_response
-
+        # Act
         result = get_arrangement_by_id(mock_db_session, arrangement_id=1)
 
+        # Assert
         # Verify the mocks were called correctly
         mock_get_arrangement.assert_called_once_with(mock_db_session, 1)
-        mock_convert.assert_called_once_with(mock_arrangement, ArrangementResponse)
-
+        mock_convert.assert_called_once_with(
+            [mock_get_arrangement.return_value], ArrangementResponse
+        )
         # Verify the result matches expected
-        assert result == expected_response
+        assert result == mock_convert.return_value[0]
 
-    def test_invalid_id(self, mock_db_session):
+        # # Set up the mock return values
+        # mock_get_arrangement.return_value = mock_arrangement
+        # expected_response = ArrangementResponse(**mock_arrangement_data)
+        # mock_convert.return_value = expected_response
+
+    @patch("src.arrangements.crud.get_arrangement_by_id")
+    def test_not_found_failure(self, mock_get_arrangement, mock_db_session):
+        mock_get_arrangement.return_value = None
+
         with pytest.raises(arrangement_exceptions.ArrangementNotFoundException):
             get_arrangement_by_id(mock_db_session, arrangement_id=1)
 
