@@ -61,12 +61,13 @@ def get_arrangement_by_id(db: Session, arrangement_id: int) -> ArrangementRespon
 
 
 def get_personal_arrangements(
-    db: Session, staff_id: int, current_approval_status: List[str]
+    db: Session, staff_id: int, current_approval_status: Optional[List[str]] = None
 ) -> List[ArrangementResponse]:
 
     arrangements: List[models.LatestArrangement] = crud.get_arrangements(
-        db, [staff_id], current_approval_status
+        db, staff_id, current_approval_status
     )
+
     arrangements_schema: List[ArrangementResponse] = utils.convert_model_to_pydantic_schema(
         arrangements, ArrangementResponse
     )
@@ -92,8 +93,9 @@ def get_subordinates_arrangements(
         employee_services.get_subordinates_by_manager_id(db, manager_id)
     )
 
-    if not employees_under_manager:
-        raise employee_exceptions.ManagerWithIDNotFoundException(manager_id)
+    # REVIEW: No need to raise an exception assuming get_subordinates_by_manager_id will raise an exception if no employees are found
+    # if not employees_under_manager:
+    #     raise employee_exceptions.ManagerWithIDNotFoundException(manager_id)
 
     employees_under_manager_ids = [employee.staff_id for employee in employees_under_manager]
 
@@ -113,29 +115,22 @@ def get_subordinates_arrangements(
     )
 
     # get presigned url for each supporting document in each arrangement
-    arrangements_schema = [
-        ArrangementCreateResponse(
-            **{
-                **arrangement.model_dump(),
-                "supporting_doc_1": (
-                    create_presigned_url(arrangement.supporting_doc_1)
-                    if arrangement.supporting_doc_1
-                    else None
-                ),
-                "supporting_doc_2": (
-                    create_presigned_url(arrangement.supporting_doc_2)
-                    if arrangement.supporting_doc_2
-                    else None
-                ),
-                "supporting_doc_3": (
-                    create_presigned_url(arrangement.supporting_doc_3)
-                    if arrangement.supporting_doc_3
-                    else None
-                ),
-            }
+    for arrangement in arrangements_schema:
+        arrangement.supporting_doc_1 = (
+            create_presigned_url(arrangement.supporting_doc_1)
+            if arrangement.supporting_doc_1
+            else None
         )
-        for arrangement in arrangements_schema
-    ]
+        arrangement.supporting_doc_2 = (
+            create_presigned_url(arrangement.supporting_doc_2)
+            if arrangement.supporting_doc_2
+            else None
+        )
+        arrangement.supporting_doc_3 = (
+            create_presigned_url(arrangement.supporting_doc_3)
+            if arrangement.supporting_doc_3
+            else None
+        )
     arrangements_by_date: List[ManagerPendingRequests] = group_arrangements_by_date(
         arrangements_schema
     )

@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import List
 from unittest.mock import MagicMock, patch
 
 import botocore
@@ -202,66 +203,136 @@ class TestGetArrangementById:
 
 
 class TestGetPersonalArrangements:
-    @patch("src.arrangements.services.get_arrangements")
     @patch("src.utils.convert_model_to_pydantic_schema")
-    def test_success(self, mock_get_arrangements, mock_convert, mock_db_session):
-        mock_arrangements = [MagicMock(spec=arrangement_models.LatestArrangement)]
-        result = get_personal_arrangements(mock_db_session, staff_id=1, current_approval_status=[])
-        assert result == mock_arrangements
+    @patch("src.arrangements.crud.get_arrangements")
+    @pytest.mark.parametrize(
+        "current_approval_status",
+        [
+            None,
+            ["pending approval"],
+            ["approved"],
+            ["rejected"],
+            ["withdrawn"],
+            ["cancelled"],
+        ],
+    )
+    def test_success(
+        self, mock_get_arrangements, mock_convert, current_approval_status, mock_db_session
+    ):
+        mock_get_arrangements.return_value = [MagicMock(spec=arrangement_models.LatestArrangement)]
+        mock_convert.return_value = [MagicMock(spec=ArrangementResponse)]
 
-    # TODO: Should this raise an error
-    @patch("src.arrangements.services.get_arrangements", return_value=[])
-    def test_empty(self, mock_get_arrangements, mock_db_session):
+        result = get_personal_arrangements(
+            mock_db_session, staff_id=1, current_approval_status=current_approval_status
+        )
+
+        mock_get_arrangements.assert_called_once_with(mock_db_session, 1, current_approval_status)
+        mock_convert.assert_called_once_with(
+            mock_get_arrangements.return_value, ArrangementResponse
+        )
+        assert result == mock_convert.return_value
+
+    @patch("src.arrangements.crud.get_arrangements")
+    def test_empty_success(self, mock_get_arrangements, mock_db_session):
+        mock_get_arrangements.return_value = []
+
         result = get_personal_arrangements(mock_db_session, staff_id=1, current_approval_status=[])
+
         assert result == []
 
 
 class TestGetSubordinatesArrangements:
     # TODO: Combine with success with filters
-    @patch("src.employees.crud.get_subordinates_by_manager_id")
-    @patch("src.arrangements.crud.get_arrangements")
+    @patch("src.arrangements.services.group_arrangements_by_date")
     @patch("src.arrangements.services.create_presigned_url")
+    @patch("src.utils.convert_model_to_pydantic_schema")
+    @patch("src.arrangements.crud.get_arrangements")
+    @patch("src.employees.services.get_subordinates_by_manager_id")
+    @pytest.mark.parametrize(
+        "supporting_docs",
+        [
+            ["/140002/2024-10-12T14:30:00/test_file_1.pdf", None, None],
+            [
+                "/140002/2024-10-12T14:30:00/test_file_1.pdf",
+                "/140002/2024-10-12T14:30:00/test_file_2.pdf",
+                "/1/2024-10-12T14:30:00/test_file_3.pdf",
+            ],
+        ],
+    )
     def test_success_no_filters(
         self,
         mock_get_subordinates,
         mock_get_arrangements,
+        mock_convert,
         mock_create_presigned_url,
+        mock_group_arrangements,
+        supporting_docs,
         mock_db_session,
-        mock_s3_client,
         mock_presigned_url,
-        mock_arrangement_data,
         mock_employee,
     ):
-        mock_arrangement = ArrangementCreateResponse(**mock_arrangement_data)
-        mock_arrangements = [mock_arrangement]
-
+        # Arrange
         mock_get_subordinates.return_value = [mock_employee]
-        mock_get_arrangements.return_value = mock_arrangements
-        mock_create_presigned_url.side_effect = mock_presigned_url
 
+        mock_get_arrangements.return_value = [MagicMock(spec=arrangement_models.LatestArrangement)]
+
+        mock_arrangement = MagicMock(spec=ArrangementCreateResponse)
+        mock_arrangement.configure_mock(
+            supporting_doc_1=supporting_docs[0],
+            supporting_doc_2=supporting_docs[1],
+            supporting_doc_3=supporting_docs[2],
+        )
+
+        mock_convert.return_value = [mock_arrangement]
+        mock_create_presigned_url.side_effect = [mock_presigned_url(doc) for doc in supporting_docs]
+        mock_group_arrangements.return_value = [MagicMock(spec=ManagerPendingRequests)]
+
+        manager_id = 1
+        items_per_page = 10
+        page_num = 1
+        # mock_arrangement = ArrangementCreateResponse(**mock_arrangement_data)
+        # mock_arrangements = [mock_arrangement]
+
+        # mock_get_subordinates.return_value = [mock_employee]
+        # mock_get_arrangements.return_value = mock_arrangements
+        # mock_create_presigned_url.side_effect = mock_presigned_url
+
+        # Act
         result = get_subordinates_arrangements(
             mock_db_session,
-            manager_id=1,
-            items_per_page=10,
-            page_num=1,
+            manager_id=manager_id,
+            items_per_page=items_per_page,
+            page_num=page_num,
         )
 
+        # Assert
         assert isinstance(result, tuple)
         assert len(result) == 2  # return data and pagination metadata
-        assert isinstance(result[0][0], ManagerPendingRequests)
-        assert result[0][0].pending_arrangements[0].staff_id == 123
-        assert len(result[0][0].pending_arrangements) == 1
-        assert (
-            result[0][0].pending_arrangements[0].supporting_doc_1
-            == "https://example.com/presigned-url/test_file_1.pdf"
+
+        arrangements, pagination_meta = result
+
+        assert isinstance(arrangements, List)
+        assert isinstance(arrangements[0], ManagerPendingRequests)
+        assert isinstance(pagination_meta, dict)
+        assert "total_count" in pagination_meta
+        assert "page_size" in pagination_meta
+        assert "page_num" in pagination_meta
+        assert "total_pages" in pagination_meta
+        assert pagination_meta["total_count"] == len(mock_group_arrangements.return_value)
+        assert pagination_meta["page_size"] == items_per_page
+        assert pagination_meta["page_num"] == page_num
+        assert pagination_meta["total_pages"] == 1
+
+    @patch("src.employees.crud.get_subordinates_by_manager_id")
+    def test_no_subordinates(self, mock_get_subordinates, mock_db_session):
+        manager_id = 1
+
+        mock_get_subordinates.side_effect = employee_exceptions.ManagerWithIDNotFoundException(
+            manager_id=manager_id
         )
 
-    @patch("src.employees.crud.get_subordinates_by_manager_id", return_value=[])
-    def test_no_subordinates(self, mock_get_subordinates, mock_db_session):
         with pytest.raises(employee_exceptions.ManagerWithIDNotFoundException):
-            get_subordinates_arrangements(mock_db_session, manager_id=1, current_approval_status=[])
-
-    # REVIEW 25/10/24 (Nat): Test for the employee not a manager should happen in the employee services
+            get_subordinates_arrangements(mock_db_session, manager_id=manager_id)
 
 
 class TestGetTeamArrangements:

@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import List, Literal, Optional
+from typing import List, Literal, Optional, Union
 
 # from pydantic import ValidationError
 from sqlalchemy import func, or_
@@ -18,7 +18,7 @@ def get_arrangement_by_id(db: Session, arrangement_id: int) -> Optional[models.L
 
 def get_arrangements(
     db: Session,
-    staff_ids: List[int],
+    staff_ids: Union[int, List[int]],
     current_approval_status: Optional[
         List[
             Literal[
@@ -53,10 +53,15 @@ def get_arrangements(
     Returns:
         List of arrangements matching the criteria
     """
+
     logger.info("Fetching requests by staff ID with filters")
     query = db.query(models.LatestArrangement)
     query = query.join(Employee, Employee.staff_id == models.LatestArrangement.requester_staff_id)
-    query = query.filter(models.LatestArrangement.requester_staff_id.in_(staff_ids))
+
+    if isinstance(staff_ids, int):
+        query = query.filter(models.LatestArrangement.requester_staff_id == staff_ids)
+    else:
+        query = query.filter(models.LatestArrangement.requester_staff_id.in_(staff_ids))
 
     if name:
         query = query.filter(
