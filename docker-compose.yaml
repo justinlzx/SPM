@@ -15,7 +15,7 @@ services:
     volumes:
       - ./frontend:/app
       - /app/node_modules
-    platform: linux/amd64
+    platform: linux/arm64
 
   backend:
     image: justinlzx01/spm:backend
@@ -28,5 +28,5 @@ services:
       TOKEN_SECRET: "hehe"
     volumes:
       - ./backend:/app
-    platform: linux/amd64
+    platform: linux/arm64
 
