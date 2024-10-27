@@ -17,6 +17,7 @@ from . import schemas, services
 from .exceptions import (
     ArrangementActionNotAllowedException,
     ArrangementNotFoundException,
+    S3UploadFailedException,
 )
 from .schemas import ArrangementCreate, ArrangementResponse, ArrangementUpdate
 
@@ -219,61 +220,66 @@ async def create_wfh_request(
     supporting_docs: Annotated[Optional[list[UploadFile]], File(upload_multiple=True)] = [],
     db: Session = Depends(get_db),
 ):
+    try:
+        update_datetime = datetime.now()
+        current_approval_status = "pending approval"
 
-    update_datetime = datetime.now()
-    current_approval_status = "pending approval"
-
-    # Step 1: Fetch the usual approving officer (Reporting Manager) for the requester
-    employee_record = (
-        db.query(employee_models.Employee)
-        .filter(employee_models.Employee.staff_id == requester_staff_id)
-        .first()
-    )
-
-    if not employee_record:
-        raise HTTPException(status_code=404, detail="Employee record not found")
-
-    approving_officer = employee_record.reporting_manager
-
-    # Step 2: Check if the approving officer is on leave and fetch the delegate
-    delegate_approving_officer = None
-    delegation_log = (
-        db.query(employee_models.DelegateLog)
-        .filter(employee_models.DelegateLog.manager_id == approving_officer)
-        .filter(
-            employee_models.DelegateLog.status_of_delegation.in_(
-                [
-                    employee_models.DelegationStatus.pending,
-                    employee_models.DelegationStatus.accepted,
-                ]
-            )
+        # Step 1: Fetch the usual approving officer (Reporting Manager) for the requester
+        employee_record = (
+            db.query(employee_models.Employee)
+            .filter(employee_models.Employee.staff_id == requester_staff_id)
+            .first()
         )
-        .first()
-    )
 
-    if delegation_log:
-        delegate_approving_officer = delegation_log.delegate_manager_id
+        if not employee_record:
+            raise HTTPException(status_code=404, detail="Employee record not found")
 
-    # Step 3: Create the WFH request data structure
-    wfh_request: ArrangementCreate = {
-        "reason_description": reason_description,
-        "is_recurring": is_recurring,
-        "recurring_end_date": recurring_end_date,
-        "recurring_frequency_number": recurring_frequency_number,
-        "recurring_frequency_unit": recurring_frequency_unit,
-        "recurring_occurrences": recurring_occurrences,
-        "batch_id": batch_id,
-        "update_datetime": update_datetime,
-        "current_approval_status": current_approval_status,
-        "wfh_date": wfh_date,
-        "wfh_type": wfh_type,
-        "staff_id": requester_staff_id,
-        "approving_officer": approving_officer,
-        "delegate_approving_officer": delegate_approving_officer,  # New field added here
-    }
+        approving_officer = employee_record.reporting_manager
 
-    # Step 4: Call the service to create the arrangements
-    return await services.create_arrangements_from_request(db, wfh_request, supporting_docs)
+        # Step 2: Check if the approving officer is on leave and fetch the delegate
+        delegate_approving_officer = None
+        delegation_log = (
+            db.query(employee_models.DelegateLog)
+            .filter(employee_models.DelegateLog.manager_id == approving_officer)
+            .filter(
+                employee_models.DelegateLog.status_of_delegation.in_(
+                    [
+                        employee_models.DelegationStatus.pending,
+                        employee_models.DelegationStatus.accepted,
+                    ]
+                )
+            )
+            .first()
+        )
+
+        if delegation_log:
+            delegate_approving_officer = delegation_log.delegate_manager_id
+
+        # Step 3: Create the WFH request data structure
+        wfh_request: ArrangementCreate = {
+            "reason_description": reason_description,
+            "is_recurring": is_recurring,
+            "recurring_end_date": recurring_end_date,
+            "recurring_frequency_number": recurring_frequency_number,
+            "recurring_frequency_unit": recurring_frequency_unit,
+            "recurring_occurrences": recurring_occurrences,
+            "batch_id": batch_id,
+            "update_datetime": update_datetime,
+            "current_approval_status": current_approval_status,
+            "wfh_date": wfh_date,
+            "wfh_type": wfh_type,
+            "staff_id": requester_staff_id,
+            "approving_officer": approving_officer,
+            "delegate_approving_officer": delegate_approving_officer,  # New field added here
+        }
+
+        # Step 4: Call the service to create the arrangements
+        arrangements = await services.create_arrangements_from_request(
+            db, wfh_request, supporting_docs
+        )
+        return arrangements
+    except S3UploadFailedException as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.put("/{arrangement_id}/status", summary="Update the status of a WFH request")
