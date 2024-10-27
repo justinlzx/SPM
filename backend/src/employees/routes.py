@@ -14,7 +14,7 @@ from ..employees import services as employee_services
 from ..employees.models import DelegateLog, DelegationStatus, Employee
 from ..employees.schemas import DelegateLogCreate, EmployeeBase, EmployeePeerResponse
 from ..notifications.email_notifications import craft_email_content_for_delegation
-from . import exceptions, models, schemas, services
+from . import exceptions, services
 
 router = APIRouter()
 
@@ -25,39 +25,9 @@ def get_reporting_manager_and_peer_employees(staff_id: int, db: Session = Depend
 
     If the employee reports to themselves, the manager will be set to None.
     """
-
-    # Auto Approve for Jack Sim and Skip manager check
-    if staff_id == 130002:
-        return EmployeePeerResponse(manager_id=None, peer_employees=[])
-
     try:
-        # Get manager
-        manager: models.Employee = services.get_manager_by_subordinate_id(db, staff_id)
-
-        if not manager:
-            return EmployeePeerResponse(manager_id=None, peer_employees=[])
-
-        # Get list of peer employees
-        peer_employees: List[models.Employee] = services.get_subordinates_by_manager_id(
-            db, manager.staff_id
-        )
-
-        # Filter out the manager from the peer employees
-        peer_employees = [peer for peer in peer_employees if peer.staff_id != manager.staff_id]
-
-        # Convert peer employees to Pydantic model
-        peer_employees_pydantic: List[schemas.EmployeeBase] = (
-            utils.convert_model_to_pydantic_schema(peer_employees, schemas.EmployeeBase)
-        )
-
-        print(f"Num results: {len(peer_employees)}")
-
-        # Format to response model
-        response = schemas.EmployeePeerResponse(
-            manager_id=manager.staff_id, peer_employees=peer_employees_pydantic
-        )
-
-        return response
+        response = services.get_reporting_manager_and_peer_employees(db, staff_id)
+        return response  # Pydantic model (EmployeePeerResponse) will handle serialization
     except exceptions.EmployeeNotFoundException as e:
         raise HTTPException(status_code=404, detail=str(e))
     except exceptions.ManagerNotFoundException as e:

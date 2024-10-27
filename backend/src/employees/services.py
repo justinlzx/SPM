@@ -2,7 +2,39 @@ from typing import List
 
 from sqlalchemy.orm import Session
 
-from . import crud, exceptions, models
+from ..utils import convert_model_to_pydantic_schema
+from . import crud, exceptions, models, schemas
+
+
+def get_reporting_manager_and_peer_employees(db: Session, staff_id: int):
+    # Auto Approve for Jack Sim and Skip manager check
+    if staff_id == 130002:
+        return schemas.EmployeePeerResponse(manager_id=None, peer_employees=[])
+
+    manager: models.Employee = get_manager_by_subordinate_id(db, staff_id)
+
+    if not manager:
+        return schemas.EmployeePeerResponse(manager_id=None, peer_employees=[])
+
+    # Get list of peer employees
+    peer_employees: List[models.Employee] = get_subordinates_by_manager_id(db, manager.staff_id)
+
+    # Filter out the manager from the peer employees
+    peer_employees = [peer for peer in peer_employees if peer.staff_id != manager.staff_id]
+
+    # Convert peer employees to Pydantic model
+    peer_employees_pydantic: List[schemas.EmployeeBase] = convert_model_to_pydantic_schema(
+        peer_employees, schemas.EmployeeBase
+    )
+
+    print(f"Num results: {len(peer_employees)}")
+
+    # Format to response model
+    response = schemas.EmployeePeerResponse(
+        manager_id=manager.staff_id, peer_employees=peer_employees_pydantic
+    )
+
+    return response
 
 
 def get_manager_by_subordinate_id(db: Session, staff_id: int) -> models.Employee:
@@ -43,7 +75,7 @@ def get_subordinates_by_manager_id(db: Session, manager_id: int) -> List[models.
     employees: List[models.Employee] = crud.get_subordinates_by_manager_id(db, manager_id)
 
     if not employees:
-        raise exceptions.ManagerNotFoundException()
+        raise exceptions.ManagerWithIDNotFoundException(manager_id=manager_id)
 
     return employees
 
