@@ -162,33 +162,6 @@ def mock_arrangement_log():
     )
 
 
-class TestCreateArrangementLog:
-    def test_success(self, mock_db_session, mock_arrangement, mock_arrangement_log):
-        mock_db_session.add = MagicMock()
-        mock_db_session.flush = MagicMock()
-        mock_db_session.refresh = MagicMock()
-
-        crud.fit_model_to_model = MagicMock(return_value=mock_arrangement_log)
-
-        result = crud.create_arrangement_log(mock_db_session, mock_arrangement, "create")
-
-        assert result == mock_arrangement_log
-        mock_db_session.add.assert_called_once_with(mock_arrangement_log)
-        mock_db_session.flush.assert_called_once()
-
-    def test_sqlalchemy_error(self, mock_db_session, mock_arrangement):
-        # Simulate SQLAlchemyError being raised on db.add()
-        mock_db_session.add.side_effect = SQLAlchemyError("Database Error")
-        mock_db_session.commit.side_effect = SQLAlchemyError("Database Error")
-
-        # Assert that the SQLAlchemyError is raised
-        with pytest.raises(SQLAlchemyError):
-            crud.create_arrangement_log(mock_db_session, mock_arrangement, "create")
-
-        # Ensure rollback was called after the exception
-        mock_db_session.rollback.assert_called_once()
-
-
 class TestGetArrangementById:
     def test_success(self, mock_db_session, mock_arrangement):
         mock_db_session.query().get.return_value = mock_arrangement
@@ -266,7 +239,7 @@ class TestGetArrangements:
         result = crud.get_arrangements(
             mock_db_session,
             staff_ids=[12345, 130002],
-            current_approval_status=["pending", "approved"],
+            current_approval_status=["pending approval", "approved"],
         )
 
         # Assertions on the final result
@@ -294,6 +267,33 @@ class TestGetArrangements:
         mock_query.join.assert_called_once()
         mock_query.filter.assert_called_once()  # No filter call expected
         assert result == mock_arrangements  # Ensure the result matches
+
+
+class TestCreateArrangementLog:
+    def test_success(self, mock_db_session, mock_arrangement, mock_arrangement_log):
+        mock_db_session.add = MagicMock()
+        mock_db_session.flush = MagicMock()
+        mock_db_session.refresh = MagicMock()
+
+        crud.fit_model_to_model = MagicMock(return_value=mock_arrangement_log)
+
+        result = crud.create_arrangement_log(mock_db_session, mock_arrangement, "create")
+
+        assert result == mock_arrangement_log
+        mock_db_session.add.assert_called_once_with(mock_arrangement_log)
+        mock_db_session.flush.assert_called_once()
+
+    def test_sqlalchemy_error(self, mock_db_session, mock_arrangement):
+        # Simulate SQLAlchemyError being raised on db.add()
+        mock_db_session.add.side_effect = SQLAlchemyError("Database Error")
+        mock_db_session.commit.side_effect = SQLAlchemyError("Database Error")
+
+        # Assert that the SQLAlchemyError is raised
+        with pytest.raises(SQLAlchemyError):
+            crud.create_arrangement_log(mock_db_session, mock_arrangement, "create")
+
+        # Ensure rollback was called after the exception
+        mock_db_session.rollback.assert_called_once()
 
 
 class TestCreateArrangements:
@@ -439,8 +439,7 @@ class TestCreateRecurringRequest:
         # Arrange with correct values
         request = schemas.ArrangementCreate(
             requester_staff_id=12345,
-            wfh_date="2024-10-11",
-            start_date="2024-10-11",
+            wfh_date=datetime.strptime("2024-10-11", "%Y-%m-%d").date(),
             wfh_type="full",  # Valid value
             approving_officer=123,  # Valid value (integer)
             reason_description="Working from home due to personal reasons.",
@@ -465,8 +464,9 @@ class TestCreateRecurringRequest:
         # Arrange with required fields populated correctly
         request = schemas.ArrangementCreate(
             requester_staff_id=12345,
-            wfh_date="2024-10-11",  # Should be a string, which is correct
-            start_date="2024-10-11",  # Should be a string, which is correct
+            wfh_date=datetime.strptime(
+                "2024-10-11", "%Y-%m-%d"
+            ).date(),  # Should be a string, which is correct
             wfh_type="full",  # Valid value: 'full', 'am', or 'pm'
             approving_officer=123,  # Should be an integer (staff ID), not a string
             reason_description="Working from home due to personal reasons.",  # Valid string
@@ -489,8 +489,7 @@ class TestCreateRecurringRequest:
 
         request = schemas.ArrangementCreate(
             requester_staff_id=12345,
-            wfh_date="2024-10-11",
-            start_date="2024-10-11",
+            wfh_date=datetime.strptime("2024-10-11", "%Y-%m-%d").date(),
             wfh_type="full",
             approving_officer=123,
             reason_description="Recurring WFH request",

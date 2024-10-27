@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import List, Literal
+from typing import List, Literal, Optional
 
 # from pydantic import ValidationError
 from sqlalchemy import func, or_
@@ -12,29 +12,31 @@ from . import models, schemas
 from .utils import fit_model_to_model, fit_schema_to_model
 
 
-def get_arrangement_by_id(db: Session, arrangement_id: int) -> models.LatestArrangement:
+def get_arrangement_by_id(db: Session, arrangement_id: int) -> Optional[models.LatestArrangement]:
     return db.query(models.LatestArrangement).get(arrangement_id)
 
 
 def get_arrangements(
     db: Session,
     staff_ids: List[int],
-    current_approval_status: List[
-        Literal[
-            "pending approval",
-            "pending withdrawal",
-            "approved",
-            "rejected",
-            "cancelled",
-            "withdrawn",
+    current_approval_status: Optional[
+        List[
+            Literal[
+                "pending approval",
+                "pending withdrawal",
+                "approved",
+                "rejected",
+                "cancelled",
+                "withdrawn",
+            ]
         ]
     ] = None,
-    name: str = None,
-    wfh_type: Literal["full", "am", "pm"] = None,
-    start_date: datetime = None,
-    end_date: datetime = None,
-    reason: str = None,
-) -> List[schemas.ArrangementCreateResponse]:
+    name: Optional[str] = None,
+    wfh_type: Optional[Literal["full", "am", "pm"]] = None,
+    start_date: Optional[datetime] = None,
+    end_date: Optional[datetime] = None,
+    reason: Optional[str] = None,
+) -> List[models.LatestArrangement]:
     """Fetch the WFH requests for a list of staff IDs with optional filters.
 
     Args:
@@ -140,7 +142,9 @@ def create_arrangements(
             db.add(arrangement)
             db.flush()
             created_arrangements.append(arrangement)
-            created_arrangement_log: models.ArrangementLog = create_arrangement_log(db, arrangement, "create")
+            created_arrangement_log: models.ArrangementLog = create_arrangement_log(
+                db, arrangement, "create"
+            )
             arrangement.latest_log_id = created_arrangement_log.log_id
             db.add(created_arrangement_log)
             db.flush()
