@@ -40,7 +40,7 @@ def get_manager_by_subordinate_id(db: Session, staff_id: int) -> models.Employee
     # Retrieve the employee
     emp = get_employee_by_id(db, staff_id)
     if not emp:
-        raise exceptions.EmployeeNotFoundException("Employee not found.")
+        raise exceptions.EmployeeNotFoundException()
 
     # Get the manager of the employee
     manager = crud.get_manager_of_employee(db, emp)
@@ -86,52 +86,6 @@ def get_employee_by_id(db: Session, staff_id: int) -> models.Employee:
     return employee
 
 
-def get_employee_by_email(db: Session, email: str) -> models.Employee:
-    """
-    This function retrieves an employee from the database based on their email address and raises an
-    exception if the employee is not found.
-
-    :param db: The `db` parameter is of type `Session`, which is likely referring to a database session
-    object used for database operations. It is used to interact with the database to retrieve employee
-    information based on the provided email
-    :type db: Session
-    :param email: The `email` parameter is a string that represents the email address of the employee
-    you are trying to retrieve from the database
-    :type email: str
-    :return: The function `get_employee_by_email` is returning an instance of the `Employee` model.
-    """
-    employee: models.Employee = crud.get_employee_by_email(db, email)
-
-    if not employee:
-        raise exceptions.EmployeeNotFoundException()
-
-    return employee
-
-
-def get_subordinates_by_manager_id(db: Session, manager_id: int) -> List[models.Employee]:
-    """
-    This function retrieves a list of employees who are subordinates of a specified manager ID from the
-    database.
-
-    :param db: Session object representing the database session
-    :type db: Session
-    :param manager_id: The `manager_id` parameter is an integer value that represents the unique
-    identifier of a manager in the database. This function retrieves a list of employees who are
-    subordinates of the specified manager based on the provided `manager_id`. If no employees are found
-    for the given manager_id, it raises a `
-    :type manager_id: int
-    :return: a list of Employee objects who are subordinates of the manager with the specified
-    manager_id. If no employees are found for the given manager_id, it raises a
-    ManagerNotFoundException.
-    """
-    employees: List[models.Employee] = crud.get_subordinates_by_manager_id(db, manager_id)
-
-    if not employees:
-        raise exceptions.ManagerNotFoundException()
-
-    return employees
-
-
 def get_peers_by_staff_id(db: Session, staff_id: int) -> List[models.Employee]:
     """
     The function `get_peers_by_staff_id` retrieves a list of employees who report to the same manager as
@@ -149,7 +103,7 @@ def get_peers_by_staff_id(db: Session, staff_id: int) -> List[models.Employee]:
     specified `staff_id`.
     """
     employee: models.Employee = get_employee_by_id(db, staff_id)
-    peer_employees: List[models.Employee] = get_subordinates_by_manager_id(
+    peer_employees: List[models.Employee] = crud.get_subordinates_by_manager_id(
         db, employee.reporting_manager
     )
 
