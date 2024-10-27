@@ -142,7 +142,7 @@ export const CreateWfhRequestPage: React.FC = () => {
       is_recurring: scheduleType === "recurring",
       current_approval_status: "pending approval",
       ...(scheduleType === "recurring" && {
-        recurring_end_date: end.toISOString().split("T")[0],
+        recurring_end_date: end,
         recurring_frequency_number: values.repeatInterval,
         recurring_frequency_unit: values.repeatIntervalUnit,
         recurring_occurrences: values.occurrences,

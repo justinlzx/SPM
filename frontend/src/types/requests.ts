@@ -21,8 +21,8 @@ export type TWFHRequest = {
     dept: string;
     position: string;
   };
-  wfh_date: Date;
-  end_date?: Date;
+  wfh_date: string;
+  end_date?: string;
   wfh_type: string;
   arrangement_id: number;
   reason_description: string;
