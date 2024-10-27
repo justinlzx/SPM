@@ -37,12 +37,20 @@ from src.employees.crud import (
 from datetime import datetime
 
 # Configure the in-memory SQLite database
+# The code is setting up a SQLite in-memory database engine using SQLAlchemy in Python. It
+# creates an engine object that connects to an in-memory SQLite database and then creates a session
+# maker object `SessionLocal` that binds to this engine for creating database sessions. This setup is
+# commonly used for testing or temporary data storage that does not need to persist beyond the current
+# session.
 engine = create_engine("sqlite:///:memory:")
 SessionLocal = sessionmaker(bind=engine)
 
 
 @pytest.fixture(autouse=True)  # Automatically use this for each test
 def test_db():
+    """
+    This Python fixture sets up and tears down a database session for each test.
+    """
     # Create all tables in the database
     Base.metadata.create_all(bind=engine)
     db = SessionLocal()
@@ -54,6 +62,14 @@ def test_db():
 
 @pytest.fixture
 def seed_data(test_db):
+    """
+    The `seed_data` fixture sets up sample data in various tables for testing purposes.
+
+    :param test_db: The `test_db` parameter in the `seed_data` fixture is likely an instance of a
+    database session object that allows interaction with the database. It is used to insert sample data
+    into various tables like Auth, Employee, DelegateLog, and LatestArrangement as shown in the fixture
+    code snippet
+    """
     # Insert sample data into Auth, Employee, DelegateLog, and LatestArrangement tables
     auth_record = Auth(email="john.doe@example.com", hashed_password="hashed_password_example")
 
@@ -107,6 +123,18 @@ def seed_data(test_db):
 
 
 def test_get_existing_delegation_found(test_db, seed_data):
+    """
+    The function `test_get_existing_delegation_found` tests the retrieval of a delegation record based
+    on manager and delegate.
+
+    :param test_db: The `test_db` parameter likely refers to a test database object that is used for
+    testing purposes. It is commonly used in unit tests to interact with a database without affecting
+    the production data
+    :param seed_data: Seed data is a set of predefined data used to populate a database or data
+    structure before running tests. It helps ensure that the tests are consistent and predictable by
+    providing a known starting state for the test environment. In the context of the test case you
+    provided, `seed_data` likely contains pre-existing delegation
+    """
     # Test retrieval of a delegation record based on manager and delegate
     result = get_existing_delegation(test_db, staff_id=1, delegate_manager_id=2)
     assert result is not None
@@ -115,12 +143,31 @@ def test_get_existing_delegation_found(test_db, seed_data):
 
 
 def test_get_existing_delegation_not_found(test_db, seed_data):
+    """
+    The function tests for the scenario where an existing delegation is not found in the database.
+
+    :param test_db: The `test_db` parameter likely refers to a test database object that is used for
+    testing purposes. It is commonly used in unit tests to simulate database interactions without
+    affecting the actual production database
+    :param seed_data: Seed data typically refers to a set of pre-defined data used to populate a
+    database when testing an application. In this context, `seed_data` likely contains a collection of
+    data representing various delegations, such as staff members and their assigned managers
+    """
     # Use IDs that do not exist in seed_data to ensure no matching delegation is found
     result = get_existing_delegation(test_db, staff_id=99, delegate_manager_id=100)
     assert result is None
 
 
 def test_create_delegation(test_db):
+    """
+    The function `test_create_delegation` tests the creation of a new delegation record with specific
+    attributes.
+
+    :param test_db: The `test_db` parameter in the `test_create_delegation` function likely refers to a
+    test database object that is used for testing purposes. This database object may contain test data
+    and is used to simulate interactions with a database without affecting the actual production
+    database
+    """
     # Test creation of a new delegation record
     new_delegation = create_delegation(test_db, staff_id=1, delegate_manager_id=2)
     assert new_delegation is not None
@@ -130,6 +177,18 @@ def test_create_delegation(test_db):
 
 
 def test_get_existing_delegation_different_status(test_db, seed_data):
+    """
+    The function tests the retrieval of existing delegations with specific statuses from a database.
+
+    :param test_db: `test_db` is likely an instance of a test database that is used for running unit
+    tests. It is commonly used in testing frameworks to isolate test data and ensure that tests do not
+    affect the actual production database. This helps in maintaining the integrity of the production
+    data while allowing developers to test their code
+    :param seed_data: Seed data typically refers to pre-defined data that is used to populate a database
+    for testing purposes. It helps ensure that the database has consistent data for testing scenarios.
+    In the context of the test function provided, `seed_data` could be a collection of predefined
+    `DelegateLog` instances with various statuses such
+    """
     # Ensure it does not retrieve delegations with statuses other than pending or accepted
     new_delegation = DelegateLog(
         manager_id=1, delegate_manager_id=2, status_of_delegation=DelegationStatus.rejected
@@ -142,6 +201,19 @@ def test_get_existing_delegation_different_status(test_db, seed_data):
 
 
 def test_get_existing_delegation_multiple_matches(test_db, seed_data):
+    """
+    The function `test_get_existing_delegation_multiple_matches` inserts multiple pending/accepted
+    delegations and checks if the first one is returned.
+
+    :param test_db: The `test_db` parameter is likely an instance of a database connection or session
+    that is used for testing purposes. It allows you to interact with a database in a controlled
+    environment for testing functions or methods that involve database operations. In this case, it is
+    being used to add a new delegation record (`
+    :param seed_data: Seed data typically refers to pre-defined data that is used to populate a database
+    before running tests. It helps ensure that the database is in a known state before executing test
+    cases. In the context of the test case provided, `seed_data` could include initial delegations that
+    are already present in the database
+    """
     # Insert multiple pending/accepted delegations and check if the first one is returned
     delegation3 = DelegateLog(
         manager_id=1, delegate_manager_id=2, status_of_delegation=DelegationStatus.pending
@@ -154,6 +226,18 @@ def test_get_existing_delegation_multiple_matches(test_db, seed_data):
 
 
 def test_create_delegation_duplicate(test_db, seed_data):
+    """
+    The function `test_create_delegation_duplicate` tests the prevention of creating duplicate
+    delegations in a database.
+
+    :param test_db: The `test_db` parameter likely refers to a database connection or object
+    specifically set up for testing purposes. It allows you to interact with a test database that can be
+    easily reset or manipulated during testing without affecting the production database
+    :param seed_data: Seed data is a set of predefined data used to populate a database before running
+    tests. It helps ensure that the database is in a consistent state before each test is executed. This
+    can include sample records, relationships, or any other data necessary for the tests to run
+    successfully. In the context of the test
+    """
     # Attempt to create a duplicate delegation
     original_delegation = create_delegation(test_db, staff_id=1, delegate_manager_id=2)
     duplicate_delegation = create_delegation(test_db, staff_id=1, delegate_manager_id=2)
@@ -162,11 +246,31 @@ def test_create_delegation_duplicate(test_db, seed_data):
 
 
 def test_get_delegation_log_by_delegate_no_match(test_db):
+    """
+    The function `test_get_delegation_log_by_delegate_no_match` tests the behavior of
+    `get_delegation_log_by_delegate` when there is no match for the specified staff ID.
+
+    :param test_db: The test case `test_get_delegation_log_by_delegate_no_match` is checking the
+    function `get_delegation_log_by_delegate` with a specific staff_id that does not exist in the
+    database. The expected result is that the function should return `None` in this case
+    """
     result = get_delegation_log_by_delegate(test_db, staff_id=999)
     assert result is None
 
 
 def test_get_delegation_log_by_delegate_multiple(test_db, seed_data):
+    """
+    The function `test_get_delegation_log_by_delegate_multiple` adds a new delegation to a delegate
+    manager and then retrieves delegation logs by delegate.
+
+    :param test_db: The `test_db` parameter is likely an instance of a database connection or session
+    that is used for testing purposes. It allows you to interact with a test database in your unit tests
+    without affecting the actual production database
+    :param seed_data: Seed data is a set of predefined data used to populate a database with known
+    values before running tests. It helps ensure that the database is in a consistent state before
+    executing test cases. This can include sample records, relationships, and other data necessary for
+    testing the functionality of the application
+    """
     # Add another delegation to the same delegate manager
     delegation = DelegateLog(
         manager_id=3, delegate_manager_id=2, status_of_delegation=DelegationStatus.pending
@@ -180,6 +284,17 @@ def test_get_delegation_log_by_delegate_multiple(test_db, seed_data):
 
 
 def test_update_delegation_status_with_description(test_db, seed_data):
+    """
+    The function updates a delegation's status and adds a description in a test database.
+
+    :param test_db: The `test_db` parameter is likely an instance of a database connection or session
+    that is used for testing purposes. It allows you to interact with a test database in your unit tests
+    without affecting the production database
+    :param seed_data: Seed data typically refers to pre-defined data that is used to populate a database
+    for testing purposes. It helps ensure that the database has consistent data for testing scenarios.
+    In the context of the provided test function, `seed_data` could be a set of initial data used to
+    populate the database before running the
+    """
     # Update a delegation's status and add a description
     delegation = test_db.query(DelegateLog).filter_by(manager_id=1, delegate_manager_id=2).first()
     updated_delegation = update_delegation_status(
@@ -191,6 +306,16 @@ def test_update_delegation_status_with_description(test_db, seed_data):
 
 
 def test_update_delegation_status_without_description(test_db, seed_data):
+    """
+    The function tests updating delegation status without a description in a database.
+
+    :param test_db: The `test_db` parameter is likely an instance of a database connection or session
+    that is used for testing purposes. It allows you to interact with a database in a controlled
+    environment for testing functions or methods that involve database operations
+    :param seed_data: It seems like you were about to provide some information about the `seed_data`
+    parameter but it is missing in your message. Could you please provide the details or let me know if
+    you need any assistance with something else?
+    """
     delegation = test_db.query(DelegateLog).filter_by(manager_id=1, delegate_manager_id=2).first()
     updated_delegation = update_delegation_status(test_db, delegation, DelegationStatus.rejected)
 
