@@ -53,10 +53,11 @@ async def lifespan(app: FastAPI):
 app = FastAPI(lifespan=lifespan)
 
 origins = [
+    "http://localhost",
     "http://localhost:3000",
     "http://localhost:3001",
     "http://localhost:3002",
-    "http://frontend:3000",  # for docker networking
+    "http://frontend",  # for docker networking
 ]
 
 # Add CORS middleware to allow requests from the frontend
