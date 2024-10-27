@@ -251,7 +251,7 @@ const EmployeeRow = ({ request, handleRequestAction }: TEmployeeRow) => {
                     return (
                       <TableRow key={arrangement_id}>
                         <TableCell>{idx + 1}</TableCell>
-                        <TableCell>{wfh_date.toISOString()}</TableCell>
+                        <TableCell>{wfh_date}</TableCell>
                         <TableCell>{wfh_type?.toUpperCase()}</TableCell>
                         <TableCell sx={{ maxWidth: 200 }}>
                           <Tooltip title="Scroll to view more">

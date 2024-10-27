@@ -96,7 +96,7 @@ return (
             requests.map((request) => (
             <TableRow key={request.arrangement_id}>
                 <TableCell>{request.staff_id}</TableCell>
-                <TableCell>{request.wfh_date.toISOString()}</TableCell>
+                <TableCell>{request.wfh_date}</TableCell>
                 {/* <TableCell>{request.end_date || "-"}</TableCell> */}
                 <TableCell>{request.wfh_type?.toUpperCase() || "-"}</TableCell>
                 <TableCell sx={{ maxWidth: "200px", wordBreak: "break-word", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
