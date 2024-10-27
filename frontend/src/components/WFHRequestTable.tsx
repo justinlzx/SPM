@@ -53,7 +53,6 @@ const getChipColor = (status: ApprovalStatus | undefined): ChipProps["color"] =>
   }
 };
 
-// Reusable Confirmation Modal Component
 const ConfirmationModal: React.FC<{
   open: boolean;
   action: "cancel" | "withdraw" | undefined;
@@ -112,10 +111,7 @@ export const WFHRequestTable: React.FC<TWFHRequestTableProps> = ({ requests, han
       const formData = new FormData();
       formData.append("action", "withdraw");  
       formData.append("requester_staff_id", request.staff_id.toString());  
-      formData.append("wfh_date", request.wfh_date);  
-      formData.append("wfh_type", request.wfh_type.toLowerCase());  
       formData.append("reason_description", reason || "");  
-      formData.append("current_approval_status", "pending withdrawal"); 
       formData.append("approving_officer", approvingOfficer || "");  
   
       await axios.put(`${BACKEND_URL}/arrangements/${selectedArrangementId}/status`, formData);
@@ -144,10 +140,7 @@ export const WFHRequestTable: React.FC<TWFHRequestTableProps> = ({ requests, han
   
       const formData = new FormData();
       formData.append("action", "cancel");  
-      formData.append("requester_staff_id", request.staff_id.toString());  
-      formData.append("wfh_date", request.wfh_date); 
-      formData.append("wfh_type", request.wfh_type.toLowerCase());  
-      formData.append("approval_status", "cancel");  
+      formData.append("requester_staff_id", request.staff_id.toString());   
       formData.append("approving_officer", approvingOfficer || "");  
   
       await axios.put(`${BACKEND_URL}/arrangements/${selectedArrangementId}/status`, formData);
@@ -187,8 +180,8 @@ export const WFHRequestTable: React.FC<TWFHRequestTableProps> = ({ requests, han
               requests.map((request) => (
                 <TableRow key={request.arrangement_id}>
                   <TableCell>{request.staff_id}</TableCell>
-                  <TableCell>{request.wfh_date}</TableCell>
-                  <TableCell>{request.end_date || "-"}</TableCell>
+                  <TableCell>{request.wfh_date.toISOString()}</TableCell>
+                  <TableCell>{request.end_date ? request.end_date.toISOString() : "-"}</TableCell>
                   <TableCell>{request.wfh_type?.toUpperCase() || "-"}</TableCell>
                   <TableCell sx={{ maxWidth: "200px", wordBreak: "break-word", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", padding: 1 }}>
                     {request.reason_description || "-"}

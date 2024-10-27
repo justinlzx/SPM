@@ -279,6 +279,11 @@ async def create_arrangements_from_request(
     # TODO: Email notification error
 
 
+from datetime import datetime, timedelta, date
+from typing import List
+from dateutil.relativedelta import relativedelta
+
+
 def expand_recurring_arrangement(
     request: CreateArrangementRequest,
 ) -> List[CreateArrangementRequest]:
