@@ -56,6 +56,7 @@ origins = [
     "http://localhost:3000",
     "http://localhost:3001",
     "http://localhost:3002",
+    "http://frontend:3000",  # for docker networking
 ]
 
 # Add CORS middleware to allow requests from the frontend
