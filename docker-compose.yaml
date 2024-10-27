@@ -2,6 +2,7 @@ version: '3.8'
 
 services:
   frontend:
+    image: justinlzx01/spm:frontend
     build:
       context: ./frontend
       dockerfile: Dockerfile
@@ -14,8 +15,10 @@ services:
     volumes:
       - ./frontend:/app
       - /app/node_modules
+    platform: linux/amd64
 
   backend:
+    image: justinlzx01/spm:backend
     build:
       context: ./backend
       dockerfile: Dockerfile
@@ -25,3 +28,5 @@ services:
       TOKEN_SECRET: "hehe"
     volumes:
       - ./backend:/app
+    platform: linux/amd64
+
