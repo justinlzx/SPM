@@ -227,7 +227,7 @@ class RecurringRequest(Base):
         doc="Staff ID of the employee who made the request",
     )
     wfh_type = Column(
-        Date,
+        String(length=50),
         nullable=False,
         doc="Type of WFH arrangement: full day, AM, or PM",
     )

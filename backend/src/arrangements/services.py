@@ -371,33 +371,51 @@ async def create_arrangements_from_request(
         )
 
 
+from datetime import datetime, timedelta, date
+from typing import List
+from dateutil.relativedelta import relativedelta
+
 def expand_recurring_arrangement(
     wfh_request: ArrangementCreateWithFile, batch_id: int
 ) -> List[ArrangementCreateWithFile]:
     arrangements_list: List[ArrangementCreateWithFile] = []
+
+    # Ensure wfh_date is a string before passing to strptime
+    if isinstance(wfh_request.wfh_date, datetime):
+        wfh_date_str = wfh_request.wfh_date.strftime("%Y-%m-%d")
+    elif isinstance(wfh_request.wfh_date, date):
+        wfh_date_str = wfh_request.wfh_date.strftime("%Y-%m-%d")
+    elif isinstance(wfh_request.wfh_date, str):
+        wfh_date_str = wfh_request.wfh_date
+    else:
+        raise TypeError(f"wfh_date must be either a string, datetime.date, or datetime.datetime object, not {type(wfh_request.wfh_date)}")
+
+    print(f"Processed wfh_date type and value before strptime: {type(wfh_date_str)}, {wfh_date_str}")
 
     for i in range(wfh_request.recurring_occurrences):
         arrangement_copy: ArrangementCreateWithFile = wfh_request.model_copy()
 
         if wfh_request.recurring_frequency_unit == "week":
             arrangement_copy.wfh_date = (
-                datetime.strptime(wfh_request.wfh_date, "%Y-%m-%d")
+                datetime.strptime(wfh_date_str, "%Y-%m-%d")
                 + timedelta(weeks=i * wfh_request.recurring_frequency_number)
             ).strftime("%Y-%m-%d")
         elif wfh_request.recurring_frequency_unit == "month":
             arrangement_copy.wfh_date = (
-                datetime.strptime(wfh_request.wfh_date, "%Y-%m-%d")
+                datetime.strptime(wfh_date_str, "%Y-%m-%d")
                 + relativedelta(months=i * wfh_request.recurring_frequency_number)
             ).strftime("%Y-%m-%d")
 
         arrangement_copy.batch_id = batch_id
-        # Auto Approve Jack Sim's requests
+
+        # Auto-approve for specific staff ID
         if arrangement_copy.staff_id == 130002:
             arrangement_copy.current_approval_status = "approved"
 
         arrangements_list.append(arrangement_copy)
 
     return arrangements_list
+
 
 
 # def expand_recurring_arrangement(

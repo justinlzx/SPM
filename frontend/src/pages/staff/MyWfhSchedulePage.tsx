@@ -4,7 +4,7 @@ import { Container, Typography, Snackbar, Alert } from "@mui/material";
 import { UserContext } from "../../context/UserContextProvider";
 import { WFHRequestTable } from "../../components/WFHRequestTable";
 import { ApprovalStatus } from "../../types/ApprovalStatus"; 
-import { TWFHRequest } from "../team/PendingRequests";
+import { TWFHRequest } from "../../types/requests";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 
@@ -35,12 +35,12 @@ export const MyWfhSchedulePage: React.FC = () => {
           })
         );
 
-        console.log(allRequests);  // Check the transformed requests
+        console.log(allRequests);  
         setRequests(allRequests);
       } catch (error) {
         console.error("Failed to fetch WFH requests:", error);
         setSnackbarMessage("Failed to fetch WFH requests. Please try again later.");
-        setSnackbarSeverity("error");  // Set severity to error
+        setSnackbarSeverity("error"); 
         setOpenSnackbar(true);
       }
     };
