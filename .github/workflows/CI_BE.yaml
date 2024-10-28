@@ -34,7 +34,7 @@ jobs:
 
     - name: Run pre-commit hooks
       run: pre-commit run --all-files
-      working-directory: SPM
+      working-directory: .
 
     - name: Run tests with coverage
       run: |
