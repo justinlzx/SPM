@@ -38,8 +38,8 @@ jobs:
 
     - name: Run tests with coverage
       run: |
-        pip install pytest coverage  # Ensure coverage is installed
-        python -m coverage run --branch --omit="*/test_*.py,*/__init__.py,*/health.py,*/database.py,*/base.py,*/app.py" -m pytest src -vvv
+        pip install pytest pytest-cov  # Ensure pytest-cov is installed
+        pytest --cov=backend/src --cov-report=term-missing --cov-report=html backend/src/tests
         python -m coverage report  # To show coverage report in the logs
       working-directory: backend
 
