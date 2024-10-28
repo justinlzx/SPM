@@ -1,7 +1,7 @@
 from datetime import date, datetime
 from typing import List, Literal, Optional
 
-from pydantic import BaseModel, Field, ValidationInfo, field_validator
+from pydantic import BaseModel, Field, ValidationInfo, field_serializer, field_validator
 from pydantic.json_schema import SkipJsonSchema
 
 from ..base import BaseSchema
@@ -9,6 +9,10 @@ from ..employees import schemas as employee_schemas
 
 
 class ArrangementBase(BaseSchema):
+    @field_serializer("wfh_date")
+    def serialize_wfh_date(self, wfh_date: date) -> str:
+        return wfh_date.isoformat()
+
     staff_id: int = Field(
         ...,
         title="Staff ID of the employee who made the request",
@@ -38,13 +42,18 @@ class ArrangementCreate(ArrangementBase):
                 )
         return v
 
+    @field_serializer("update_datetime")
+    def serialize_update_datetime(self, update_datetime: datetime) -> str:
+        return update_datetime.isoformat()
+
     approving_officer: Optional[int] = Field(..., title="Staff ID of the approving officer")
-    delegate_approving_officer: Optional[int] = Field(None, title="Staff ID of the delegate officer")
+    delegate_approving_officer: Optional[int] = Field(
+        default=None, title="Staff ID of the delegate officer"
+    )
     reason_description: str = Field(..., title="Reason for requesting the WFH")
 
     update_datetime: SkipJsonSchema[datetime] = Field(
         default_factory=datetime.now,
-        exclude=True,
         title="Datetime that the request was created",
     )
     current_approval_status: Literal[
@@ -70,7 +79,7 @@ class ArrangementCreate(ArrangementBase):
     def model_dump(self, **kwargs):
         data = super().model_dump(**kwargs)
         # Include excluded fields in the dump
-        data["update_datetime"] = self.update_datetime
+        # data["update_datetime"] = self.update_datetime
         data["current_approval_status"] = self.current_approval_status
         return data
 
@@ -92,7 +101,7 @@ class ArrangementCreateWithFile(ArrangementCreate):
     def model_dump(self, **kwargs):
         data = super().model_dump(**kwargs)
         # Include excluded fields in the dump
-        data["update_datetime"] = self.update_datetime
+        # data["update_datetime"] = self.update_datetime
         data["current_approval_status"] = self.current_approval_status
         return data
 
@@ -176,7 +185,6 @@ class ArrangementQueryParams(BaseModel):
 
 class ArrangementResponse(ArrangementCreateWithFile):
     arrangement_id: int = Field(..., title="Unique identifier for the arrangement")
-    update_datetime: datetime = Field(exclude=True, title="Datetime of the arrangement update")
     approval_status: Literal[
         "pending approval", "pending withdrawal", "approved", "rejected", "withdrawn", "cancelled"
     ] = Field(..., title="Current status of the WFH request", alias="current_approval_status")

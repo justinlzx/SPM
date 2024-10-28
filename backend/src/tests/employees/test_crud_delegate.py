@@ -1,19 +1,12 @@
-from unittest.mock import patch
-from sqlalchemy.exc import IntegrityError
+from datetime import datetime
+
 import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from src.employees.models import (
-    Base,
-    DelegateLog,
-    DelegationStatus,
-    DelegateLog,
-    DelegationStatus,
-    Employee,
-)
 from src.arrangements.models import LatestArrangement
 from src.auth.models import Auth
 from src.employees.crud import (
+    create_delegation,
     get_all_received_delegations,
     get_all_sent_delegations,
     get_delegation_log_by_delegate,
@@ -22,7 +15,6 @@ from src.employees.crud import (
     get_employee_by_staff_id,
     get_employee_full_name,
     get_existing_delegation,
-    create_delegation,
     get_manager_of_employee,
     get_peer_employees,
     get_pending_approval_delegations,
@@ -34,7 +26,7 @@ from src.employees.crud import (
     update_delegation_status,
     update_pending_arrangements_for_delegate,
 )
-from datetime import datetime
+from src.employees.models import Base, DelegateLog, DelegationStatus, Employee
 
 # Configure the in-memory SQLite database
 # The code is setting up a SQLite in-memory database engine using SQLAlchemy in Python. It
@@ -48,9 +40,7 @@ SessionLocal = sessionmaker(bind=engine)
 
 @pytest.fixture(autouse=True)  # Automatically use this for each test
 def test_db():
-    """
-    This Python fixture sets up and tears down a database session for each test.
-    """
+    """This Python fixture sets up and tears down a database session for each test."""
     # Create all tables in the database
     Base.metadata.create_all(bind=engine)
     db = SessionLocal()
@@ -143,8 +133,8 @@ def test_get_existing_delegation_found(test_db, seed_data):
 
 
 def test_get_existing_delegation_not_found(test_db, seed_data):
-    """
-    The function tests for the scenario where an existing delegation is not found in the database.
+    """The function tests for the scenario where an existing delegation is not found in the
+    database.
 
     :param test_db: The `test_db` parameter likely refers to a test database object that is used for
     testing purposes. It is commonly used in unit tests to simulate database interactions without
@@ -177,8 +167,8 @@ def test_create_delegation(test_db):
 
 
 def test_get_existing_delegation_different_status(test_db, seed_data):
-    """
-    The function tests the retrieval of existing delegations with specific statuses from a database.
+    """The function tests the retrieval of existing delegations with specific statuses from a
+    database.
 
     :param test_db: `test_db` is likely an instance of a test database that is used for running unit
     tests. It is commonly used in testing frameworks to isolate test data and ensure that tests do not
@@ -284,8 +274,7 @@ def test_get_delegation_log_by_delegate_multiple(test_db, seed_data):
 
 
 def test_update_delegation_status_with_description(test_db, seed_data):
-    """
-    The function updates a delegation's status and adds a description in a test database.
+    """The function updates a delegation's status and adds a description in a test database.
 
     :param test_db: The `test_db` parameter is likely an instance of a database connection or session
     that is used for testing purposes. It allows you to interact with a test database in your unit tests
@@ -306,8 +295,7 @@ def test_update_delegation_status_with_description(test_db, seed_data):
 
 
 def test_update_delegation_status_without_description(test_db, seed_data):
-    """
-    The function tests updating delegation status without a description in a database.
+    """The function tests updating delegation status without a description in a database.
 
     :param test_db: The `test_db` parameter is likely an instance of a database connection or session
     that is used for testing purposes. It allows you to interact with a database in a controlled

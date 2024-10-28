@@ -3,7 +3,6 @@ from typing import List
 
 from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
-
 from src.arrangements.models import LatestArrangement
 from src.employees.models import DelegateLog, DelegationStatus, Employee
 
@@ -11,8 +10,7 @@ from . import models
 
 
 def get_employee_by_staff_id(db: Session, staff_id: int) -> models.Employee:
-    """
-    This function retrieves an employee from the database based on their staff ID.
+    """This function retrieves an employee from the database based on their staff ID.
 
     :param db: The `db` parameter is of type `Session`, which is likely an instance of a database
     session that allows you to interact with the database. It is used to query the database for the
@@ -28,8 +26,7 @@ def get_employee_by_staff_id(db: Session, staff_id: int) -> models.Employee:
 
 
 def get_employee_by_email(db: Session, email: str) -> models.Employee:
-    """
-    This function retrieves an employee from the database based on their email address.
+    """This function retrieves an employee from the database based on their email address.
 
     :param db: The `db` parameter is of type `Session`, which is likely an instance of a database
     session that allows you to interact with the database. It is used to query the database for the
@@ -62,9 +59,8 @@ def get_subordinates_by_manager_id(db: Session, manager_id: int) -> List[models.
 
 
 def get_existing_delegation(db: Session, staff_id: int, delegate_manager_id: int):
-    """
-    This function retrieves an existing delegation log entry based on the provided staff and delegate
-    manager IDs.
+    """This function retrieves an existing delegation log entry based on the provided staff and
+    delegate manager IDs.
 
     :param db: The `db` parameter is of type `Session`, which is likely an instance of a database
     session that allows interaction with the database. It is used to query the database for existing
@@ -134,8 +130,7 @@ def create_delegation(db: Session, staff_id: int, delegate_manager_id: int):
 
 
 def get_delegation_log_by_delegate(db: Session, staff_id: int):
-    """
-    This function retrieves a delegation log entry based on the delegate manager's staff ID.
+    """This function retrieves a delegation log entry based on the delegate manager's staff ID.
 
     :param db: The `db` parameter is of type `Session`, which is likely an instance of a database
     session that allows interaction with the database. It is used to query the database for delegate
@@ -158,8 +153,8 @@ def get_delegation_log_by_delegate(db: Session, staff_id: int):
 def update_delegation_status(
     db: Session, delegation_log: DelegateLog, status: DelegationStatus, description: str = None
 ):
-    """
-    This Python function updates the status and description of a delegation log in a database session.
+    """This Python function updates the status and description of a delegation log in a database
+    session.
 
     :param db: The `db` parameter is of type `Session`, which is likely referring to a database session
     object used for interacting with the database. This parameter is used to perform database operations
@@ -189,8 +184,7 @@ def update_delegation_status(
 def update_pending_arrangements_for_delegate(
     db: Session, manager_id: int, delegate_manager_id: int
 ):
-    """
-    The function updates the delegate approving officer for pending arrangements in a database.
+    """The function updates the delegate approving officer for pending arrangements in a database.
 
     :param db: The `db` parameter is an instance of a database session that is used to interact with the
     database. It allows you to query, update, and commit changes to the database. In this case, it is
@@ -224,8 +218,7 @@ def update_pending_arrangements_for_delegate(
 
 
 def get_delegation_log_by_manager(db: Session, staff_id: int):
-    """
-    This function retrieves a delegation log entry by manager ID from the database.
+    """This function retrieves a delegation log entry by manager ID from the database.
 
     :param db: The `db` parameter is of type `Session`, which is likely an instance of a database
     session that allows interaction with the database. It is used to query the database for delegation
@@ -242,8 +235,7 @@ def get_delegation_log_by_manager(db: Session, staff_id: int):
 
 
 def remove_delegate_from_arrangements(db: Session, delegate_manager_id: int):
-    """
-    This function removes a delegate manager from pending arrangements in a database.
+    """This function removes a delegate manager from pending arrangements in a database.
 
     :param db: The `db` parameter is of type `Session`, which is likely referring to a database session
     object used for interacting with the database. It is commonly used in SQLAlchemy to perform database
@@ -296,9 +288,8 @@ def mark_delegation_as_undelegated(db: Session, delegation_log: models.DelegateL
 
 
 def get_sent_delegations(db: Session, staff_id: int):
-    """
-    This function retrieves delegation logs from the database for a specific staff member based on their
-    ID.
+    """This function retrieves delegation logs from the database for a specific staff member based
+    on their ID.
 
     :param db: The `db` parameter is of type `Session`, which is likely an instance of a database
     session that allows you to interact with the database. It is used to query the database for delegate
@@ -322,9 +313,8 @@ def get_sent_delegations(db: Session, staff_id: int):
 
 
 def get_pending_approval_delegations(db: Session, staff_id: int):
-    """
-    This function retrieves pending and accepted delegation logs for a specific staff member from the
-    database.
+    """This function retrieves pending and accepted delegation logs for a specific staff member from
+    the database.
 
     :param db: The `db` parameter is of type `Session`, which is likely an instance of a database
     session that allows you to interact with the database. It is used to query the database for delegate
@@ -350,8 +340,7 @@ def get_pending_approval_delegations(db: Session, staff_id: int):
 
 
 def get_all_sent_delegations(db: Session, staff_id: int):
-    """
-    This function retrieves all delegation logs associated with a specific staff member from the
+    """This function retrieves all delegation logs associated with a specific staff member from the
     database.
 
     :param db: The `db` parameter is of type `Session`, which is likely an instance of a database
@@ -368,8 +357,8 @@ def get_all_sent_delegations(db: Session, staff_id: int):
 
 
 def get_all_received_delegations(db: Session, staff_id: int):
-    """
-    This function retrieves all received delegations for a specific staff member from the database.
+    """This function retrieves all received delegations for a specific staff member from the
+    database.
 
     :param db: Session object from SQLAlchemy, used to interact with the database
     :type db: Session
@@ -384,8 +373,7 @@ def get_all_received_delegations(db: Session, staff_id: int):
 
 
 def get_employee_full_name(db: Session, staff_id: int):
-    """
-    This function retrieves the full name of an employee from a database based on their staff ID.
+    """This function retrieves the full name of an employee from a database based on their staff ID.
 
     :param db: Session object from SQLAlchemy, used to interact with the database
     :type db: Session
@@ -421,8 +409,7 @@ def get_manager_of_employee(db: Session, emp: Employee) -> Employee:
 
 
 def get_peer_employees(db: Session, manager_id: int) -> list[Employee]:
-    """
-    This function retrieves a list of employees who report to a specific manager from a database
+    """This function retrieves a list of employees who report to a specific manager from a database
     session.
 
     :param db: Session object for database connection
@@ -437,8 +424,7 @@ def get_peer_employees(db: Session, manager_id: int) -> list[Employee]:
 
 
 def is_employee_locked_in_delegation(db: Session, employee_id: int) -> bool:
-    """
-    The function checks if an employee is currently locked in a delegation based on their ID in a
+    """The function checks if an employee is currently locked in a delegation based on their ID in a
     database session.
 
     :param db: The `db` parameter is of type `Session`, which is likely referring to a database session
