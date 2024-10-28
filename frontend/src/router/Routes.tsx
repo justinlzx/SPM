@@ -3,13 +3,12 @@ import { LoginPage } from "../pages/login-signup/LoginPage";
 import { SignUpPage } from "../pages/login-signup/SignUpPage";
 import { App } from "../App";
 import { Layout } from "../common/Layout";
-import { CreateWfhRequest } from "../components/forms/CreateWfhRequest";
+import { CreateWfhRequestPage } from "../pages/staff/CreateWfhRequest";
 import { ReviewRequests } from "../pages/manager/ReviewRequests";
 import { HomePage } from "../pages/staff/HomePage";
 import { TeamPage } from "../pages/team/TeamPage";
-import { Settings } from "../pages/staff/Settings";
 import { MyWfhSchedulePage } from "../pages/staff/MyWfhSchedulePage";
-
+import { DelegateManagerPage } from "../pages/manager/DelegateManagerPage";
 
 type routesProps = {
   path: string;
@@ -40,7 +39,7 @@ const routes: routesProps[] = [
           },
           {
             path: "/create-request",
-            element: <CreateWfhRequest />,
+            element: <CreateWfhRequestPage />,
           },
           {
             path: "/review-requests",
@@ -55,9 +54,9 @@ const routes: routesProps[] = [
             element: <MyWfhSchedulePage />,
           },
           {
-            path: "/settings",
-            element: <Settings />,
-          },
+            path: "/delegate",
+            element: <DelegateManagerPage />
+          }
         ],
       },
     ],
