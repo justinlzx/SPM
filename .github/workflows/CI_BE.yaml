@@ -1,13 +1,13 @@
 name: Backend CI
 
 on:
-  workflow_dispatch:  # This can be triggered manually, or you can uncomment the 'push' or 'pull_request' if needed.
-#   push:
-#     branches:
-#       - main
-#   pull_request:
-#     branches:
-#       - main
+#   workflow_dispatch:  # This can be triggered manually, or you can uncomment the 'push' or 'pull_request' if needed.
+# #   push:
+# #     branches:
+# #       - main
+  pull_request:
+    branches:
+      - main
 
 jobs:
   build:
@@ -20,17 +20,24 @@ jobs:
     - name: Set up Python
       uses: actions/setup-python@v2
       with:
-        python-version: '3.11'
+        python-version: '3.12'
 
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
       working-directory: backend
+      
+    - name: Install pre-commit
+      run: pip install pre-commit
+      working-directory: backend
+
+    - name: Run pre-commit hooks
+      run: pre-commit run --all-files
+      working-directory: backend
 
     - name: Run tests with coverage
       run: |
-        # Run tests with coverage and omit certain files
         pip install pytest coverage  # Ensure coverage is installed
         python -m coverage run --branch --omit="*/test_*.py,*/__init__.py,*/health.py,*/database.py,*/base.py,*/app.py" -m pytest src -vvv
         python -m coverage report  # To show coverage report in the logs
