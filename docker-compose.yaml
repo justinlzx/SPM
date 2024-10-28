@@ -14,6 +14,8 @@ services:
       - ./frontend:/app
       - /app/node_modules
     platform: linux/arm64
+    env_file:
+      - ./frontend/.env
 
   backend:
     image: justinlzx01/spm:backend
@@ -27,4 +29,6 @@ services:
     volumes:
       - ./backend:/app
     platform: linux/arm64
+    env_file:
+      - ./backend/.env
 
