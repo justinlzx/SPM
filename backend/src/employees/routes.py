@@ -1,5 +1,3 @@
-from datetime import datetime
-from enum import Enum
 from typing import List
 
 from fastapi import APIRouter, Depends, Form, HTTPException
@@ -7,13 +5,9 @@ from pydantic import EmailStr
 from sqlalchemy.orm import Session
 
 from .. import utils
-from ..arrangements import models as arrangement_models
 from ..database import get_db
-from ..email.routes import send_email
-from ..employees import services as employee_services
-from ..employees.models import DelegateLog, DelegationStatus, Employee
+from ..employees.models import Employee
 from ..employees.schemas import DelegateLogCreate, EmployeeBase, EmployeePeerResponse
-from ..notifications.email_notifications import craft_email_content_for_delegation
 from . import exceptions, services
 
 router = APIRouter()
@@ -21,9 +15,8 @@ router = APIRouter()
 
 @router.get("/manager/peermanager/{staff_id}", response_model=EmployeePeerResponse)
 def get_reporting_manager_and_peer_employees(staff_id: int, db: Session = Depends(get_db)):
-    """
-    This function retrieves the reporting manager and peer employees for a given staff ID, handling
-    exceptions for employee and manager not found cases.
+    """This function retrieves the reporting manager and peer employees for a given staff ID,
+    handling exceptions for employee and manager not found cases.
 
     :param staff_id: The `staff_id` parameter in the `get_reporting_manager_and_peer_employees` function
     represents the unique identifier of a staff member for whom you want to retrieve the reporting
@@ -70,9 +63,8 @@ def get_reporting_manager_and_peer_employees(staff_id: int, db: Session = Depend
 
 @router.get("/{staff_id}", response_model=EmployeeBase)
 def get_employee_by_staff_id(staff_id: int, db: Session = Depends(get_db)):
-    """
-    This function retrieves an employee by their staff ID from the database and returns the employee
-    details in a serialized format using a Pydantic model.
+    """This function retrieves an employee by their staff ID from the database and returns the
+    employee details in a serialized format using a Pydantic model.
 
     :param staff_id: The `staff_id` parameter in the `get_employee_by_staff_id` function is an integer
     representing the unique identifier of the employee that you want to retrieve from the database. This
@@ -97,8 +89,7 @@ def get_employee_by_staff_id(staff_id: int, db: Session = Depends(get_db)):
 
 @router.get("/email/{email}", response_model=EmployeeBase)
 def get_employee_by_email(email: EmailStr, db: Session = Depends(get_db)):
-    """
-    This function retrieves an employee by their email address from the database and returns the
+    """This function retrieves an employee by their email address from the database and returns the
     employee details if found, raising a 404 error if the employee is not found.
 
     :param email: The `email` parameter in the code snippet represents the email address of the employee
@@ -124,9 +115,8 @@ def get_employee_by_email(email: EmailStr, db: Session = Depends(get_db)):
 
 @router.get("/manager/employees/{staff_id}", response_model=List[EmployeeBase])
 def get_subordinates_by_manager_id(staff_id: int, db: Session = Depends(get_db)):
-    """
-    This function retrieves a list of employees who report to a specific manager based on their staff
-    ID.
+    """This function retrieves a list of employees who report to a specific manager based on their
+    staff ID.
 
     :param staff_id: The `staff_id` parameter in the `get_subordinates_by_manager_id` function
     represents the unique identifier of a manager whose subordinates you want to retrieve. This
@@ -198,8 +188,7 @@ async def update_delegation_status_route(
     db: Session = Depends(get_db),
     description: str = Form(None),
 ):
-    """
-    The above functions handle updating and undelegating delegation statuses, including database
+    """The above functions handle updating and undelegating delegation statuses, including database
     operations and email notifications.
 
     :param staff_id: The `staff_id` parameter in the provided code snippets refers to the ID of the
@@ -234,9 +223,8 @@ async def update_delegation_status_route(
 
 @router.put("/manager/undelegate/{staff_id}", response_model=DelegateLogCreate)
 async def undelegate_manager_route(staff_id: int, db: Session = Depends(get_db)):
-    """
-    This function is an API endpoint in Python that undelegates a manager's delegation and removes the
-    delegate's approval rights.
+    """This function is an API endpoint in Python that undelegates a manager's delegation and
+    removes the delegate's approval rights.
 
     :param staff_id: The `staff_id` parameter in the `undelegate_manager_route` function represents the
     unique identifier of the manager whose delegation is being undelegated. This parameter is used to
@@ -260,9 +248,8 @@ async def undelegate_manager_route(staff_id: int, db: Session = Depends(get_db))
 
 @router.get("/manager/viewdelegations/{staff_id}")
 def view_delegations_route(staff_id: int, db: Session = Depends(get_db)):
-    """
-    This Python function defines an API endpoint to view delegations sent by a manager and pending
-    approval delegations.
+    """This Python function defines an API endpoint to view delegations sent by a manager and
+    pending approval delegations.
 
     :param staff_id: The `staff_id` parameter in the `view_delegations_route` function represents the
     unique identifier of the staff member for whom you want to view delegations. This parameter is

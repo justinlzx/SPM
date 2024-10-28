@@ -9,9 +9,6 @@ from dateutil.relativedelta import relativedelta
 from fastapi import File
 from sqlalchemy.orm import Session
 from src.arrangements.utils import delete_file, upload_file
-from src.employees.crud import get_employee_by_staff_id
-#from src.employees.models import LatestArrangement
-from src.notifications.email_notifications import fetch_manager_info
 
 from .. import utils
 from ..arrangements.utils import delete_file, upload_file
@@ -33,6 +30,9 @@ from .schemas import (
     ManagerPendingRequests,
 )
 from .utils import create_presigned_url
+
+# from src.employees.models import LatestArrangement
+
 
 STATUS = {
     "approve": "approved",

@@ -2,7 +2,6 @@ from enum import Enum
 from typing import List
 
 from sqlalchemy.orm import Session
-
 from src.email.routes import send_email
 from src.notifications.email_notifications import craft_email_content_for_delegation
 
@@ -96,9 +95,8 @@ def get_manager_by_subordinate_id(db: Session, staff_id: int) -> models.Employee
 
 
 def get_employee_by_id(db: Session, staff_id: int) -> models.Employee:
-    """
-    This function retrieves an employee from the database by their staff ID and raises an exception if
-    the employee is not found.
+    """This function retrieves an employee from the database by their staff ID and raises an
+    exception if the employee is not found.
 
     :param db: The `db` parameter is of type `Session`, which is likely referring to a database session
     object used for database operations. This parameter is used to interact with the database to
@@ -343,9 +341,8 @@ async def undelegate_manager(staff_id: int, db: Session):
 
 
 def view_delegations(staff_id: int, db: Session):
-    """
-    This Python function retrieves and formats sent delegations by a manager and those pending approval
-    from a database.
+    """This Python function retrieves and formats sent delegations by a manager and those pending
+    approval from a database.
 
     :param staff_id: The `staff_id` parameter in the `view_delegations` function represents the unique
     identifier of the manager whose delegations are being viewed. This ID is used to retrieve the

@@ -1,8 +1,12 @@
+from datetime import datetime
 from unittest.mock import MagicMock, patch
+
 import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from src.employees.exceptions import EmployeeNotFoundException, ManagerNotFoundException
+from src.auth.models import Auth
+from src.employees.exceptions import EmployeeNotFoundException
+from src.employees.models import Base, DelegateLog, DelegationStatus, Employee
 from src.employees.services import (
     DelegationApprovalStatus,
     delegate_manager,
@@ -14,21 +18,6 @@ from src.employees.services import (
     view_all_delegations,
     view_delegations,
 )
-from src.employees.models import (
-    Base,
-    DelegateLog,
-    DelegationStatus,
-    DelegateLog,
-    DelegationStatus,
-    Employee,
-)
-from src.arrangements.models import LatestArrangement
-from src.auth.models import Auth
-from src.employees.crud import (
-    get_employee_by_email,
-    get_subordinates_by_manager_id,
-)
-from datetime import datetime
 
 # Configure the in-memory SQLite database
 engine = create_engine("sqlite:///:memory:")
@@ -623,9 +612,10 @@ async def test_undelegate_manager_not_accepted(test_db):
 
 
 def test_get_manager_by_subordinate_id_with_single_subordinate(test_db):
-    """
-    Test case for when a manager has exactly one subordinate.
-    We expect to get the manager and all employees under that manager (including the manager themselves)
+    """Test case for when a manager has exactly one subordinate.
+
+    We expect to get the manager and all employees under that manager (including the manager
+    themselves)
     """
     # Create a manager with only one subordinate
     manager = Employee(
@@ -666,8 +656,8 @@ def test_get_manager_by_subordinate_id_with_single_subordinate(test_db):
 
 @pytest.mark.asyncio
 async def test_process_delegation_status_invalid_input(test_db, seed_data):
-    """
-    Test case for when an invalid DelegationApprovalStatus is provided.
+    """Test case for when an invalid DelegationApprovalStatus is provided.
+
     Instead of raising an exception, we should test for the actual behavior.
     """
     # Create a pending delegation
@@ -688,9 +678,7 @@ async def test_process_delegation_status_invalid_input(test_db, seed_data):
 
 @pytest.mark.asyncio
 async def test_process_delegation_status_missing_description(test_db, seed_data):
-    """
-    Test rejection without providing a description
-    """
+    """Test rejection without providing a description."""
     # Create a pending delegation
     delegate_log = DelegateLog(
         manager_id=1,
@@ -715,9 +703,7 @@ async def test_process_delegation_status_missing_description(test_db, seed_data)
 
 
 def test_view_delegations_with_no_employee_info(test_db):
-    """
-    Test viewing delegations when employee information is missing
-    """
+    """Test viewing delegations when employee information is missing."""
     # Create a delegation log without corresponding employee records
     delegation = DelegateLog(
         manager_id=999,
