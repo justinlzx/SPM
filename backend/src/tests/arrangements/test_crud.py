@@ -3,9 +3,8 @@ from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import Query, Session
 from src.arrangements import crud, models, schemas
-
-from sqlalchemy.orm import Session, Query
 
 
 @pytest.fixture
@@ -99,7 +98,7 @@ def mock_arrangements():
 
 @pytest.fixture
 def mock_create_arrangements_payload():
-    """Create a sample arrangement payload"""
+    """Create a sample arrangement payload."""
     return [
         {
             "requester_staff_id": 151408,  # Using Jack Sim's ID to test auto-approval
@@ -132,7 +131,7 @@ def mock_create_arrangements_payload():
 
 @pytest.fixture
 def mock_db(mock_arrangements):
-    """Create a mock database session with chainable query methods"""
+    """Create a mock database session with chainable query methods."""
     db = Mock(spec=Session)
     query = Mock(spec=Query)
 
@@ -272,7 +271,7 @@ def test_create_arrangements_success(
     approval_status,
     num_results,
 ):
-    """Test successful creation of arrangements"""
+    """Test successful creation of arrangements."""
     # Arrange
     mock_log = Mock()
     mock_log.log_id = 123
@@ -297,7 +296,7 @@ def test_create_arrangements_success(
 
 @patch("src.arrangements.crud.create_arrangement_log")
 def test_create_arrangements_sqlalchemy_error(mock_db_session, mock_create_arrangements_payload):
-    """Test handling of database errors"""
+    """Test handling of database errors."""
     mock_create_arrangements_payload_schema = [
         models.LatestArrangement(**arrangement) for arrangement in mock_create_arrangements_payload
     ]
