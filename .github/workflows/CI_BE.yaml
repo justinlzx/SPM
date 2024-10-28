@@ -32,6 +32,7 @@ jobs:
       run: pip install pre-commit
       working-directory: backend
 
+      # Runs linting, black, sorter and docformatter
     - name: Run pre-commit hooks
       run: pre-commit run --all-files
       working-directory: .
@@ -42,16 +43,16 @@ jobs:
         pytest --cov=backend/src --cov-report=term-missing --cov-report=html src/tests
       working-directory: backend
 
-    - name: Check code formatting
-      run: |
-        # Assuming you use black for code formatting
-        pip install black
-        black --check backend
-      working-directory: backend
+    # - name: Check code formatting
+    #   run: |
+    #     # Assuming you use black for code formatting
+    #     pip install black
+    #     black --check backend
+    #   working-directory: backend
 
-    - name: Lint code
-      run: |
-        # Assuming you use flake8 for linting
-        pip install flake8
-        flake8 backend
-      working-directory: backend
+    # - name: Lint code
+    #   run: |
+    #     # Assuming you use flake8 for linting
+    #     pip install flake8
+    #     flake8 backend
+    #   working-directory: backend
