@@ -8,6 +8,8 @@ from ..auth.utils import generate_JWT, verify_password
 from ..database import get_db
 from ..employees.models import Employee
 
+from ..logger import logger
+
 router = APIRouter()
 
 
@@ -18,6 +20,7 @@ def get_user_by_email(db: Session, email: str):
 
 @router.post("/login")
 def login(email: EmailStr = Form(...), password: str = Form(...), db: Session = Depends(get_db)):
+    logger.info(f"Login attempt for email: {email}")
     # Step 1: Get the user from the auth table
     user = get_user_by_email(db, email.lower())
 

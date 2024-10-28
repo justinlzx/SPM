@@ -24,8 +24,6 @@ services:
       dockerfile: Dockerfile
     ports:
       - "8000:8000"
-    environment:
-      TOKEN_SECRET: "hehe"
     volumes:
       - ./backend:/app
     platform: linux/arm64

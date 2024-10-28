@@ -62,7 +62,7 @@ origins = [
     "http://localhost:3000",
     "http://localhost:3001",
     "http://localhost:3002",
-    os.getenv("REACT_APP_BACKEND_URL", "localhost"),  # for docker networking
+    os.getenv("FRONTEND_URL", "localhost"),  # for docker networking
 ]
 
 # Add CORS middleware to allow requests from the frontend
