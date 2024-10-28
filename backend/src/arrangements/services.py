@@ -1,6 +1,6 @@
-from datetime import datetime
+from datetime import date, datetime
 from math import ceil
-from typing import Dict, List, Literal, Optional, Union
+from typing import Dict, List, Literal, Optional, Tuple, Union
 
 import boto3
 import botocore
@@ -68,9 +68,11 @@ def get_personal_arrangements(
     db: Session, staff_id: int, current_approval_status: Optional[List[str]] = None
 ) -> List[ArrangementResponse]:
 
+    logger.info(f"Service: Fetching personal arrangements for staff ID {staff_id}")
     arrangements: List[models.LatestArrangement] = crud.get_arrangements(
         db, [staff_id], current_approval_status
     )
+    logger.info(f"Service: Found {len(arrangements)} arrangements for staff ID {staff_id}")
 
     arrangements_schema: List[ArrangementResponse] = utils.convert_model_to_pydantic_schema(
         arrangements, ArrangementResponse
@@ -84,13 +86,13 @@ def get_subordinates_arrangements(
     manager_id: int,
     current_approval_status: Optional[List[str]] = None,
     name: Optional[str] = None,
-    start_date: Optional[datetime] = None,
-    end_date: Optional[datetime] = None,
+    start_date: Optional[date] = None,
+    end_date: Optional[date] = None,
     wfh_type: Optional[str] = None,
     reason: Optional[str] = None,
     items_per_page: int = 10,
     page_num: int = 1,
-) -> List[ManagerPendingRequestResponse]:
+) -> Tuple[List[ManagerPendingRequests], Dict[str, int]]:
 
     # Check if the employee is a manager
     employees_under_manager: List[employee_models.Employee] = (
@@ -103,6 +105,7 @@ def get_subordinates_arrangements(
 
     employees_under_manager_ids = [employee.staff_id for employee in employees_under_manager]
 
+    logger.info(f"Service: Fetching arrangements for employees under manager ID: {manager_id}")
     arrangements = crud.get_arrangements(
         db,
         employees_under_manager_ids,
@@ -113,6 +116,7 @@ def get_subordinates_arrangements(
         end_date,
         reason,
     )
+    logger.info(f"Service: Found {len(arrangements)} arrangements")
 
     arrangements_schema: List[ArrangementCreateResponse] = utils.convert_model_to_pydantic_schema(
         arrangements, ArrangementCreateResponse
@@ -138,6 +142,7 @@ def get_subordinates_arrangements(
     arrangements_by_date: List[ManagerPendingRequests] = group_arrangements_by_date(
         arrangements_schema
     )
+    logger.info(f"Service: Grouped arrangements into {len(arrangements_by_date)} dates")
 
     # pagination logic
     total_count = len(arrangements_by_date)
@@ -148,12 +153,14 @@ def get_subordinates_arrangements(
         (page_num - 1) * items_per_page : page_num * items_per_page
     ]
 
-    return arrangements_by_date, {
+    pagination_meta = {
         "total_count": total_count,
         "page_size": items_per_page,
         "page_num": page_num,
         "total_pages": total_pages,
     }
+
+    return arrangements_by_date, pagination_meta
 
 
 def group_arrangements_by_date(
@@ -162,15 +169,12 @@ def group_arrangements_by_date(
     arrangements_dict = {}
 
     for arrangement in arrangements_schema:
-        wfh_date = arrangement.wfh_date
-        if wfh_date not in arrangements_dict:
-            arrangements_dict[str(wfh_date)] = []
-
-        arrangements_dict[wfh_date].append(arrangement)
+        wfh_date = arrangement.wfh_date.isoformat()
+        arrangements_dict.setdefault(wfh_date, []).append(arrangement)
 
     result = []
-    for date, val in arrangements_dict.items():
-        result.append(ManagerPendingRequests(date=date, pending_arrangements=val))
+    for key, val in arrangements_dict.items():
+        result.append(ManagerPendingRequests(date=key, pending_arrangements=val))
 
     return result
 
