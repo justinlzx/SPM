@@ -49,7 +49,8 @@ async def fetch_manager_info(staff_id: int):
 async def craft_and_send_email(
     employee: employee_models.Employee,
     arrangements: Union[
-        List[arrangement_schemas.ArrangementCreateResponse], arrangement_schemas.ArrangementUpdate
+        List[arrangement_schemas.ArrangementCreateResponse],
+        arrangement_schemas.ArrangementUpdate,
     ],
     action: str,
     manager: employee_models.Employee = None,
@@ -171,7 +172,8 @@ async def craft_and_send_email(
 
 def format_details(
     arrangements: Union[
-        List[arrangement_schemas.ArrangementCreateResponse], arrangement_schemas.ArrangementUpdate
+        List[arrangement_schemas.ArrangementCreateResponse],
+        arrangement_schemas.ArrangementUpdate,
     ]
 ):
     return "\n".join(
@@ -208,7 +210,8 @@ def format_email_body(
 def craft_email_content(
     employee: employee_models.Employee,
     arrangements: Union[
-        List[arrangement_schemas.ArrangementCreateResponse], arrangement_schemas.ArrangementUpdate
+        List[arrangement_schemas.ArrangementCreateResponse],
+        arrangement_schemas.ArrangementUpdate,
     ],
     action: str,
     manager: employee_models.Employee = None,
@@ -307,7 +310,9 @@ async def send_email(to_email: str, subject: str, content: str):
 
 
 def craft_email_content_for_delegation(
-    employee: employee_models.Employee, counterpart_employee: employee_models.Employee, event: str
+    employee: employee_models.Employee,
+    counterpart_employee: employee_models.Employee,
+    event: str,
 ):
     """Helper function to craft email content for delegation events.
 

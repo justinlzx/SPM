@@ -162,7 +162,6 @@ def mock_arrangement_log():
     )
 
 
-
 class TestGetArrangementById:
     def test_success(self, mock_db_session, mock_arrangement):
         mock_db_session.query().get.return_value = mock_arrangement
@@ -198,11 +197,17 @@ class TestGetArrangements:
             ([], {"end_date": datetime(2024, 1, 15)}, [1, 2]),
             ([], {"end_date": datetime(2024, 1, 17)}, [1, 2, 3]),
             # Test case: start_date and end_date filter
-            ([], {"start_date": datetime(2024, 1, 15), "end_date": datetime(2024, 1, 16)}, [1, 2]),
+            (
+                [],
+                {
+                    "start_date": datetime(2024, 1, 15),
+                    "end_date": datetime(2024, 1, 16),
+                },
+                [1, 2],
+            ),
             # Test case 7:reason == OOO filter
             ([], {"reason": "OOO"}, [3]),
         ],
-
     )
     def test_success(
         self, mock_db, staff_ids, filters, mock_arrangements, expected_arrangement_ids
@@ -364,7 +369,9 @@ class TestCreateArrangements:
 
     def test_auto_approve_jack_sim(self, mock_db_session, mock_arrangement_log):
         jack_sim_arrangement = models.LatestArrangement(
-            arrangement_id=3, requester_staff_id=130002, current_approval_status="pending"
+            arrangement_id=3,
+            requester_staff_id=130002,
+            current_approval_status="pending",
         )
         mock_db_session.add = MagicMock()
         mock_db_session.flush = MagicMock()
@@ -384,7 +391,9 @@ class TestCreateArrangements:
 
     def test_non_jack_sim(self, mock_db_session, mock_arrangements, mock_arrangement_log):
         mock_arrangement = models.LatestArrangement(
-            arrangement_id=4, requester_staff_id=12345, current_approval_status="pending"
+            arrangement_id=4,
+            requester_staff_id=12345,
+            current_approval_status="pending",
         )
         mock_db_session.add = MagicMock()
         mock_db_session.flush = MagicMock()

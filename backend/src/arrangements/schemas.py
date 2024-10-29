@@ -57,7 +57,12 @@ class ArrangementCreate(ArrangementBase):
         title="Datetime that the request was created",
     )
     current_approval_status: Literal[
-        "pending approval", "pending withdrawal", "approved", "rejected", "cancelled", "withdrawn"
+        "pending approval",
+        "pending withdrawal",
+        "approved",
+        "rejected",
+        "cancelled",
+        "withdrawn",
     ] = Field(default="pending approval", exclude=True, title="Approval status of the request")
     is_recurring: Optional[bool] = Field(
         default=False, title="Flag to indicate if the request is recurring"
@@ -110,7 +115,12 @@ class ArrangementCreateResponse(ArrangementCreateWithFile):
     arrangement_id: int
     requester_info: Optional[employee_schemas.EmployeeBase]
     approval_status: Literal[
-        "pending approval", "pending withdrawal", "approved", "rejected", "withdrawn", "cancelled"
+        "pending approval",
+        "pending withdrawal",
+        "approved",
+        "rejected",
+        "withdrawn",
+        "cancelled",
     ] = Field(..., title="Current status of the WFH request", alias="current_approval_status")
 
 
@@ -150,7 +160,12 @@ class ArrangementLog(ArrangementBase):
     arrangement_id: int = Field(..., title="Unique identifier for the arrangement")
     update_datetime: datetime = Field(..., title="Datetime of the arrangement update")
     approval_status: Literal[
-        "pending approval", "pending withdrawal", "approved", "rejected", "withdrawn", "cancelled"
+        "pending approval",
+        "pending withdrawal",
+        "approved",
+        "rejected",
+        "withdrawn",
+        "cancelled",
     ] = Field(..., title="Current status of the WFH request")
     reason_description: str = Field(..., title="Reason for the status update")
     batch_id: Optional[int] = Field(
@@ -186,7 +201,12 @@ class ArrangementQueryParams(BaseModel):
 class ArrangementResponse(ArrangementCreateWithFile):
     arrangement_id: int = Field(..., title="Unique identifier for the arrangement")
     approval_status: Literal[
-        "pending approval", "pending withdrawal", "approved", "rejected", "withdrawn", "cancelled"
+        "pending approval",
+        "pending withdrawal",
+        "approved",
+        "rejected",
+        "withdrawn",
+        "cancelled",
     ] = Field(..., title="Current status of the WFH request", alias="current_approval_status")
     approving_officer: Optional[int] = Field(
         None, title="Staff ID of the approving officer"

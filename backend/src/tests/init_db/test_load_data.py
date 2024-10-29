@@ -60,7 +60,8 @@ def test_load_employee_data_empty_file(mock_db_session, mocker, capsys):
 def test_load_employee_data_from_csv_exception(mock_db_session, mocker, capsys):
     # Mock the Employee model to raise an exception during instantiation
     mocker.patch(
-        "src.init_db.load_data.Employee", side_effect=Exception("Test Exception for Employee")
+        "src.init_db.load_data.Employee",
+        side_effect=Exception("Test Exception for Employee"),
     )
 
     # Call the function with a mock CSV path
@@ -250,7 +251,8 @@ def test_load_arrangement_data_key_error(mock_db_session, mocker, capsys):
 def test_load_arrangement_data_value_error(mock_db_session, mocker, capsys):
     # Mock the LatestArrangement model to raise a ValueError during instantiation
     mocker.patch(
-        "src.init_db.load_data.LatestArrangement", side_effect=ValueError("Test ValueError")
+        "src.init_db.load_data.LatestArrangement",
+        side_effect=ValueError("Test ValueError"),
     )
 
     load_latest_arrangement_data_from_csv("src/tests/init_db/test_latest_arrangement.csv")
@@ -334,7 +336,8 @@ def test_load_arrangement_data_row_exception(mock_db_session, mocker, capsys):
 
     # Mock LatestArrangement to raise a generic exception during instantiation
     mocker.patch(
-        "src.init_db.load_data.LatestArrangement", side_effect=Exception("Test Row Exception")
+        "src.init_db.load_data.LatestArrangement",
+        side_effect=Exception("Test Row Exception"),
     )
 
     # Call the function with a mock CSV path

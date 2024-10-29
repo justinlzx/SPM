@@ -88,10 +88,14 @@ def seed_data(test_db):
 
     # Add delegations with different statuses
     delegation1 = DelegateLog(
-        manager_id=1, delegate_manager_id=2, status_of_delegation=DelegationStatus.pending
+        manager_id=1,
+        delegate_manager_id=2,
+        status_of_delegation=DelegationStatus.pending,
     )
     delegation2 = DelegateLog(
-        manager_id=1, delegate_manager_id=2, status_of_delegation=DelegationStatus.accepted
+        manager_id=1,
+        delegate_manager_id=2,
+        status_of_delegation=DelegationStatus.accepted,
     )
 
     # Insert into LatestArrangement with update_datetime populated
@@ -129,7 +133,10 @@ def test_get_existing_delegation_found(test_db, seed_data):
     result = get_existing_delegation(test_db, staff_id=1, delegate_manager_id=2)
     assert result is not None
     assert result.delegate_manager_id == 2
-    assert result.status_of_delegation in [DelegationStatus.pending, DelegationStatus.accepted]
+    assert result.status_of_delegation in [
+        DelegationStatus.pending,
+        DelegationStatus.accepted,
+    ]
 
 
 def test_get_existing_delegation_not_found(test_db, seed_data):
@@ -181,13 +188,18 @@ def test_get_existing_delegation_different_status(test_db, seed_data):
     """
     # Ensure it does not retrieve delegations with statuses other than pending or accepted
     new_delegation = DelegateLog(
-        manager_id=1, delegate_manager_id=2, status_of_delegation=DelegationStatus.rejected
+        manager_id=1,
+        delegate_manager_id=2,
+        status_of_delegation=DelegationStatus.rejected,
     )
     test_db.add(new_delegation)
     test_db.commit()
 
     result = get_existing_delegation(test_db, staff_id=1, delegate_manager_id=2)
-    assert result.status_of_delegation in [DelegationStatus.pending, DelegationStatus.accepted]
+    assert result.status_of_delegation in [
+        DelegationStatus.pending,
+        DelegationStatus.accepted,
+    ]
 
 
 def test_get_existing_delegation_multiple_matches(test_db, seed_data):
@@ -206,7 +218,9 @@ def test_get_existing_delegation_multiple_matches(test_db, seed_data):
     """
     # Insert multiple pending/accepted delegations and check if the first one is returned
     delegation3 = DelegateLog(
-        manager_id=1, delegate_manager_id=2, status_of_delegation=DelegationStatus.pending
+        manager_id=1,
+        delegate_manager_id=2,
+        status_of_delegation=DelegationStatus.pending,
     )
     test_db.add(delegation3)
     test_db.commit()
@@ -263,7 +277,9 @@ def test_get_delegation_log_by_delegate_multiple(test_db, seed_data):
     """
     # Add another delegation to the same delegate manager
     delegation = DelegateLog(
-        manager_id=3, delegate_manager_id=2, status_of_delegation=DelegationStatus.pending
+        manager_id=3,
+        delegate_manager_id=2,
+        status_of_delegation=DelegationStatus.pending,
     )
     test_db.add(delegation)
     test_db.commit()
@@ -371,10 +387,14 @@ def test_update_delegation_status_no_description_overwrite(test_db, seed_data):
 def test_get_delegation_log_by_delegate_multiple_logs(test_db, seed_data):
     # Insert additional logs for the same delegate_manager_id
     delegation1 = DelegateLog(
-        manager_id=1, delegate_manager_id=2, status_of_delegation=DelegationStatus.pending
+        manager_id=1,
+        delegate_manager_id=2,
+        status_of_delegation=DelegationStatus.pending,
     )
     delegation2 = DelegateLog(
-        manager_id=3, delegate_manager_id=2, status_of_delegation=DelegationStatus.accepted
+        manager_id=3,
+        delegate_manager_id=2,
+        status_of_delegation=DelegationStatus.accepted,
     )
     test_db.add_all([delegation1, delegation2])
     test_db.commit()
@@ -410,7 +430,9 @@ def test_update_delegation_status_to_undelegated(test_db, seed_data):
 def test_get_existing_delegation_excludes_non_pending_accepted(test_db, seed_data):
     # Insert a delegation with 'rejected' status
     delegation = DelegateLog(
-        manager_id=1, delegate_manager_id=2, status_of_delegation=DelegationStatus.rejected
+        manager_id=1,
+        delegate_manager_id=2,
+        status_of_delegation=DelegationStatus.rejected,
     )
     test_db.add(delegation)
     test_db.commit()

@@ -214,7 +214,10 @@ async def delegate_manager(staff_id: int, delegate_manager_id: int, db: Session)
 
 
 async def process_delegation_status(
-    staff_id: int, status: DelegationApprovalStatus, db: Session, description: str = None
+    staff_id: int,
+    status: DelegationApprovalStatus,
+    db: Session,
+    description: str = None,
 ):
     """
     The function `process_delegation_status` handles the approval or rejection of a delegation request,
@@ -253,7 +256,10 @@ async def process_delegation_status(
     if status == DelegationApprovalStatus.accept:
         # Approve delegation, update pending arrangements, and save the optional description
         delegation_log = crud.update_delegation_status(
-            db, delegation_log, models.DelegationStatus.accepted, description=description
+            db,
+            delegation_log,
+            models.DelegationStatus.accepted,
+            description=description,
         )
         crud.update_pending_arrangements_for_delegate(
             db, delegation_log.manager_id, delegation_log.delegate_manager_id
@@ -273,7 +279,10 @@ async def process_delegation_status(
     elif status == DelegationApprovalStatus.reject:
         # Reject delegation and save the required description
         delegation_log = crud.update_delegation_status(
-            db, delegation_log, models.DelegationStatus.rejected, description=description
+            db,
+            delegation_log,
+            models.DelegationStatus.rejected,
+            description=description,
         )
 
         # Send rejection emails

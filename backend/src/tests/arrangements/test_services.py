@@ -217,7 +217,11 @@ class TestGetPersonalArrangements:
         ],
     )
     def test_success(
-        self, mock_get_arrangements, mock_convert, current_approval_status, mock_db_session
+        self,
+        mock_get_arrangements,
+        mock_convert,
+        current_approval_status,
+        mock_db_session,
     ):
         mock_get_arrangements.return_value = [MagicMock(spec=arrangement_models.LatestArrangement)]
         mock_convert.return_value = [MagicMock(spec=ArrangementResponse)]
@@ -565,7 +569,10 @@ class TestCreateArrangementsFromRequest:
     async def test_file_upload_failure(self, mock_get_manager, mock_upload_file, mock_db_session):
         # Arrange
         error_response = {
-            "Error": {"Code": "NoSuchBucket", "Message": "The specified bucket does not exist"}
+            "Error": {
+                "Code": "NoSuchBucket",
+                "Message": "The specified bucket does not exist",
+            }
         }
         operation_name = "PutObject"
         mock_upload_file.side_effect = botocore.exceptions.ClientError(

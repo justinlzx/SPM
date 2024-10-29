@@ -18,7 +18,10 @@ async def send_email(to_email: str = Form(...), subject: str = Form(...), conten
 
     try:
         email = models.EmailModel(
-            sender_email=sender_email, to_email=to_email, subject=subject, content=content
+            sender_email=sender_email,
+            to_email=to_email,
+            subject=subject,
+            content=content,
         )
 
         result = await email.send_email()

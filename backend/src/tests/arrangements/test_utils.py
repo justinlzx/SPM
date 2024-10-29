@@ -131,7 +131,10 @@ async def test_upload_file_s3_failure(mock_boto_client):
 
     with pytest.raises(HTTPException) as exc_info:
         await upload_file(
-            staff_id=1, update_datetime="2024-01-01", file_obj=file, s3_client=mock_s3_client
+            staff_id=1,
+            update_datetime="2024-01-01",
+            file_obj=file,
+            s3_client=mock_s3_client,
         )
 
     assert exc_info.value.status_code == 500

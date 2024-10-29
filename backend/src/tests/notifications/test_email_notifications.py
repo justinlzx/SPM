@@ -74,7 +74,8 @@ async def send_email(to_email: str, subject: str, content: str):
             return response.json()
     except RequestError as e:
         raise HTTPException(
-            status_code=500, detail=f"An error occurred while sending the email: {str(e)}"
+            status_code=500,
+            detail=f"An error occurred while sending the email: {str(e)}",
         )
 
 
@@ -162,7 +163,9 @@ class TestSendEmail:
         # Call the function and check for HTTPException
         with pytest.raises(HTTPException) as exc_info:
             await send_email(
-                to_email="test@example.com", subject="Test Subject", content="Test Content"
+                to_email="test@example.com",
+                subject="Test Subject",
+                content="Test Content",
             )
 
         assert exc_info.value.status_code == 500
@@ -178,7 +181,9 @@ class TestSendEmail:
         # Call the function and check for HTTPException
         with pytest.raises(HTTPException) as exc_info:
             await send_email(
-                to_email="test@example.com", subject="Test Subject", content="Test Content"
+                to_email="test@example.com",
+                subject="Test Subject",
+                content="Test Content",
             )
 
         # Updated assertion to match the correct error message
@@ -381,7 +386,10 @@ class TestCraftEmailContent:
     def test_multiple_arrangements(self, mock_staff, mock_manager, mock_arrangement_factory):
         arrangements = [mock_arrangement_factory("pending")] * 2
         email_subject_content = notifications.craft_email_content(
-            employee=mock_staff, arrangements=arrangements, action="create", manager=mock_manager
+            employee=mock_staff,
+            arrangements=arrangements,
+            action="create",
+            manager=mock_manager,
         )
         employee = email_subject_content["employee"]
         manager = email_subject_content["manager"]
@@ -462,7 +470,15 @@ class TestCraftAndSendEmail:
     @pytest.mark.asyncio
     @pytest.mark.parametrize(
         "action",
-        ["create", "approve", "reject", "withdraw", "allow withdraw", "reject withdraw", "cancel"],
+        [
+            "create",
+            "approve",
+            "reject",
+            "withdraw",
+            "allow withdraw",
+            "reject withdraw",
+            "cancel",
+        ],
     )
     async def test_missing_manager(self, mock_staff, mock_arrangement_factory, action):
         """Test crafting email content with missing manager for different actions."""

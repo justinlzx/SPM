@@ -62,7 +62,10 @@ def test_get_employee_by_email(mock_db_session, mock_employee):
 
 def test_get_employees_by_manager_id(mock_db_session, mock_employee):
     # Arrange: Patch the `crud.get_subordinates_by_manager_id` to return a list of employees
-    with patch("src.employees.crud.get_subordinates_by_manager_id", return_value=[mock_employee]):
+    with patch(
+        "src.employees.crud.get_subordinates_by_manager_id",
+        return_value=[mock_employee],
+    ):
         # Act: Call the service function
         employees = services.get_subordinates_by_manager_id(mock_db_session, 101)
 

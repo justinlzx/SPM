@@ -425,7 +425,9 @@ def test_get_reporting_manager_and_peer_employees_self_reporting(mock_db_session
     assert data["peer_employees"][0]["staff_id"] == 2
 
 
-def test_get_reporting_manager_and_peer_employees_auto_approve_jack_sim(mock_db_session):
+def test_get_reporting_manager_and_peer_employees_auto_approve_jack_sim(
+    mock_db_session,
+):
     """Test the auto-approve scenario for Jack Sim (staff_id=130002)."""
 
     response = client.get("/manager/peermanager/130002")

@@ -151,7 +151,10 @@ def get_delegation_log_by_delegate(db: Session, staff_id: int):
 
 
 def update_delegation_status(
-    db: Session, delegation_log: DelegateLog, status: DelegationStatus, description: str = None
+    db: Session,
+    delegation_log: DelegateLog,
+    status: DelegationStatus,
+    description: str = None,
 ):
     """This Python function updates the status and description of a delegation log in a database
     session.

@@ -1,6 +1,7 @@
-from contextlib import asynccontextmanager
 import os
+from contextlib import asynccontextmanager
 
+from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -14,8 +15,6 @@ from .employees import models as employee_models
 from .employees.routes import router as employee_router
 from .health.health import router as health_router
 from .init_db import load_data
-
-from dotenv import load_dotenv
 
 """
 Create a context manager to handle the lifespan of the FastAPI application
