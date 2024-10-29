@@ -39,7 +39,7 @@ const getChipColor = (status: string) => {
   }
 };
 
-const RequestList = () => {
+export const RequestList = () => {
   const [requests, setRequests] = useState<TWFHRequest[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [page, setPage] = useState(0);
@@ -180,4 +180,3 @@ const RequestList = () => {
   );
 };
 
-export default RequestList;

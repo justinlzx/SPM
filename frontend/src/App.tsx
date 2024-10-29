@@ -16,7 +16,7 @@ const theme = createTheme({
   },
   palette: {
     primary: {
-      main: '#00007B', 
+      main: '#00007B',
       light: '#3399ff',
       dark: '#002080',
     },
@@ -51,7 +51,7 @@ export const App = () => {
 
   return (
     <ThemeProvider theme={theme}>
-      <CssBaseline/>
+      <CssBaseline />
       <div>
         {alertStatus !== undefined && (
           <SnackBar

@@ -2,8 +2,7 @@ import { useNavigate } from "react-router-dom";
 import { PendingRequests } from "./PendingRequests";
 import { useContext } from "react";
 import { UserContext } from "../../context/UserContextProvider";
-import RequestList from '../../pages/team/RequestList';
-
+import { RequestList } from "./RequestList";
 import { Button } from "@mui/material";
 
 export const TeamPage = () => {
