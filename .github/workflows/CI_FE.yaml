@@ -20,7 +20,7 @@ jobs:
     - name: Set up Node.js
       uses: actions/setup-node@v3
       with:
-        node-version: '16'
+        node-version: '18'    # Updated to 18 for better ESM support with ESLint v9
     
     - name: Cache Node modules
       uses: actions/cache@v3
@@ -31,34 +31,11 @@ jobs:
           ${{ runner.os }}-node-
 
     - name: Install dependencies
-      run: |
-        npm install
-        npm install eslint --save-dev
-        npm install @typescript-eslint/parser @typescript-eslint/eslint-plugin --save-dev
-      working-directory: frontend
-
-    - name: Create ESLint config if not exists
-      run: |
-        if [ ! -f .eslintrc.js ] && [ ! -f .eslintrc.json ] && [ ! -f .eslintrc.yaml ]; then
-          echo '{
-            "env": {
-                "browser": true,
-                "es2021": true
-            },
-            "extends": [
-                "eslint:recommended"
-            ],
-            "parserOptions": {
-                "ecmaVersion": "latest",
-                "sourceType": "module"
-            }
-          }' > .eslintrc.json
-        fi
+      run: npm install
       working-directory: frontend
 
     - name: Run ESLint
-      run: |
-        npx eslint . --ext .js, .jsx, .ts, .tsx
+      run: npx eslint . --config eslint.config.js
       working-directory: frontend
 
     - name: Run tests
