@@ -6,7 +6,7 @@ import { UserContext } from "./context/UserContextProvider";
 import { AppContext } from "./context/AppContextProvider";
 import { SnackBarComponent as SnackBar } from "./common/SnackBar";
 import { Outlet, useNavigate } from "react-router-dom";
-import { useHealthCheck } from "./hooks/auth/health/health";
+import { useHealthCheck } from "./hooks/health/health";
 
 
 const theme = createTheme({
