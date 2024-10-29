@@ -5,7 +5,7 @@ import pytest
 from sqlalchemy import Enum, create_engine
 from sqlalchemy.orm import sessionmaker
 from src.auth.models import Auth
-from src.employees.exceptions import EmployeeNotFoundException
+from src.employees.exceptions import EmployeeNotFoundException, ManagerWithIDNotFoundException
 from src.employees.models import Base, DelegateLog, DelegationStatus, Employee
 from src.employees.services import (
     DelegationApprovalStatus,
@@ -15,6 +15,7 @@ from src.employees.services import (
     get_manager_by_subordinate_id,
     get_peers_by_staff_id,
     get_reporting_manager_and_peer_employees,
+    get_subordinates_by_manager_id,
     process_delegation_status,
     undelegate_manager,
     view_all_delegations,
@@ -864,3 +865,94 @@ def test_print_statements_coverage(test_db):
     response = get_reporting_manager_and_peer_employees(test_db, 17)
     assert response.manager_id is None
     assert len(response.peer_employees) == 0
+
+
+def test_get_reporting_manager_and_peer_employees_no_manager(test_db):
+    """Test when an employee has no manager"""
+    # Create an employee with no manager
+    employee = Employee(
+        staff_id=30,
+        staff_fname="No",
+        staff_lname="Manager",
+        dept="IT",
+        position="Staff",
+        country="SG",
+        email="no.manager@example.com",
+        role=2,
+        reporting_manager=None,
+    )
+    test_db.add(employee)
+    test_db.commit()
+
+    # Test with employee who has no manager
+    response = get_reporting_manager_and_peer_employees(test_db, 30)
+    assert response.manager_id is None
+    assert len(response.peer_employees) == 0
+
+
+def test_get_subordinates_by_manager_id_success(test_db):
+    """Test successful retrieval of subordinates"""
+    # Create a manager
+    manager = Employee(
+        staff_id=40,
+        staff_fname="Sub",
+        staff_lname="Manager",
+        dept="IT",
+        position="Manager",
+        country="SG",
+        email="sub.manager@example.com",
+        role=1,
+        reporting_manager=None,
+    )
+    test_db.add(manager)
+
+    # Create subordinates
+    subordinates = [
+        Employee(
+            staff_id=id,
+            staff_fname=f"SubEmp{i}",
+            staff_lname="Test",
+            dept="IT",
+            position="Staff",
+            country="SG",
+            email=f"subemp{i}.test@example.com",
+            role=2,
+            reporting_manager=40,
+        )
+        for i, id in enumerate([41, 42], 1)
+    ]
+    test_db.add_all(subordinates)
+    test_db.commit()
+
+    # Test getting subordinates
+    result = get_subordinates_by_manager_id(test_db, 40)
+    assert isinstance(result, list)
+    assert len(result) == 2
+    assert all(isinstance(emp, Employee) for emp in result)
+
+    # Verify correct subordinates are returned
+    subordinate_ids = [emp.staff_id for emp in result]
+    assert 41 in subordinate_ids
+    assert 42 in subordinate_ids
+
+
+def test_get_subordinates_by_manager_id_not_found(test_db):
+    """Test when manager has no subordinates"""
+    # Create a manager with no subordinates
+    manager = Employee(
+        staff_id=50,
+        staff_fname="No",
+        staff_lname="Subs",
+        dept="IT",
+        position="Manager",
+        country="SG",
+        email="no.subs@example.com",
+        role=1,
+        reporting_manager=None,
+    )
+    test_db.add(manager)
+    test_db.commit()
+
+    with pytest.raises(ManagerWithIDNotFoundException) as exc_info:
+        get_subordinates_by_manager_id(test_db, 999)  # Use non-existent manager ID
+    assert exc_info.value.manager_id == 999
