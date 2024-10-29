@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from .arrangements import models as arrangement_models
+from .arrangements.commons import models as arrangement_models
 from .arrangements.routes import router as arrangement_router
 from .auth import models as auth_models
 from .auth.routes import router as auth_router

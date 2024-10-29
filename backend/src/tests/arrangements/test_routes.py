@@ -3,8 +3,9 @@ from unittest.mock import MagicMock, patch
 
 from fastapi.testclient import TestClient
 from src.app import app
-from src.arrangements.schemas import ArrangementResponse
 from src.tests.test_utils import mock_db_session  # noqa: F401, E261
+
+from backend.src.arrangements.archive.old_schemas import ArrangementResponse
 
 client = TestClient(app)
 
@@ -22,14 +23,8 @@ class TestGetArrangementById:
             "update_datetime": datetime.now(),
         }
         mock_arrangement.configure_mock(**mock_arrangement_data)
-        mock_arrangement_data["wfh_date"] = mock_arrangement_data["wfh_date"].isoformat()
-        mock_arrangement_data["update_datetime"] = mock_arrangement_data[
-            "update_datetime"
-        ].isoformat()
 
         mock_get_arrangement.return_value = mock_arrangement
-
-        print(mock_arrangement.model_dump())
 
         # Act
         response = client.get(f"/arrangements/{arrangement_id}")

@@ -3,10 +3,10 @@ from typing import List
 
 from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
-from src.arrangements.models import LatestArrangement
-from src.employees.models import DelegateLog, DelegationStatus, Employee
 
+from ..arrangements.commons.models import LatestArrangement
 from . import models
+from .models import DelegateLog, DelegationStatus, Employee
 
 
 def get_employee_by_staff_id(db: Session, staff_id: int) -> models.Employee:
