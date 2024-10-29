@@ -2,26 +2,31 @@ version: '3.8'
 
 services:
   frontend:
+    image: justinlzx01/spm:frontend
     build:
       context: ./frontend
       dockerfile: Dockerfile
     ports:
-      - "3000:80"
+      - "80:80"
     depends_on:
       - backend
-    environment:
-      REACT_APP_BACKEND_URL: "http://backend:8000"
     volumes:
       - ./frontend:/app
       - /app/node_modules
+    platform: linux/arm64
+    env_file:
+      - ./frontend/.env
 
   backend:
+    image: justinlzx01/spm:backend
     build:
       context: ./backend
       dockerfile: Dockerfile
     ports:
       - "8000:8000"
-    environment:
-      TOKEN_SECRET: "hehe"
     volumes:
       - ./backend:/app
+    platform: linux/arm64
+    env_file:
+      - ./backend/.env
+

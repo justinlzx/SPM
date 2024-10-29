@@ -1,0 +1,75 @@
+# Dependencies
+**/node_modules
+**/__pycache__
+**/*.pyc
+**/*.pyo
+**/*.pyd
+**/.Python
+**/env
+**/venv
+**/.env
+**/pip-log.txt
+**/pip-delete-this-directory.txt
+**/yarn-debug.log*
+**/yarn-error.log*
+
+# Testing
+**/coverage
+**/.coverage
+**/.tox
+**/.pytest_cache
+**/.pytest_cache
+**/htmlcov
+**/.cypress
+**/cypress/videos
+**/cypress/screenshots
+
+# Development
+**/.git
+**/.gitignore
+**/.vscode
+**/.idea
+**/*.swp
+**/*.swo
+**/.DS_Store
+**/.env.local
+**/.env.development
+**/.env.test
+**/npm-debug.log*
+
+# Build
+**/dist
+**/build
+**/*.egg-info
+**/*.egg
+**/.next
+**/.nuxt
+**/.vuepress/dist
+**/.serverless
+
+# Documentation
+**/README.md
+**/CHANGELOG.md
+**/LICENSE
+**/docs
+
+# Docker specific
+**/Dockerfile
+**/.dockerignore
+**/docker-compose.yml
+**/docker-compose.*.yml
+
+# Project specific
+**/coverage
+**/.pytest_cache
+**/cypress.json
+**/cypress
+**/.cypress
+**/*.spec.js
+**/*.test.js
+**/*.spec.ts
+**/*.test.ts
+**/*.spec.tsx
+**/*.test.tsx
+**/*.spec.py
+**/*.test.py

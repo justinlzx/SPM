@@ -8,9 +8,7 @@ from .. import utils
 from ..database import get_db
 from ..employees.models import Employee
 from ..employees.schemas import DelegateLogCreate, EmployeeBase, EmployeePeerResponse
-
-from . import exceptions, services
-
+from . import exceptions, services, schemas
 
 router = APIRouter()
 

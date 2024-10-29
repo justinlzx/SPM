@@ -47,6 +47,8 @@ export const login = async (credentials: {
       }
     );
 
+    console.log(BACKEND_URL)
+
     const { access_token: accessToken, employee_info: {
       staff_id: id,
       role
