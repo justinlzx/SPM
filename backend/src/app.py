@@ -1,4 +1,5 @@
 from contextlib import asynccontextmanager
+import os
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -14,11 +15,15 @@ from .employees.routes import router as employee_router
 from .health.health import router as health_router
 from .init_db import load_data
 
+from dotenv import load_dotenv
+
 """
 Create a context manager to handle the lifespan of the FastAPI application
 Code before the yield keyword is run before the application starts
 Code after the yield keyword is run after the application stops
 """
+
+load_dotenv()
 
 
 @asynccontextmanager
@@ -53,9 +58,11 @@ async def lifespan(app: FastAPI):
 app = FastAPI(lifespan=lifespan)
 
 origins = [
+    "http://localhost",
     "http://localhost:3000",
     "http://localhost:3001",
     "http://localhost:3002",
+    os.getenv("FRONTEND_URL", "localhost"),  # for docker networking
 ]
 
 # Add CORS middleware to allow requests from the frontend

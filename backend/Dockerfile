@@ -18,7 +18,7 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Install Watchfiles for improved file watching
-RUN pip install watchfiles
+# RUN pip install watchfiles
 
 # Copy the rest of the application code
 COPY . .
@@ -27,4 +27,5 @@ COPY . .
 EXPOSE 8000
 
 # Command to run the FastAPI application with uvicorn and watchfiles
-CMD ["watchfiles", "--filter", "python", "uvicorn src.app:app --host 0.0.0.0 --port 8000 --reload"]
+# CMD ["watchfiles", "--filter", "python", "uvicorn src.app:app --host 0.0.0.0 --port 8000 --reload"]
+CMD ["python", "main.py"]
