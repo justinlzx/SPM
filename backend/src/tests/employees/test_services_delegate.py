@@ -4,6 +4,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from sqlalchemy import Enum, create_engine
 from sqlalchemy.orm import sessionmaker
+from src.employees import schemas
 from src.auth.models import Auth
 from src.employees.exceptions import EmployeeNotFoundException, ManagerWithIDNotFoundException
 from src.employees.models import Base, DelegateLog, DelegationStatus, Employee
@@ -956,3 +957,129 @@ def test_get_subordinates_by_manager_id_not_found(test_db):
     with pytest.raises(ManagerWithIDNotFoundException) as exc_info:
         get_subordinates_by_manager_id(test_db, 999)  # Use non-existent manager ID
     assert exc_info.value.manager_id == 999
+
+
+@patch("src.employees.services.get_manager_by_subordinate_id")
+@patch("src.employees.services.get_subordinates_by_manager_id")
+@patch("src.employees.services.convert_model_to_pydantic_schema")
+def test_get_reporting_manager_and_peer_employees_full_flow(
+    mock_convert, mock_get_subordinates, mock_get_manager, test_db
+):
+    """Test the complete flow of get_reporting_manager_and_peer_employees"""
+    # Create test data
+    manager = Employee(
+        staff_id=20,
+        staff_fname="Full",
+        staff_lname="Manager",
+        dept="IT",
+        position="Manager",
+        country="SG",
+        email="full.manager@example.com",
+        role=1,
+        reporting_manager=None,
+    )
+    test_db.add(manager)
+    test_db.commit()
+
+    # Set up mock returns
+    mock_get_manager.return_value = manager  # Return manager object, not tuple
+    mock_get_subordinates.return_value = [
+        Employee(
+            staff_id=21,
+            staff_fname="Sub1",
+            staff_lname="Test",
+            dept="IT",
+            position="Staff",
+            country="SG",
+            email="sub1.test@example.com",
+            role=2,
+            reporting_manager=20,
+        )
+    ]
+    mock_convert.return_value = [
+        schemas.EmployeeBase(
+            staff_id=21,
+            staff_fname="Sub1",
+            staff_lname="Test",
+            dept="IT",
+            position="Staff",
+            country="SG",
+            email="sub1.test@example.com",
+            role=2,
+        )
+    ]
+
+    # Test the function
+    response = get_reporting_manager_and_peer_employees(test_db, 21)
+
+    # Verify the response
+    assert response is not None
+    assert response.manager_id == 20
+    assert len(response.peer_employees) > 0
+
+    # Verify all functions were called
+    mock_get_manager.assert_called_once_with(test_db, 21)
+    mock_get_subordinates.assert_called_once_with(test_db, 20)
+    mock_convert.assert_called_once()
+
+
+@patch("src.employees.services.get_manager_by_subordinate_id")
+@patch("src.employees.services.get_subordinates_by_manager_id")
+@patch("src.employees.services.convert_model_to_pydantic_schema")
+def test_get_reporting_manager_and_peer_employees_print_statement(
+    mock_convert, mock_get_subordinates, mock_get_manager, test_db
+):
+    """Test to ensure print statement is covered"""
+    # Create test manager
+    manager = Employee(
+        staff_id=60,
+        staff_fname="Print",
+        staff_lname="Manager",
+        dept="IT",
+        position="Manager",
+        country="SG",
+        email="print.manager@example.com",
+        role=1,
+        reporting_manager=None,
+    )
+
+    # Set up mock returns
+    mock_get_manager.return_value = manager  # Return manager object, not tuple
+    mock_get_subordinates.return_value = [
+        Employee(
+            staff_id=61,
+            staff_fname="Print",
+            staff_lname="Sub",
+            dept="IT",
+            position="Staff",
+            country="SG",
+            email="print.sub@example.com",
+            role=2,
+            reporting_manager=60,
+        )
+    ]
+    mock_convert.return_value = [
+        schemas.EmployeeBase(
+            staff_id=61,
+            staff_fname="Print",
+            staff_lname="Sub",
+            dept="IT",
+            position="Staff",
+            country="SG",
+            email="print.sub@example.com",
+            role=2,
+        )
+    ]
+
+    # Test the function
+    response = get_reporting_manager_and_peer_employees(test_db, 61)
+
+    # Verify response
+    assert response is not None
+    assert response.manager_id == 60
+    assert len(response.peer_employees) == 1
+
+    # Verify all functions were called
+    mock_get_manager.assert_called_once_with(test_db, 61)
+    mock_get_subordinates.assert_called_once_with(test_db, 60)
+    mock_convert.assert_called_once()
