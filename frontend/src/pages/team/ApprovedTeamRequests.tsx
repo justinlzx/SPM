@@ -84,7 +84,7 @@ export const ApprovedTeamRequests = () => {
   useEffect(() => {
     const fetchAllRequests = async () => {
       try {
-        const response = await axios.get(`${BACKEND_URL}/arrangement/view`);
+        const response = await axios.get(`${BACKEND_URL}/arrangements/view`);
         const allRequests: TWFHRequest[] = response.data.data;
 
         // Temporarily disabling filtering by user
