@@ -5,7 +5,39 @@ from sqlalchemy.orm import Session
 from src.email.routes import send_email
 from src.notifications.email_notifications import craft_email_content_for_delegation
 
-from . import crud, exceptions, models
+from ..utils import convert_model_to_pydantic_schema
+from . import crud, exceptions, models, schemas
+
+
+def get_reporting_manager_and_peer_employees(db: Session, staff_id: int):
+    # Auto Approve for Jack Sim and Skip manager check
+    if staff_id == 130002:
+        return schemas.EmployeePeerResponse(manager_id=None, peer_employees=[])
+
+    manager: models.Employee = get_manager_by_subordinate_id(db, staff_id)
+
+    if not manager:
+        return schemas.EmployeePeerResponse(manager_id=None, peer_employees=[])
+
+    # Get list of peer employees
+    peer_employees: List[models.Employee] = get_subordinates_by_manager_id(db, manager.staff_id)
+
+    # Filter out the manager from the peer employees
+    peer_employees = [peer for peer in peer_employees if peer.staff_id != manager.staff_id]
+
+    # Convert peer employees to Pydantic model
+    peer_employees_pydantic: List[schemas.EmployeeBase] = convert_model_to_pydantic_schema(
+        peer_employees, schemas.EmployeeBase
+    )
+
+    print(f"Num results: {len(peer_employees)}")
+
+    # Format to response model
+    response = schemas.EmployeePeerResponse(
+        manager_id=manager.staff_id, peer_employees=peer_employees_pydantic
+    )
+
+    return response
 
 
 # The class `DelegationApprovalStatus` defines an enumeration for delegation approval statuses with
@@ -82,6 +114,24 @@ def get_employee_by_id(db: Session, staff_id: int) -> models.Employee:
         raise exceptions.EmployeeNotFoundException()
 
     return employee
+
+
+def get_employee_by_email(db: Session, email: str) -> models.Employee:
+    employee: models.Employee = crud.get_employee_by_email(db, email)
+
+    if not employee:
+        raise exceptions.EmployeeNotFoundException()
+
+    return employee
+
+
+def get_subordinates_by_manager_id(db: Session, manager_id: int) -> List[models.Employee]:
+    employees: List[models.Employee] = crud.get_subordinates_by_manager_id(db, manager_id)
+
+    if not employees:
+        raise exceptions.ManagerWithIDNotFoundException(manager_id=manager_id)
+
+    return employees
 
 
 def get_peers_by_staff_id(db: Session, staff_id: int) -> List[models.Employee]:
