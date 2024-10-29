@@ -64,11 +64,14 @@
     "@babel/plugin-proposal-private-property-in-object": "^7.21.11",
     "@eslint/js": "^9.13.0",
     "@types/serialize-javascript": "^5.0.4",
+    "@typescript-eslint/eslint-plugin": "^8.11.0",
+    "@typescript-eslint/parser": "^8.11.0",
     "ajv": "^8.17.1",
     "body-parser": ">=1.20.3",
     "cookie": "^1.0.1",
     "eslint": "^9.13.0",
     "eslint-plugin-react": "^7.37.2",
+    "eslint-plugin-react-hooks": "^5.0.0",
     "express": "^4.21.1",
     "globals": "^15.11.0",
     "husky": "^9.1.6",
@@ -79,6 +82,7 @@
     "nth-check": "^2.1.1",
     "path-to-regexp": "^8.2.0",
     "postcss": "^8.4.47",
+    "prettier": "^3.3.3",
     "qs": ">=6.5.3",
     "rollup": "^2.79.2",
     "send": "^1.1.0",
@@ -100,7 +104,8 @@
     "eject": "react-scripts eject",
     "prepare": "HUSKY=../.husky husky",
     "start": "react-scripts start",
-    "test": "react-scripts test"
+    "test": "react-scripts test",
+    "lint": "eslint . --config eslint.config.js --fix && prettier --write ."
   },
   "version": "0.1.0"
 }

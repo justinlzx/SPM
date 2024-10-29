@@ -35,8 +35,10 @@ jobs:
       working-directory: frontend
 
     - name: Run ESLint
-      run: npx eslint . --config eslint.config.js
-      working-directory: frontend
+      run: npx eslint . --config eslint.config.js --fix
+    
+    - name: Run Prettier
+      run: npx prettier --write .
 
     - name: Run tests
       run: npm test
