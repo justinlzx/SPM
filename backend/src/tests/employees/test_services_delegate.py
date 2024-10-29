@@ -35,50 +35,6 @@ def test_db():
     db.close()
 
 
-# @pytest.fixture
-# def seed_data(test_db):
-#     # Create auth and employee records
-#     auth_record = Auth(email="john.doe@example.com", hashed_password="hashed_password_example")
-#     employees = [
-#         Employee(
-#             staff_id=1,
-#             staff_fname="John",
-#             staff_lname="Doe",
-#             dept="IT",
-#             position="Manager",
-#             country="SG",
-#             email="john.doe@example.com",
-#             role=1,
-#             reporting_manager=1,
-#         ),
-#         Employee(
-#             staff_id=2,
-#             staff_fname="Jane",
-#             staff_lname="Smith",
-#             dept="HR",
-#             position="Manager",
-#             country="SG",
-#             email="jane.smith@example.com",
-#             role=1,
-#             reporting_manager=1,
-#         ),
-#         Employee(
-#             staff_id=3,
-#             staff_fname="Alice",
-#             staff_lname="Brown",
-#             dept="Finance",
-#             position="Manager",
-#             country="SG",
-#             email="alice.brown@example.com",
-#             role=1,
-#             reporting_manager=1,
-#         ),
-#     ]
-
-
-#     test_db.add(auth_record)
-#     test_db.add_all(employees)
-#     test_db.commit()
 @pytest.fixture
 def seed_data(test_db):
     # Create auth records
