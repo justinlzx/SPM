@@ -17,7 +17,7 @@ import {
 } from "@mui/material";
 import axios from "axios";
 import { ChipProps } from "@mui/material/Chip";
-import { ApprovalStatus } from "../types/ApprovalStatus"; 
+import { ApprovalStatus } from "../types/ApprovalStatus";
 import { capitalize } from "../utils/utils";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
@@ -103,23 +103,23 @@ export const WFHRequestTable: React.FC<TWFHRequestTableProps> = ({ requests, han
     try {
       const approvingOfficer = localStorage.getItem("id");
       const request = requests.find(req => req.arrangement_id === selectedArrangementId);
-  
+
       if (!request) {
         console.error("Request not found");
         return;
       }
-  
+
       const formData = new FormData();
-      formData.append("action", "withdraw");  
-      formData.append("requester_staff_id", request.staff_id.toString());  
-      formData.append("wfh_date", request.wfh_date);  
-      formData.append("wfh_type", request.wfh_type.toLowerCase());  
-      formData.append("reason_description", reason || "");  
-      formData.append("current_approval_status", "pending withdrawal"); 
-      formData.append("approving_officer", approvingOfficer || "");  
-  
+      formData.append("action", "withdraw");
+      formData.append("requester_staff_id", request.staff_id.toString());
+      formData.append("wfh_date", request.wfh_date);
+      formData.append("wfh_type", request.wfh_type.toLowerCase());
+      formData.append("reason_description", reason || "");
+      formData.append("current_approval_status", "pending withdrawal");
+      formData.append("approving_officer", approvingOfficer || "");
+
       await axios.put(`${BACKEND_URL}/arrangements/${selectedArrangementId}/status`, formData);
-  
+
       handleSuccess(selectedArrangementId, "withdraw");
     } catch (error) {
       console.error("Failed to withdraw request:", error);
@@ -136,22 +136,22 @@ export const WFHRequestTable: React.FC<TWFHRequestTableProps> = ({ requests, han
     try {
       const approvingOfficer = localStorage.getItem("id");
       const request = requests.find(req => req.arrangement_id === selectedArrangementId);
-  
+
       if (!request) {
         console.error("Request not found");
         return;
       }
-  
+
       const formData = new FormData();
-      formData.append("action", "cancel");  
-      formData.append("requester_staff_id", request.staff_id.toString());  
-      formData.append("wfh_date", request.wfh_date); 
-      formData.append("wfh_type", request.wfh_type.toLowerCase());  
-      formData.append("approval_status", "cancel");  
-      formData.append("approving_officer", approvingOfficer || "");  
-  
+      formData.append("action", "cancel");
+      formData.append("requester_staff_id", request.staff_id.toString());
+      formData.append("wfh_date", request.wfh_date);
+      formData.append("wfh_type", request.wfh_type.toLowerCase());
+      formData.append("approval_status", "cancel");
+      formData.append("approving_officer", approvingOfficer || "");
+
       await axios.put(`${BACKEND_URL}/arrangements/${selectedArrangementId}/status`, formData);
-  
+
       handleSuccess(selectedArrangementId, "cancel");
     } catch (error) {
       console.error("Failed to cancel request:", error);

@@ -42,9 +42,29 @@ jobs:
     #   run: npx prettier --write .
     #   working-directory: frontend
 
-    - name: Run tests
-      run: npm test
+    # Start the application in the background
+    - name: Start frontend server
+      run: npm start
       working-directory: frontend
+
+    - name: Wait for frontend to be ready
+      run: |
+        npx wait-on http://localhost:3000
+        echo "Frontend is ready!"
+      working-directory: frontend
+
+    # Start backend
+    - name: Start backend server
+      run: python -B -m uvicorn src.app:app --reload
+      working-directory: backend
+
+    - name: Install Cypress tests
+      run: npm install --save cypress
+      working-directory: .
+
+    - name: Run Cypress tests
+      run: npx cypress run
+      working-directory: .
 
     - name: Build project
       run: npm run build

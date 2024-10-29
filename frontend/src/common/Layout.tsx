@@ -6,7 +6,7 @@ import { Sidebar } from "./Sidebar";
 import Box from "@mui/material/Box";
 import CssBaseline from "@mui/material/CssBaseline";
 
-// const drawerWidth = 240;
+const drawerWidth = 240;
 
 export const Layout = () => {
   const { user } = useContext(UserContext);
