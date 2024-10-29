@@ -34,6 +34,11 @@ jobs:
       run: npm install
       working-directory: frontend
 
+    - name: Install backend dependencies
+      run: |
+        pip install uvicorn
+      working-directory: backend
+
     # - name: Run ESLint
     #   run: npx eslint . --config eslint.config.js --fix 
     #   working-directory: frontend
@@ -45,7 +50,7 @@ jobs:
     # Start the application in the background
     - name: Start frontend server
       run: |
-        npm start &
+        npm start -- --webpackDevServerConfig.setupMiddlewares=setupMiddlewares &
         echo $! > frontend.pid
       working-directory: frontend
 
