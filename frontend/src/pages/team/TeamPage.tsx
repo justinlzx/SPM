@@ -2,6 +2,7 @@ import { useNavigate } from "react-router-dom";
 import { PendingRequests } from "./PendingRequests";
 import { useContext } from "react";
 import { UserContext } from "../../context/UserContextProvider";
+import { RequestList } from "./RequestList";
 import { Button } from "@mui/material";
 
 export const TeamPage = () => {
@@ -12,16 +13,17 @@ export const TeamPage = () => {
   }
 
   const handleNominateManager = () => {
-    navigate("/delegate"); 
+    navigate("/delegate");
   }
 
   return (
     <div>
       <PendingRequests />
+      <RequestList />
 
-      { (user?.role === 1 || user?.role === 3) && (
-        <Button 
-          variant="outlined" 
+      {(user?.role === 1 || user?.role === 3) && (
+        <Button
+          variant="outlined"
           color="primary"
           sx={{ ml: 3 }}
           onClick={handleNominateManager}
