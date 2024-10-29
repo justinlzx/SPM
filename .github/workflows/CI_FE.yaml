@@ -36,6 +36,7 @@ jobs:
 
     - name: Install backend dependencies
       run: |
+        pip install -r requirements.txt
         pip install uvicorn
       working-directory: backend
 
