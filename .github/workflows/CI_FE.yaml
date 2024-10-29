@@ -30,17 +30,17 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-node-
 
-    - name: Install dependencies
+    - name: Install Frontend dependencies
       run: npm install
       working-directory: frontend
 
     - name: Install backend dependencies
       run: |
+        pip install --upgrade pip
         pip install -r requirements.txt
-            pip install --upgrade pip
-            pip install cryptography
-            pip install pyOpenSSL
-            pip install wheel
+        pip install cryptography
+        pip install pyOpenSSL
+        pip install wheel
       working-directory: backend
 
     # - name: Run ESLint
@@ -54,7 +54,7 @@ jobs:
     # Start the application in the background
     - name: Start frontend server
       run: |
-        npm start -- --webpackDevServerConfig.setupMiddlewares=setupMiddlewares &
+        npm start &
         echo $! > frontend.pid
       working-directory: frontend
 
@@ -85,3 +85,8 @@ jobs:
     - name: Build project
       run: npm run build
       working-directory: frontend
+
+    - name: Stop servers
+      run: |
+        kill $(cat frontend.pid)
+        kill $(cat backend.pid)
