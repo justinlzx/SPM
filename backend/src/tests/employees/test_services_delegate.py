@@ -2,7 +2,7 @@ from datetime import datetime
 from unittest.mock import MagicMock, patch
 
 import pytest
-from sqlalchemy import create_engine
+from sqlalchemy import Enum, create_engine
 from sqlalchemy.orm import sessionmaker
 from src.auth.models import Auth
 from src.employees.exceptions import EmployeeNotFoundException
@@ -10,9 +10,11 @@ from src.employees.models import Base, DelegateLog, DelegationStatus, Employee
 from src.employees.services import (
     DelegationApprovalStatus,
     delegate_manager,
+    get_employee_by_email,
     get_employee_by_id,
     get_manager_by_subordinate_id,
     get_peers_by_staff_id,
+    get_reporting_manager_and_peer_employees,
     process_delegation_status,
     undelegate_manager,
     view_all_delegations,
@@ -675,3 +677,190 @@ def test_view_delegations_with_no_employee_info(test_db):
     assert isinstance(result, dict)
     assert "sent_delegations" in result
     assert "pending_approval_delegations" in result
+
+
+def test_get_reporting_manager_and_peer_employees_success(test_db, seed_data):
+    # Create test data with proper self-referencing manager
+    manager = Employee(
+        staff_id=10,
+        staff_fname="Manager",
+        staff_lname="Test",
+        dept="IT",
+        position="Manager",
+        country="SG",
+        email="manager.test@example.com",
+        role=1,
+        reporting_manager=None,  # Top-level manager
+    )
+    test_db.add(manager)
+    test_db.commit()
+
+    # Now create a subordinate that reports to this manager
+    subordinate1 = Employee(
+        staff_id=11,
+        staff_fname="Sub1",
+        staff_lname="Test",
+        dept="IT",
+        position="Staff",
+        country="SG",
+        email="sub1.test@example.com",
+        role=2,
+        reporting_manager=10,  # Reports to manager 10
+    )
+    test_db.add(subordinate1)
+    test_db.commit()
+
+    # First verify the manager relationship is set up correctly
+    manager_result = get_manager_by_subordinate_id(test_db, 11)
+    assert manager_result is not None
+    assert isinstance(manager_result, tuple)
+    assert len(manager_result) == 2
+    manager_obj, unlocked_peers = manager_result
+    assert manager_obj.staff_id == 10
+
+    # Now test the special case with ID 130002 (Jack Sim)
+    response = get_reporting_manager_and_peer_employees(test_db, 130002)
+    assert response.manager_id is None
+    assert len(response.peer_employees) == 0
+
+
+def test_get_reporting_manager_and_peer_employees_no_manager(test_db):
+    # Test case when manager is not found
+    employee = Employee(
+        staff_id=13,
+        staff_fname="No",
+        staff_lname="Manager",
+        dept="IT",
+        position="Staff",
+        country="SG",
+        email="no.manager@example.com",
+        role=2,
+        reporting_manager=None,
+    )
+
+    test_db.add(employee)
+    test_db.commit()
+
+    response = get_reporting_manager_and_peer_employees(test_db, 13)
+    assert response.manager_id is None
+    assert len(response.peer_employees) == 0
+
+
+def test_get_reporting_manager_and_peer_employees_jack_sim(test_db):
+    # Test the special case for Jack Sim (staff_id: 130002)
+    response = get_reporting_manager_and_peer_employees(test_db, 130002)
+    assert response.manager_id is None
+    assert len(response.peer_employees) == 0
+
+
+def test_get_employee_by_email_success(test_db):
+    # Test successful email lookup
+    employee = Employee(
+        staff_id=14,
+        staff_fname="Email",
+        staff_lname="Test",
+        dept="IT",
+        position="Staff",
+        country="SG",
+        email="email.test@example.com",
+        role=2,
+        reporting_manager=1,
+    )
+
+    test_db.add(employee)
+    test_db.commit()
+
+    result = get_employee_by_email(test_db, "email.test@example.com")
+    assert result.staff_id == 14
+    assert result.email == "email.test@example.com"
+
+
+def test_get_employee_by_email_not_found(test_db):
+    # Test email lookup for non-existent employee
+    with pytest.raises(EmployeeNotFoundException):
+        get_employee_by_email(test_db, "nonexistent@example.com")
+
+
+@pytest.mark.asyncio
+async def test_process_delegation_status_invalid_status(test_db, seed_data):
+    # Create a delegation for testing
+    delegate_log = DelegateLog(
+        manager_id=1, delegate_manager_id=2, status_of_delegation=DelegationStatus.pending
+    )
+    test_db.add(delegate_log)
+    test_db.commit()
+
+    # Create an invalid status enum value
+    class InvalidStatus(Enum):
+        invalid = "invalid"
+
+    # Test with an invalid status
+    result = await process_delegation_status(2, InvalidStatus.invalid, test_db)
+
+    # Since the status is invalid, the delegation log should remain in pending state
+    assert isinstance(result, DelegateLog)
+    assert result.status_of_delegation == DelegationStatus.pending
+
+
+def test_print_statements_coverage(test_db):
+    """Test to cover print statements in the code"""
+    # Create a standalone manager first
+    manager = Employee(
+        staff_id=15,
+        staff_fname="Print",
+        staff_lname="Test",
+        dept="IT",
+        position="Manager",
+        country="SG",
+        email="print.test@example.com",
+        role=1,
+        reporting_manager=None,  # Top-level manager
+    )
+    test_db.add(manager)
+    test_db.commit()
+
+    # Then create subordinate
+    subordinate = Employee(
+        staff_id=16,
+        staff_fname="Print",
+        staff_lname="Sub",
+        dept="IT",
+        position="Staff",
+        country="SG",
+        email="print.sub@example.com",
+        role=2,
+        reporting_manager=15,  # Reports to manager 15
+    )
+    test_db.add(subordinate)
+    test_db.commit()
+
+    # Test the auto-approve case first (should just return None for peers)
+    response = get_reporting_manager_and_peer_employees(test_db, 130002)
+    assert response.manager_id is None
+    assert len(response.peer_employees) == 0
+
+    # Then test a regular case that will trigger the print statements
+    manager_result = get_manager_by_subordinate_id(test_db, 16)
+    assert manager_result is not None
+    assert isinstance(manager_result, tuple)
+    manager_obj, peers = manager_result
+    assert manager_obj.staff_id == 15
+
+    # Test the case where there is no manager
+    standalone = Employee(
+        staff_id=17,
+        staff_fname="Standalone",
+        staff_lname="Employee",
+        dept="IT",
+        position="Staff",
+        country="SG",
+        email="standalone@example.com",
+        role=2,
+        reporting_manager=None,
+    )
+    test_db.add(standalone)
+    test_db.commit()
+
+    response = get_reporting_manager_and_peer_employees(test_db, 17)
+    assert response.manager_id is None
+    assert len(response.peer_employees) == 0
