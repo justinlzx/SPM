@@ -2,11 +2,42 @@ from enum import Enum
 from typing import List
 
 from sqlalchemy.orm import Session
-
 from src.email.routes import send_email
 from src.notifications.email_notifications import craft_email_content_for_delegation
 
-from . import crud, exceptions, models
+from ..utils import convert_model_to_pydantic_schema
+from . import crud, exceptions, models, schemas
+
+
+def get_reporting_manager_and_peer_employees(db: Session, staff_id: int):
+    # Auto Approve for Jack Sim and Skip manager check
+    if staff_id == 130002:
+        return schemas.EmployeePeerResponse(manager_id=None, peer_employees=[])
+
+    manager: models.Employee = get_manager_by_subordinate_id(db, staff_id)
+
+    if not manager:
+        return schemas.EmployeePeerResponse(manager_id=None, peer_employees=[])
+
+    # Get list of peer employees
+    peer_employees: List[models.Employee] = get_subordinates_by_manager_id(db, manager.staff_id)
+
+    # Filter out the manager from the peer employees
+    peer_employees = [peer for peer in peer_employees if peer.staff_id != manager.staff_id]
+
+    # Convert peer employees to Pydantic model
+    peer_employees_pydantic: List[schemas.EmployeeBase] = convert_model_to_pydantic_schema(
+        peer_employees, schemas.EmployeeBase
+    )
+
+    print(f"Num results: {len(peer_employees)}")
+
+    # Format to response model
+    response = schemas.EmployeePeerResponse(
+        manager_id=manager.staff_id, peer_employees=peer_employees_pydantic
+    )
+
+    return response
 
 
 # The class `DelegationApprovalStatus` defines an enumeration for delegation approval statuses with
@@ -40,7 +71,7 @@ def get_manager_by_subordinate_id(db: Session, staff_id: int) -> models.Employee
     # Retrieve the employee
     emp = get_employee_by_id(db, staff_id)
     if not emp:
-        raise exceptions.EmployeeNotFoundException("Employee not found.")
+        raise exceptions.EmployeeNotFoundException()
 
     # Get the manager of the employee
     manager = crud.get_manager_of_employee(db, emp)
@@ -64,9 +95,8 @@ def get_manager_by_subordinate_id(db: Session, staff_id: int) -> models.Employee
 
 
 def get_employee_by_id(db: Session, staff_id: int) -> models.Employee:
-    """
-    This function retrieves an employee from the database by their staff ID and raises an exception if
-    the employee is not found.
+    """This function retrieves an employee from the database by their staff ID and raises an
+    exception if the employee is not found.
 
     :param db: The `db` parameter is of type `Session`, which is likely referring to a database session
     object used for database operations. This parameter is used to interact with the database to
@@ -87,19 +117,6 @@ def get_employee_by_id(db: Session, staff_id: int) -> models.Employee:
 
 
 def get_employee_by_email(db: Session, email: str) -> models.Employee:
-    """
-    This function retrieves an employee from the database based on their email address and raises an
-    exception if the employee is not found.
-
-    :param db: The `db` parameter is of type `Session`, which is likely referring to a database session
-    object used for database operations. It is used to interact with the database to retrieve employee
-    information based on the provided email
-    :type db: Session
-    :param email: The `email` parameter is a string that represents the email address of the employee
-    you are trying to retrieve from the database
-    :type email: str
-    :return: The function `get_employee_by_email` is returning an instance of the `Employee` model.
-    """
     employee: models.Employee = crud.get_employee_by_email(db, email)
 
     if not employee:
@@ -109,25 +126,10 @@ def get_employee_by_email(db: Session, email: str) -> models.Employee:
 
 
 def get_subordinates_by_manager_id(db: Session, manager_id: int) -> List[models.Employee]:
-    """
-    This function retrieves a list of employees who are subordinates of a specified manager ID from the
-    database.
-
-    :param db: Session object representing the database session
-    :type db: Session
-    :param manager_id: The `manager_id` parameter is an integer value that represents the unique
-    identifier of a manager in the database. This function retrieves a list of employees who are
-    subordinates of the specified manager based on the provided `manager_id`. If no employees are found
-    for the given manager_id, it raises a `
-    :type manager_id: int
-    :return: a list of Employee objects who are subordinates of the manager with the specified
-    manager_id. If no employees are found for the given manager_id, it raises a
-    ManagerNotFoundException.
-    """
     employees: List[models.Employee] = crud.get_subordinates_by_manager_id(db, manager_id)
 
     if not employees:
-        raise exceptions.ManagerNotFoundException()
+        raise exceptions.ManagerWithIDNotFoundException(manager_id=manager_id)
 
     return employees
 
@@ -149,7 +151,7 @@ def get_peers_by_staff_id(db: Session, staff_id: int) -> List[models.Employee]:
     specified `staff_id`.
     """
     employee: models.Employee = get_employee_by_id(db, staff_id)
-    peer_employees: List[models.Employee] = get_subordinates_by_manager_id(
+    peer_employees: List[models.Employee] = crud.get_subordinates_by_manager_id(
         db, employee.reporting_manager
     )
 
@@ -339,9 +341,8 @@ async def undelegate_manager(staff_id: int, db: Session):
 
 
 def view_delegations(staff_id: int, db: Session):
-    """
-    This Python function retrieves and formats sent delegations by a manager and those pending approval
-    from a database.
+    """This Python function retrieves and formats sent delegations by a manager and those pending
+    approval from a database.
 
     :param staff_id: The `staff_id` parameter in the `view_delegations` function represents the unique
     identifier of the manager whose delegations are being viewed. This ID is used to retrieve the
