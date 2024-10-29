@@ -4,7 +4,10 @@ from unittest.mock import MagicMock, Mock, patch
 import pytest
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Query, Session
-from src.arrangements import crud, models, schemas
+from src.arrangements import crud
+
+from backend.src.arrangements.archive import old_schemas
+from backend.src.arrangements.commons import models
 
 
 @pytest.fixture
@@ -221,7 +224,7 @@ class TestGetArrangements:
         ]
 
         # Call the function with test parameters
-        results = crud.get_arrangements(db, staff_ids, **filters)
+        results = crud.get_arrangements_by_staff_ids(db, staff_ids, **filters)
 
         result_ids = [result["arrangement_id"] for result in results]
         # Verify final result
@@ -236,7 +239,7 @@ class TestGetArrangements:
         mock_query.all.return_value = mock_arrangements  # Return mocked arrangements
 
         # Call the function with multiple approval statuses
-        result = crud.get_arrangements(
+        result = crud.get_arrangements_by_staff_ids(
             mock_db_session,
             staff_ids=[12345, 130002],
             current_approval_status=["pending approval", "approved"],
@@ -258,7 +261,7 @@ class TestGetArrangements:
         mock_query.all.return_value = mock_arrangements  # Return mocked arrangements
 
         # Call the function without current_approval_status
-        result = crud.get_arrangements(
+        result = crud.get_arrangements_by_staff_ids(
             mock_db_session, staff_ids=[12345, 130002], current_approval_status=None
         )
 
@@ -437,7 +440,7 @@ class TestCreateRecurringRequest:
         mock_db_session.refresh = MagicMock()
 
         # Arrange with correct values
-        request = schemas.ArrangementCreate(
+        request = old_schemas.ArrangementCreate(
             requester_staff_id=12345,
             wfh_date=datetime.strptime("2024-10-11", "%Y-%m-%d").date(),
             wfh_type="full",  # Valid value
@@ -462,7 +465,7 @@ class TestCreateRecurringRequest:
         mock_db_session.add.side_effect = SQLAlchemyError("Database Error")
 
         # Arrange with required fields populated correctly
-        request = schemas.ArrangementCreate(
+        request = old_schemas.ArrangementCreate(
             requester_staff_id=12345,
             wfh_date=datetime.strptime(
                 "2024-10-11", "%Y-%m-%d"
@@ -487,7 +490,7 @@ class TestCreateRecurringRequest:
         mock_db_session.commit = MagicMock()
         mock_db_session.refresh = MagicMock()
 
-        request = schemas.ArrangementCreate(
+        request = old_schemas.ArrangementCreate(
             requester_staff_id=12345,
             wfh_date=datetime.strptime("2024-10-11", "%Y-%m-%d").date(),
             wfh_type="full",

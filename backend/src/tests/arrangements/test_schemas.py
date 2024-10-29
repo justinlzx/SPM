@@ -2,7 +2,8 @@ from datetime import datetime
 
 import pytest
 from pydantic import ValidationError
-from src.arrangements.schemas import (
+
+from backend.src.arrangements.archive.old_schemas import (
     ArrangementCreate,
     ArrangementCreateWithFile,
     ArrangementLog,

@@ -10,15 +10,6 @@ from fastapi import File
 from fastapi.testclient import TestClient
 from sqlalchemy.exc import SQLAlchemyError
 from src.app import app
-from src.arrangements import exceptions as arrangement_exceptions
-from src.arrangements import models as arrangement_models
-from src.arrangements.schemas import (
-    ArrangementCreateResponse,
-    ArrangementCreateWithFile,
-    ArrangementResponse,
-    ArrangementUpdate,
-    ManagerPendingRequests,
-)
 from src.arrangements.services import (
     STATUS,
     create_arrangements_from_request,
@@ -33,6 +24,16 @@ from src.arrangements.services import (
 from src.employees import exceptions as employee_exceptions
 from src.employees.schemas import EmployeeBase
 from src.tests.test_utils import mock_db_session  # noqa: F401, E261
+
+from backend.src.arrangements.archive.old_schemas import (
+    ArrangementCreateResponse,
+    ArrangementCreateWithFile,
+    ArrangementResponse,
+    ArrangementUpdate,
+    ManagerPendingRequests,
+)
+from backend.src.arrangements.commons import exceptions as arrangement_exceptions
+from backend.src.arrangements.commons import models as arrangement_models
 
 client = TestClient(app)
 
@@ -336,6 +337,10 @@ class TestGetSubordinatesArrangements:
 
 
 class TestGetTeamArrangements:
+    @patch("src.arrangements.services.get_subordinates_arrangements")
+    @patch("src.utils.convert_model_to_pydantic_schema")
+    @patch("src.arrangements.crud.get_arrangements")
+    @patch("src.employees.services.get_peers_by_staff_id")
     def test_success(
         self,
         mock_db_session,

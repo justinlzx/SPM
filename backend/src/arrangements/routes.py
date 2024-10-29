@@ -1,40 +1,39 @@
-from datetime import date, datetime
-from typing import Annotated, Dict, List, Literal, Optional
+from dataclasses import asdict
+from datetime import datetime
+from typing import Annotated, List, Optional
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
-from fastapi.responses import JSONResponse
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from ..database import get_db
 from ..employees import exceptions as employee_exceptions
-from ..employees import models as employee_models
-from ..employees import services as employee_services
 from ..logger import logger
 from ..notifications import exceptions as notification_exceptions
-from ..notifications.email_notifications import craft_and_send_email
-from . import schemas, services
-from .exceptions import (
+from ..schemas import JSendResponse, PaginationMeta
+from . import services
+from .commons import dataclasses as dc
+from .commons import schemas
+from .commons.enums import ApprovalStatus
+from .commons.exceptions import (
     ArrangementActionNotAllowedException,
     ArrangementNotFoundException,
     S3UploadFailedException,
 )
-from .schemas import ArrangementCreate, ArrangementResponse, ArrangementUpdate
 
 router = APIRouter()
 
 
 @router.get("/{arrangement_id}", summary="Get an arrangement by its arrangement_id")
-def get_arrangement_by_id(arrangement_id: int, db: Session = Depends(get_db)):
+def get_arrangement_by_id(arrangement_id: int, db: Session = Depends(get_db)) -> JSendResponse:
     try:
-        arrangement: ArrangementResponse = services.get_arrangement_by_id(db, arrangement_id)
+        logger.info(f"Route: Fetching arrangement with ID: {arrangement_id}")
+        data = services.get_arrangement_by_id(db, arrangement_id)
+        logger.info("Route: Found arrangement")
 
-        return JSONResponse(
-            status_code=200,
-            content={
-                "message": "Arrangement retrieved successfully",
-                "data": arrangement.model_dump(),
-            },
+        return JSendResponse(
+            status="success",
+            data=schemas.ArrangementResponse(**asdict(data)),
         )
     except ArrangementNotFoundException as e:
         raise HTTPException(status_code=404, detail=str(e))
@@ -48,31 +47,21 @@ def get_arrangement_by_id(arrangement_id: int, db: Session = Depends(get_db)):
 )
 def get_personal_arrangements(
     staff_id: int,
-    current_approval_status: List[
-        Literal[
-            "pending approval",
-            "pending withdrawal",
-            "approved",
-            "rejected",
-            "withdrawn",
-            "cancelled",
-        ]
-    ] = Query(None, description="Filter by status"),
+    request: schemas.PersonalArrangementsRequest = Depends(schemas.PersonalArrangementsRequest),
     db: Session = Depends(get_db),
-):
+) -> JSendResponse:
     try:
         logger.info(f"Route: Fetching personal arrangements for staff ID: {staff_id}")
-        arrangements: List[schemas.ArrangementResponse] = services.get_personal_arrangements(
-            db, staff_id, current_approval_status
+        data = services.get_personal_arrangements(
+            db=db,
+            staff_id=staff_id,
+            current_approval_status=request.current_approval_status,
         )
-        logger.info(f"Route: Found {len(arrangements)} arrangements for staff ID {staff_id}")
+        logger.info(f"Route: Found {len(data)} arrangements for staff ID {staff_id}")
 
-        return JSONResponse(
-            status_code=200,
-            content={
-                "message": "Personal arrangements retrieved successfully",
-                "data": [data.model_dump() for data in arrangements],
-            },
+        return JSendResponse(
+            status="success",
+            data=[schemas.ArrangementResponse(**asdict(arrangement)) for arrangement in data],
         )
     except SQLAlchemyError as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -84,59 +73,50 @@ def get_personal_arrangements(
 )
 def get_subordinates_arrangements(
     manager_id: int,
-    current_approval_status: Optional[
-        List[
-            Literal[
-                "pending approval",
-                "pending withdrawal",
-                "approved",
-                "rejected",
-                "withdrawn",
-                "cancelled",
-            ]
-        ]
-    ] = Query(None, description="Filter by status"),
-    name: Optional[str] = Query(None, description="Name of the employee"),
-    start_date: Optional[date] = Query(None, description="Start Date"),
-    end_date: Optional[date] = Query(None, description="End Date"),
-    wfh_type: Optional[Literal["full", "am", "pm"]] = Query(
-        None, description="Type of WFH arrangement"
-    ),
-    reason: Optional[str] = Query(None, description="Reason for the WFH"),
-    items_per_page: int = Query(10, description="Items per Page"),
-    page_num: int = Query(1, description="Page Number"),
+    request_filters: schemas.ArrangementFilters = Depends(schemas.ArrangementFilters),
+    request_pagination: schemas.PaginationConfig = Depends(schemas.PaginationConfig),
     db: Session = Depends(get_db),
-):
+) -> JSendResponse:
     try:
+        # Convert to dataclasses
+        filters = dc.ArrangementFilters.from_dict(request_filters.model_dump())
+        pagination = dc.PaginationConfig.from_dict(request_pagination.model_dump())
+
+        # Get arrangements
         logger.info(f"Fetching arrangements for employees under manager ID: {manager_id}")
-        arrangements, pagination_meta = services.get_subordinates_arrangements(
-            db,
-            manager_id,
-            current_approval_status,
-            name,
-            start_date,
-            end_date,
-            wfh_type,
-            reason,
-            items_per_page,
-            page_num,
+        data, pagination_meta = services.get_subordinates_arrangements(
+            db=db, manager_id=manager_id, filters=filters, pagination=pagination
         )
-        logger.info(
-            f"Route: Found {len(arrangements)} arrangements for employees under manager ID: {manager_id}"
-        )
+        if filters.group_by_date:
+            logger.info(
+                f"Route: Found {pagination_meta.total_count} arrangements for {len(data)} dates"
+            )
+        else:
+            logger.info(f"Route: Found {len(data)} arrangements")
 
-        arrangements_dict = [arrangement.model_dump() for arrangement in arrangements]
+        # Convert to Pydantic model
+        if filters.group_by_date:
+            arrangements = [
+                {
+                    "date": arrangement_date.date,
+                    "pending_arrangements": [
+                        schemas.ArrangementResponse(**asdict(arrangement))
+                        for arrangement in arrangement_date.arrangements
+                    ],
+                }
+                for arrangement_date in data
+            ]
+        else:
+            arrangements = [
+                schemas.ArrangementResponse(**asdict(arrangement)) for arrangement in data
+            ]
 
-        return JSONResponse(
-            status_code=200,
-            content={
-                "message": "Arrangements for employees under manager retrieved successfully",
-                "manager_id": manager_id,
-                "data": arrangements_dict,
-                "pagination_meta": pagination_meta,
-            },
+        return JSendResponse(
+            status="success",
+            data=arrangements,
+            pagination_meta=PaginationMeta(**asdict(pagination_meta)),
         )
-    except employee_exceptions.ManagerNotFoundException as e:
+    except employee_exceptions.ManagerWithIDNotFoundException as e:
         raise HTTPException(status_code=404, detail=str(e))
     except SQLAlchemyError as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -148,47 +128,47 @@ def get_subordinates_arrangements(
 )
 def get_team_arrangements(
     staff_id: int,
-    current_approval_status: Optional[
-        Literal["pending approval", "pending withdrawal", "approved"]
-    ] = Query(None, description="Filter by status"),
-    name: Optional[str] = Query(None, description="Name of the employee"),
-    wfh_type: Optional[Literal["full", "am", "pm"]] = Query(
-        None, description="Type of WFH arrangement"
-    ),
-    start_date: Optional[date] = Query(None, description="Start Date"),
-    end_date: Optional[date] = Query(None, description="End Date"),
-    items_per_page: int = Query(10, description="Items per Page"),
-    page_num: int = Query(1, description="Page Number"),
+    request_filters: schemas.ArrangementFilters = Depends(schemas.ArrangementFilters),
+    request_pagination: schemas.PaginationConfig = Depends(schemas.PaginationConfig),
     db: Session = Depends(get_db),
-):
+) -> JSendResponse:
     try:
-        arrangements: Dict[str, List[ArrangementResponse]] = services.get_team_arrangements(
-            db,
-            staff_id,
-            current_approval_status,
-            name,
-            wfh_type,
-            start_date,
-            end_date,
-            items_per_page,
-            page_num,
-        )
-        return JSONResponse(
-            status_code=200,
-            content={
-                "message": "Arrangements for team retrieved successfully",
-                "staff_id": staff_id,
-                "data": {
-                    key: [
-                        {
-                            **data.model_dump(),
-                            "update_datetime": (data.update_datetime.isoformat()),
-                        }
-                        for data in value
-                    ]
-                    for key, value in arrangements.items()
-                },
-            },
+        # Convert to dataclasses
+        filters = dc.ArrangementFilters.from_dict(request_filters.model_dump())
+        pagination = dc.PaginationConfig.from_dict(request_pagination.model_dump())
+
+        # Get arrangements
+        logger.info(f"Route: Fetching arrangements for team of staff ID: {staff_id}")
+        data, pagination_meta = services.get_team_arrangements(db, staff_id, filters, pagination)
+        if filters.group_by_date:
+            logger.info(
+                f"Route: Found {pagination_meta.total_count} arrangements for {len(data)} dates"
+            )
+        else:
+            logger.info(f"Route: Found {len(data)} arrangements")
+
+        # Convert to Pydantic model
+        # Convert to Pydantic model
+        if filters.group_by_date:
+            arrangements = [
+                {
+                    "date": arrangement_date.date,
+                    "pending_arrangements": [
+                        schemas.ArrangementResponse(**asdict(arrangement))
+                        for arrangement in arrangement_date.arrangements
+                    ],
+                }
+                for arrangement_date in data
+            ]
+        else:
+            arrangements = [
+                schemas.ArrangementResponse(**asdict(arrangement)) for arrangement in data
+            ]
+
+        return JSendResponse(
+            status="success",
+            data=arrangements,
+            pagination_meta=PaginationMeta(**asdict(pagination_meta)),
         )
     except SQLAlchemyError as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -196,85 +176,27 @@ def get_team_arrangements(
 
 @router.post("/request")
 async def create_wfh_request(
-    requester_staff_id: int = Form(..., title="Staff ID of the requester"),
-    wfh_date: date = Form(..., title="Date of the WFH request"),
-    wfh_type: Literal["full", "am", "pm"] = Form(..., title="Type of WFH arrangement"),
-    reason_description: str = Form(..., title="Reason for requesting the WFH"),
-    is_recurring: Optional[bool] = Form(
-        False, title="Flag to indicate if the request is recurring"
-    ),
-    recurring_end_date: Optional[str] = Form(None, title="End date of a recurring WFH request"),
-    recurring_frequency_number: Optional[int] = Form(
-        None, title="Numerical frequency of the recurring WFH request"
-    ),
-    recurring_frequency_unit: Optional[Literal["week", "month"]] = Form(
-        None, title="Unit of the frequency of the recurring WFH request"
-    ),
-    recurring_occurrences: Optional[int] = Form(
-        None, title="Number of occurrences of the recurring WFH request"
-    ),
-    batch_id: Optional[int] = Form(None, title="Unique identifier for the batch, if any"),
-    supporting_docs: Annotated[Optional[list[UploadFile]], File(upload_multiple=True)] = [],
+    request: schemas.CreateArrangementRequest = Depends(schemas.CreateArrangementRequest.as_form),
+    supporting_docs: Annotated[Optional[List[UploadFile]], File()] = None,
     db: Session = Depends(get_db),
-):
+) -> JSendResponse:
     try:
-        update_datetime = datetime.now()
-        current_approval_status = "pending approval"
-
-        # Step 1: Fetch the usual approving officer (Reporting Manager) for the requester
-        employee_record = (
-            db.query(employee_models.Employee)
-            .filter(employee_models.Employee.staff_id == requester_staff_id)
-            .first()
+        wfh_request = dc.CreateArrangementRequest(
+            update_datetime=datetime.now(),
+            current_approval_status=ApprovalStatus.PENDING_APPROVAL,
+            **request.model_dump(),
         )
 
-        if not employee_record:
-            raise HTTPException(status_code=404, detail="Employee record not found")
-
-        approving_officer = employee_record.reporting_manager
-
-        # Step 2: Check if the approving officer is on leave and fetch the delegate
-        delegate_approving_officer = None
-        delegation_log = (
-            db.query(employee_models.DelegateLog)
-            .filter(employee_models.DelegateLog.manager_id == approving_officer)
-            .filter(
-                employee_models.DelegateLog.status_of_delegation.in_(
-                    [
-                        employee_models.DelegationStatus.pending,
-                        employee_models.DelegationStatus.accepted,
-                    ]
-                )
-            )
-            .first()
-        )
-
-        if delegation_log:
-            delegate_approving_officer = delegation_log.delegate_manager_id
-
-        # Step 3: Create the WFH request data structure
-        wfh_request: ArrangementCreate = {
-            "reason_description": reason_description,
-            "is_recurring": is_recurring,
-            "recurring_end_date": recurring_end_date,
-            "recurring_frequency_number": recurring_frequency_number,
-            "recurring_frequency_unit": recurring_frequency_unit,
-            "recurring_occurrences": recurring_occurrences,
-            "batch_id": batch_id,
-            "update_datetime": update_datetime,
-            "current_approval_status": current_approval_status,
-            "wfh_date": wfh_date,
-            "wfh_type": wfh_type,
-            "staff_id": requester_staff_id,
-            "approving_officer": approving_officer,
-            "delegate_approving_officer": delegate_approving_officer,  # New field added here
-        }
-
-        # Step 4: Call the service to create the arrangements
         arrangements = await services.create_arrangements_from_request(
             db, wfh_request, supporting_docs
         )
-        return arrangements
+
+        return JSendResponse(
+            status="success",
+            data=[
+                schemas.ArrangementResponse(**asdict(arrangement)) for arrangement in arrangements
+            ],
+        )
     except S3UploadFailedException as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -282,60 +204,37 @@ async def create_wfh_request(
 @router.put("/{arrangement_id}/status", summary="Update the status of a WFH request")
 async def update_wfh_request(
     arrangement_id: int,
-    wfh_update: Annotated[ArrangementUpdate, Form()],
+    update: schemas.UpdateArrangementRequest = Depends(schemas.UpdateArrangementRequest.as_form),
+    supporting_docs: Annotated[Optional[List[UploadFile]], File()] = None,
     db: Session = Depends(get_db),
-) -> JSONResponse:
+) -> JSendResponse:
     try:
-        wfh_update.arrangement_id = arrangement_id
-
-        # Update the arrangement status
-        updated_arrangement: schemas.ArrangementUpdate = (
-            services.update_arrangement_approval_status(db, wfh_update)
+        wfh_update = dc.UpdateArrangementRequest(
+            update_datetime=datetime.now(),
+            arrangement_id=arrangement_id,
+            **update.model_dump(),
         )
 
-        # **Skip employee lookups for 'withdraw' and 'cancel' actions**
-        if updated_arrangement.current_approval_status not in [
-            "withdrawn",
-            "cancelled",
-        ]:
-            # Fetch the staff (requester) information
-            requester_employee: employee_models.Employee = employee_services.get_employee_by_id(
-                db, updated_arrangement.staff_id
-            )
-
-            # Fetch manager info (approving officer)
-            approving_officer: employee_models.Employee = employee_services.get_employee_by_id(
-                db, updated_arrangement.approving_officer
-            )
-
-            # Prepare and send email to staff and approving officer
-            await craft_and_send_email(
-                employee=requester_employee,
-                arrangements=updated_arrangement,
-                action=wfh_update.action,
-                manager=approving_officer,
-            )
-
-        # Custom message based on the action performed
-        action_message = {
-            "approved": "Request approved successfully",
-            "rejected": "Request rejected successfully",
-            "withdrawn": "Request withdrawn successfully",
-            "cancelled": "Request cancelled successfully",
-        }.get(
-            updated_arrangement.current_approval_status,
-            "Request processed successfully",
+        updated_arrangement: dc.ArrangementResponse = (
+            await services.update_arrangement_approval_status(db, wfh_update, supporting_docs)
         )
 
-        return JSONResponse(
-            status_code=201,
-            content={
-                "message": f"{action_message} and notifications sent",
-                "data": {
-                    **updated_arrangement.model_dump(),
-                    "update_datetime": (updated_arrangement.update_datetime.isoformat()),
-                },
-            },
+        # TODO: REVIEW deleted lines for skip employee lookup for cancel and withdrawn
+
+        # # Custom message based on the action performed
+        # action_message = {
+        #     "approved": "Request approved successfully",
+        #     "rejected": "Request rejected successfully",
+        #     "withdrawn": "Request withdrawn successfully",
+        #     "cancelled": "Request cancelled successfully",
+        # }.get(
+        #     updated_arrangement.current_approval_status,
+        #     "Request processed successfully",
+        # )
+
+        return JSendResponse(
+            status="success",
+            data=updated_arrangement,
         )
 
     except ArrangementNotFoundException as e:

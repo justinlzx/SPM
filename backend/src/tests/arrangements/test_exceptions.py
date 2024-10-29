@@ -1,5 +1,6 @@
 import pytest
-from src.arrangements.exceptions import (
+
+from backend.src.arrangements.commons.exceptions import (
     ArrangementActionNotAllowedException,
     ArrangementNotFoundException,
 )
