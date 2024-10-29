@@ -63,14 +63,14 @@ jobs:
         echo $! > backend.pid
       working-directory: backend
 
-    # Wait for both services to be ready
-    - name: Wait for services
-      run: |
-        npx wait-on http://localhost:3000
-        npx wait-on http://localhost:8000
-        echo "All services are ready!"
-      working-directory: frontend
-      timeout-minutes: 2
+    # # Wait for both services to be ready
+    # - name: Wait for services
+    #   run: |
+    #     npx wait-on http://localhost:3000
+    #     npx wait-on http://localhost:8000
+    #     echo "All services are ready!"
+    #   working-directory: frontend
+    #   timeout-minutes: 2
 
     - name: Install Cypress tests
       run: npm install --save cypress
