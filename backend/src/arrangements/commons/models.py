@@ -1,15 +1,8 @@
-from sqlalchemy import (
-    CheckConstraint,
-    Column,
-    Date,
-    DateTime,
-    ForeignKey,
-    Integer,
-    String,
-)
+from sqlalchemy import Column, DateTime, Enum, ForeignKey, Integer, String
 from sqlalchemy.orm import relationship
 
-from ..database import Base
+from ...database import Base
+from .enums import Action, ApprovalStatus, RecurringFrequencyUnit, WfhType
 
 
 class ArrangementLog(Base):
@@ -37,15 +30,24 @@ class ArrangementLog(Base):
         doc="Date of the WFH arrangement",
     )
     wfh_type = Column(
-        String(length=50),
+        Enum(WfhType),
         nullable=False,
         doc="Type of WFH arrangement: full day, AM, or PM",
     )
-    approval_status = Column(
-        String(length=50),
+    action = Column(
+        Enum(Action),
         nullable=False,
-        default="pending approval",
-        doc="Current status of the request: pending approval, pending withdrawal, approved, rejected, withdrawn or cancelled",
+        doc="Action taken: create, update, approve, reject, withdraw, or cancel",
+    )
+    previous_approval_status = Column(
+        Enum(ApprovalStatus),
+        nullable=False,
+        doc="Previous status of the request: pending approval, pending withdrawal, approved, rejected, withdrawn or cancelled",
+    )
+    updated_approval_status = Column(
+        Enum(ApprovalStatus),
+        nullable=False,
+        doc="Updated status of the request: pending approval, pending withdrawal, approved, rejected, withdrawn or cancelled",
     )
     approving_officer = Column(
         Integer,
@@ -90,13 +92,17 @@ class ArrangementLog(Base):
         back_populates="arrangement_logs_approved",
     )
 
-    __table_args__ = (
-        CheckConstraint("wfh_type IN ('full', 'am', 'pm')", name="check_wfh_type"),
-        CheckConstraint(
-            "approval_status IN ('pending', 'pending approval', 'pending withdrawal', 'approved', 'rejected', 'withdrawn', 'cancelled')",
-            name="check_approval_status",
-        ),
-    )
+    # __table_args__ = (
+    #     CheckConstraint("wfh_type IN ('full', 'am', 'pm')", name="check_wfh_type"),
+    #     CheckConstraint(
+    #         "action IN ('create', 'update', 'approve', 'reject', 'withdraw', 'cancel')",
+    #         name="check_action",
+    #     ),
+    #     CheckConstraint(
+    #         "old_approval_status IN ('pending', 'pending approval', 'pending withdrawal', 'approved', 'rejected', 'withdrawn', 'cancelled')",
+    #         name="check_approval_status",
+    #     ),
+    # )
 
 
 class LatestArrangement(Base):
@@ -108,7 +114,7 @@ class LatestArrangement(Base):
         doc="Unique identifier for the arrangement",
     )
     update_datetime = Column(
-        String(length=50),
+        DateTime,
         nullable=False,
         doc="Date and time of the latest update",
     )
@@ -123,12 +129,12 @@ class LatestArrangement(Base):
         doc="Date of the WFH arrangement",
     )
     wfh_type = Column(
-        String(length=50),
+        Enum(WfhType),
         nullable=False,
         doc="Type of WFH arrangement: full day, AM, or PM",
     )
     current_approval_status = Column(
-        String(length=50),
+        Enum(ApprovalStatus),
         nullable=False,
         doc="Current status of the request: pending approval, pending withdrawal, approved, rejected, withdrawn or cancelled",
     )
@@ -146,7 +152,7 @@ class LatestArrangement(Base):
     )
     reason_description = Column(
         String(length=255),
-        nullable=False,
+        nullable=True,
         doc="Reason for the status update",
     )
     batch_id = Column(
@@ -198,13 +204,13 @@ class LatestArrangement(Base):
         nullable=True,
         doc="Reason for approval or rejection",
     )
-    __table_args__ = (
-        CheckConstraint("wfh_type IN ('full', 'am', 'pm')", name="check_wfh_type"),
-        CheckConstraint(
-            "current_approval_status IN ('pending approval', 'pending withdrawal', 'approved', 'rejected', 'withdrawn', 'cancelled')",
-            name="check_current_approval_status",
-        ),
-    )
+    # __table_args__ = (
+    #     CheckConstraint("wfh_type IN ('full', 'am', 'pm')", name="check_wfh_type"),
+    #     CheckConstraint(
+    #         "current_approval_status IN ('pending approval', 'pending withdrawal', 'approved', 'rejected', 'withdrawn', 'cancelled')",
+    #         name="check_current_approval_status",
+    #     ),
+    # )
 
 
 class RecurringRequest(Base):
@@ -226,14 +232,9 @@ class RecurringRequest(Base):
         nullable=False,
         doc="Staff ID of the employee who made the request",
     )
-    wfh_type = Column(
-        Date,
-        nullable=False,
-        doc="Type of WFH arrangement: full day, AM, or PM",
-    )
     reason_description = Column(
         String(length=255),
-        nullable=False,
+        nullable=True,
         doc="Reason for the status update",
     )
     start_date = Column(
@@ -247,7 +248,7 @@ class RecurringRequest(Base):
         doc="Numerical frequency of the recurring WFH request",
     )
     recurring_frequency_unit = Column(
-        String(length=50),
+        Enum(RecurringFrequencyUnit),
         nullable=False,
         doc="Unit of the frequency of the recurring WFH request",
     )
@@ -257,4 +258,4 @@ class RecurringRequest(Base):
         doc="Number of occurrences of the recurring WFH request",
     )
 
-    __table_args__ = (CheckConstraint("wfh_type IN ('full', 'am', 'pm')", name="check_wfh_type"),)
+    # __table_args__ = (CheckConstraint("wfh_type IN ('full', 'am', 'pm')", name="check_wfh_type"),)
