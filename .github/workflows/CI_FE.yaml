@@ -38,9 +38,7 @@ jobs:
       run: |
         pip install --upgrade pip
         pip install -r requirements.txt
-        pip install cryptography
-        pip install pyOpenSSL
-        pip install wheel
+        pip install --upgrade cryptography pyOpenSSL
       working-directory: backend
 
     # - name: Run ESLint
