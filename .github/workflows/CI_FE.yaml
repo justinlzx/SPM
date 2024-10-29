@@ -44,19 +44,26 @@ jobs:
 
     # Start the application in the background
     - name: Start frontend server
-      run: npm start
-      working-directory: frontend
-
-    - name: Wait for frontend to be ready
       run: |
-        npx wait-on http://localhost:3000
-        echo "Frontend is ready!"
+        npm start &
+        echo $! > frontend.pid
       working-directory: frontend
 
     # Start backend
     - name: Start backend server
-      run: python -B -m uvicorn src.app:app --reload
+      run: |
+        python -B -m uvicorn src.app:app --reload &
+        echo $! > backend.pid
       working-directory: backend
+
+    # Wait for both services to be ready
+    - name: Wait for services
+      run: |
+        npx wait-on http://localhost:3000
+        npx wait-on http://localhost:8000
+        echo "All services are ready!"
+      working-directory: frontend
+      timeout-minutes: 2
 
     - name: Install Cypress tests
       run: npm install --save cypress
