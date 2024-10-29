@@ -65,7 +65,7 @@ export const Filters = ({ onApply }: TFilterProps) => {
   const [endDate, setEndDate] = useState<Date | null>(null);
   const [wfhType, setWfhType] = useState<string>("");
   const [requestStatus, setRequestStatus] = useState<string[]>([]);
-  const [sortByDate, setSortByDate] = useState<"asc" | "desc">("asc");
+  const [setSortByDate] = useState<"asc" | "desc">("asc");
   const [error, setError] = useState<string | null>(null);
 
   const handleApplyFilters = () => {
@@ -80,7 +80,7 @@ export const Filters = ({ onApply }: TFilterProps) => {
       wfhType,
       requestStatus,
       departments: [],
-      workType: "", 
+      workType: "",
     });
   };
 

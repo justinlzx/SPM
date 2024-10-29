@@ -22,7 +22,7 @@ interface Props {
 
 export const Header = ({ window }: Props) => {
   const [mobileOpen, setMobileOpen] = React.useState(false);
-  const { user, logout } = useContext(UserContext);
+  const { logout } = useContext(UserContext);
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
@@ -41,7 +41,7 @@ export const Header = ({ window }: Props) => {
           color: "black",
           boxShadow: "none",
           borderBottom: "1px solid #e0e0e0",
-          pb:1
+          pb: 1
         }}
       >
         <Toolbar>
@@ -54,12 +54,12 @@ export const Header = ({ window }: Props) => {
           >
             <MenuIcon />
           </IconButton>
-            <Link to="/home" style={{ display: "flex", alignItems: "center", textDecoration: "none", color: "inherit" }}>
-              <img src={logo} alt="logo" style={{ height: "40px", width: "40px", marginRight: "8px" }} />
-              <Typography variant="h6" noWrap component="div">
-                All-in-One
-              </Typography>
-            </Link>
+          <Link to="/home" style={{ display: "flex", alignItems: "center", textDecoration: "none", color: "inherit" }}>
+            <img src={logo} alt="logo" style={{ height: "40px", width: "40px", marginRight: "8px" }} />
+            <Typography variant="h6" noWrap component="div">
+              All-in-One
+            </Typography>
+          </Link>
           <Box sx={{ flexGrow: 1 }} />
           <Button onClick={logout} color="inherit">
             Log Out

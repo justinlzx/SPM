@@ -6,7 +6,7 @@ import { Sidebar } from "./Sidebar";
 import Box from "@mui/material/Box";
 import CssBaseline from "@mui/material/CssBaseline";
 
-const drawerWidth = 240;
+// const drawerWidth = 240;
 
 export const Layout = () => {
   const { user } = useContext(UserContext);
@@ -26,14 +26,14 @@ export const Layout = () => {
   return (
     <Box sx={{ display: "flex" }}>
       <CssBaseline />
-      <Header/>
+      <Header />
       <Sidebar mobileOpen={mobileOpen} handleDrawerToggle={handleDrawerToggle} />
 
       <Box
         component="main"
         sx={{
-          flexGrow: 1,   
-          mt: '100px', 
+          flexGrow: 1,
+          mt: '100px',
           px: 2
         }}
       >
