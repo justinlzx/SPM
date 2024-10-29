@@ -3,9 +3,21 @@
         "--config=${workspaceFolder}/config/.flake8",
     ],
     "eslint.format.enable": true,
+    "eslint.options": {
+        "overrideConfigFile": "./config/eslint.config.js"
+    },
+    "eslint.useFlatConfig": true,
+    "eslint.validate": [
+        "javascript",
+        "javascriptreact",
+        "typescript",
+        "typescriptreact"
+    ],
+    "editor.codeActionsOnSave": [
+        "source.fixAll.eslint"
+    ],
     "editor.formatOnSave": true,
     "black-formatter.args": [
         "--config=${workspaceFolder}/config/black.toml",
     ],
-    "CodeGPT.apiKey": "Ollama",
 }

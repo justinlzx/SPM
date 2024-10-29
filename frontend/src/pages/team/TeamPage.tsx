@@ -4,6 +4,7 @@ import { useContext } from "react";
 import { UserContext } from "../../context/UserContextProvider";
 import RequestList from '../../pages/team/RequestList';
 
+import { Button } from "@mui/material";
 
 export const TeamPage = () => {
   const navigate = useNavigate();
@@ -12,10 +13,25 @@ export const TeamPage = () => {
     navigate("/login");
   }
 
+  const handleNominateManager = () => {
+    navigate("/delegate");
+  }
+
   return (
     <div>
       <PendingRequests />
-      <RequestList/>
+      <RequestList />
+
+      {(user?.role === 1 || user?.role === 3) && (
+        <Button
+          variant="outlined"
+          color="primary"
+          sx={{ ml: 3 }}
+          onClick={handleNominateManager}
+        >
+          Go to Manager Delegation
+        </Button>
+      )}
     </div>
   );
 };

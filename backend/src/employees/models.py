@@ -1,10 +1,16 @@
 import enum
 from datetime import datetime
 
-from sqlalchemy import (CheckConstraint, Column, DateTime, Enum, ForeignKey,
-                        Integer, String)
+from sqlalchemy import (
+    CheckConstraint,
+    Column,
+    DateTime,
+    Enum,
+    ForeignKey,
+    Integer,
+    String,
+)
 from sqlalchemy.orm import relationship
-from src.arrangements.models import LatestArrangement
 
 from ..database import Base
 

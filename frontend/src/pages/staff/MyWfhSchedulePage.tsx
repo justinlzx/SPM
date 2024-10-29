@@ -3,45 +3,16 @@ import axios from "axios";
 import { Container, Typography, Snackbar, Alert } from "@mui/material";
 import { UserContext } from "../../context/UserContextProvider";
 import { WFHRequestTable } from "../../components/WFHRequestTable";
-import { ApprovalStatus } from "../../types/ApprovalStatus";  
-import { Filters } from "../../components/Filters";
+import { ApprovalStatus } from "../../types/ApprovalStatus"; 
+import { TWFHRequest } from "../team/PendingRequests";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
-
-const mapApprovalStatus = (status: string): ApprovalStatus => {
-  switch (status.toLowerCase()) {
-    case "approved":
-      return ApprovalStatus.Approved;
-    case "pending approval":
-      return ApprovalStatus.PendingApproval;
-    case "pending withdrawal":
-      return ApprovalStatus.PendingWithdrawal;
-    case "rejected":
-      return ApprovalStatus.Rejected;
-    case "cancelled":
-      return ApprovalStatus.Cancelled;
-    case "withdrawn":
-      return ApprovalStatus.Withdrawn;
-    default:
-      throw new Error(`Unknown approval status: ${status}`);
-  }
-};
-
-type TWFHRequest = {
-  arrangement_id: number;
-  staff_id: number;
-  wfh_date: string;
-  end_date?: string;
-  wfh_type: string;
-  reason_description: string;
-  approval_status: ApprovalStatus; 
-  work_type: string; // Added work_type field here
-};
 
 export const MyWfhSchedulePage: React.FC = () => {
   const [requests, setRequests] = useState<TWFHRequest[]>([]);
   const [openSnackbar, setOpenSnackbar] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState("");
+  const [snackbarSeverity, setSnackbarSeverity] = useState<"success" | "error">("success");
 
   const { user } = useContext(UserContext);
   const userId = user!.id;
@@ -49,56 +20,45 @@ export const MyWfhSchedulePage: React.FC = () => {
   useEffect(() => {
     const fetchRequests = async () => {
       if (!user || !userId) return;
+
       try {
         const response = await axios.get(
           `${BACKEND_URL}/arrangements/personal/${userId}`
         );
-        const allRequests: TWFHRequest[] = response.data.data.map((request: any) => ({
-          ...request,
-          approval_status: mapApprovalStatus(request.approval_status), 
-        }));
-        console.log(allRequests);
+
+        // Process the response to maintain wfh_date as a Date object
+        const allRequests: TWFHRequest[] = response.data.data.map(
+          (request: any) => ({
+            ...request,
+            approval_status: ApprovalStatus[request.approval_status as keyof typeof ApprovalStatus],
+            wfh_date: new Date(request.wfh_date),  // Keep as Date object
+          })
+        );
+
+        console.log(allRequests);  // Check the transformed requests
         setRequests(allRequests);
       } catch (error) {
         console.error("Failed to fetch WFH requests:", error);
+        setSnackbarMessage("Failed to fetch WFH requests. Please try again later.");
+        setSnackbarSeverity("error");  // Set severity to error
+        setOpenSnackbar(true);
       }
     };
-
 
     fetchRequests();
   }, [user, userId]);
 
-  const handleApplyFilters = (filters: {
-    startDate: Date | null;
-    endDate: Date | null;
-    wfhType: string;
-    requestStatus: string[];
-    wfhDuration: string; 
-  }) => {
-    // Logic to apply the filters to your request data
-    console.log("Applied Filters:", filters);
-
-    const filteredRequests = requests.filter((request) => {
-      if (filters.startDate && new Date(request.wfh_date) < filters.startDate) return false;
-      if (filters.endDate && new Date(request.wfh_date) > filters.endDate) return false;
-      if (filters.wfhType && request.wfh_type !== filters.wfhType) return false;
-      if (filters.requestStatus.length > 0 && !filters.requestStatus.includes(request.approval_status.toString())) return false;
-
-      return true;
-    });
-
-    setRequests(filteredRequests);
-  };
-
-  // Update state when an action is successful (cancel/withdraw)
   const handleSuccess = (id: number, action: "cancel" | "withdraw") => {
-    const updatedStatus = action === "cancel" ? ApprovalStatus.Cancelled : ApprovalStatus.PendingWithdrawal;
+    const updatedStatus =
+      action === "cancel"
+        ? ApprovalStatus.Cancelled
+        : ApprovalStatus.PendingWithdrawal;
 
     setRequests((prevRequests) =>
       prevRequests.map((request) =>
         request.arrangement_id === id
-          ? { ...request, approval_status: updatedStatus } 
-          : request 
+          ? { ...request, approval_status: updatedStatus }
+          : request
       )
     );
 
@@ -107,6 +67,7 @@ export const MyWfhSchedulePage: React.FC = () => {
         ? "Your WFH request has been successfully cancelled!"
         : "Withdrawal Request has been sent to your manager for review."
     );
+    setSnackbarSeverity("success");  // Set severity to success
     setOpenSnackbar(true);
   };
 
@@ -118,24 +79,19 @@ export const MyWfhSchedulePage: React.FC = () => {
         My WFH Request Overview
       </Typography>
 
-      <Filters 
-        onApply={handleApplyFilters} 
-      />
       <WFHRequestTable requests={requests} handleSuccess={handleSuccess} />
-
       <Snackbar
         open={openSnackbar}
         autoHideDuration={3000}
         onClose={handleCloseSnackBar}
         anchorOrigin={{ vertical: "top", horizontal: "center" }}
       >
-        <Alert onClose={handleCloseSnackBar} severity="success">
+        <Alert onClose={handleCloseSnackBar} severity={snackbarSeverity}>
           {snackbarMessage}
         </Alert>
       </Snackbar>
     </Container>
   );
 };
-
 
 export default MyWfhSchedulePage;

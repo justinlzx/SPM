@@ -1,5 +1,12 @@
-from sqlalchemy import (CheckConstraint, Column, DateTime, ForeignKey, Integer,
-                        String)
+from sqlalchemy import (
+    CheckConstraint,
+    Column,
+    Date,
+    DateTime,
+    ForeignKey,
+    Integer,
+    String,
+)
 from sqlalchemy.orm import relationship
 
 from ..database import Base
@@ -113,7 +120,6 @@ class LatestArrangement(Base):
     )
     wfh_date = Column(
         String(length=50),
-        nullable=False,
         doc="Date of the WFH arrangement",
     )
     wfh_type = Column(
@@ -221,7 +227,7 @@ class RecurringRequest(Base):
         doc="Staff ID of the employee who made the request",
     )
     wfh_type = Column(
-        String(length=50),
+        Date,
         nullable=False,
         doc="Type of WFH arrangement: full day, AM, or PM",
     )

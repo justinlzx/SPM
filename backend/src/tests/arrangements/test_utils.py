@@ -1,18 +1,18 @@
+from io import BytesIO
+from unittest.mock import MagicMock, patch
+
+import pytest
+from fastapi import HTTPException, UploadFile
 from pydantic import BaseModel
 from sqlalchemy import Column, Integer, String
 from sqlalchemy.ext.declarative import declarative_base
 from src.arrangements.utils import (
-    fit_model_to_model,
-    fit_schema_to_model,
-    fit_model_to_schema,
-    upload_file,
     delete_file,
+    fit_model_to_model,
+    fit_model_to_schema,
+    fit_schema_to_model,
+    upload_file,
 )
-from unittest.mock import patch, MagicMock
-from fastapi import UploadFile, HTTPException
-import pytest
-from io import BytesIO
-
 
 Base = declarative_base()
 

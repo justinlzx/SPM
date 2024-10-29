@@ -1,10 +1,26 @@
+# General
+.DS_Store
+*.log
+*.env
+*.local
+
+# Python
 __pycache__/
-*.pyc
+*.py[cod]
 *.pyo
 *venv*/
-*.db
-.DS_Store
-backend/*.env
 .pytest_cache/
 htmlcov/
 .coverage
+
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Databases
+*.db
+
+# Backend specific
+backend/*.env

@@ -2,6 +2,7 @@
   "dependencies": {
     "csv-parser": "^3.0.0",
     "cypress": "^13.15.0",
+    "define-data-property": "^1.1.4",
     "papaparse": "^5.4.1"
   }
 }

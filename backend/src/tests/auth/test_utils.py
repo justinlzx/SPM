@@ -3,6 +3,7 @@ from datetime import datetime, timedelta, timezone
 from unittest.mock import patch
 
 import jwt
+
 # import pytest
 from src.auth.utils import generate_JWT, hash_password, verify_password
 

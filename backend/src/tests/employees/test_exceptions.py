@@ -1,8 +1,8 @@
 import pytest
 from src.employees.exceptions import (
     EmployeeNotFoundException,
-    ManagerWithIDNotFoundException,
     ManagerNotFoundException,
+    ManagerWithIDNotFoundException,
 )
 
 

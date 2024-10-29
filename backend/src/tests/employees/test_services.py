@@ -2,7 +2,6 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from src.employees import exceptions, models, services
-from src.tests.test_utils import mock_db_session
 
 
 # Mock Employee fixture

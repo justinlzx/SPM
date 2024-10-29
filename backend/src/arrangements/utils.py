@@ -1,14 +1,14 @@
+import os
 from typing import Dict
 
+import boto3
+from botocore.exceptions import ClientError
 from fastapi import HTTPException
-from ..logger import logger
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from sqlalchemy.ext.declarative import DeclarativeMeta
-from botocore.exceptions import ClientError
 
-import boto3
-import os
+from ..logger import logger
 
 
 def fit_schema_to_model(
@@ -103,38 +103,32 @@ async def upload_file(staff_id, update_datetime, file_obj, s3_client=None):
         raise HTTPException(status_code=400, detail="File size exceeds 5MB")
 
     S3_BUCKET_NAME = os.getenv("AWS_S3_BUCKET_NAME")
-    object_name = (
-        f"{staff_id}/{update_datetime}/{file_obj.filename}"  # Use the original filename
-    )
+    object_name = f"{staff_id}/{update_datetime}/{file_obj.filename}"  # Use the original filename
 
     # Upload the file
     s3_client = boto3.client("s3")
-    try:
-        s3_client.upload_fileobj(
-            file_obj.file,  # Use the file-like object directly
-            S3_BUCKET_NAME,
-            object_name,
-            ExtraArgs={
-                "Metadata": {
-                    "staff_id": str(staff_id),
-                    "update_datetime": str(update_datetime),
-                },
-                "ContentType": file_obj.content_type,
+    s3_client.upload_fileobj(
+        file_obj.file,  # Use the file-like object directly
+        S3_BUCKET_NAME,
+        object_name,
+        ExtraArgs={
+            "Metadata": {
+                "staff_id": str(staff_id),
+                "update_datetime": str(update_datetime),
             },
-        )
+            "ContentType": file_obj.content_type,
+        },
+    )
 
-        logger.info(f"File uploaded successfully: {object_name}")
-        return {
-            "message": "File uploaded successfully",
-            "file_url": object_name,
-        }
-    except Exception as e:
-        print(f"An error occurred: {str(e)}")  # Log the error for debugging
-        raise HTTPException(status_code=500, detail=str(e))
+    logger.info(f"File uploaded successfully: {object_name}")
+    return {
+        "message": "File uploaded successfully",
+        "file_url": object_name,
+    }
 
 
-async def delete_file(staff_id, update_datetime, s3_client=None):
-    """Delete a file from an S3 bucket
+async def delete_file(staff_id, update_datetime, s3_client):
+    """Delete a file from an S3 bucket.
 
     :param bucket: Bucket to delete from
     :return: True if file was deleted, else False
@@ -159,7 +153,7 @@ async def delete_file(staff_id, update_datetime, s3_client=None):
 
 
 def create_presigned_url(object_name):
-    """Generate a presigned URL to share an S3 object
+    """Generate a presigned URL to share an S3 object.
 
     :param bucket_name: string
     :param object_name: string

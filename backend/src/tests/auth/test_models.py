@@ -1,7 +1,6 @@
-import pytest
 from unittest.mock import MagicMock
-from src.auth.models import create_user, get_user_by_email, Auth
-from src.tests.test_utils import mock_db_session
+
+from src.auth.models import Auth, create_user, get_user_by_email
 
 
 # Test for create_user function

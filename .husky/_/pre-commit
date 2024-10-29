@@ -1,5 +1,11 @@
 #!/bin/sh
+
 echo "Running pre-commit hook..."
+if [ "$FULL_SCAN" = "true" ]; then
+  echo "Mode: Full codebase scan (excluding .gitignore files)"
+else
+  echo "Mode: Staged files only"
+fi
 
 # Initialize exit code variables
 GENERAL_HOOKS_EXIT_CODE=0
@@ -8,13 +14,24 @@ FRONTEND_HOOKS_EXIT_CODE=0
 
 # Run general hooks
 echo "Running general hooks..."
-pre-commit run --hook-stage commit --config config/.pre-commit-config.yaml
+if [ "$FULL_SCAN" = "true" ]; then
+  ALL_FILES=$(git ls-files)
+  pre-commit run --files $ALL_FILES --config config/.pre-commit-config.yaml
+else
+  pre-commit run --hook-stage commit --config config/.pre-commit-config.yaml
+fi
 GENERAL_HOOKS_EXIT_CODE=$?
 
 # Check if there are staged files in the backend folder
-if git diff --cached --name-only | grep -q '^backend/'; then
-  BACKEND_FILES=$(git diff --cached --name-only | grep '^backend/')
-  echo "\nBackend files detected. Running backend-specific hooks..."
+if [ "$FULL_SCAN" = "true" ] || git diff --cached --name-only | grep -q '^backend/'; then
+  if [ "$FULL_SCAN" = "true" ]; then
+    echo "\nScanning all backend files..."
+    BACKEND_FILES="backend/"
+  else
+    BACKEND_FILES=$(git diff --cached --name-only | grep '^backend/')
+    echo "\nBackend files detected. Running backend-specific hooks..."
+  fi
+  
   pre-commit run --hook-stage commit --files $BACKEND_FILES --config config/.pre-commit-config.yaml
   BACKEND_HOOKS_EXIT_CODE=$?
 else
@@ -22,15 +39,33 @@ else
   BACKEND_HOOKS_EXIT_CODE=0
 fi
 
-# Check if there are staged files in the frontend folder
-if git diff --cached --name-only | grep -q '^frontend/'; then
-  echo "\nFrontend files detected. Running lint-staged..."
-  cd frontend
-  npx lint-staged
-  FRONTEND_HOOKS_EXIT_CODE=$?
-else
-  echo "No frontend files detected."
+# Check if the SKIP_FRONTEND_HOOKS environment variable is set
+if [ "$SKIP_FRONTEND" = "true" ]; then
+  echo "Skipping frontend pre-commit hooks."
   FRONTEND_HOOKS_EXIT_CODE=0
+else
+  # Check if there are staged files in the frontend folder
+  if [ "$FULL_SCAN" = "true" ] || git diff --cached --name-only | grep -q '^frontend/'; then
+    if [ "$FULL_SCAN" = "true" ]; then
+      echo "\nScanning all frontend files..."
+    else
+      echo "\nFrontend files detected. Running lint-staged..."
+    fi
+    
+    cd frontend
+    if [ "$FULL_SCAN" = "true" ]; then
+      # Run lint commands on all files instead of just staged ones
+      npx eslint . --config ../config/eslint.config.js
+      FRONTEND_HOOKS_EXIT_CODE=$?
+      # Add any other frontend linting commands here
+    else
+      npx lint-staged
+      FRONTEND_HOOKS_EXIT_CODE=$?
+    fi
+  else
+    echo "No frontend files detected."
+    FRONTEND_HOOKS_EXIT_CODE=0
+  fi
 fi
 
 # Abort the commit if any hook fails

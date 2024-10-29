@@ -1,35 +1,44 @@
-from datetime import datetime, timedelta
+from datetime import date, datetime
 from math import ceil
-from typing import Dict, List
+from typing import Dict, List, Literal, Optional, Tuple, Union
 
 import boto3
+import botocore
+import botocore.exceptions
 from dateutil.relativedelta import relativedelta
-from fastapi import File, HTTPException
+from fastapi import File
 from sqlalchemy.orm import Session
 from src.arrangements.utils import delete_file, upload_file
-from src.employees.crud import get_employee_by_staff_id
-from src.employees.models import LatestArrangement
-from src.notifications.email_notifications import fetch_manager_info
 
 from .. import utils
+from ..arrangements.utils import delete_file, upload_file
 from ..employees import exceptions as employee_exceptions
 from ..employees import models as employee_models
 from ..employees import services as employee_services
+
 # from src.employees.schemas import EmployeeBase
 from ..logger import logger
 from . import crud, exceptions, models
 from .models import LatestArrangement
-from .schemas import (ArrangementCreate, ArrangementCreateResponse,
-                      ArrangementCreateWithFile, ArrangementResponse,
-                      ArrangementUpdate, ManagerPendingRequestResponse,
-                      ManagerPendingRequests)
+from .schemas import (
+    ArrangementCreate,
+    ArrangementCreateResponse,
+    ArrangementCreateWithFile,
+    ArrangementResponse,
+    ArrangementUpdate,
+    ManagerPendingRequestResponse,
+    ManagerPendingRequests,
+)
 from .utils import create_presigned_url
+
+# from src.employees.models import LatestArrangement
+
 
 STATUS = {
     "approve": "approved",
     "reject": "rejected",
     "withdraw": "pending withdrawal",
-    "allow withdraw" : "withdrawn",
+    "allow withdraw": "withdrawn",
     "cancel": "cancelled",
 }
 
@@ -49,19 +58,22 @@ def get_arrangement_by_id(db: Session, arrangement_id: int) -> ArrangementRespon
         raise exceptions.ArrangementNotFoundException(arrangement_id)
 
     arrangements_schema: ArrangementResponse = utils.convert_model_to_pydantic_schema(
-        arrangement, ArrangementResponse
+        [arrangement], ArrangementResponse
     )
 
-    return arrangements_schema
+    return arrangements_schema[0]
 
 
-def get_personal_arrangements_by_filter(
-    db: Session, staff_id: int, current_approval_status: List[str]
+def get_personal_arrangements(
+    db: Session, staff_id: int, current_approval_status: Optional[List[str]] = None
 ) -> List[ArrangementResponse]:
 
-    arrangements: List[models.LatestArrangement] = crud.get_arrangements_by_filter(
-        db, staff_id, current_approval_status
+    logger.info(f"Service: Fetching personal arrangements for staff ID {staff_id}")
+    arrangements: List[models.LatestArrangement] = crud.get_arrangements(
+        db, [staff_id], current_approval_status
     )
+    logger.info(f"Service: Found {len(arrangements)} arrangements for staff ID {staff_id}")
+
     arrangements_schema: List[ArrangementResponse] = utils.convert_model_to_pydantic_schema(
         arrangements, ArrangementResponse
     )
@@ -72,79 +84,113 @@ def get_personal_arrangements_by_filter(
 def get_subordinates_arrangements(
     db: Session,
     manager_id: int,
-    current_approval_status: List[str],
-    name,
-    start_date: datetime,
-    end_date: datetime,
-    type,
-    items_per_page,
-    page_num,
-) -> List[ManagerPendingRequestResponse]:
+    current_approval_status: Optional[List[str]] = None,
+    name: Optional[str] = None,
+    start_date: Optional[date] = None,
+    end_date: Optional[date] = None,
+    wfh_type: Optional[str] = None,
+    reason: Optional[str] = None,
+    items_per_page: int = 10,
+    page_num: int = 1,
+) -> Tuple[List[ManagerPendingRequests], Dict[str, int]]:
 
     # Check if the employee is a manager
     employees_under_manager: List[employee_models.Employee] = (
         employee_services.get_subordinates_by_manager_id(db, manager_id)
     )
 
-    if not employees_under_manager:
-        raise employee_exceptions.ManagerWithIDNotFoundException(manager_id)
+    # REVIEW: No need to raise an exception assuming get_subordinates_by_manager_id will raise an exception if no employees are found
+    # if not employees_under_manager:
+    #     raise employee_exceptions.ManagerWithIDNotFoundException(manager_id)
 
     employees_under_manager_ids = [employee.staff_id for employee in employees_under_manager]
 
-    arrangements = crud.get_arrangements_by_staff_ids(
+    logger.info(f"Service: Fetching arrangements for employees under manager ID: {manager_id}")
+    arrangements = crud.get_arrangements(
         db,
         employees_under_manager_ids,
         current_approval_status,
         name,
-        type,
+        wfh_type,
         start_date,
         end_date,
+        reason,
     )
+    logger.info(f"Service: Found {len(arrangements)} arrangements")
 
     arrangements_schema: List[ArrangementCreateResponse] = utils.convert_model_to_pydantic_schema(
         arrangements, ArrangementCreateResponse
     )
 
     # get presigned url for each supporting document in each arrangement
-    arrangements_schema = [
-        ArrangementCreateResponse(
-            **{
-                **arrangement.model_dump(),
-                "supporting_doc_1": (
-                    create_presigned_url(arrangement.supporting_doc_1)
-                    if arrangement.supporting_doc_1
-                    else None
-                ),
-                "supporting_doc_2": (
-                    create_presigned_url(arrangement.supporting_doc_2)
-                    if arrangement.supporting_doc_2
-                    else None
-                ),
-                "supporting_doc_3": (
-                    create_presigned_url(arrangement.supporting_doc_3)
-                    if arrangement.supporting_doc_3
-                    else None
-                ),
-            }
+    for arrangement in arrangements_schema:
+        arrangement.supporting_doc_1 = (
+            create_presigned_url(arrangement.supporting_doc_1)
+            if arrangement.supporting_doc_1
+            else None
         )
-        for arrangement in arrangements_schema
-    ]
-    arrangements_by_employee = group_arrangements_by_employee(arrangements_schema)
+        arrangement.supporting_doc_2 = (
+            create_presigned_url(arrangement.supporting_doc_2)
+            if arrangement.supporting_doc_2
+            else None
+        )
+        arrangement.supporting_doc_3 = (
+            create_presigned_url(arrangement.supporting_doc_3)
+            if arrangement.supporting_doc_3
+            else None
+        )
+    arrangements_by_date: List[ManagerPendingRequests] = group_arrangements_by_date(
+        arrangements_schema
+    )
+    logger.info(f"Service: Grouped arrangements into {len(arrangements_by_date)} dates")
 
-    total_count = len(arrangements_by_employee)
+    # pagination logic
+    total_count = len(arrangements_by_date)
     total_pages = ceil(total_count / items_per_page)
 
-    return arrangements_by_employee, {
+    # slice the list based on page number and items per page
+    arrangements_by_date = arrangements_by_date[
+        (page_num - 1) * items_per_page : page_num * items_per_page
+    ]
+
+    pagination_meta = {
         "total_count": total_count,
         "page_size": items_per_page,
         "page_num": page_num,
         "total_pages": total_pages,
     }
 
+    return arrangements_by_date, pagination_meta
+
+
+def group_arrangements_by_date(
+    arrangements_schema: List[ArrangementCreateResponse],
+) -> List[ManagerPendingRequests]:
+    arrangements_dict = {}
+
+    for arrangement in arrangements_schema:
+        wfh_date = arrangement.wfh_date.isoformat()
+        arrangements_dict.setdefault(wfh_date, []).append(arrangement)
+
+    result = []
+    for key, val in arrangements_dict.items():
+        result.append(ManagerPendingRequests(date=key, pending_arrangements=val))
+
+    return result
+
 
 def group_arrangements_by_employee(
     arrangements_schema: List[ArrangementCreateResponse],
 ) -> List[ManagerPendingRequests]:
+    """
+    The function `group_arrangements_by_employee` organizes a list of arrangements by employee, creating
+    a list of ManagerPendingRequests objects for each employee with their corresponding arrangements.
+
+    :param arrangements_schema: `arrangements_schema` is a list of `ArrangementCreateResponse` objects
+    :type arrangements_schema: List[ArrangementCreateResponse]
+    :return: A list of `ManagerPendingRequests` objects, where each object contains information about an
+    employee and their pending arrangements.
+    """
 
     arrangements_dict = {}
 
@@ -165,7 +211,25 @@ def group_arrangements_by_employee(
 
 
 def get_team_arrangements(
-    db: Session, staff_id: int, current_approval_status: List[str]
+    db: Session,
+    staff_id: int,
+    current_approval_status: List[
+        Literal[
+            "pending approval",
+            "pending withdrawal",
+            "approved",
+            "rejected",
+            "cancelled",
+            "withdrawn",
+        ]
+    ] = None,
+    name: str = None,
+    wfh_type: Literal["full", "am", "pm"] = None,
+    start_date: datetime = None,
+    end_date: datetime = None,
+    reason: str = None,
+    items_per_page: int = 10,
+    page_num: int = 1,
 ) -> Dict[str, List[ArrangementResponse]]:
 
     arrangements: Dict[str, List[ArrangementResponse]] = {}
@@ -175,8 +239,15 @@ def get_team_arrangements(
     peer_employees: List[employee_models.Employee] = employee_services.get_peers_by_staff_id(
         db, staff_id
     )
-    peer_arrangements: List[models.LatestArrangement] = crud.get_arrangements_by_staff_ids(
-        db, [peer.staff_id for peer in peer_employees], current_approval_status
+    peer_arrangements: List[models.LatestArrangement] = crud.get_arrangements(
+        db,
+        [peer.staff_id for peer in peer_employees],
+        current_approval_status,
+        name,
+        wfh_type,
+        start_date,
+        end_date,
+        reason,
     )
     peer_arrangements: List[ArrangementResponse] = utils.convert_model_to_pydantic_schema(
         peer_arrangements, ArrangementResponse
@@ -186,13 +257,20 @@ def get_team_arrangements(
 
     try:
         # If employee is manager, get arrangements of subordinates
-        subordinates_arrangements: List[models.LatestArrangement] = get_subordinates_arrangements(
-            db, staff_id, current_approval_status
+        subordinates_arrangements: List[ManagerPendingRequestResponse] = (
+            get_subordinates_arrangements(
+                db,
+                staff_id,
+                current_approval_status,
+                name,
+                start_date,
+                end_date,
+                wfh_type,
+                items_per_page,
+                page_num,
+            )
         )
 
-        subordinates_arrangements: List[ArrangementResponse] = (
-            utils.convert_model_to_pydantic_schema(subordinates_arrangements, ArrangementResponse)
-        )
         arrangements["subordinates"] = subordinates_arrangements
     except employee_exceptions.ManagerWithIDNotFoundException:
         pass
@@ -201,8 +279,8 @@ def get_team_arrangements(
 
 async def create_arrangements_from_request(
     db: Session,
-    wfh_request: ArrangementCreate,
-    supporting_docs: List[File] = File(None),
+    wfh_request: Union[ArrangementCreate, ArrangementCreateWithFile],
+    supporting_docs: Optional[List[File]] = None,
 ) -> List[ArrangementCreateResponse]:
 
     s3_client = boto3.client("s3")
@@ -210,43 +288,26 @@ async def create_arrangements_from_request(
     created_arrangements = []
 
     try:
-        # Auto Approve Jack Sim's requests
-        wfh_request = ArrangementCreateWithFile.model_validate(wfh_request)
+        # wfh_request = ArrangementCreateWithFile.model_validate(wfh_request)
 
+        # Auto Approve Jack Sim's requests
         if wfh_request.staff_id == 130002:
             wfh_request.current_approval_status = "approved"
 
-        # Fetch employee (staff) information
-        staff = get_employee_by_staff_id(db, wfh_request.staff_id)
-        if not staff:
-            raise HTTPException(status_code=404, detail="Employee not found")
-
-        # Fetch manager info using the helper function from notifications
-        manager_info = await fetch_manager_info(wfh_request.staff_id)
-        manager = None
-
-        # Only fetch manager if manager_id is not null
-        if (
-            manager_info
-            and manager_info["manager_id"] is not None
-            and manager_info["manager_id"] != wfh_request.staff_id
-        ):
-            manager = get_employee_by_staff_id(db, manager_info["manager_id"])
-
+        manager = employee_services.get_manager_by_subordinate_id(db, wfh_request.staff_id)
         wfh_request.approving_officer = manager.staff_id if manager else None
+
         # Upload supporting documents to S3 bucket
-        for file in supporting_docs:
-            response = await upload_file(
-                wfh_request.staff_id,
-                str(wfh_request.update_datetime),
-                file,
-                s3_client,
-            )
+        if supporting_docs:
+            for file in supporting_docs:
+                response = await upload_file(
+                    wfh_request.staff_id,
+                    str(wfh_request.update_datetime),
+                    file,
+                    s3_client,
+                )
 
-            if not response:
-                raise Exception(f"Failed to upload supporting document: {file}")
-
-            file_paths.append(response["file_url"])
+                file_paths.append(response["file_url"])
 
         wfh_request.supporting_doc_1 = file_paths[0] if file_paths else None
         wfh_request.supporting_doc_2 = file_paths[1] if len(file_paths) > 1 else None
@@ -278,20 +339,17 @@ async def create_arrangements_from_request(
 
         return created_arrangements_schema
 
-    except Exception as upload_error:
+    except botocore.exceptions.ClientError as upload_error:
         # If any error occurs, delete uploaded files from S3
         logger.info(f"Deleting files due to error: {str(upload_error)}")
         if file_paths:
             for path in file_paths:
                 try:
-                    await delete_file(path, s3_client)
-                except Exception as e:
+                    await delete_file(path, datetime.now(), s3_client)
+                except botocore.exceptions.ClientError as delete_error:
                     # Log deletion error, but do not raise to avoid overriding the main exception
-                    logger.info(f"Error deleting file {path} from S3: {str(e)}")
-        raise HTTPException(
-            status_code=500,
-            detail=f"Error uploading files: {str(upload_error)}",
-        )
+                    logger.info(f"Error deleting file {path} from S3: {str(delete_error)}")
+        raise exceptions.S3UploadFailedException(str(upload_error))
 
 
 def expand_recurring_arrangement(
@@ -303,21 +361,15 @@ def expand_recurring_arrangement(
         arrangement_copy: ArrangementCreateWithFile = wfh_request.model_copy()
 
         if wfh_request.recurring_frequency_unit == "week":
-            arrangement_copy.wfh_date = (
-                datetime.strptime(wfh_request.wfh_date, "%Y-%m-%d")
-                + timedelta(weeks=i * wfh_request.recurring_frequency_number)
-            ).strftime("%Y-%m-%d")
+            arrangement_copy.wfh_date = wfh_request.wfh_date + relativedelta(
+                weeks=i * wfh_request.recurring_frequency_number
+            )
         elif wfh_request.recurring_frequency_unit == "month":
-            arrangement_copy.wfh_date = (
-                datetime.strptime(wfh_request.wfh_date, "%Y-%m-%d")
-                + relativedelta(months=i * wfh_request.recurring_frequency_number)
-            ).strftime("%Y-%m-%d")
+            arrangement_copy.wfh_date = wfh_request.wfh_date + relativedelta(
+                months=i * wfh_request.recurring_frequency_number
+            )
 
         arrangement_copy.batch_id = batch_id
-        # Auto Approve Jack Sim's requests
-        if arrangement_copy.staff_id == 130002:
-            arrangement_copy.current_approval_status = "approved"
-
         arrangements_list.append(arrangement_copy)
 
     return arrangements_list
@@ -409,7 +461,6 @@ def update_arrangement_approval_status(
     # if arrangement.current_approval_status == "approved" and wfh_update.action != "cancel":
     #     raise exceptions.ArrangementActionNotAllowed(f"Cannot {wfh_update.action} an already approved arrangement")
 
-    
     # Update arrangement fields
     new_status = STATUS.get(wfh_update.action)
     if new_status is None:

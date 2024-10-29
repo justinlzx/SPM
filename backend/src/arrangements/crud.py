@@ -1,9 +1,8 @@
 from datetime import date, datetime
-from math import ceil
-from typing import List, Literal
+from typing import List, Literal, Optional, Union
 
 # from pydantic import ValidationError
-from sqlalchemy import Date, DateTime, cast, func, or_
+from sqlalchemy import func, or_
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 from src.employees.models import Employee
@@ -13,43 +12,31 @@ from . import models, schemas
 from .utils import fit_model_to_model, fit_schema_to_model
 
 
-def get_arrangement_by_id(db: Session, arrangement_id: int) -> models.LatestArrangement:
+def get_arrangement_by_id(db: Session, arrangement_id: int) -> Optional[models.LatestArrangement]:
     return db.query(models.LatestArrangement).get(arrangement_id)
 
 
-def get_arrangements_by_filter(
+def get_arrangements(
     db: Session,
-    requester_staff_id: int = None,
-    current_approval_status: List[str] = None,
-) -> List[models.LatestArrangement]:
-    query = db.query(models.LatestArrangement)
-
-    if requester_staff_id:
-        query = query.filter(models.LatestArrangement.requester_staff_id == requester_staff_id)
-    if current_approval_status:
-        if len(current_approval_status) > 1:
-            query = query.filter(
-                models.LatestArrangement.current_approval_status.in_(current_approval_status)
-            )
-        else:
-            query = query.filter(
-                models.LatestArrangement.current_approval_status == current_approval_status[0]
-            )
-
-    return query.all()
-
-
-def get_arrangements_by_staff_ids(
-    db: Session,
-    staff_ids: List[int],
-    current_approval_status: List[
-        Literal["pending", "approved", "rejected", "cancelled", "withdrawn"]
+    staff_ids: Union[int, List[int]],
+    current_approval_status: Optional[
+        List[
+            Literal[
+                "pending approval",
+                "pending withdrawal",
+                "approved",
+                "rejected",
+                "cancelled",
+                "withdrawn",
+            ]
+        ]
     ] = None,
-    name: str = None,
-    type: Literal["full", "am", "pm"] = None,
-    start_date: datetime = None,
-    end_date: datetime = None,
-) -> List[schemas.ArrangementCreateResponse]:
+    name: Optional[str] = None,
+    wfh_type: Optional[Literal["full", "am", "pm"]] = None,
+    start_date: Optional[date] = None,
+    end_date: Optional[date] = None,
+    reason: Optional[str] = None,
+) -> List[models.LatestArrangement]:
     """Fetch the WFH requests for a list of staff IDs with optional filters.
 
     Args:
@@ -60,16 +47,40 @@ def get_arrangements_by_staff_ids(
         type: Optional arrangement type (full/am/pm)
         start_date: Optional start date filter
         end_date: Optional end date filter
-        limit: Optional limit for pagination
+        reason: Optional reason filter
         page_num: Optional page number for pagination
 
     Returns:
         List of arrangements matching the criteria
     """
-    logger.info("Fetching requests by staff ID with filters")
+    staff_ids = list(set(staff_ids)) if isinstance(staff_ids, list) else staff_ids
+
+    # Define the filters
+    filters = {
+        "current_approval_status": current_approval_status,
+        "name": name,
+        "wfh_type": wfh_type,
+        "start_date": start_date,
+        "end_date": end_date,
+        "reason": reason,
+    }
+
+    # Log the number of staff IDs being fetched
+    logger.info(
+        f"Crud: Fetching arrangements for {len(staff_ids) if isinstance(staff_ids, list) else 1} staff IDs with filters"
+    )
+
+    # Log all non-null filters
+    non_null_filters = {key: value for key, value in filters.items() if value}
+    logger.info(f"Crud: Applying filters: {non_null_filters}")
+
     query = db.query(models.LatestArrangement)
     query = query.join(Employee, Employee.staff_id == models.LatestArrangement.requester_staff_id)
-    query = query.filter(models.LatestArrangement.requester_staff_id.in_(staff_ids))
+
+    if isinstance(staff_ids, int):
+        query = query.filter(models.LatestArrangement.requester_staff_id == staff_ids)
+    else:
+        query = query.filter(models.LatestArrangement.requester_staff_id.in_(staff_ids))
 
     if name:
         query = query.filter(
@@ -84,8 +95,8 @@ def get_arrangements_by_staff_ids(
             models.LatestArrangement.current_approval_status.in_(current_approval_status)
         )
 
-    if type:
-        query = query.filter(models.LatestArrangement.wfh_type == type)
+    if wfh_type:
+        query = query.filter(models.LatestArrangement.wfh_type == wfh_type)
 
     if start_date:
         query = query.filter(func.date(models.LatestArrangement.wfh_date) >= start_date)
@@ -93,7 +104,11 @@ def get_arrangements_by_staff_ids(
     if end_date:
         query = query.filter(func.date(models.LatestArrangement.wfh_date) <= end_date)
 
+    if reason:
+        query = query.filter(models.LatestArrangement.reason_description.like(reason))
+
     result = query.all()
+    logger.info(f"Crud: Found {len(result)} arrangements")
 
     return result
 
@@ -152,7 +167,9 @@ def create_arrangements(
             db.add(arrangement)
             db.flush()
             created_arrangements.append(arrangement)
-            created_arrangement_log = create_arrangement_log(db, arrangement, "create")
+            created_arrangement_log: models.ArrangementLog = create_arrangement_log(
+                db, arrangement, "create"
+            )
             arrangement.latest_log_id = created_arrangement_log.log_id
             db.add(created_arrangement_log)
             db.flush()

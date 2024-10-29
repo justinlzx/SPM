@@ -13,8 +13,12 @@ from ..employees import services as employee_services
 from ..logger import logger
 from ..notifications import exceptions as notification_exceptions
 from ..notifications.email_notifications import craft_and_send_email
-from . import exceptions as arrangement_exceptions
 from . import schemas, services
+from .exceptions import (
+    ArrangementActionNotAllowedException,
+    ArrangementNotFoundException,
+    S3UploadFailedException,
+)
 from .schemas import ArrangementCreate, ArrangementResponse, ArrangementUpdate
 
 router = APIRouter()
@@ -29,13 +33,10 @@ def get_arrangement_by_id(arrangement_id: int, db: Session = Depends(get_db)):
             status_code=200,
             content={
                 "message": "Arrangement retrieved successfully",
-                "data": {
-                    **arrangement.model_dump(),
-                    "update_datetime": (arrangement.update_datetime.isoformat()),
-                },
+                "data": arrangement.model_dump(),
             },
         )
-    except arrangement_exceptions as e:
+    except ArrangementNotFoundException as e:
         raise HTTPException(status_code=404, detail=str(e))
     except SQLAlchemyError as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -45,7 +46,7 @@ def get_arrangement_by_id(arrangement_id: int, db: Session = Depends(get_db)):
     "/personal/{staff_id}",
     summary="Get personal arrangements by an employee's staff_id",
 )
-def get_personal_arrangements_by_filter(
+def get_personal_arrangements(
     staff_id: int,
     current_approval_status: List[
         Literal[
@@ -60,22 +61,17 @@ def get_personal_arrangements_by_filter(
     db: Session = Depends(get_db),
 ):
     try:
-        logger.info(f"Fetching personal arrangements for staff ID: {staff_id}")
-        arrangements: List[schemas.ArrangementResponse] = (
-            services.get_personal_arrangements_by_filter(db, staff_id, current_approval_status)
+        logger.info(f"Route: Fetching personal arrangements for staff ID: {staff_id}")
+        arrangements: List[schemas.ArrangementResponse] = services.get_personal_arrangements(
+            db, staff_id, current_approval_status
         )
+        logger.info(f"Route: Found {len(arrangements)} arrangements for staff ID {staff_id}")
 
         return JSONResponse(
             status_code=200,
             content={
                 "message": "Personal arrangements retrieved successfully",
-                "data": [
-                    {
-                        **data.model_dump(),
-                        "update_datetime": (data.update_datetime.isoformat()),
-                    }
-                    for data in arrangements
-                ],
+                "data": [data.model_dump() for data in arrangements],
             },
         )
     except SQLAlchemyError as e:
@@ -88,12 +84,6 @@ def get_personal_arrangements_by_filter(
 )
 def get_subordinates_arrangements(
     manager_id: int,
-    name: Optional[str] = Query(None, description="Name of the employee"),
-    start_date: Optional[date] = Query(None, description="Start Date"),
-    end_date: Optional[date] = Query(None, description="End Date"),
-    type: Optional[Literal["full", "am", "pm"]] = Query(
-        None, description="Type of WFH arrangement"
-    ),
     current_approval_status: Optional[
         List[
             Literal[
@@ -106,11 +96,17 @@ def get_subordinates_arrangements(
             ]
         ]
     ] = Query(None, description="Filter by status"),
+    name: Optional[str] = Query(None, description="Name of the employee"),
+    start_date: Optional[date] = Query(None, description="Start Date"),
+    end_date: Optional[date] = Query(None, description="End Date"),
+    wfh_type: Optional[Literal["full", "am", "pm"]] = Query(
+        None, description="Type of WFH arrangement"
+    ),
+    reason: Optional[str] = Query(None, description="Reason for the WFH"),
     items_per_page: int = Query(10, description="Items per Page"),
     page_num: int = Query(1, description="Page Number"),
     db: Session = Depends(get_db),
 ):
-
     try:
         logger.info(f"Fetching arrangements for employees under manager ID: {manager_id}")
         arrangements, pagination_meta = services.get_subordinates_arrangements(
@@ -120,9 +116,13 @@ def get_subordinates_arrangements(
             name,
             start_date,
             end_date,
-            type,
+            wfh_type,
+            reason,
             items_per_page,
             page_num,
+        )
+        logger.info(
+            f"Route: Found {len(arrangements)} arrangements for employees under manager ID: {manager_id}"
         )
 
         arrangements_dict = [arrangement.model_dump() for arrangement in arrangements]
@@ -151,11 +151,27 @@ def get_team_arrangements(
     current_approval_status: Optional[
         Literal["pending approval", "pending withdrawal", "approved"]
     ] = Query(None, description="Filter by status"),
+    name: Optional[str] = Query(None, description="Name of the employee"),
+    wfh_type: Optional[Literal["full", "am", "pm"]] = Query(
+        None, description="Type of WFH arrangement"
+    ),
+    start_date: Optional[date] = Query(None, description="Start Date"),
+    end_date: Optional[date] = Query(None, description="End Date"),
+    items_per_page: int = Query(10, description="Items per Page"),
+    page_num: int = Query(1, description="Page Number"),
     db: Session = Depends(get_db),
 ):
     try:
         arrangements: Dict[str, List[ArrangementResponse]] = services.get_team_arrangements(
-            db, staff_id, current_approval_status
+            db,
+            staff_id,
+            current_approval_status,
+            name,
+            wfh_type,
+            start_date,
+            end_date,
+            items_per_page,
+            page_num,
         )
         return JSONResponse(
             status_code=200,
@@ -181,7 +197,7 @@ def get_team_arrangements(
 @router.post("/request")
 async def create_wfh_request(
     requester_staff_id: int = Form(..., title="Staff ID of the requester"),
-    wfh_date: str = Form(..., title="Date of the WFH request"),
+    wfh_date: date = Form(..., title="Date of the WFH request"),
     wfh_type: Literal["full", "am", "pm"] = Form(..., title="Type of WFH arrangement"),
     reason_description: str = Form(..., title="Reason for requesting the WFH"),
     is_recurring: Optional[bool] = Form(
@@ -201,61 +217,66 @@ async def create_wfh_request(
     supporting_docs: Annotated[Optional[list[UploadFile]], File(upload_multiple=True)] = [],
     db: Session = Depends(get_db),
 ):
+    try:
+        update_datetime = datetime.now()
+        current_approval_status = "pending approval"
 
-    update_datetime = datetime.now()
-    current_approval_status = "pending approval"
-
-    # Step 1: Fetch the usual approving officer (Reporting Manager) for the requester
-    employee_record = (
-        db.query(employee_models.Employee)
-        .filter(employee_models.Employee.staff_id == requester_staff_id)
-        .first()
-    )
-
-    if not employee_record:
-        raise HTTPException(status_code=404, detail="Employee record not found")
-
-    approving_officer = employee_record.reporting_manager
-
-    # Step 2: Check if the approving officer is on leave and fetch the delegate
-    delegate_approving_officer = None
-    delegation_log = (
-        db.query(employee_models.DelegateLog)
-        .filter(employee_models.DelegateLog.manager_id == approving_officer)
-        .filter(
-            employee_models.DelegateLog.status_of_delegation.in_(
-                [
-                    employee_models.DelegationStatus.pending,
-                    employee_models.DelegationStatus.accepted,
-                ]
-            )
+        # Step 1: Fetch the usual approving officer (Reporting Manager) for the requester
+        employee_record = (
+            db.query(employee_models.Employee)
+            .filter(employee_models.Employee.staff_id == requester_staff_id)
+            .first()
         )
-        .first()
-    )
 
-    if delegation_log:
-        delegate_approving_officer = delegation_log.delegate_manager_id
+        if not employee_record:
+            raise HTTPException(status_code=404, detail="Employee record not found")
 
-    # Step 3: Create the WFH request data structure
-    wfh_request: ArrangementCreate = {
-        "reason_description": reason_description,
-        "is_recurring": is_recurring,
-        "recurring_end_date": recurring_end_date,
-        "recurring_frequency_number": recurring_frequency_number,
-        "recurring_frequency_unit": recurring_frequency_unit,
-        "recurring_occurrences": recurring_occurrences,
-        "batch_id": batch_id,
-        "update_datetime": update_datetime,
-        "current_approval_status": current_approval_status,
-        "wfh_date": wfh_date,
-        "wfh_type": wfh_type,
-        "staff_id": requester_staff_id,
-        "approving_officer": approving_officer,
-        "delegate_approving_officer": delegate_approving_officer,  # New field added here
-    }
+        approving_officer = employee_record.reporting_manager
 
-    # Step 4: Call the service to create the arrangements
-    return await services.create_arrangements_from_request(db, wfh_request, supporting_docs)
+        # Step 2: Check if the approving officer is on leave and fetch the delegate
+        delegate_approving_officer = None
+        delegation_log = (
+            db.query(employee_models.DelegateLog)
+            .filter(employee_models.DelegateLog.manager_id == approving_officer)
+            .filter(
+                employee_models.DelegateLog.status_of_delegation.in_(
+                    [
+                        employee_models.DelegationStatus.pending,
+                        employee_models.DelegationStatus.accepted,
+                    ]
+                )
+            )
+            .first()
+        )
+
+        if delegation_log:
+            delegate_approving_officer = delegation_log.delegate_manager_id
+
+        # Step 3: Create the WFH request data structure
+        wfh_request: ArrangementCreate = {
+            "reason_description": reason_description,
+            "is_recurring": is_recurring,
+            "recurring_end_date": recurring_end_date,
+            "recurring_frequency_number": recurring_frequency_number,
+            "recurring_frequency_unit": recurring_frequency_unit,
+            "recurring_occurrences": recurring_occurrences,
+            "batch_id": batch_id,
+            "update_datetime": update_datetime,
+            "current_approval_status": current_approval_status,
+            "wfh_date": wfh_date,
+            "wfh_type": wfh_type,
+            "staff_id": requester_staff_id,
+            "approving_officer": approving_officer,
+            "delegate_approving_officer": delegate_approving_officer,  # New field added here
+        }
+
+        # Step 4: Call the service to create the arrangements
+        arrangements = await services.create_arrangements_from_request(
+            db, wfh_request, supporting_docs
+        )
+        return arrangements
+    except S3UploadFailedException as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.put("/{arrangement_id}/status", summary="Update the status of a WFH request")
@@ -317,10 +338,10 @@ async def update_wfh_request(
             },
         )
 
-    except arrangement_exceptions.ArrangementNotFoundException as e:
+    except ArrangementNotFoundException as e:
         raise HTTPException(status_code=404, detail=str(e))
 
-    except arrangement_exceptions.ArrangementActionNotAllowedException as e:
+    except ArrangementActionNotAllowedException as e:
         raise HTTPException(status_code=406, detail=str(e))
 
     except notification_exceptions.EmailNotificationException as e:
