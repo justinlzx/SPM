@@ -2,9 +2,9 @@ from enum import Enum
 from typing import List
 
 from sqlalchemy.orm import Session
-from src.email.routes import send_email
-from src.notifications.email_notifications import craft_email_content_for_delegation
 
+from ..email.routes import send_email
+from ..notifications.email_notifications import craft_email_content_for_delegation
 from ..utils import convert_model_to_pydantic_schema
 from . import crud, exceptions, models, schemas
 
