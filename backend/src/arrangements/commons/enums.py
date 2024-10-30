@@ -25,8 +25,8 @@ class WfhType(Enum):
 
 
 class RecurringFrequencyUnit(Enum):
-    WEEKLY = "weekly"
-    MONTHLY = "monthly"
+    WEEKLY = "week"
+    MONTHLY = "month"
 
 
 STATUS_ACTION_MAPPING = {

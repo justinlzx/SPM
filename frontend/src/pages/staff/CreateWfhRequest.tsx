@@ -18,7 +18,6 @@ import {
   Alert,
 } from "@mui/material";
 import { SnackBarComponent, AlertStatus } from "../../common/SnackBar";
-import serialize from "serialize-javascript";
 import * as Yup from "yup";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
@@ -143,11 +142,10 @@ export const CreateWfhRequestPage: React.FC = () => {
       is_recurring: scheduleType === "recurring",
       current_approval_status: "pending approval",
       ...(scheduleType === "recurring" && {
-        recurring_end_date: end ? end.toISOString().split("T")[0] : null,
+        recurring_end_date: end,
         recurring_frequency_number: values.repeatInterval,
         recurring_frequency_unit: values.repeatIntervalUnit,
         recurring_occurrences: values.occurrences,
-        wfh_dates: recurringDates,
       }),
     };
 
@@ -157,7 +155,11 @@ export const CreateWfhRequestPage: React.FC = () => {
       const form = new FormData();
       Object.keys(payload).forEach(key => {
         const value = payload[key];
-        form.append(key, value instanceof Date ? value.toISOString().split("T")[0] : value);
+        if (value instanceof Date) {
+          form.append(key, value.toISOString().split("T")[0]);
+        } else {
+          form.append(key, value.toString()); 
+        }
       });
 
       supportingDocs.forEach(file => form.append("supporting_docs", file));

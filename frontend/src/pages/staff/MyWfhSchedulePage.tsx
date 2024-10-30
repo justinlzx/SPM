@@ -1,21 +1,28 @@
 import React, { useContext, useEffect, useState } from "react";
 import axios from "axios";
+import { useNavigate } from "react-router-dom";
 import { Container, Typography, Snackbar, Alert } from "@mui/material";
 import { UserContext } from "../../context/UserContextProvider";
 import { WFHRequestTable } from "../../components/WFHRequestTable";
-import { ApprovalStatus } from "../../types/ApprovalStatus"; 
-import { TWFHRequest } from "../team/PendingRequests";
+import { ApprovalStatus } from "../../types/approvalStatus"; 
+import { TWFHRequest } from "../../types/requests";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 
 export const MyWfhSchedulePage: React.FC = () => {
+  const { user } = useContext(UserContext);
+  const userId = user!.id;
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!user) {
+      navigate("/login");
+    }
+  }, [user, navigate]);
   const [requests, setRequests] = useState<TWFHRequest[]>([]);
   const [openSnackbar, setOpenSnackbar] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState("");
   const [snackbarSeverity, setSnackbarSeverity] = useState<"success" | "error">("success");
-
-  const { user } = useContext(UserContext);
-  const userId = user!.id;
 
   useEffect(() => {
     const fetchRequests = async () => {
@@ -26,21 +33,16 @@ export const MyWfhSchedulePage: React.FC = () => {
           `${BACKEND_URL}/arrangements/personal/${userId}`
         );
 
-        // Process the response to maintain wfh_date as a Date object
         const allRequests: TWFHRequest[] = response.data.data.map(
           (request: any) => ({
             ...request,
-            approval_status: ApprovalStatus[request.approval_status as keyof typeof ApprovalStatus],
-            wfh_date: new Date(request.wfh_date),  // Keep as Date object
           })
         );
-
-        console.log(allRequests);  // Check the transformed requests
         setRequests(allRequests);
       } catch (error) {
         console.error("Failed to fetch WFH requests:", error);
         setSnackbarMessage("Failed to fetch WFH requests. Please try again later.");
-        setSnackbarSeverity("error");  // Set severity to error
+        setSnackbarSeverity("error"); 
         setOpenSnackbar(true);
       }
     };
@@ -57,7 +59,7 @@ export const MyWfhSchedulePage: React.FC = () => {
     setRequests((prevRequests) =>
       prevRequests.map((request) =>
         request.arrangement_id === id
-          ? { ...request, approval_status: updatedStatus }
+          ? { ...request, current_approval_status: updatedStatus }
           : request
       )
     );

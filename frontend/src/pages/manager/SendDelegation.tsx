@@ -182,15 +182,28 @@ export const SendDelegation: React.FC = () => {
 
   return (
     <Container>
-      <Box display="flex" alignItems="center" justifyContent="flex" sx={{ my: 4, gap: 2, p: 2, border: '1px solid lightgrey', borderRadius: 1 }}>
+      <Box 
+        display="flex" 
+        alignItems="center" 
+        justifyContent="space-between" 
+        sx={{ my: 4, gap: 2, p: 2, borderRadius: 1, bgcolor: '#EDEDED' }}
+      >
+      <Box display="flex" alignItems="center" gap={2}>
         <NotificationsNoneIcon />
-        <Typography variant="body2">
-          Remember to delegate a peer as a manager when you are on leave or unavailable.
-        </Typography>
-        <Button variant="outlined" color="primary" onClick={handleOpenModal}>
-          Delegate a Manager
-        </Button>
+        <Box display="flex" flexDirection="column">
+          <Typography variant="body2" style={{ color: 'black' }}>
+            You can only delegate to one person at a single time.
+          </Typography>
+          <Typography variant="caption" style={{ color: 'grey' }}>
+            To withdraw a delegation, click 'Cancel'.
+          </Typography>
+        </Box>
       </Box>
+      <Button variant="outlined" color="primary" onClick={handleOpenModal}>
+        Delegate a Manager
+      </Button>
+    </Box>
+
 
       <Typography variant="h6">Sent Delegations</Typography>
       <Dialog open={openModal} onClose={handleCloseModal}>
@@ -212,7 +225,7 @@ export const SendDelegation: React.FC = () => {
             </Select>
           </FormControl>
         </DialogContent>
-        <DialogActions sx={{ mx: 2 }}>
+        <DialogActions sx={{ m: 2 }}>
           <Button onClick={handleCloseModal} color="secondary">Cancel</Button>
           <Button
             variant="contained"
@@ -259,7 +272,6 @@ export const SendDelegation: React.FC = () => {
                   <TableCell>
                     <Chip
                       label={capitalize(log.status_of_delegation)}
-                      variant="outlined"
                       color={
                         log.status_of_delegation === DelegationStatus.Accepted
                           ? "success"
@@ -292,3 +304,14 @@ export const SendDelegation: React.FC = () => {
 };
 
 export default SendDelegation;
+
+interface SeePeerManagerButtonProps {
+  onClick: () => void;
+}
+
+export const SeePeerManagerButton: React.FC<SeePeerManagerButtonProps> = ({ onClick }) => (
+  <Button variant="outlined" color="primary" onClick={onClick}>
+    Delegate a Manager
+  </Button>
+);
+

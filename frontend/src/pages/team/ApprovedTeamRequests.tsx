@@ -1,7 +1,6 @@
-import React, { useEffect, useState, useContext } from "react";
+import React, { useContext, useEffect, useState } from "react";
 import axios from "axios";
 import {
-  Container,
   Table,
   TableBody,
   TableCell,
@@ -10,227 +9,338 @@ import {
   TableRow,
   Paper,
   Typography,
-  Chip,
-  ChipProps,
+  Button,
   TablePagination,
+  Collapse,
+  Box,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Link,
+  List,
+  ListItem,
+  Tooltip,
+  TextField,
+  Chip,
 } from "@mui/material";
-import { capitalize } from "../../utils/utils";
+
+import CheckIcon from "@mui/icons-material/Check";
+import CloseIcon from "@mui/icons-material/Close";
+import ExpandLessIcon from "@mui/icons-material/ExpandLess";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import { TEmployee } from "../../hooks/employee/employee.utils";
+import { ApprovalStatus } from "../../types/approvalStatus";
+import { TWFHRequest } from "../../types/requests";
 import { UserContext } from "../../context/UserContextProvider";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 
-// Define types
-enum ApprovalStatus {
-  Approved = "approved",
-  Pending = "pending",
-  Rejected = "rejected",
-}
-
-enum WfhType {
-  AM = "AM",
-  PM = "PM",
-  FULL = "FULL",
-}
-
-type TWFHRequest = {
-  requester_staff_id?: number;
-  wfh_date?: string;
-  wfh_type?: WfhType;
-  arrangement_id?: number;
-  approval_status?: ApprovalStatus;
-  reason_description?: string;
+type TArrangementByEmployee = {
+  employee: TEmployee;
+  approved_arrangements: TWFHRequest[];
 };
 
-const getChipColor = (
-  status: ApprovalStatus | undefined
-): ChipProps["color"] => {
-  switch (status) {
-    case ApprovalStatus.Approved:
-      return "success";
-    case ApprovalStatus.Pending:
-      return "warning";
-    case ApprovalStatus.Rejected:
-      return "error";
-    default:
-      return "default";
-  }
-};
-
-const getWfhTypeChipColor = (
-  wfhType: WfhType | undefined
-): ChipProps["color"] => {
-  switch (wfhType) {
-    case WfhType.AM:
-      return "primary";
-    case WfhType.PM:
-      return "info";
-    case WfhType.FULL:
-      return "secondary";
-    default:
-      return "default";
-  }
-};
-
-export const ApprovedTeamRequests = () => {
-  const [requests, setRequests] = useState<TWFHRequest[]>([]);
-  const [searchTerm, setSearchTerm] = useState("");
+export const ApprovedRequests = () => {
+  const [approvedRequests, setApprovedRequests] = useState<TArrangementByEmployee[]>([]);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
-
-  // Retrieve user information from context
   const { user } = useContext(UserContext);
+  const userId = user!.id;
 
-  // Fetch all requests from the backend
+  // State for modal handling
+  const [withdrawReason, setWithdrawReason] = useState("");
+  const [selectedArrangementId, setSelectedArrangementId] = useState<number | null>(null);
+  const [withdrawModalOpen, setWithdrawModalOpen] = useState(false);
+
+  // Fetch approved requests from subordinates
   useEffect(() => {
-    const fetchAllRequests = async () => {
+    const fetchApprovedRequestsFromSubordinates = async () => {
+      if (!user || !userId) return;
       try {
-        const response = await axios.get(`${BACKEND_URL}/arrangements/view`);
-        const allRequests: TWFHRequest[] = response.data.data;
-
-        // Temporarily disabling filtering by user
-        setRequests(allRequests);
-
-        // If needed, re-enable this by uncommenting the following lines:
-        /*
-        if (user) {
-          const response = await axios.get(`${BACKEND_URL}/arrangements/personal/${user.id}`);
-          const userRequests: TWFHRequest[] = response.data.data;
-
-          // Filter requests to only include those submitted by the logged-in user
-          setRequests(userRequests);
-        }
-        */
+        const response = await axios.get(
+          `${BACKEND_URL}/arrangements/subordinates/${userId}/approved`
+        );
+        const approvedData: TArrangementByEmployee[] = response.data.data;
+        setApprovedRequests(approvedData);
       } catch (error) {
-        console.error("Failed to fetch all requests:", error);
+        console.error("Failed to fetch approved requests:", error);
       }
     };
-    fetchAllRequests();
-  }, [user]);
+    fetchApprovedRequestsFromSubordinates();
+  }, [user, userId]);
 
-  // Handle search input
-  const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchTerm(e.target.value);
+  const handleWithdrawApproval = async () => {
+    if (!selectedArrangementId) return;
+    try {
+      const formData = new FormData();
+      formData.append("action", "allow withdraw");
+      formData.append("reason_description", withdrawReason);
+      formData.append("approving_officer", userId?.toString() || "");
+      formData.append("current_approval_status", ApprovalStatus.Withdrawn);
+  
+      await axios.put(
+        `${BACKEND_URL}/arrangements/${selectedArrangementId}/status`,
+        formData,
+        {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        }
+      );
+
+      console.log("Approval withdrawn successfully");
+      setWithdrawModalOpen(false);
+      setWithdrawReason(""); // Clear the reason field after submission
+    } catch (error) {
+      console.error("Error withdrawing approval:", error);
+    }
   };
 
-  // Handle change in page number
-  const handleChangePage = (event: unknown, newPage: number) => {
-    setPage(newPage);
+  const openWithdrawModal = (arrangementId: number) => {
+    setSelectedArrangementId(arrangementId);
+    setWithdrawModalOpen(true);
   };
-
-  // Handle change in rows per page
-  const handleChangeRowsPerPage = (
-    event: React.ChangeEvent<HTMLInputElement>
-  ) => {
-    setRowsPerPage(parseInt(event.target.value, 10));
-    setPage(0);
-  };
-
-  // Filter the requests based on the search term, with null checks
-  // const requests = requests.filter(
-  //   (request) =>
-  //     (request.requester_staff_id && request.requester_staff_id.toString().includes(searchTerm)) ||
-  //     (request.wfh_date && request.wfh_date.includes(searchTerm)) ||
-  //     (request.wfh_type && request.wfh_type.toLowerCase().includes(searchTerm)) ||
-  //     (request.approval_status && request.approval_status.toLowerCase().includes(searchTerm)) ||
-  //     (request.reason_description && request.reason_description.toLowerCase().includes(searchTerm))
-  // );
 
   return (
-    <div>
-      <Typography
-        variant="h4"
-        gutterBottom
-        align="center"
-        sx={{ marginTop: 4 }}
-      >
-        My WFH Requests
+    <>
+      <Typography variant="h4" gutterBottom align="left" sx={{ marginTop: 4 }}>
+        Approved Requests
       </Typography>
-      <TableContainer
-        component={Paper}
-        sx={{ marginTop: 3, textAlign: "center", width: "100%" }}
-      >
+      <TableContainer component={Paper} sx={{ marginTop: 3, textAlign: "center" }}>
         <Table>
           <TableHead>
             <TableRow>
-              <TableCell sx={{ fontWeight: "bold" }}>Approval Status</TableCell>
-              <TableCell sx={{ fontWeight: "bold" }}>WFH Type</TableCell>
-              <TableCell sx={{ fontWeight: "bold" }}>WFH Date</TableCell>
-              <TableCell sx={{ fontWeight: "bold" }}>Reason</TableCell>
+              <TableCell></TableCell>
+              <TableCell sx={{ fontWeight: "bold" }}>Staff ID</TableCell>
+              <TableCell sx={{ fontWeight: "bold" }}>Name</TableCell>
+              <TableCell sx={{ fontWeight: "bold" }}>Department</TableCell>
+              <TableCell sx={{ fontWeight: "bold" }}>Position</TableCell>
+              <TableCell sx={{ fontWeight: "bold" }}>Email</TableCell>
+              <TableCell sx={{ fontWeight: "bold" }}>Approved</TableCell>
             </TableRow>
           </TableHead>
-          <TableBody>
-            {requests.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={4} align="center">
-                  No requests found
-                </TableCell>
-              </TableRow>
-            ) : (
-              requests
-                .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
-                .map((request) => {
-                  const {
-                    arrangement_id,
-                    wfh_date,
-                    wfh_type,
-                    approval_status,
-                    reason_description,
-                  } = request;
-
-                  return (
-                    <TableRow
-                      key={arrangement_id}
-                      sx={{ alignItems: "center" }}
-                    >
-                      <TableCell
-                        sx={{
-                          width: { xs: "30%", sm: "20%", md: "15%", lg: "15%" },
-                          padding: "15px",
-                        }}
-                      >
-                        <Chip
-                          color={getChipColor(approval_status)}
-                          label={capitalize(approval_status || "N/A")}
-                          sx={{ margin: "0" }}
-                        />
-                      </TableCell>
-
-                      <TableCell
-                        sx={{
-                          width: { xs: "30%", sm: "20%", md: "15%", lg: "15%" },
-                          padding: "10px",
-                        }}
-                      >
-                        <Chip
-                          color={getWfhTypeChipColor(wfh_type)}
-                          label={wfh_type ? wfh_type.toUpperCase() : "N/A"}
-                          sx={{ margin: "0" }}
-                        />
-                      </TableCell>
-                      <TableCell>{wfh_date || "N/A"}</TableCell>
-                      <TableCell>
-                        {reason_description
-                          ? reason_description.substring(0, 15)
-                          : "N/A"}
-                      </TableCell>
-                    </TableRow>
-                  );
-                })
-            )}
-          </TableBody>
+          {approvedRequests.length === 0 ? (
+            <TableRow>
+              <TableCell colSpan={7} align="center">
+                No approved requests
+              </TableCell>
+            </TableRow>
+          ) : (
+            approvedRequests.map((request) => {
+              return (
+                <EmployeeRow
+                  request={request}
+                  openWithdrawModal={openWithdrawModal}
+                />
+              );
+            })
+          )}
         </Table>
       </TableContainer>
+
       <TablePagination
         component="div"
         rowsPerPageOptions={[10, 20, 30]}
-        count={requests.length}
+        count={approvedRequests.length}
         rowsPerPage={rowsPerPage}
         page={page}
-        onPageChange={handleChangePage}
-        onRowsPerPageChange={handleChangeRowsPerPage}
+        onPageChange={(event, newPage) => setPage(newPage)}
+        onRowsPerPageChange={(event) =>
+          setRowsPerPage(parseInt(event.target.value, 10))
+        }
       />
-    </div>
+
+      {/* Withdraw Approval Modal */}
+      <Dialog open={withdrawModalOpen} onClose={() => setWithdrawModalOpen(false)}>
+        <DialogTitle>Withdraw Approval</DialogTitle>
+        <DialogContent>
+          <TextField
+            autoFocus
+            margin="dense"
+            label="Withdrawal Reason"
+            type="text"
+            fullWidth
+            value={withdrawReason}
+            onChange={(e) => setWithdrawReason(e.target.value)}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setWithdrawModalOpen(false)} color="secondary">
+            Cancel
+          </Button>
+          <Button onClick={handleWithdrawApproval} color="primary">
+            Submit
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </>
   );
 };
 
-export default ApprovedTeamRequests;
+const EmployeeRow = ({ request, openWithdrawModal }: TEmployeeRow) => {
+  const {
+    employee: { requester_staff_id, staff_fname, staff_lname, dept, position, email },
+  } = request;
+
+  const arrangements = request.approved_arrangements.filter(
+    (arrangement) => arrangement.current_approval_status === ApprovalStatus.Approved
+  );
+
+  const [isCollapsed, setIsCollapsed] = useState(true);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [documents, setDocuments] = useState<string[]>([]);
+
+  const handleDialogOpen = (documents: string[]) => {
+    setDialogOpen(true);
+    setDocuments(documents);
+  };
+
+  return (
+    <>
+      <TableRow key={request.employee.requester_staff_id}>
+        <TableCell>
+          <Button onClick={() => setIsCollapsed(!isCollapsed)}>
+            {isCollapsed ? <ExpandMoreIcon /> : <ExpandLessIcon />}
+          </Button>
+        </TableCell>
+        <TableCell>{requester_staff_id}</TableCell>
+        <TableCell>
+          {staff_fname} {staff_lname}
+        </TableCell>
+        <TableCell>{dept || "N/A"}</TableCell>
+        <TableCell>{position}</TableCell>
+        <TableCell>{email}</TableCell>
+        <TableCell>
+          <Chip variant="outlined" label={arrangements.length} /> 
+        </TableCell>
+      </TableRow>
+      <TableRow>
+        <TableCell style={{ paddingBottom: 0, paddingTop: 0, paddingLeft: 40, paddingRight: 0 }} colSpan={7}>
+          <Collapse in={!isCollapsed} timeout="auto" unmountOnExit>
+            <Box>
+              <Table size="small">
+                <TableHead>
+                  <TableRow className="bg-gray-100">
+                    <TableCell></TableCell>
+                    <TableCell sx={{ fontWeight: "bold" }}>Date</TableCell>
+                    <TableCell sx={{ fontWeight: "bold" }}>WFH Type</TableCell>
+                    <TableCell sx={{ fontWeight: "bold" }}>Reason</TableCell>
+                    <TableCell sx={{ fontWeight: "bold" }}>Supporting Documents</TableCell>
+                    <TableCell sx={{ fontWeight: "bold" }}>Action</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {arrangements.map((arrangement, idx) => {
+                    const {
+                      arrangement_id,
+                      wfh_date,
+                      wfh_type,
+                      reason_description,
+                      supporting_doc_1,
+                      supporting_doc_2,
+                      supporting_doc_3,
+                    } = arrangement;
+
+                    return (
+                      <TableRow key={arrangement_id}>
+                        <TableCell>{idx + 1}</TableCell>
+                        <TableCell>{wfh_date}</TableCell>
+                        <TableCell>{wfh_type?.toUpperCase()}</TableCell>
+                        <TableCell sx={{ maxWidth: 200 }}>
+                          <Tooltip title="Scroll to view more">
+                            <Box sx={{ position: 'relative' }}>
+                              <Box sx={{ overflowX: 'scroll', scrollbarWidth: 'none' }}>
+                                {reason_description}
+                              </Box>
+                            </Box>
+                          </Tooltip>
+                        </TableCell>
+                        <TableCell>
+                          {supporting_doc_1 ||
+                          supporting_doc_2 ||
+                          supporting_doc_3 ? (
+                            <Button
+                              variant="text"
+                              onClick={() =>
+                                handleDialogOpen([
+                                  supporting_doc_1,
+                                  supporting_doc_2,
+                                  supporting_doc_3,
+                                ])
+                              }
+                              sx={{ textTransform: "none" }}
+                            >
+                              <Typography style={{ textDecoration: "underline" }}>View more ...</Typography>
+                            </Button>
+                          ) : (
+                            "NA"
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <Button
+                            size="small"
+                            color="warning"
+                            startIcon={<CheckIcon />}
+                            onClick={() =>
+                              openWithdrawModal(arrangement_id)
+                            }
+                          >
+                            Withdraw Approval
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </Box>
+          </Collapse>
+        </TableCell>
+      </TableRow>
+      <DocumentDialog
+        isOpen={dialogOpen}
+        documents={documents}
+        onClose={() => setDialogOpen(false)}
+      />
+    </>
+  );
+};
+
+type TEmployeeRow = {
+  request: TArrangementByEmployee;
+  openWithdrawModal: (arrangementId: number) => void;
+};
+
+type TDocumentDialog = {
+  isOpen: boolean;
+  documents: string[];
+  onClose: () => void;
+};
+
+const DocumentDialog = ({ isOpen, documents, onClose }: TDocumentDialog) => {
+  return (
+    <Dialog open={isOpen} onClose={onClose} fullWidth>
+      <DialogTitle className="flex justify-between items-center" sx={{ paddingBottom: 0 }}>
+        Supporting Documents
+        <DialogActions>
+          <Button onClick={onClose}>
+            <CloseIcon />
+          </Button>
+        </DialogActions>
+      </DialogTitle>
+      <DialogContent>
+        <List>
+          {documents.map((document, idx) => (
+            <ListItem key={document}>
+              {idx + 1}.
+              <Link href={document} target="_blank" rel="noopener noreferrer" className="ps-2">
+                Click to View...
+              </Link>
+            </ListItem>
+          ))}
+        </List>
+      </DialogContent>
+    </Dialog>
+  );
+};

@@ -1,22 +1,22 @@
-import React, { useContext } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useContext, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom'; 
 import { UserContext } from '../../context/UserContextProvider';
 import AddIcon from '@mui/icons-material/Add';
-import { Button, Box, Toolbar, Container, Typography } from '@mui/material';
+import { Button, Box, Container, Typography } from '@mui/material';
 import DashboardCards from '../../common/DashboardCards';
-import { ApprovedTeamRequests } from '../team/ApprovedTeamRequests';
-
-type Request = {
-  id: number;
-  wfh_type: string;
-  startDate: Date;
-  endDate: Date;
-  status: string;
-};
+import { DelegateButton } from '../manager/DelegateButton';
+import { PersonalRequests }  from './PersonalRequests';
 
 export const HomePage = () => {
-  const { user } = useContext(UserContext);
   const navigate = useNavigate();
+  const { user } = useContext(UserContext);
+
+  useEffect(() => {
+    if (!user) {
+      navigate("/login");
+    }
+  }, [user, navigate]);
+
   const storedUser = localStorage.getItem('user');
   const userName = storedUser
     ? storedUser.split('@')[0].split('.').map(part => part[0].toUpperCase() + part.slice(1).toLowerCase()).join(' ')
@@ -33,16 +33,17 @@ export const HomePage = () => {
           Welcome back, {userName}
         </Typography>
         <DashboardCards />
+        
         <Button
-          sx={{ mb: 2 }}
           variant="contained"
           color="primary"
           startIcon={<AddIcon />}
-          onClick={() => handleCreateApplication("/create-request")}
+          onClick={() => handleCreateApplication('/create-request')}
         >
           Create a WFH Request
         </Button>
-        <ApprovedTeamRequests />
+        <DelegateButton />
+        <PersonalRequests />
       </Container>
     </Box>
   );

@@ -15,11 +15,11 @@ type EmployeeRowProps = {
 };
 
 const EmployeeRow: React.FC<EmployeeRowProps> = ({ request, openDocumentDialog, handleRequestAction }) => {
-  const { arrangement_id, staff_id, requester_info, wfh_type, reason_description, supporting_doc_1, supporting_doc_2, supporting_doc_3, approval_status } = request;
+  const { arrangement_id, requester_staff_id, requester_info, wfh_type, reason_description, supporting_doc_1, supporting_doc_2, supporting_doc_3, current_approval_status } = request;
 
   return (
     <TableRow>
-      <TableCell>{staff_id}</TableCell>
+      <TableCell>{requester_staff_id}</TableCell>
       <TableCell>{`${requester_info.staff_fname} ${requester_info.staff_lname}`}</TableCell>
       <TableCell>{requester_info.dept}</TableCell>
       <TableCell>{requester_info.position}</TableCell>
@@ -33,7 +33,7 @@ const EmployeeRow: React.FC<EmployeeRowProps> = ({ request, openDocumentDialog, 
         ) : "None"}
       </TableCell>
       <TableCell>
-        {approval_status === ApprovalStatus.PendingApproval && (
+        {current_approval_status === ApprovalStatus.PendingApproval && (
           <ButtonGroup>
             <Button onClick={() => handleRequestAction && handleRequestAction("approve", arrangement_id, reason_description)}>
               <CheckIcon /> Approve

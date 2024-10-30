@@ -1,6 +1,7 @@
 import React, { useContext, useEffect, useState } from "react";
 import axios from "axios";
 import {
+  Container,
   Table,
   TableBody,
   TableCell,
@@ -21,77 +22,37 @@ import {
   Link,
   List,
   ListItem,
-  Chip,
   Tooltip,
+  Chip,
 } from "@mui/material";
-import { UserContext } from "../../context/UserContextProvider";
 import CheckIcon from "@mui/icons-material/Check";
 import CloseIcon from "@mui/icons-material/Close";
 import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import { ApprovalStatus, Action, STATUS_ACTION_MAPPING } from "../../types/approvalStatus";
+import { UserContext } from "../../context/UserContextProvider";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 
-// Enum for approval statuses
-export enum ApprovalStatus {
-  Approved = "approved",
-  PendingApproval = "pending approval",
-  PendingWithdrawal = "pending withdrawal",
-  Rejected = "rejected",
-  Cancelled = "cancelled",
-  Withdrawn = "withdrawn",
-}
-
-// Define types
-type TAction = "approve" | "reject" | "allow withdraw";
-
-export type TWFHRequest = {
-  staff_id: number;
-  requester_info: {
-    staff_fname: string;
-    staff_lname: string;
-    dept: string;
-    position: string;
-  };
+type TWFHRequest = {
+  arrangement_id: number;
+  requester_staff_id: number;
   wfh_date: string;
   wfh_type: string;
-  arrangement_id: number;
+  current_approval_status: ApprovalStatus;
+  approving_officer: number;
   reason_description: string;
-  approval_status: ApprovalStatus;
-  supporting_doc_1: string;
-  supporting_doc_2: string;
-  supporting_doc_3: string;
-};
-
-type TArrangementsByDate = {
-  date: string;
-  pending_arrangements: TWFHRequest[];
+  supporting_doc_1?: string | null;
+  supporting_doc_2?: string | null;
+  supporting_doc_3?: string | null;
 };
 
 export const PendingRequests = () => {
-  const [actionRequests, setActionRequests] = useState<TArrangementsByDate[]>([]);
+  const [actionRequests, setActionRequests] = useState<TWFHRequest[]>([]);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
-
   const { user } = useContext(UserContext);
-  const userId = user!.id;
-
-  // Get personal pending requests
-  useEffect(() => {
-    const fetchRequests = async () => {
-      if (!user || !userId) return;
-      try {
-        const response = await axios.get(
-          `${BACKEND_URL}/arrangements/personal/${userId}`
-        );
-        const paginationMeta = response.data.pagination_meta;
-        setRowsPerPage(paginationMeta.page_size);
-      } catch (error) {
-        console.error("Failed to fetch requests:", error);
-      }
-    };
-    fetchRequests();
-  }, [user, userId]);
+  const userId = user?.id;
 
   useEffect(() => {
     const fetchPendingRequestsFromSubordinates = async () => {
@@ -100,16 +61,12 @@ export const PendingRequests = () => {
         const response = await axios.get(
           `${BACKEND_URL}/arrangements/subordinates/${userId}`,
           {
-            params: {
-              current_approval_status: ["pending approval", "pending withdrawal"],
-            },
+            params: { current_approval_status: [ApprovalStatus.PendingApproval, ApprovalStatus.PendingWithdrawal] },
           }
         );
-        const pendingRequests: TArrangementsByDate[] = response.data.data;
-        const paginationMeta = response.data.pagination_meta;
-
-        setActionRequests(pendingRequests);
-        setRowsPerPage(paginationMeta.page_size);
+        const requests = response.data.data.flatMap((dateEntry: any) => dateEntry.pending_arrangements);
+        setActionRequests(requests);
+        console.log(requests);
       } catch (error) {
         console.error("Failed to fetch subordinates' requests:", error);
       }
@@ -118,78 +75,83 @@ export const PendingRequests = () => {
   }, [user, userId]);
 
   const handleRequestAction = async (
-    action: TAction,
+    action: Action,
     arrangement_id: number,
     reason_description: string,
-    approval_status: ApprovalStatus
+    current_approval_status: ApprovalStatus
   ) => {
+    const nextStatus = STATUS_ACTION_MAPPING[current_approval_status]?.[action];
+    if (!nextStatus) {
+      console.warn(`Action '${action}' is not allowed for status '${current_approval_status}'`);
+      return;
+    }
+
     try {
       const formData = new FormData();
       formData.append("action", action);
       formData.append("reason_description", reason_description);
       formData.append("approving_officer", userId?.toString() || "");
-      
-      if (action === "allow withdraw") {
-        formData.append("current_approval_status", ApprovalStatus.Withdrawn);
-      } else if (action === "reject") {
-        formData.append("current_approval_status", ApprovalStatus.Rejected);
-      }
-  
+      formData.append("current_approval_status", nextStatus);
+
       await axios.put(
         `${BACKEND_URL}/arrangements/${arrangement_id}/status`,
         formData,
         {
-          headers: {
-            "Content-Type": "multipart/form-data",
-          },
+          headers: { "Content-Type": "multipart/form-data" },
         }
       );
-  
-      console.log(`Request ${action}d successfully`);
+
+      console.log(`Request '${action}' successfully updated to status '${nextStatus}'`);
     } catch (error) {
-      console.error(`Error ${action}ing request:`, error);
+      console.error(`Error performing action '${action}':`, error);
     }
   };
 
   return (
     <>
-      <Typography
-        variant="h4"
-        gutterBottom
-        align="left"
-        sx={{ marginTop: 4 }}
-      >
+      <Typography variant="h4" gutterBottom align="left" sx={{ marginTop: 4 }}>
         Action Required
       </Typography>
-      <TableContainer
-        component={Paper}
-        sx={{ marginTop: 3, textAlign: "center" }}
-      >
+      <TableContainer component={Paper} sx={{ marginTop: 3, textAlign: "center" }}>
         <Table>
           <TableHead>
             <TableRow>
-              <TableCell></TableCell>
-              <TableCell sx={{ fontWeight: "bold" }}>Date</TableCell>
-              <TableCell sx={{ fontWeight: "bold" }}>No. of Requests</TableCell>
+              <TableCell sx={{ fontWeight: "bold" }}>Staff ID</TableCell>
+              <TableCell sx={{ fontWeight: "bold" }}>WFH Date</TableCell>
+              <TableCell sx={{ fontWeight: "bold" }}>WFH Type</TableCell>
+              <TableCell sx={{ fontWeight: "bold" }}>Reason</TableCell>
+              <TableCell sx={{ fontWeight: "bold" }}>Supporting Documents</TableCell>
+              <TableCell sx={{ fontWeight: "bold" }}>Action</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
-            {actionRequests.length === 0 ? (
+            {actionRequests.filter(
+              (request) =>
+                request.current_approval_status === ApprovalStatus.PendingApproval ||
+                request.current_approval_status === ApprovalStatus.PendingWithdrawal
+            ).length === 0 ? (
               <TableRow>
                 <TableCell colSpan={7} align="center">
                   No pending requests
                 </TableCell>
               </TableRow>
             ) : (
-              actionRequests.map((request) => (
-                <DateRow
-                  key={request.date}
-                  date={request}
-                  handleRequestAction={handleRequestAction}
-                />
-              ))
+              actionRequests
+                .filter(
+                  (request) =>
+                    request.current_approval_status === ApprovalStatus.PendingApproval ||
+                    request.current_approval_status === ApprovalStatus.PendingWithdrawal
+                )
+                .map((arrangement) => (
+                  <ArrangementRow
+                    key={arrangement.arrangement_id}
+                    arrangement={arrangement}
+                    handleRequestAction={handleRequestAction}
+                  />
+                ))
             )}
           </TableBody>
+
         </Table>
       </TableContainer>
 
@@ -199,80 +161,84 @@ export const PendingRequests = () => {
         count={actionRequests.length}
         rowsPerPage={rowsPerPage}
         page={page}
-        onPageChange={(_, newPage) => setPage(newPage)}
-        onRowsPerPageChange={(event) =>
-          setRowsPerPage(parseInt(event.target.value, 10))
-        }
+        onPageChange={(event, newPage) => setPage(newPage)}
+        onRowsPerPageChange={(event) => setRowsPerPage(parseInt(event.target.value, 10))}
       />
     </>
   );
 };
 
-type TDateRow = {
-  date: TArrangementsByDate;
-  handleRequestAction: (
-    action: TAction,
-    arrangement_id: number,
-    reason_description: string,
-    approval_status: ApprovalStatus
-  ) => void;
-};
+// ArrangementRow Component
+const ArrangementRow = ({ arrangement, handleRequestAction }: { arrangement: TWFHRequest; handleRequestAction: any }) => {
+  const {
+    arrangement_id,
+    requester_staff_id,
+    wfh_date,
+    wfh_type,
+    current_approval_status,
+    reason_description,
+    supporting_doc_1,
+    supporting_doc_2,
+    supporting_doc_3,
+  } = arrangement;
 
-const DateRow = ({ date, handleRequestAction }: TDateRow) => {
-  const arrangements = date.pending_arrangements;
-
-  const [isCollapsed, setIsCollapsed] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [documents, setDocuments] = useState<string[]>([]);
 
-  const handleDialogOpen = (documents: string[]) => {
+  const handleDialogOpen = () => {
     setDialogOpen(true);
-    setDocuments(documents);
+    setDocuments([supporting_doc_1, supporting_doc_2, supporting_doc_3].filter(Boolean) as string[]);
   };
 
   return (
     <>
-      <TableRow>
-        <TableCell>
-          <Button onClick={() => setIsCollapsed(!isCollapsed)}>
-            {isCollapsed ? <ExpandMoreIcon /> : <ExpandLessIcon />}
-          </Button>
-        </TableCell>
-        <TableCell>{date.date}</TableCell>
-        <TableCell>
-          <Chip label={arrangements.length} />
-        </TableCell>
-      </TableRow>
-      <TableRow>
-        <TableCell colSpan={3} style={{ paddingBottom: 0, paddingTop: 0, paddingLeft: 40 }}>
-          <Collapse in={!isCollapsed} timeout="auto" unmountOnExit>
-            <Box>
-              <Table size="small">
-                <TableHead>
-                  <TableRow>
-                    <TableCell>Staff ID</TableCell>
-                    <TableCell>Staff Name</TableCell>
-                    <TableCell>Department</TableCell>
-                    <TableCell>Position</TableCell>
-                    <TableCell>WFH Type</TableCell>
-                    <TableCell>Reason</TableCell>
-                    <TableCell>Supporting Documents</TableCell>
-                    <TableCell>Action</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {arrangements.map((arrangement, idx) => (
-                    <EmployeeRow
-                      key={arrangement.arrangement_id}
-                      request={arrangement}
-                      handleRequestAction={handleRequestAction}
-                      openDocumentDialog={handleDialogOpen}
-                    />
-                  ))}
-                </TableBody>
-              </Table>
+      <TableRow key={arrangement_id}>
+        <TableCell>{requester_staff_id}</TableCell>
+        <TableCell>{wfh_date}</TableCell>
+        <TableCell>{wfh_type?.toUpperCase()}</TableCell>
+        <TableCell sx={{ maxWidth: 200 }}>
+          <Tooltip title="Scroll to view more">
+            <Box sx={{ overflowX: 'scroll', scrollbarWidth: 'none' }}>
+              {reason_description}
             </Box>
-          </Collapse>
+          </Tooltip>
+        </TableCell>
+        <TableCell>
+          {documents.length ? (
+            <Button variant="text" onClick={handleDialogOpen}>
+              <Typography sx={{ textDecoration: "underline" }}>View more...</Typography>
+            </Button>
+          ) : "NA"}
+        </TableCell>
+        <TableCell>
+          {current_approval_status === ApprovalStatus.PendingApproval && (
+            <ButtonGroup variant="contained">
+              <Button color="success" startIcon={<CheckIcon />} onClick={() =>
+                handleRequestAction(Action.Approve, arrangement_id, reason_description, current_approval_status)
+              }>
+                Approve
+              </Button>
+              <Button color="error" startIcon={<CloseIcon />} onClick={() =>
+                handleRequestAction(Action.Reject, arrangement_id, reason_description, current_approval_status)
+              }>
+                Reject
+              </Button>
+            </ButtonGroup>
+          )}
+          {current_approval_status === ApprovalStatus.PendingWithdrawal && (
+            <ButtonGroup variant="contained">
+              <Button color="success" startIcon={<CheckIcon />} onClick={() =>
+                handleRequestAction(Action.Approve, arrangement_id, reason_description, current_approval_status)
+              }>
+                Approve Withdraw
+              </Button>
+              <Button color="error" startIcon={<CloseIcon />} onClick={() =>
+                handleRequestAction(Action.Reject, arrangement_id, reason_description, current_approval_status)
+              }>
+                Reject
+              </Button>
+            </ButtonGroup>
+          )}
         </TableCell>
       </TableRow>
       <DocumentDialog
@@ -283,100 +249,25 @@ const DateRow = ({ date, handleRequestAction }: TDateRow) => {
     </>
   );
 };
-type TEmployeeRow = {
-  request: TWFHRequest;
-  handleRequestAction: (
-    action: TAction,
-    arrangement_id: number,
-    reason_description: string,
-    approval_status: ApprovalStatus
-  ) => void;
-  openDocumentDialog: (documents: string[]) => void;
-};
 
-const EmployeeRow = ({ request, handleRequestAction, openDocumentDialog }: TEmployeeRow) => {
-  const {
-    arrangement_id,
-    staff_id,
-    requester_info: { staff_fname, staff_lname, dept, position },
-    wfh_type,
-    reason_description,
-    supporting_doc_1,
-    supporting_doc_2,
-    supporting_doc_3,
-    approval_status,
-  } = request;
-
-  return (
-    <TableRow>
-      <TableCell>{staff_id}</TableCell>
-      <TableCell>{`${staff_fname} ${staff_lname}`}</TableCell>
-      <TableCell>{dept}</TableCell>
-      <TableCell>{position}</TableCell>
-      <TableCell>{wfh_type.toUpperCase()}</TableCell>
-      <TableCell>{reason_description}</TableCell>
-      <TableCell>
-        {(supporting_doc_1 || supporting_doc_2 || supporting_doc_3) ? (
-          <Button
-            variant="text"
-            onClick={() =>
-              openDocumentDialog([supporting_doc_1, supporting_doc_2, supporting_doc_3])
-            }
-          >
-            View Documents
-          </Button>
-        ) : (
-          "NA"
-        )}
-      </TableCell>
-      <TableCell>
-        {approval_status === ApprovalStatus.PendingApproval && (
-          <ButtonGroup>
-            <Button onClick={() => handleRequestAction("approve", arrangement_id, reason_description, approval_status)}>
-              Approve
-            </Button>
-            <Button onClick={() => handleRequestAction("reject", arrangement_id, reason_description, approval_status)}>
-              Reject
-            </Button>
-          </ButtonGroup>
-        )}
-        {approval_status === ApprovalStatus.PendingWithdrawal && (
-          <ButtonGroup>
-            <Button onClick={() => handleRequestAction("allow withdraw", arrangement_id, reason_description, approval_status)}>
-              Allow Withdraw
-            </Button>
-            <Button onClick={() => handleRequestAction("reject", arrangement_id, reason_description, approval_status)}>
-              Reject
-            </Button>
-          </ButtonGroup>
-        )}
-      </TableCell>
-    </TableRow>
-  );
-};
-
-type TDocumentDialog = {
-  isOpen: boolean;
-  documents: string[];
-  onClose: () => void;
-};
-
-const DocumentDialog = ({ isOpen, documents, onClose }: TDocumentDialog) => (
-  <Dialog open={isOpen} onClose={onClose}>
-    <DialogTitle>Supporting Documents</DialogTitle>
+const DocumentDialog = ({ isOpen, documents, onClose }: { isOpen: boolean; documents: string[]; onClose: () => void; }) => (
+  <Dialog open={isOpen} onClose={onClose} fullWidth>
+    <DialogTitle sx={{ paddingBottom: 0 }}>Supporting Documents</DialogTitle>
     <DialogContent>
       <List>
-        {documents.map((doc, idx) => (
-          <ListItem key={idx}>
-            <Link href={doc} target="_blank">
-              Document {idx + 1}
+        {documents.map((document, idx) => (
+          <ListItem key={document}>
+            {idx + 1}.
+            <Link href={document} target="_blank" rel="noopener noreferrer">
+              Click to View...
             </Link>
           </ListItem>
         ))}
       </List>
     </DialogContent>
     <DialogActions>
-      <Button onClick={onClose}>Close</Button>
+      <Button onClick={onClose}><CloseIcon /></Button>
     </DialogActions>
   </Dialog>
 );
+
