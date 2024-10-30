@@ -6,6 +6,7 @@ const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 
 // Fetch list of peers for delegation
 export const fetchPeers = async (userId: string): Promise<Peer[]> => {
+  const response = await axios.get(`${BACKEND_URL}/employees/peers/${userId}`);
   return response.data.peer_employees
     .filter((peer: any) => peer.staff_id !== userId)
     .map((peer: any) => ({
@@ -31,6 +32,7 @@ export const sendDelegationRequest = async (userId: string, delegateManagerId: s
     delegate_manager_name: response.data.delegate_manager_name,
     date_of_delegation: response.data.date_of_delegation,
     status_of_delegation: response.data.status_of_delegation,
+    
   };
 };
 

@@ -19,6 +19,7 @@ export enum DelegationStatus {
     staff_id: number;
     delegate_manager_id: number;
     status_of_delegation: DelegationStatus;
+    reason: string;
   };
   
   export interface Peer {

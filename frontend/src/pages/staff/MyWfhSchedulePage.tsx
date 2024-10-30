@@ -3,7 +3,7 @@ import axios from "axios";
 import { Container, Typography, Snackbar, Alert } from "@mui/material";
 import { UserContext } from "../../context/UserContextProvider";
 import { WFHRequestTable } from "../../components/WFHRequestTable";
-import { ApprovalStatus } from "../../types/ApprovalStatus"; 
+import { ApprovalStatus } from "../../types/approvalStatus"; 
 import { TWFHRequest } from "../../types/requests";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
@@ -26,12 +26,10 @@ export const MyWfhSchedulePage: React.FC = () => {
           `${BACKEND_URL}/arrangements/personal/${userId}`
         );
 
-        // Process the response to maintain wfh_date as a Date object
         const allRequests: TWFHRequest[] = response.data.data.map(
           (request: any) => ({
             ...request,
             approval_status: ApprovalStatus[request.approval_status as keyof typeof ApprovalStatus],
-            wfh_date: new Date(request.wfh_date),  // Keep as Date object
           })
         );
 

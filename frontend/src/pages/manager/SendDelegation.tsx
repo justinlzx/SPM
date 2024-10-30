@@ -272,7 +272,6 @@ export const SendDelegation: React.FC = () => {
                   <TableCell>
                     <Chip
                       label={capitalize(log.status_of_delegation)}
-                      variant="outlined"
                       color={
                         log.status_of_delegation === DelegationStatus.Accepted
                           ? "success"

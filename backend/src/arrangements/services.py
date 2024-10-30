@@ -36,6 +36,7 @@ STATUS = {
     "reject": "rejected",
     "withdraw": "pending withdrawal",
     "allow withdraw": "withdrawn",
+    "reject withdraw": "approved",
     "cancel": "cancelled",
 }
 

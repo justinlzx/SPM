@@ -11,7 +11,7 @@ import {
 } from "@mui/material";
 import axios from "axios";
 import { UserContext } from "../../context/UserContextProvider";
-import { ApprovalStatus } from "../../types/ApprovalStatus";
+import { ApprovalStatus } from "../../types/approvalStatus";
 import { capitalize } from "../../utils/utils";
 
 

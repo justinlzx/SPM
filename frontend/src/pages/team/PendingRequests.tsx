@@ -31,14 +31,14 @@ import CloseIcon from "@mui/icons-material/Close";
 import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import { TEmployee } from "../../hooks/auth/employee/employee.utils";
-import { ApprovalStatus } from "../../types/ApprovalStatus";
+import { ApprovalStatus } from "../../types/approvalStatus";
 import { TWFHRequest } from "../../types/requests";
 import { UserContext } from "../../context/UserContextProvider";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 
 // Define types
-type TAction = "approve" | "reject" | "allow withdraw";
+type TAction = "approve" | "reject" | "allow withdraw" | "reject withdraw";
 
 
 type TArrangementByEmployee = {
@@ -61,7 +61,7 @@ export const PendingRequests = () => {
         const response = await axios.get(
           `${BACKEND_URL}/arrangements/subordinates/${userId}`,
         );
-        console.log(response)
+        console.log(response.data)
         const pendingRequests: TArrangementByEmployee[] = response.data.data;
         setActionRequests(pendingRequests);
       } catch (error) {
@@ -87,9 +87,9 @@ export const PendingRequests = () => {
       if (action === "allow withdraw") {
         formData.append("current_approval_status", ApprovalStatus.Withdrawn);
       }
-      // else if (action === "pending withdrawal") {
-      //   formData.append("current_approval_status", ApprovalStatus.Withdrawn);
-      // }
+      else if (action === "reject withdraw"){
+        formData.append("current_approval_status", ApprovalStatus.Approved);
+      }
       else if (action === "reject") {
         formData.append("current_approval_status", ApprovalStatus.Rejected);
       }
@@ -207,7 +207,9 @@ const EmployeeRow = ({ request, handleRequestAction }: TEmployeeRow) => {
         <TableCell>{position}</TableCell>
         <TableCell>{email}</TableCell>
         <TableCell>
-          <Chip label={arrangements.length} /> {/* Reintroducing the Chip component */}
+          <Chip 
+          variant="outlined"
+          label={arrangements.length} /> 
         </TableCell>
       </TableRow>
       <TableRow>

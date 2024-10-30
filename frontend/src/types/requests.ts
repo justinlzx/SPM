@@ -10,7 +10,7 @@ export enum ApprovalStatus {
   
   
 // Action types for request management
-export type TAction = "approve" | "reject" | "allow withdraw";
+export type TAction = "approve" | "reject" | "allow withdraw" | "reject withdraw";
   
 // Type for individual work-from-home requests
 export type TWFHRequest = {
