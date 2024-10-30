@@ -1,0 +1,24 @@
+name: Docker Image CI
+
+on:
+  push:
+    branches: [ "main", "justin/ec2-deployment" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+
+  build:
+
+    runs-on: linux/arm64
+
+    steps:
+    - uses: actions/checkout@v3
+    - name: Login Dockerhub
+      env: 
+        DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+        DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+    - name: Build the Docker images
+      run: docker compose build 
+    - name: Push to Docker Hub 
+      run: docker compose push 
