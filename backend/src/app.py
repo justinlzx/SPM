@@ -1,5 +1,6 @@
 from contextlib import asynccontextmanager
 import os
+from venv import logger
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -16,6 +17,7 @@ from .health.health import router as health_router
 from .init_db import load_data
 
 from dotenv import load_dotenv
+from main import ENV
 
 """
 Create a context manager to handle the lifespan of the FastAPI application
@@ -28,6 +30,8 @@ load_dotenv()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+
+    logger.info(f"App started in <{ENV}> mode")
     # Drop all tables
     arrangement_models.Base.metadata.drop_all(bind=engine)
     auth_models.Base.metadata.drop_all(bind=engine)
