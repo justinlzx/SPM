@@ -5,7 +5,7 @@ import AddIcon from '@mui/icons-material/Add';
 import { Button, Box, Container, Typography } from '@mui/material';
 import DashboardCards from '../../common/DashboardCards';
 import { DelegateButton } from '../manager/DelegateButton';
-import { PersonalRequests } from './PersonalRequests';
+import { PersonalRequests }  from './PersonalRequests';
 
 export const HomePage = () => {
   const navigate = useNavigate();
