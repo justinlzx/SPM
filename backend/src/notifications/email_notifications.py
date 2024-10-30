@@ -5,6 +5,7 @@ from datetime import datetime
 from os import getenv
 from typing import List, Optional
 
+from src.arrangements.commons.models import LatestArrangement
 import httpx
 from dotenv import load_dotenv
 from fastapi import HTTPException
@@ -14,6 +15,7 @@ from ..arrangements.commons.enums import Action, ApprovalStatus
 from ..employees import models as employee_models
 from ..logger import logger
 from . import exceptions
+from sqlalchemy.orm import Session
 
 load_dotenv()
 BASE_URL = getenv("BACKEND_BASE_URL", "http://localhost:8000")
@@ -316,45 +318,61 @@ def craft_email_content_for_delegation(
 
 
 async def craft_and_send_auto_rejection_email(
-    employee: employee_models.Employee,
-    arrangements: List[ArrangementResponse],
-    manager: employee_models.Employee,
+    arrangement_id: int,
+    db: Session,
 ):
-    email_list = []
+    """Send auto-rejection email for arrangement submitted <24h before WFH date."""
+    # Get arrangement details
+    arrangement = (
+        db.query(LatestArrangement)
+        .filter(LatestArrangement.arrangement_id == arrangement_id)
+        .first()
+    )
 
-    formatted_details = format_details(arrangements)
+    if not arrangement:
+        raise ValueError(f"Arrangement {arrangement_id} not found")
 
-    # Email for employee
+    employee = arrangement.requester_info
+    manager = (
+        arrangement.delegate_approving_officer_info
+        if arrangement.delegate_approving_officer_info
+        else arrangement.approving_officer_info
+    )
+
+    # Create and send emails
     employee_subject = "[All-In-One] Your WFH Request Has Been Auto-Rejected"
     employee_content = (
         f"Dear {employee.staff_fname} {employee.staff_lname},\n\n"
         f"Your WFH request has been automatically rejected as it was submitted less than 24 hours "
         f"before the requested WFH date.\n\n"
-        f"Please refer to the following details:\n\n"
-        f"{formatted_details}\n\n"
+        f"Request Details:\n"
+        f"Request ID: {arrangement.arrangement_id}\n"
+        f"WFH Date: {arrangement.wfh_date}\n"
+        f"Type: {arrangement.wfh_type}\n"
+        f"Reason: {arrangement.reason_description}\n\n"
         f"Please ensure future WFH requests are submitted at least 24 hours in advance.\n\n"
         f"This email is auto-generated. Please do not reply to this email. Thank you."
     )
 
-    # Email for manager
     manager_subject = "[All-In-One] Staff WFH Request Auto-Rejected"
     manager_content = (
         f"Dear {manager.staff_fname} {manager.staff_lname},\n\n"
         f"A WFH request from your staff has been automatically rejected as it was submitted less "
         f"than 24 hours before the requested WFH date.\n\n"
-        f"Please refer to the following details:\n\n"
-        f"{formatted_details}\n\n"
+        f"Request Details:\n"
+        f"Staff: {employee.staff_fname} {employee.staff_lname}\n"
+        f"Request ID: {arrangement.arrangement_id}\n"
+        f"WFH Date: {arrangement.wfh_date}\n"
+        f"Type: {arrangement.wfh_type}\n"
+        f"Reason: {arrangement.reason_description}\n\n"
         f"This email is auto-generated. Please do not reply to this email. Thank you."
     )
 
-    email_list.extend(
-        [
-            (employee.email, employee_subject, employee_content),
-            (manager.email, manager_subject, manager_content),
-        ]
-    )
-
     email_errors = []
+    email_list = [
+        (employee.email, employee_subject, employee_content),
+        (manager.email, manager_subject, manager_content),
+    ]
 
     for email in email_list:
         try:
@@ -366,6 +384,4 @@ async def craft_and_send_auto_rejection_email(
         raise exceptions.EmailNotificationException(email_errors)
 
     for email, subject, content in email_list:
-        logger.info(
-            f"Auto-rejection email sent successfully to {email} with the following content:\n\n{subject}\n{content}\n\n"
-        )
+        logger.info(f"Auto-rejection email sent successfully to {email} with subject: {subject}")
