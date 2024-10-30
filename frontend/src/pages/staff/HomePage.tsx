@@ -18,7 +18,7 @@ export const HomePage = () => {
   }, [user, navigate]);
 
   const storedUser = localStorage.getItem('user');
-  const userName = storedUser 
+  const userName = storedUser
     ? storedUser.split('@')[0].split('.').map(part => part[0].toUpperCase() + part.slice(1).toLowerCase()).join(' ')
     : "Guest";
 

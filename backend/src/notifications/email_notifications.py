@@ -3,130 +3,32 @@
 # from email.mime.text import MIMEText
 from datetime import datetime
 from os import getenv
-from typing import List, Union
+from typing import List, Optional
 
 import httpx
 from dotenv import load_dotenv
 from fastapi import HTTPException
 
-from ..arrangements import schemas as arrangement_schemas
+from ..arrangements.commons.dataclasses import ArrangementResponse
+from ..arrangements.commons.enums import Action, ApprovalStatus
 from ..employees import models as employee_models
+from ..logger import logger
 from . import exceptions
-
-# from sqlalchemy.orm import Session
-
-
-# from ..employees.routes import read_employee
 
 load_dotenv()
 BASE_URL = getenv("BACKEND_BASE_URL", "http://localhost:8000")
 
 
-async def fetch_manager_info(staff_id: int):
-    """Fetch manager information by making an HTTP request to the
-    /employees/manager/peermanager/{staff_id} route."""
-    try:
-        async with httpx.AsyncClient() as client:
-            response = await client.get(f"{BASE_URL}/employees/manager/peermanager/{staff_id}")
-
-            # Check if the response is successful
-            if response.status_code != 200:
-                raise HTTPException(
-                    status_code=response.status_code,
-                    detail=f"Error fetching manager info: {response.text}",
-                )
-
-            manager_info = response.json()
-            return manager_info
-
-    except httpx.RequestError as exc:
-        raise HTTPException(
-            status_code=500,
-            detail=f"An error occurred while fetching manager info: {str(exc)}",
-        )
-
-
 async def craft_and_send_email(
     employee: employee_models.Employee,
-    arrangements: Union[
-        List[arrangement_schemas.ArrangementCreateResponse], arrangement_schemas.ArrangementUpdate
-    ],
-    action: str,
-    manager: employee_models.Employee = None,
-    error_message: str = None,
+    arrangements: List[ArrangementResponse],
+    action: Action,
+    current_approval_status: ApprovalStatus,
+    manager: employee_models.Employee,
+    error_message: Optional[str] = None,
 ):
-    missing_args = []
-    if not employee:
-        missing_args.append("employee")
-    if not arrangements:
-        missing_args.append("arrangements")
-    if not action:
-        missing_args.append("action")
-
-    if missing_args:
-        raise TypeError(
-            f"craft_email_content() missing {len(missing_args)} required positional argument(s): {', '.join(missing_args)}"
-        )
-
-    # REVIEW: should move this validation logic to the Pydantic model
-    required_employee_attributes = ["staff_fname", "staff_lname", "email"]
-    missing_employee_attributes = [
-        attr for attr in required_employee_attributes if not getattr(employee, attr, None)
-    ]
-    if missing_employee_attributes:
-        raise AttributeError(
-            f"Employee is missing required attributes: {', '.join(missing_employee_attributes)}"
-        )
-
-    # REVIEW: should move this validation logic to the Pydantic model
-    required_arrangement_attributes = [
-        "arrangement_id",
-        "wfh_date",
-        "wfh_type",
-        "batch_id",
-        "current_approval_status",
-        "update_datetime",
-    ]
-    for arrangement in arrangements:
-        missing_arrangement_attributes = [
-            attr for attr in required_arrangement_attributes if not getattr(arrangement, attr, None)
-        ]
-        if missing_arrangement_attributes:
-            raise AttributeError(
-                f"Arrangement is missing required attributes: {', '.join(missing_arrangement_attributes)}"
-            )
-
-    if action not in [
-        "create",
-        "approve",
-        "reject",
-        "withdraw",
-        "allow withdraw",
-        "reject withdraw",
-        "cancel",
-    ]:
-        raise ValueError(f"Invalid action: {action}")
-
-    if (
-        action
-        in [
-            "create",
-            "approve",
-            "reject",
-            "withdraw",
-            "allow withdraw",
-            "reject withdraw",
-            "cancel",
-        ]
-        and not manager
-    ):
-        raise ValueError("Manager is required for the specified action.")
-
     if error_message is not None and error_message == "":
         raise ValueError("Error message cannot be an empty string.")
-
-    if not isinstance(arrangements, List):
-        arrangements = [arrangements]
 
     email_list = []
 
@@ -134,6 +36,7 @@ async def craft_and_send_email(
         employee=employee,
         arrangements=arrangements,
         action=action,
+        current_approval_status=current_approval_status,
         error_message=error_message,
         manager=manager,
     )
@@ -166,14 +69,13 @@ async def craft_and_send_email(
     if email_errors:
         raise exceptions.EmailNotificationException(email_errors)
 
-    return True
+    for email, subject, content in email_list:
+        logger.info(
+            f"Email sent successfully to {email} with the following content:\n\n{subject}\n{content}\n\n"
+        )
 
 
-def format_details(
-    arrangements: Union[
-        List[arrangement_schemas.ArrangementCreateResponse], arrangement_schemas.ArrangementUpdate
-    ]
-):
+def format_details(arrangements: List[ArrangementResponse]):
     return "\n".join(
         [
             f"Request ID: {arrangement.arrangement_id}\n"
@@ -189,17 +91,48 @@ def format_details(
     )
 
 
-def format_email_subject(action_statement: str):
+def format_email_subject(role: str, action: Action, current_approval_status: ApprovalStatus):
+    statement_dict = {
+        "employee": {
+            Action.CREATE: "Your WFH Request Has Been Created",
+            Action.APPROVE: {
+                ApprovalStatus.APPROVED: "Your WFH Request Has Been Approved",
+                ApprovalStatus.WITHDRAWN: "Your WFH Request Has Been Withdrawn",
+            },
+            Action.REJECT: {
+                ApprovalStatus.REJECTED: "Your WFH Request Has Been Rejected",
+                ApprovalStatus.APPROVED: "Your WFH Request Withdrawal Has Been Rejected",
+            },
+            Action.WITHDRAW: "You Have Requested to Withdraw Your WFH",
+        },
+        "manager": {
+            Action.CREATE: "Your Staff Created a WFH Request",
+            Action.APPROVE: {
+                ApprovalStatus.APPROVED: "You Have Approved a WFH Request",
+                ApprovalStatus.WITHDRAWN: "You Have Approved a WFH Request Withdrawal",
+            },
+            Action.REJECT: {
+                ApprovalStatus.REJECTED: "You Have Rejected a WFH Request",
+                ApprovalStatus.APPROVED: "You Have Rejected a WFH Request Withdrawal",
+            },
+            Action.WITHDRAW: "Your Staff Has Requested to Withdraw Their WFH",
+        },
+    }
+
+    action_statement = statement_dict[role][action]
+
+    if action == Action.APPROVE or action == Action.REJECT:
+        action_statement = action_statement[current_approval_status]
+
     return f"[All-In-One] {action_statement}"
 
 
 def format_email_body(
     employee: employee_models.Employee,
-    action_statement: str,
     formatted_details: str,
 ):
     body = f"Dear {employee.staff_fname} {employee.staff_lname},\n\n"
-    body += f"{action_statement} with the following details:\n\n"
+    body += "Please refer to the following details for the above action:\n\n"
     body += formatted_details
     body += "\n\nThis email is auto-generated. Please do not reply to this email. Thank you."
     return body
@@ -207,74 +140,22 @@ def format_email_body(
 
 def craft_email_content(
     employee: employee_models.Employee,
-    arrangements: Union[
-        List[arrangement_schemas.ArrangementCreateResponse], arrangement_schemas.ArrangementUpdate
-    ],
-    action: str,
-    manager: employee_models.Employee = None,
-    error_message: str = None,
+    arrangements: List[ArrangementResponse],
+    action: Action,
+    current_approval_status: ApprovalStatus,
+    manager: employee_models.Employee,
+    error_message: Optional[str] = None,
 ):
     formatted_details = format_details(arrangements)
 
-    action_statements_dict = {
-        "employee": {
-            "subject": {
-                "create": "Successful Creation of WFH Request",
-                "approve": "Your WFH Request Has Been Approved",
-                "reject": "Your WFH Request Has Been Rejected",
-                "withdraw": "You Have Requested to Withdraw Your WFH",
-                "allow withdraw": "Your WFH Request Has Been Withdrawn",
-                "reject withdraw": "Your WFH Request Withdrawal Has Been Rejected",
-                "cancel": "Your WFH Request Has Been Cancelled",
-            },
-            "body": {
-                "create": "Your WFH request has been successfully created with the following details:",
-                "approve": "Your WFH request has been approved with the following details:",
-                "reject": "Your WFH request has been rejected with the following details:",
-                "withdraw": "Your WFH request is pending withdrawal with the following details:",
-                "allow withdraw": "Your WFH request has been withdrawn with the following details:",
-                "reject withdraw": "Your WFH request withdrawal has been rejected with the following details:",
-                "cancel": "Your WFH request has been cancelled with the following details:",
-            },
-        },
-        "manager": {
-            "subject": {
-                "create": "Your Staff Created a WFH Request",
-                "approve": "You Have Approved a WFH Request",
-                "reject": "You Have Rejected a WFH Request",
-                "withdraw": "Your Staff Has Requested to Withdraw Their WFH",
-                "allow withdraw": "You Have Approved a WFH Request Withdrawal",
-                "reject withdraw": "You Have Rejected a WFH Request Withdrawal",
-                "cancel": "You Have Cancelled a WFH Request",
-            },
-            "body": {
-                "create": "One of your staff members has successfully created a WFH request with the following details:",
-                "approve": "You have successfully approved a WFH request for",
-                "reject": "You have rejected a WFH request for",
-                "withdraw": "has request to withdraw their WFH with the following details:",
-                "allow withdraw": "You have withdrawn a WFH request for",
-                "reject withdraw": "You have rejected a WFH request withdrawal for",
-                "cancel": "You have cancelled a WFH request for",
-            },
-        },
-    }
-
     result = {
         "employee": {
-            "subject": format_email_subject(action_statements_dict["employee"]["subject"][action]),
-            "content": format_email_body(
-                employee,
-                action_statements_dict["employee"]["subject"][action],
-                formatted_details,
-            ),
+            "subject": format_email_subject("employee", action, current_approval_status),
+            "content": format_email_body(employee, formatted_details),
         },
         "manager": {
-            "subject": format_email_subject(action_statements_dict["manager"]["subject"][action]),
-            "content": format_email_body(
-                manager,
-                action_statements_dict["manager"]["subject"][action],
-                formatted_details,
-            ),
+            "subject": format_email_subject("manager", action, current_approval_status),
+            "content": format_email_body(manager, formatted_details),
         },
     }
 
@@ -432,3 +313,28 @@ def craft_email_content_for_delegation(
         raise ValueError("Invalid event type for delegation email.")
 
     return subject, content
+
+
+# ================================== DEPRECATED FUNCTIONS ==================================
+# async def fetch_manager_info(staff_id: int):
+#     """Fetch manager information by making an HTTP request to the
+#     /employees/manager/peermanager/{staff_id} route."""
+#     try:
+#         async with httpx.AsyncClient() as client:
+#             response = await client.get(f"{BASE_URL}/employees/manager/peermanager/{staff_id}")
+
+#             # Check if the response is successful
+#             if response.status_code != 200:
+#                 raise HTTPException(
+#                     status_code=response.status_code,
+#                     detail=f"Error fetching manager info: {response.text}",
+#                 )
+
+#             manager_info = response.json()
+#             return manager_info
+
+#     except httpx.RequestError as exc:
+#         raise HTTPException(
+#             status_code=500,
+#             detail=f"An error occurred while fetching manager info: {str(exc)}",
+#         )

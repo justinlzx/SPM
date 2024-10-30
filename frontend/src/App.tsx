@@ -6,7 +6,7 @@ import { UserContext } from "./context/UserContextProvider";
 import { AppContext } from "./context/AppContextProvider";
 import { SnackBarComponent as SnackBar } from "./common/SnackBar";
 import { Outlet, useNavigate } from "react-router-dom";
-import { useHealthCheck } from "./hooks/auth/health/health";
+import { useHealthCheck } from "./hooks/health/health";
 
 
 const theme = createTheme({
@@ -16,7 +16,7 @@ const theme = createTheme({
   },
   palette: {
     primary: {
-      main: '#00007B', 
+      main: '#00007B',
       light: '#3399ff',
       dark: '#002080',
     },
@@ -51,7 +51,7 @@ export const App = () => {
 
   return (
     <ThemeProvider theme={theme}>
-      <CssBaseline/>
+      <CssBaseline />
       <div>
         {alertStatus !== undefined && (
           <SnackBar

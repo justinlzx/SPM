@@ -1,6 +1,11 @@
 import pytest
-from src.arrangements.models import ArrangementLog, LatestArrangement, RecurringRequest
 from src.employees.models import Employee
+
+from backend.src.arrangements.commons.models import (
+    ArrangementLog,
+    LatestArrangement,
+    RecurringRequest,
+)
 
 
 @pytest.fixture

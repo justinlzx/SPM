@@ -1,40 +1,34 @@
-from datetime import datetime
-from typing import List, Literal
+from dataclasses import asdict
+from typing import Dict, List, Optional, Union
 
 # from pydantic import ValidationError
 from sqlalchemy import func, or_
 from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, class_mapper
 from src.employees.models import Employee
 
 from ..logger import logger
-from . import models, schemas
-from .utils import fit_model_to_model, fit_schema_to_model
+from .commons import models
+from .commons.dataclasses import (
+    ArrangementFilters,
+    ArrangementResponse,
+    CreateArrangementRequest,
+    CreatedRecurringRequest,
+    RecurringRequestDetails,
+)
+from .commons.enums import Action, ApprovalStatus
 
 
-def get_arrangement_by_id(db: Session, arrangement_id: int) -> models.LatestArrangement:
-    return db.query(models.LatestArrangement).get(arrangement_id)
+def get_arrangement_by_id(db: Session, arrangement_id: int) -> Optional[Dict]:
+    response = db.query(models.LatestArrangement).get(arrangement_id)
+    return response.__dict__ if response else None
 
 
-def get_arrangements(
+def get_arrangements_by_staff_ids(
     db: Session,
-    staff_ids: List[int],
-    current_approval_status: List[
-        Literal[
-            "pending approval",
-            "pending withdrawal",
-            "approved",
-            "rejected",
-            "cancelled",
-            "withdrawn",
-        ]
-    ] = None,
-    name: str = None,
-    wfh_type: Literal["full", "am", "pm"] = None,
-    start_date: datetime = None,
-    end_date: datetime = None,
-    reason: str = None,
-) -> List[schemas.ArrangementCreateResponse]:
+    staff_ids: Union[int, List[int]],
+    filters: ArrangementFilters,
+) -> List[Dict]:
     """Fetch the WFH requests for a list of staff IDs with optional filters.
 
     Args:
@@ -51,96 +45,140 @@ def get_arrangements(
     Returns:
         List of arrangements matching the criteria
     """
-    logger.info("Fetching requests by staff ID with filters")
+    staff_ids = list(set(staff_ids)) if isinstance(staff_ids, list) else staff_ids
+
+    # Log the number of staff IDs being fetched
+    logger.info(
+        f"Crud: Fetching arrangements for {len(staff_ids) if isinstance(staff_ids, list) else 1} staff IDs with filters"
+    )
+
+    # TODO
+    # Log all non-null filters
+    # non_null_filters = {key: value for key, value in filters.items() if value}
+    # logger.info(f"Crud: Applying filters: {non_null_filters}")
+
     query = db.query(models.LatestArrangement)
     query = query.join(Employee, Employee.staff_id == models.LatestArrangement.requester_staff_id)
-    query = query.filter(models.LatestArrangement.requester_staff_id.in_(staff_ids))
 
-    if name:
+    if isinstance(staff_ids, int):
+        query = query.filter(models.LatestArrangement.requester_staff_id == staff_ids)
+    else:
+        query = query.filter(models.LatestArrangement.requester_staff_id.in_(staff_ids))
+
+    if filters.name:
         query = query.filter(
             or_(
-                Employee.staff_fname.ilike(f"%{name}%"),
-                Employee.staff_lname.ilike(f"%{name}%"),
+                Employee.staff_fname.ilike(f"%{filters.name}%"),
+                Employee.staff_lname.ilike(f"%{filters.name}%"),
             )
         )
     # Apply optional filters
-    if current_approval_status:
+    if filters.current_approval_status:
         query = query.filter(
-            models.LatestArrangement.current_approval_status.in_(current_approval_status)
+            models.LatestArrangement.current_approval_status.in_(filters.current_approval_status)
         )
 
-    if wfh_type:
-        query = query.filter(models.LatestArrangement.wfh_type == wfh_type)
+    if filters.wfh_type:
+        models.LatestArrangement.wfh_type.in_(filters.wfh_type)
 
-    if start_date:
-        query = query.filter(func.date(models.LatestArrangement.wfh_date) >= start_date)
+    if filters.start_date:
+        query = query.filter(func.date(models.LatestArrangement.wfh_date) >= filters.start_date)
 
-    if end_date:
-        query = query.filter(func.date(models.LatestArrangement.wfh_date) <= end_date)
+    if filters.end_date:
+        query = query.filter(func.date(models.LatestArrangement.wfh_date) <= filters.end_date)
 
-    if reason:
-        query = query.filter(models.LatestArrangement.reason_description.like(reason))
+    if filters.reason:
+        query = query.filter(models.LatestArrangement.reason_description.like(filters.reason))
 
-    result = query.all()
+    results = query.all()
+    logger.info(f"Crud: Found {len(results)} arrangements")
 
-    return result
+    return [result.__dict__ for result in results]
+
+
+def get_team_arrangements(
+    db: Session,
+    staff_id: int,
+    filters: ArrangementFilters,
+) -> List[Dict]:
+    # Log the team lead's staff ID
+    logger.info(f"Crud: Fetching team arrangements for team lead {staff_id}")
+
+    # Fetch the team members' staff IDs
+    team_members = db.query(Employee.staff_id).filter(Employee.manager_staff_id == staff_id).all()
+    team_member_ids = [member[0] for member in team_members]
+
+    # Fetch the team members' arrangements
+    return get_arrangements_by_staff_ids(db, team_member_ids, filters)
 
 
 def create_arrangement_log(
-    db: Session, arrangement: models.LatestArrangement, action: str
+    db: Session,
+    arrangement: models.LatestArrangement,
+    action: Action,
+    previous_approval_status: ApprovalStatus,
 ) -> models.ArrangementLog:
-    print("Entering create_arrangement_log function")
-    try:
-        print("Calling fit_model_to_model")
-        arrangement_log: models.ArrangementLog = fit_model_to_model(
-            arrangement,
-            models.ArrangementLog,
-            {
-                "current_approval_status": "approval_status",
-            },
-        )
-        arrangement_log.update_datetime = datetime.utcnow()
-        db.add(arrangement_log)
-        db.flush()
-    except SQLAlchemyError as e:
-        print(f"Caught SQLAlchemyError in create_arrangement_log: {str(e)}")
-        db.rollback()
-        raise e
+    logger.info(f"Crud: Creating arrangement log for action {action}")
+
+    arrangement_log = models.ArrangementLog(
+        update_datetime=arrangement.update_datetime,
+        requester_staff_id=arrangement.requester_staff_id,
+        wfh_date=arrangement.wfh_date,
+        wfh_type=arrangement.wfh_type,
+        action=action,
+        previous_approval_status=previous_approval_status,
+        updated_approval_status=arrangement.current_approval_status,
+        approving_officer=arrangement.approving_officer,
+        reason_description=arrangement.reason_description,
+        supporting_doc_1=arrangement.supporting_doc_1,
+        supporting_doc_2=arrangement.supporting_doc_2,
+        supporting_doc_3=arrangement.supporting_doc_3,
+    )
+
+    db.add(arrangement_log)
+    db.flush()
     return arrangement_log
 
 
 def create_recurring_request(
-    db: Session, request: schemas.ArrangementCreate
-) -> models.RecurringRequest:
+    db: Session,
+    request: RecurringRequestDetails,
+) -> CreatedRecurringRequest:
     try:
-        batch = fit_schema_to_model(
-            request,
-            models.RecurringRequest,
-            {"update_datetime": "request_datetime", "wfh_date": "start_date"},
+        request_mapper = class_mapper(models.RecurringRequest)
+        recurring_request = models.RecurringRequest(
+            **{k: v for k, v in asdict(request).items() if k in request_mapper.attrs.keys()},
         )
-        db.add(batch)
+        db.add(recurring_request)
         db.commit()
-        db.refresh(batch)
-        return batch
+        db.refresh(recurring_request)
+        return CreatedRecurringRequest.from_dict(recurring_request.__dict__)
     except SQLAlchemyError as e:
         db.rollback()
         raise e
 
 
 def create_arrangements(
-    db: Session, arrangements: List[models.LatestArrangement]
-) -> List[models.LatestArrangement]:
+    db: Session,
+    arrangements: List[CreateArrangementRequest],
+) -> List[ArrangementResponse]:
     try:
         created_arrangements = []
-        for arrangement in arrangements:
-            # Auto-approve Jack Sim's requests
-            if arrangement.requester_staff_id == 130002:
-                arrangement.current_approval_status = "approved"
-
+        for arrangement_data in arrangements:
+            arrangement_mapper = class_mapper(models.LatestArrangement)
+            arrangement = models.LatestArrangement(
+                **{
+                    k: v
+                    for k, v in asdict(arrangement_data).items()
+                    if k in arrangement_mapper.attrs.keys()
+                },
+            )
             db.add(arrangement)
             db.flush()
             created_arrangements.append(arrangement)
-            created_arrangement_log: models.ArrangementLog = create_arrangement_log(db, arrangement, "create")
+            created_arrangement_log = create_arrangement_log(
+                db, arrangement, Action.CREATE, previous_approval_status=None
+            )
             arrangement.latest_log_id = created_arrangement_log.log_id
             db.add(created_arrangement_log)
             db.flush()
@@ -150,6 +188,11 @@ def create_arrangements(
         for created_arrangement in created_arrangements:
             db.refresh(created_arrangement)
 
+        created_arrangements = [
+            ArrangementResponse.from_dict(arrangement.__dict__)
+            for arrangement in created_arrangements
+        ]
+
         return created_arrangements
     except SQLAlchemyError as e:
         db.rollback()
@@ -157,15 +200,36 @@ def create_arrangements(
 
 
 def update_arrangement_approval_status(
-    db: Session, arrangement: models.LatestArrangement, action: str
-) -> models.LatestArrangement:
+    db: Session,
+    arrangement_data: ArrangementResponse,
+    action: Action,
+    previous_approval_status: ApprovalStatus,
+) -> Dict:
     try:
-        log = create_arrangement_log(db, arrangement, action)
-        arrangement.latest_log_id = log.log_id
+        db.query(models.LatestArrangement).filter(
+            models.LatestArrangement.arrangement_id == arrangement_data.arrangement_id
+        ).update(
+            {
+                "current_approval_status": arrangement_data.current_approval_status,
+                "supporting_doc_1": arrangement_data.supporting_doc_1,
+                "supporting_doc_2": arrangement_data.supporting_doc_2,
+                "supporting_doc_3": arrangement_data.supporting_doc_3,
+                "status_reason": arrangement_data.status_reason,
+            }
+        )
 
-        db.commit()
-        db.refresh(arrangement)
-        return arrangement
+        updated_arrangement = db.query(models.LatestArrangement).get(
+            arrangement_data.arrangement_id
+        )
+
+        if updated_arrangement:
+            log = create_arrangement_log(db, updated_arrangement, action, previous_approval_status)
+            updated_arrangement.latest_log_id = log.log_id
+
+            db.commit()
+            db.refresh(updated_arrangement)
+
+        return updated_arrangement.__dict__
     except SQLAlchemyError as e:
         db.rollback()
         raise e

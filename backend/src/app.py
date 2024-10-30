@@ -1,9 +1,11 @@
 from contextlib import asynccontextmanager
+import os
+from venv import logger
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from .arrangements import models as arrangement_models
+from .arrangements.commons import models as arrangement_models
 from .arrangements.routes import router as arrangement_router
 from .auth import models as auth_models
 from .auth.routes import router as auth_router
@@ -14,15 +16,22 @@ from .employees.routes import router as employee_router
 from .health.health import router as health_router
 from .init_db import load_data
 
+from dotenv import load_dotenv
+from main import ENV
+
 """
 Create a context manager to handle the lifespan of the FastAPI application
 Code before the yield keyword is run before the application starts
 Code after the yield keyword is run after the application stops
 """
 
+load_dotenv()
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+
+    logger.info(f"App started in <{ENV}> mode")
     # Drop all tables
     arrangement_models.Base.metadata.drop_all(bind=engine)
     auth_models.Base.metadata.drop_all(bind=engine)
@@ -53,9 +62,11 @@ async def lifespan(app: FastAPI):
 app = FastAPI(lifespan=lifespan)
 
 origins = [
+    "http://localhost",
     "http://localhost:3000",
     "http://localhost:3001",
     "http://localhost:3002",
+    os.getenv("FRONTEND_URL", "localhost"),  # for docker networking
 ]
 
 # Add CORS middleware to allow requests from the frontend
