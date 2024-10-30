@@ -3,6 +3,7 @@ from datetime import datetime
 import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
+from src.arrangements.commons.models import LatestArrangement
 from src.auth.models import Auth
 from src.employees.crud import (
     create_delegation,
@@ -26,8 +27,6 @@ from src.employees.crud import (
     update_pending_arrangements_for_delegate,
 )
 from src.employees.models import Base, DelegateLog, DelegationStatus, Employee
-
-from backend.src.arrangements.commons.models import LatestArrangement
 
 # Configure the in-memory SQLite database
 # The code is setting up a SQLite in-memory database engine using SQLAlchemy in Python. It
