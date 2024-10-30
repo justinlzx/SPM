@@ -19,6 +19,6 @@ jobs:
           password: ${{ secrets.DOCKER_PASSWORD }}
 
       - name: Build the Docker images
-        run: docker compose build
+        run: docker compose -f ../docker-compose.yaml build
       - name: Push to Docker Hub
         run: docker compose push
