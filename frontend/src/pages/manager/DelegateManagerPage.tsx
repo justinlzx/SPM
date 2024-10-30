@@ -11,11 +11,6 @@ export const DelegateManagerPage = () => {
   if (!user) {
     navigate("/login");
   }
-
-  const handleOpenModal = () => {
-
-  }
-
   return (
     <div>
       <PendingDelegations />

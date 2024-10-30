@@ -194,7 +194,7 @@ const EmployeeRow = ({ request, openWithdrawModal }: TEmployeeRow) => {
   } = request;
 
   const arrangements = request.approved_arrangements.filter(
-    (arrangement) => arrangement.approval_status === ApprovalStatus.Approved
+    (arrangement) => arrangement.current_approval_status === ApprovalStatus.Approved
   );
 
   const [isCollapsed, setIsCollapsed] = useState(true);

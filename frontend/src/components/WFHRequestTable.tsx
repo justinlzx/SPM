@@ -25,12 +25,12 @@ const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 // Define types for WFH request
 type TWFHRequest = {
   arrangement_id: number;
-  staff_id: number;
+  requester_staff_id: number;
   wfh_date: string;
   end_date?: string;
   wfh_type: string;
   reason_description: string;
-  approval_status: ApprovalStatus;
+  current_approval_status: ApprovalStatus;
 };
 
 type TWFHRequestTableProps = {
@@ -110,8 +110,11 @@ export const WFHRequestTable: React.FC<TWFHRequestTableProps> = ({ requests, han
   
       const formData = new FormData();
       formData.append("action", "withdraw");  
-      formData.append("requester_staff_id", request.staff_id.toString());  
+      formData.append("requester_staff_id", request.requester_staff_id.toString());  
+      formData.append("wfh_date", request.wfh_date);  
+      formData.append("wfh_type", request.wfh_type.toLowerCase());  
       formData.append("reason_description", reason || "");  
+      formData.append("current_approval_status", "pending withdrawal"); 
       formData.append("approving_officer", approvingOfficer || "");  
   
       await axios.put(`${BACKEND_URL}/arrangements/${selectedArrangementId}/status`, formData);
@@ -140,7 +143,10 @@ export const WFHRequestTable: React.FC<TWFHRequestTableProps> = ({ requests, han
   
       const formData = new FormData();
       formData.append("action", "cancel");  
-      formData.append("requester_staff_id", request.staff_id.toString());   
+      formData.append("requester_staff_id", request.requester_staff_id.toString());  
+      formData.append("wfh_date", request.wfh_date); 
+      formData.append("wfh_type", request.wfh_type.toLowerCase());  
+      formData.append("approval_status", "cancel");  
       formData.append("approving_officer", approvingOfficer || "");  
   
       await axios.put(`${BACKEND_URL}/arrangements/${selectedArrangementId}/status`, formData);
@@ -179,31 +185,31 @@ export const WFHRequestTable: React.FC<TWFHRequestTableProps> = ({ requests, han
             ) : (
               requests.map((request) => (
                 <TableRow key={request.arrangement_id}>
-                  <TableCell>{request.staff_id}</TableCell>
+                  <TableCell>{request.requester_staff_id}</TableCell>
                   <TableCell>{request.wfh_date}</TableCell>
-                  <TableCell>{request.end_date ? request.end_date: "-"}</TableCell>
+                  <TableCell>{request.end_date || "-"}</TableCell>
                   <TableCell>{request.wfh_type?.toUpperCase() || "-"}</TableCell>
                   <TableCell sx={{ maxWidth: "200px", wordBreak: "break-word", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", padding: 1 }}>
                     {request.reason_description || "-"}
                   </TableCell>
                   <TableCell>
                     <Chip
-                      color={getChipColor(request.approval_status)}
-                      label={capitalize(request.approval_status.toString())}
+                      color={getChipColor(request.current_approval_status)}
+                      label={capitalize(request.current_approval_status)}
                       variant={
-                        request.approval_status === ApprovalStatus.PendingWithdrawal
+                        request.current_approval_status === ApprovalStatus.PendingWithdrawal
                           ? "outlined"
                           : "filled"
                       }
                     />
                   </TableCell>
                   <TableCell>
-                    {request.approval_status === ApprovalStatus.PendingApproval && (
+                    {request.current_approval_status === ApprovalStatus.PendingApproval && (
                       <Button size="small" variant="outlined" color="primary" data-cy={`cancel-button-${request.arrangement_id}`} onClick={() => handleOpen(request.arrangement_id, "cancel")}>
                         Cancel
                       </Button>
                     )}
-                    {request.approval_status === ApprovalStatus.Approved && (
+                    {request.current_approval_status === ApprovalStatus.Approved && (
                       <Button size="small" variant="outlined" color="secondary" onClick={() => handleOpen(request.arrangement_id, "withdraw")}>
                         Withdraw
                       </Button>
