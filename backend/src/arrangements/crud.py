@@ -176,7 +176,9 @@ def create_arrangements(
             db.add(arrangement)
             db.flush()
             created_arrangements.append(arrangement)
-            created_arrangement_log = create_arrangement_log(db, arrangement, Action.CREATE)
+            created_arrangement_log = create_arrangement_log(
+                db, arrangement, Action.CREATE, previous_approval_status=None
+            )
             arrangement.latest_log_id = created_arrangement_log.log_id
             db.add(created_arrangement_log)
             db.flush()

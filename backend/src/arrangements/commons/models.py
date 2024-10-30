@@ -41,7 +41,7 @@ class ArrangementLog(Base):
     )
     previous_approval_status = Column(
         Enum(ApprovalStatus),
-        nullable=False,
+        nullable=True,
         doc="Previous status of the request: pending approval, pending withdrawal, approved, rejected, withdrawn or cancelled",
     )
     updated_approval_status = Column(
