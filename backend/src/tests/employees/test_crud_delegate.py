@@ -3,6 +3,7 @@ from datetime import datetime
 import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
+from src.arrangements.commons.enums import ApprovalStatus
 from src.arrangements.commons.models import LatestArrangement
 from src.auth.models import Auth
 from src.employees.crud import (
@@ -54,11 +55,6 @@ def test_db():
 def seed_data(test_db):
     """
     The `seed_data` fixture sets up sample data in various tables for testing purposes.
-
-    :param test_db: The `test_db` parameter in the `seed_data` fixture is likely an instance of a
-    database session object that allows interaction with the database. It is used to insert sample data
-    into various tables like Auth, Employee, DelegateLog, and LatestArrangement as shown in the fixture
-    code snippet
     """
     # Insert sample data into Auth, Employee, DelegateLog, and LatestArrangement tables
     auth_record = Auth(email="john.doe@example.com", hashed_password="hashed_password_example")
@@ -94,9 +90,9 @@ def seed_data(test_db):
         manager_id=1, delegate_manager_id=2, status_of_delegation=DelegationStatus.accepted
     )
 
-    # Insert into LatestArrangement with update_datetime populated
+    # Insert into LatestArrangement with update_datetime as datetime object
     arrangement = LatestArrangement(
-        update_datetime=datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S"),  # Set current timestamp
+        update_datetime=datetime.utcnow(),  # Changed: Now passing datetime object directly
         requester_staff_id=1,
         wfh_date="2023-10-25",
         wfh_type="full",
@@ -105,10 +101,10 @@ def seed_data(test_db):
         reason_description="WFH arrangement",
     )
 
-    test_db.merge(auth_record)  # Use merge instead of add for Auth
+    test_db.merge(auth_record)
     test_db.merge(employee1)
     test_db.merge(employee2)
-    test_db.add_all([delegation1, delegation2, arrangement])  # add is fine for new records
+    test_db.add_all([delegation1, delegation2, arrangement])
     test_db.commit()
 
 
@@ -439,23 +435,19 @@ def test_create_delegation_with_maximum_values(test_db):
 
 
 def test_update_pending_arrangements_for_delegate_with_pending_arrangements(test_db, seed_data):
-    # Arrange: Add a pending arrangement with a specific manager_id
     arrangement = LatestArrangement(
-        update_datetime=datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S"),
+        update_datetime=datetime.utcnow(),
         requester_staff_id=3,
         wfh_date="2023-10-26",
-        wfh_type="full",
-        current_approval_status="pending approval",
-        approving_officer=1,  # Original manager
+        wfh_type="FULL",
+        current_approval_status=ApprovalStatus.PENDING_APPROVAL,
+        approving_officer=1,
         reason_description="WFH arrangement due to personal reasons",
     )
     test_db.add(arrangement)
     test_db.commit()
 
-    # Act: Update pending arrangements for delegate
     update_pending_arrangements_for_delegate(test_db, manager_id=1, delegate_manager_id=2)
-
-    # Assert: Check if the arrangement was updated to use the delegate manager
     updated_arrangement = test_db.query(LatestArrangement).filter_by(requester_staff_id=3).first()
     assert updated_arrangement.delegate_approving_officer == 2
 
@@ -470,23 +462,19 @@ def test_get_delegation_log_by_manager_found(test_db, seed_data):
 
 
 def test_remove_delegate_from_arrangements(test_db, seed_data):
-    # Arrange: Add an arrangement with a delegate assigned
     arrangement = LatestArrangement(
-        update_datetime=datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S"),
+        update_datetime=datetime.utcnow(),
         requester_staff_id=4,
         wfh_date="2023-10-26",
-        wfh_type="full",  # Use a valid value according to the CHECK constraint
-        current_approval_status="pending approval",
+        wfh_type="FULL",
+        current_approval_status=ApprovalStatus.PENDING_APPROVAL,
         delegate_approving_officer=2,
         reason_description="WFH arrangement for full day",
     )
     test_db.add(arrangement)
     test_db.commit()
 
-    # Act: Remove delegate from arrangements
     remove_delegate_from_arrangements(test_db, delegate_manager_id=2)
-
-    # Assert: Ensure delegate_approving_officer is set to None
     updated_arrangement = test_db.query(LatestArrangement).filter_by(requester_staff_id=4).first()
     assert updated_arrangement.delegate_approving_officer is None
 
@@ -543,40 +531,36 @@ def test_update_pending_arrangements_for_delegate_empty_db(test_db):
 
 
 def test_update_pending_arrangements_for_delegate_non_pending(test_db, seed_data):
-    # Add arrangement that's not pending
     arrangement = LatestArrangement(
-        update_datetime=datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S"),
+        update_datetime=datetime.utcnow(),
         requester_staff_id=5,
         wfh_date="2023-10-26",
-        wfh_type="full",
-        current_approval_status="approved",
+        wfh_type="FULL",
+        current_approval_status=ApprovalStatus.APPROVED,
         approving_officer=1,
         reason_description="Approved WFH",
     )
     test_db.add(arrangement)
     test_db.commit()
 
-    # Should not update non-pending arrangements
     update_pending_arrangements_for_delegate(test_db, 1, 2)
     updated = test_db.query(LatestArrangement).filter_by(requester_staff_id=5).first()
     assert updated.delegate_approving_officer is None
 
 
 def test_remove_delegate_from_arrangements_non_pending(test_db, seed_data):
-    # Add arrangement with non-pending status
     arrangement = LatestArrangement(
-        update_datetime=datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S"),
+        update_datetime=datetime.utcnow(),
         requester_staff_id=6,
         wfh_date="2023-10-26",
-        wfh_type="full",
-        current_approval_status="approved",
+        wfh_type="FULL",
+        current_approval_status=ApprovalStatus.APPROVED,
         delegate_approving_officer=2,
         reason_description="Approved WFH",
     )
     test_db.add(arrangement)
     test_db.commit()
 
-    # Should not remove delegate from non-pending arrangements
     remove_delegate_from_arrangements(test_db, 2)
     updated = test_db.query(LatestArrangement).filter_by(requester_staff_id=6).first()
     assert updated.delegate_approving_officer == 2
