@@ -10,11 +10,6 @@ import { TWFHRequest } from "../../types/requests";
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 
 export const MyWfhSchedulePage: React.FC = () => {
-  const [requests, setRequests] = useState<TWFHRequest[]>([]);
-  const [openSnackbar, setOpenSnackbar] = useState(false);
-  const [snackbarMessage, setSnackbarMessage] = useState("");
-  const [snackbarSeverity, setSnackbarSeverity] = useState<"success" | "error">("success");
-
   const { user } = useContext(UserContext);
   const userId = user!.id;
   const navigate = useNavigate();
@@ -24,6 +19,10 @@ export const MyWfhSchedulePage: React.FC = () => {
       navigate("/login");
     }
   }, [user, navigate]);
+  const [requests, setRequests] = useState<TWFHRequest[]>([]);
+  const [openSnackbar, setOpenSnackbar] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState("");
+  const [snackbarSeverity, setSnackbarSeverity] = useState<"success" | "error">("success");
 
   useEffect(() => {
     const fetchRequests = async () => {
