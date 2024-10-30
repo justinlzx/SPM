@@ -1,5 +1,6 @@
 from enum import Enum
 import os
+from venv import logger
 import uvicorn
 from dotenv import load_dotenv
 
@@ -18,5 +19,5 @@ if __name__ == "__main__":
         "src.app:app",
         host="0.0.0.0",
         port=8000,
-        reload=(True if ENV == Environment.DEVELOPMENT else False),
+        reload=ENV == Environment.DEVELOPMENT.value,
     )
