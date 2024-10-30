@@ -84,6 +84,6 @@ export const getPersonalRequests = async (
     }));
   } catch (error) {
     console.error("Failed to fetch personal WFH requests:", error);
-    throw error; // Rethrow to handle it in the component
+    throw error; 
   }
 };

@@ -42,6 +42,7 @@ type TDelegationRequest = {
   staff_id: number;
   delegate_manager_id: number;
   status_of_delegation: DelegationStatus;
+  reason?: string;
 };
 
 export const PendingDelegations = () => {
@@ -83,7 +84,7 @@ export const PendingDelegations = () => {
   const handleDelegationAction = async (action: TAction, staff_id: number, reason?: string) => {
     try {
       await axios.put(
-        `${BACKEND_URL}/employees/manager/delegate/${staff_id}/status`,
+        `${BACKEND_URL}/employees/manager/delegate/${userId}/status`,
         { description: reason },
         {
           params: { status: action },
@@ -138,69 +139,74 @@ export const PendingDelegations = () => {
               <TableCell sx={{ fontWeight: "bold" }}>Delegator Name</TableCell>
               <TableCell sx={{ fontWeight: "bold" }}>Date of Delegation</TableCell>
               <TableCell sx={{ fontWeight: "bold" }}>Delegation Status</TableCell>
+              <TableCell sx={{ fontWeight: "bold" }}>Reason</TableCell>
               <TableCell sx={{ fontWeight: "bold" }}>Action</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
-            {requests.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={5} align="center">
-                  No pending delegation requests
-                </TableCell>
-              </TableRow>
+  {requests.length === 0 ? (
+    <TableRow>
+      <TableCell colSpan={6} align="center"> {/* Adjust colSpan as needed */}
+        No pending delegation requests
+      </TableCell>
+    </TableRow>
+  ) : (
+    requests.map((request) => {
+      const { staff_id, full_name, date_of_delegation, status_of_delegation, reason } = request;
+      const truncatedReason = reason ? (reason.length > 20 ? `${reason.substring(0, 20)}...` : reason) : '-';
+
+      return (
+        <TableRow key={staff_id}>
+          <TableCell>{staff_id}</TableCell>
+          <TableCell>{full_name}</TableCell>
+          <TableCell>{new Date(date_of_delegation).toLocaleDateString()}</TableCell>
+          <TableCell>
+            <Chip
+              label={capitalize(status_of_delegation)}
+              color={
+                status_of_delegation === DelegationStatus.Accepted
+                  ? "success"
+                  : status_of_delegation === DelegationStatus.Rejected
+                  ? "error"
+                  : "warning"
+              }
+            />
+          </TableCell>
+          <TableCell>{truncatedReason}</TableCell> {/* Displaying truncated reason or 'N/A' */}
+          <TableCell>
+            {status_of_delegation === DelegationStatus.Pending ? (
+              <ButtonGroup variant="contained" aria-label="Accept/Reject Button group">
+                <Tooltip title="Accept delegation">
+                  <Button
+                    size="small"
+                    color="success"
+                    startIcon={<CheckIcon />}
+                    onClick={() => handleDelegationAction("accepted", staff_id)}
+                  >
+                    Accept
+                  </Button>
+                </Tooltip>
+                <Tooltip title="Reject delegation">
+                  <Button
+                    size="small"
+                    color="error"
+                    startIcon={<CloseIcon />}
+                    onClick={() => handleOpenRejectModal(staff_id)}
+                  >
+                    Reject
+                  </Button>
+                </Tooltip>
+              </ButtonGroup>
             ) : (
-              requests.map((request) => {
-                const { staff_id, full_name, date_of_delegation, status_of_delegation } = request;
-                return (
-                  <TableRow key={staff_id}>
-                    <TableCell>{staff_id}</TableCell>
-                    <TableCell>{full_name}</TableCell>
-                    <TableCell>{new Date(date_of_delegation).toLocaleDateString()}</TableCell>
-                    <TableCell>
-                      <Chip
-                        label={capitalize(status_of_delegation)}
-                        color={
-                          status_of_delegation === DelegationStatus.Accepted
-                            ? "success"
-                            : status_of_delegation === DelegationStatus.Rejected
-                            ? "error"
-                            : "warning"
-                        }
-                      />
-                    </TableCell>
-                    <TableCell>
-                      {status_of_delegation === DelegationStatus.Pending ? (
-                        <ButtonGroup variant="contained" aria-label="Accept/Reject Button group">
-                          <Tooltip title="Accept delegation">
-                            <Button
-                              size="small"
-                              color="success"
-                              startIcon={<CheckIcon />}
-                              onClick={() => handleDelegationAction("accepted", staff_id)}
-                            >
-                              Accept
-                            </Button>
-                          </Tooltip>
-                          <Tooltip title="Reject delegation">
-                            <Button
-                              size="small"
-                              color="error"
-                              startIcon={<CloseIcon />}
-                              onClick={() => handleOpenRejectModal(staff_id)}
-                            >
-                              Reject
-                            </Button>
-                          </Tooltip>
-                        </ButtonGroup>
-                      ) : (
-                        "-"
-                      )}
-                    </TableCell>
-                  </TableRow>
-                );
-              })
+              "-"
             )}
-          </TableBody>
+          </TableCell>
+        </TableRow>
+      );
+    })
+  )}
+</TableBody>
+
         </Table>
       </TableContainer>
 
