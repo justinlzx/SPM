@@ -1,527 +1,421 @@
-from unittest.mock import MagicMock, patch
-
-import pytest
+from datetime import datetime
+from unittest.mock import patch, MagicMock
 from fastapi.testclient import TestClient
+from src.employees.exceptions import EmployeeNotFoundException, ManagerNotFoundException
+from src.employees.models import DelegationStatus
 from src.app import app
-from src.database import get_db  # Import get_db to override the dependency
-from src.employees import exceptions, services
-from src.employees.routes import router
-from src.tests.test_utils import mock_db_session
+from src.employees.schemas import DelegateLogCreate
+from src.employees.services import DelegationApprovalStatus
+
 
 client = TestClient(app)
 
-app.include_router(router)
-
-# Override the dependency in the app with the mocked db session
-# app.dependency_overrides[get_db] = mock_db_session
-
-
-def override_get_db():
-    return mock_db_session
-
-
-app.dependency_overrides[get_db] = override_get_db
-
-
-@pytest.fixture
-def mock_employee_service():
-    with patch("src.employees.services.get_employee_by_id") as mock:
-        yield mock
-
 
-@pytest.fixture
-def mock_send_email():
-    with patch("src.employees.routes.send_email") as mock:
-        yield mock
-
-
-def test_get_reporting_manager_and_peer_employees_success(mock_db_session, monkeypatch):
-    """Test the success scenario of getting manager and peer employees."""
-    # Create mock objects for manager and peer employees with all required fields
-    mock_manager = MagicMock()
-    mock_manager.staff_id = 1
-    mock_manager.staff_fname = "John"
-    mock_manager.staff_lname = "Doe"
-    mock_manager.dept = "IT"
-    mock_manager.position = "Manager"
-    mock_manager.country = "USA"
-    mock_manager.email = "john.doe@example.com"
-    mock_manager.reporting_manager = None
-    mock_manager.role = 1
-
-    mock_peer_employee = MagicMock()
-    mock_peer_employee.staff_id = 2
-    mock_peer_employee.staff_fname = "Jane"
-    mock_peer_employee.staff_lname = "Smith"
-    mock_peer_employee.dept = "HR"
-    mock_peer_employee.position = "Executive"
-    mock_peer_employee.country = "USA"
-    mock_peer_employee.email = "jane.smith@example.com"
-    mock_peer_employee.reporting_manager = 1
-    mock_peer_employee.role = 2
-
-    # Mock the service functions
-    def mock_get_manager_by_subordinate_id(db, staff_id):
-        return mock_manager
-
-    def mock_get_subordinates_by_manager_id(db, manager_id):
-        return [mock_peer_employee]
-
-    # Patch the service functions with the mocks
-    monkeypatch.setattr(
-        services, "get_manager_by_subordinate_id", mock_get_manager_by_subordinate_id
-    )
-    monkeypatch.setattr(
-        services, "get_subordinates_by_manager_id", mock_get_subordinates_by_manager_id
-    )
-
-    # Call the API endpoint
-    response = client.get("/manager/peermanager/1")
-
-    # Assertions
-    assert response.status_code == 200
-    data = response.json()
-    assert data["manager_id"] == 1
-    assert len(data["peer_employees"]) == 1
-    assert data["peer_employees"][0]["staff_id"] == 2
-
-
-def test_get_reporting_manager_and_peer_employees_employee_not_found(mock_db_session, monkeypatch):
-    """Test scenario where employee is not found."""
-
-    # Mock the service function to raise the exception without arguments
-    def mock_get_manager_by_subordinate_id(db, staff_id):
-        raise exceptions.EmployeeNotFoundException()  # No argument passed
-
-    monkeypatch.setattr(
-        services, "get_manager_by_subordinate_id", mock_get_manager_by_subordinate_id
-    )
-
-    # Call the API endpoint
-    response = client.get("/manager/peermanager/999")
-
-    # Assertions
-    assert response.status_code == 404
-    assert response.json() == {"detail": "Employee not found"}
-
-
-def test_get_employee_by_staff_id_success(mock_db_session, monkeypatch):
-    """Test the success scenario of getting an employee by staff_id."""
-    mock_employee = MagicMock()
-    mock_employee.staff_id = 1
-    mock_employee.staff_fname = "John"
-    mock_employee.staff_lname = "Doe"
-    mock_employee.dept = "IT"
-    mock_employee.position = "Manager"
-    mock_employee.country = "USA"
-    mock_employee.email = "john.doe@example.com"
-    mock_employee.reporting_manager = None
-    mock_employee.role = 1
-
-    def mock_get_employee_by_id(db, staff_id):
-        return mock_employee
-
-    monkeypatch.setattr(services, "get_employee_by_id", mock_get_employee_by_id)
-
-    response = client.get("/1")
-    assert response.status_code == 200
-    assert response.json()["staff_id"] == 1
-
-
-def test_get_employee_by_staff_id_employee_not_found(mock_db_session, monkeypatch):
-    """Test scenario where employee by staff_id is not found."""
-
-    def mock_get_employee_by_id(db, staff_id):
-        raise exceptions.EmployeeNotFoundException()  # No argument passed
-
-    monkeypatch.setattr(services, "get_employee_by_id", mock_get_employee_by_id)
-
-    response = client.get("/999")
-    assert response.status_code == 404
-    assert response.json() == {"detail": "Employee not found"}
-
-
-def test_get_employee_by_email_success(mock_db_session, monkeypatch):
-    """Test the success scenario of getting an employee by email."""
-    mock_employee = MagicMock()
-    mock_employee.staff_id = 1
-    mock_employee.staff_fname = "John"
-    mock_employee.staff_lname = "Doe"
-    mock_employee.dept = "IT"
-    mock_employee.position = "Manager"
-    mock_employee.country = "USA"
-    mock_employee.email = "john.doe@example.com"
-    mock_employee.reporting_manager = None
-    mock_employee.role = 1
-
-    def mock_get_employee_by_email(db, email):
-        return mock_employee
-
-    monkeypatch.setattr(services, "get_employee_by_email", mock_get_employee_by_email)
-
-    response = client.get("/email/john.doe@example.com")
-    assert response.status_code == 200
-    assert response.json()["email"] == "john.doe@example.com"
-
-
-def test_get_employee_by_email_not_found(mock_db_session, monkeypatch):
-    """Test scenario where employee by email is not found."""
-
-    def mock_get_employee_by_email(db, email):
-        raise exceptions.EmployeeNotFoundException()  # No argument passed
-
-    monkeypatch.setattr(services, "get_employee_by_email", mock_get_employee_by_email)
-
-    response = client.get("/email/notfound@example.com")
-    assert response.status_code == 404
-    assert response.json() == {"detail": "Employee not found"}
-
-
-def test_get_subordinates_by_manager_id_success(mock_db_session, monkeypatch):
-    """Test the success scenario of getting subordinates by manager_id."""
-    mock_employee = MagicMock()
-    mock_employee.staff_id = 2
-    mock_employee.staff_fname = "Jane"
-    mock_employee.staff_lname = "Smith"
-    mock_employee.dept = "HR"
-    mock_employee.position = "Executive"
-    mock_employee.country = "USA"
-    mock_employee.email = "jane.smith@example.com"
-    mock_employee.reporting_manager = 1
-    mock_employee.role = 2
-
-    def mock_get_subordinates_by_manager_id(db, manager_id):
-        return [mock_employee]
-
-    monkeypatch.setattr(
-        services, "get_subordinates_by_manager_id", mock_get_subordinates_by_manager_id
-    )
-
-    response = client.get("/manager/employees/1")
-    assert response.status_code == 200
-    assert len(response.json()) == 1
-    assert response.json()[0]["staff_id"] == 2
-
-
-def test_get_subordinates_by_manager_id_manager_not_found(mock_db_session, monkeypatch):
-    """Test scenario where manager is not found."""
-
-    def mock_get_subordinates_by_manager_id(db, manager_id):
-        raise exceptions.ManagerNotFoundException()  # No argument passed
-
-    monkeypatch.setattr(
-        services, "get_subordinates_by_manager_id", mock_get_subordinates_by_manager_id
-    )
-
-    response = client.get("/manager/employees/999")
-    assert response.status_code == 404
-    assert response.json() == {"detail": "Manager not found"}
-
-
-def test_get_reporting_manager_and_peer_employees_partial_data(mock_db_session, monkeypatch):
-    """Test scenario where manager and peer employees data is complete but minimal."""
-    # Mock manager with all required fields
-    mock_manager = MagicMock()
-    mock_manager.staff_id = 1
-    mock_manager.staff_fname = "John"
-    mock_manager.staff_lname = "Doe"  # Required field
-    mock_manager.dept = "IT"  # Required field
-    mock_manager.position = "Manager"  # Required field
-    mock_manager.country = "USA"
-    mock_manager.email = "john.doe@example.com"
-    mock_manager.reporting_manager = None
-    mock_manager.role = 1
-
-    # Mock peer employee with all required fields
-    mock_peer_employee = MagicMock()
-    mock_peer_employee.staff_id = 2
-    mock_peer_employee.staff_fname = "Jane"
-    mock_peer_employee.staff_lname = "Smith"  # Required field
-    mock_peer_employee.dept = "HR"  # Required field
-    mock_peer_employee.position = "Executive"  # Required field
-    mock_peer_employee.country = "USA"
-    mock_peer_employee.email = "jane.smith@example.com"
-    mock_peer_employee.reporting_manager = 1
-    mock_peer_employee.role = 2
-
-    def mock_get_manager_by_subordinate_id(db, staff_id):
-        return mock_manager
-
-    def mock_get_subordinates_by_manager_id(db, manager_id):
-        return [mock_peer_employee]
-
-    monkeypatch.setattr(
-        services, "get_manager_by_subordinate_id", mock_get_manager_by_subordinate_id
-    )
-    monkeypatch.setattr(
-        services, "get_subordinates_by_manager_id", mock_get_subordinates_by_manager_id
-    )
-
-    response = client.get("/manager/peermanager/1")
-
-    # Assertions
-    assert response.status_code == 200
-    data = response.json()
-    assert data["manager_id"] == 1
-    assert len(data["peer_employees"]) == 1
-    assert data["peer_employees"][0]["staff_id"] == 2
-
-
-def test_get_employee_by_invalid_staff_id_format(mock_db_session):
-    """Test scenario where the staff_id is not a valid integer."""
-    response = client.get("/abc")  # Pass an invalid staff_id format (non-integer)
-
-    # Assertions
-    assert response.status_code == 422  # 422 is for validation errors
-    assert any("integer" in error["msg"] for error in response.json()["detail"])
-
-
-def test_get_subordinates_by_manager_id_no_subordinates(mock_db_session, monkeypatch):
-    """Test scenario where manager has no subordinates."""
-
-    def mock_get_subordinates_by_manager_id(db, manager_id):
-        return []  # Empty list of subordinates
-
-    monkeypatch.setattr(
-        services, "get_subordinates_by_manager_id", mock_get_subordinates_by_manager_id
-    )
-
-    response = client.get("/manager/employees/1")
-    assert response.status_code == 200
-    assert response.json() == []  # No subordinates
-
-
-def test_get_subordinates_by_manager_id_multiple_subordinates(mock_db_session, monkeypatch):
-    """Test scenario where multiple subordinates are returned."""
-
-    # Mock subordinates
-    mock_employee_1 = MagicMock()
-    mock_employee_1.staff_id = 2
-    mock_employee_1.staff_fname = "Jane"
-    mock_employee_1.staff_lname = "Smith"
-    mock_employee_1.dept = "HR"
-    mock_employee_1.position = "Executive"
-    mock_employee_1.country = "USA"
-    mock_employee_1.email = "jane.smith@example.com"
-    mock_employee_1.reporting_manager = 1
-    mock_employee_1.role = 2
-
-    mock_employee_2 = MagicMock()
-    mock_employee_2.staff_id = 3
-    mock_employee_2.staff_fname = "Mike"
-    mock_employee_2.staff_lname = "Johnson"
-    mock_employee_2.dept = "IT"
-    mock_employee_2.position = "Engineer"
-    mock_employee_2.country = "USA"
-    mock_employee_2.email = "mike.johnson@example.com"
-    mock_employee_2.reporting_manager = 1
-    mock_employee_2.role = 2
-
-    def mock_get_subordinates_by_manager_id(db, manager_id):
-        return [mock_employee_1, mock_employee_2]
-
-    monkeypatch.setattr(
-        services, "get_subordinates_by_manager_id", mock_get_subordinates_by_manager_id
-    )
-
-    response = client.get("/manager/employees/1")
-
-    # Assertions
-    assert response.status_code == 200
-    data = response.json()
-    assert len(data) == 2
-    assert data[0]["staff_id"] == 2
-    assert data[1]["staff_id"] == 3
-
-
-def test_get_subordinates_by_manager_id_invalid_format(mock_db_session):
-    """Test scenario where the staff_id is not a valid integer."""
-
-    response = client.get("/manager/employees/abc")  # Invalid staff_id
-
-    # Assertions
-    assert response.status_code == 422  # Pydantic validation error for invalid format
-    assert any("integer" in error["msg"] for error in response.json()["detail"])
-
-
-def test_get_employee_by_email_invalid_format(mock_db_session):
-    """Test scenario where the email format is invalid."""
-
-    response = client.get("/email/invalid-email-format")
-
-    # Assertions
-    assert response.status_code == 422  # Pydantic validation error for invalid email
-    assert any("email" in error["msg"] for error in response.json()["detail"])
-
-
-def test_get_reporting_manager_and_peer_employees_manager_not_found(mock_db_session, monkeypatch):
-    """Test scenario where manager is not found."""
-
-    # Mock the service function to raise ManagerNotFoundException
-    def mock_get_manager_by_subordinate_id(db, staff_id):
-        raise exceptions.ManagerNotFoundException()  # No argument passed
-
-    monkeypatch.setattr(
-        services, "get_manager_by_subordinate_id", mock_get_manager_by_subordinate_id
-    )
-
-    # Call the API endpoint
-    response = client.get("/manager/peermanager/1")
-
-    # Assertions
-    assert response.status_code == 404
-    assert response.json() == {"detail": "Manager not found"}
-
-
-def test_get_reporting_manager_and_peer_employees_self_reporting(mock_db_session, monkeypatch):
-    """Test scenario where an employee reports to themselves."""
-
-    # Create a mock manager who reports to themselves
-    mock_manager = MagicMock()
-    mock_manager.staff_id = 1
-    mock_manager.staff_fname = "John"  # Use real string values
-    mock_manager.staff_lname = "Doe"  # Use real string values
-    mock_manager.dept = "IT"
-    mock_manager.position = "Manager"
-    mock_manager.country = "USA"
-    mock_manager.email = "john.doe@example.com"
-    mock_manager.reporting_manager = 1  # Self-reporting
-    mock_manager.role = 1
-
-    mock_peer_employee = MagicMock()
-    mock_peer_employee.staff_id = 2
-    mock_peer_employee.staff_fname = "Jane"
-    mock_peer_employee.staff_lname = "Smith"
-    mock_peer_employee.dept = "HR"
-    mock_peer_employee.position = "Executive"
-    mock_peer_employee.country = "USA"
-    mock_peer_employee.email = "jane.smith@example.com"
-    mock_peer_employee.reporting_manager = 1
-    mock_peer_employee.role = 2
-
-    # Mock the service functions
-    def mock_get_manager_by_subordinate_id(db, staff_id):
-        return mock_manager
-
-    def mock_get_subordinates_by_manager_id(db, manager_id):
-        return [mock_peer_employee]
-
-    # Patch the service functions with the mocks
-    monkeypatch.setattr(
-        services, "get_manager_by_subordinate_id", mock_get_manager_by_subordinate_id
-    )
-    monkeypatch.setattr(
-        services, "get_subordinates_by_manager_id", mock_get_subordinates_by_manager_id
-    )
-
-    # Call the API endpoint
-    response = client.get("/manager/peermanager/1")
-
-    # Assertions
-    assert response.status_code == 200
-    data = response.json()
-    assert data["manager_id"] == 1  # The employee should still have themselves as the manager
-    assert len(data["peer_employees"]) == 1
-    assert data["peer_employees"][0]["staff_id"] == 2
-
-
-def test_get_reporting_manager_and_peer_employees_auto_approve_jack_sim(mock_db_session):
-    """Test the auto-approve scenario for Jack Sim (staff_id=130002)."""
-
-    response = client.get("/manager/peermanager/130002")
-
-    # Assertions
-    assert response.status_code == 200
-    data = response.json()
-    assert data["manager_id"] is None
-    assert data["peer_employees"] == []
-
-
-def test_get_reporting_manager_and_peer_employees_manager_none(mock_db_session, monkeypatch):
-    """Test the scenario where no manager is found (manager is None)."""
-
-    # Mock the service function to return None for the manager
-    def mock_get_manager_by_subordinate_id(db, staff_id):
-        return None  # No manager found
-
-    monkeypatch.setattr(
-        services, "get_manager_by_subordinate_id", mock_get_manager_by_subordinate_id
-    )
-
-    # Call the API endpoint
-    response = client.get("/manager/peermanager/1")
-
-    # Assertions
-    assert response.status_code == 200
-    data = response.json()
-    assert data["manager_id"] is None
-    assert data["peer_employees"] == []
-
-
-# def test_delegate_manager_already_exists(mock_db_session):
-#     # Arrange: Simulate an existing delegation
-#     mock_db_session.query.return_value.filter.return_value.filter.return_value.first.return_value = (
-#         MagicMock()
-#     )
-
-#     # Act: Pass delegate_manager_id as a query parameter
-#     response = client.put("/manager/delegate/140001?delegate_manager_id=150008")
-
-#     # Assert: Expect a 400 error due to existing delegation
-#     assert (
-#         response.status_code == 400
-#     ), f"Unexpected status code: {response.status_code}. Response: {response.json()}"
-#     assert (
-#         response.json()["detail"]
-#         == "Delegation already exists for either the manager or delegatee."
-#     )
-
-
-# def test_update_delegation_status_accept(mock_db_session, mock_employee_service, mock_send_email):
-#     # Arrange: Simulate a pending delegation
-#     mock_db_session.query.return_value.filter.return_value.first.return_value = MagicMock(
-#         manager_id=140001, delegate_manager_id=150008, status_of_delegation="pending"
-#     )
-#     mock_employee_service.return_value = MagicMock(email="test@example.com")  # Mock employee email
-
-#     # Act: Pass the correct status as a query parameter
-#     response = client.put("/manager/delegate/150008/status?status=accepted")
-
-#     # Assert: Check that the delegation status is updated and emails are sent
-#     assert (
-#         response.status_code == 200
-#     ), f"Unexpected status code: {response.status_code}. Response: {response.json()}"
-#     assert response.json()["status_of_delegation"] == "accepted"
-#     mock_send_email.assert_called()  # Ensure emails are sent
-
-
-# def test_update_delegation_status_reject(mock_db_session, mock_employee_service, mock_send_email):
-#     # Arrange: Simulate a pending delegation
-#     mock_db_session.query.return_value.filter.return_value.first.return_value = MagicMock(
-#         manager_id=140001, delegate_manager_id=150008, status_of_delegation="pending"
-#     )
-#     mock_employee_service.return_value = MagicMock(email="test@example.com")  # Mock employee email
-
-#     # Act: Pass the correct status as a query parameter
-#     response = client.put("/manager/delegate/150008/status?status=rejected")
-
-#     # Assert: Check that the delegation status is updated and emails are sent
-#     assert (
-#         response.status_code == 200
-#     ), f"Unexpected status code: {response.status_code}. Response: {response.json()}"
-#     assert response.json()["status_of_delegation"] == "rejected"
-#     mock_send_email.assert_called()  # Ensure emails are sent
-
-
-# def test_undelegate_manager_invalid_status(mock_db_session):
-#     # Arrange: Simulate a pending delegation
-#     mock_db_session.query.return_value.filter.return_value.first.return_value = MagicMock(
-#         manager_id=140001, delegate_manager_id=150008, status_of_delegation="pending"
-#     )
-
-#     # Act: Call the undelegate endpoint
-#     response = client.put("/manager/undelegate/140001")
-
-#     # Assert: Expect a 400 error since the delegation is not yet accepted
-#     assert response.status_code == 400
-#     assert response.json()["detail"] == "Delegation must be approved to undelegate."
+def create_mock_employee():
+    """Helper function to create a mock employee with all required fields"""
+    return {
+        "staff_id": 12345,
+        "staff_fname": "John",
+        "staff_lname": "Doe",
+        "email": "john@example.com",
+        "dept": "Engineering",
+        "position": "Engineer",
+        "country": "Singapore",
+        "role": 1,
+    }
+
+
+class TestGetReportingManagerAndPeerEmployees:
+    @patch("src.employees.services.get_manager_by_subordinate_id")
+    def test_ceo_staff_id(self, mock_get_manager):
+        # Arrange
+        staff_id = 130002
+
+        # Act
+        response = client.get(f"/employees/manager/peermanager/{staff_id}")
+
+        # Assert
+        assert response.status_code == 200
+        assert response.json() == {"manager_id": None, "peer_employees": []}
+        mock_get_manager.assert_not_called()
+
+    @patch("src.employees.services.get_manager_by_subordinate_id")
+    def test_no_manager_found(self, mock_get_manager):
+        # Arrange
+        staff_id = 12345
+        mock_get_manager.return_value = (None, [])
+
+        # Act
+        response = client.get(f"/employees/manager/peermanager/{staff_id}")
+
+        # Assert
+        assert response.status_code == 200
+        assert response.json() == {"manager_id": None, "peer_employees": []}
+
+    @patch("src.employees.services.get_manager_by_subordinate_id")
+    @patch("src.utils.convert_model_to_pydantic_schema")
+    def test_successful_retrieval(self, mock_convert, mock_get_manager):
+        # Arrange
+        staff_id = 12345
+        mock_manager = MagicMock()
+        mock_manager.staff_id = 67890
+        mock_peers = [create_mock_employee()]
+        mock_get_manager.return_value = (mock_manager, mock_peers)
+
+        mock_peer_models = [create_mock_employee()]
+        mock_convert.return_value = mock_peer_models
+
+        # Act
+        response = client.get(f"/employees/manager/peermanager/{staff_id}")
+
+        # Assert
+        assert response.status_code == 200
+        assert response.json()["manager_id"] == 67890
+        assert len(response.json()["peer_employees"]) > 0
+
+    @patch("src.employees.services.get_manager_by_subordinate_id")
+    def test_employee_not_found(self, mock_get_manager):
+        # Arrange
+        staff_id = 12345
+        mock_get_manager.side_effect = EmployeeNotFoundException()
+
+        # Act
+        response = client.get(f"/employees/manager/peermanager/{staff_id}")
+
+        # Assert
+        assert response.status_code == 404
+        assert response.json()["detail"] == "Employee not found"
+
+    @patch("src.employees.services.get_manager_by_subordinate_id")
+    def test_manager_not_found(self, mock_get_manager):
+        # Arrange
+        staff_id = 12345
+        mock_get_manager.side_effect = ManagerNotFoundException()
+
+        # Act
+        response = client.get(f"/employees/manager/peermanager/{staff_id}")
+
+        # Assert
+        assert response.status_code == 404
+        assert response.json()["detail"] == "Manager not found"
+
+
+class TestGetEmployeeByStaffId:
+    @patch("src.employees.services.get_employee_by_id")
+    def test_successful_retrieval(self, mock_get_employee):
+        # Arrange
+        staff_id = 12345
+        mock_employee = create_mock_employee()
+        mock_get_employee.return_value = mock_employee
+
+        # Act
+        response = client.get(f"/employees/{staff_id}")
+
+        # Assert
+        assert response.status_code == 200
+        assert response.json()["staff_id"] == staff_id
+
+    @patch("src.employees.services.get_employee_by_id")
+    def test_employee_not_found(self, mock_get_employee):
+        # Arrange
+        staff_id = 12345
+        mock_get_employee.side_effect = EmployeeNotFoundException()
+
+        # Act
+        response = client.get(f"/employees/{staff_id}")
+
+        # Assert
+        assert response.status_code == 404
+        assert response.json()["detail"] == "Employee not found"
+
+
+class TestGetEmployeeByEmail:
+    @patch("src.employees.services.get_employee_by_email")
+    def test_successful_retrieval(self, mock_get_employee):
+        # Arrange
+        email = "john@example.com"
+        mock_employee = create_mock_employee()
+        mock_get_employee.return_value = mock_employee
+
+        # Act
+        response = client.get(f"/employees/email/{email}")
+
+        # Assert
+        assert response.status_code == 200
+        assert response.json()["email"] == email
+
+    @patch("src.employees.services.get_employee_by_email")
+    def test_employee_not_found(self, mock_get_employee):
+        # Arrange
+        email = "john@example.com"
+        mock_get_employee.side_effect = EmployeeNotFoundException()
+
+        # Act
+        response = client.get(f"/employees/email/{email}")
+
+        # Assert
+        assert response.status_code == 404
+        assert response.json()["detail"] == "Employee not found"
+
+
+class TestGetSubordinatesByManagerId:
+    @patch("src.employees.services.get_subordinates_by_manager_id")
+    @patch("src.utils.convert_model_to_pydantic_schema")
+    def test_successful_retrieval(self, mock_convert, mock_get_subordinates):
+        # Arrange
+        manager_id = 12345
+        mock_employees = [create_mock_employee()]
+        mock_get_subordinates.return_value = mock_employees
+        mock_convert.return_value = mock_employees
+
+        # Act
+        response = client.get(f"/employees/manager/employees/{manager_id}")
+
+        # Assert
+        assert response.status_code == 200
+        assert len(response.json()) > 0
+        assert response.json()[0]["staff_id"] == mock_employees[0]["staff_id"]
+
+    @patch("src.employees.services.get_subordinates_by_manager_id")
+    def test_manager_not_found(self, mock_get_subordinates):
+        # Arrange
+        manager_id = 12345
+        mock_get_subordinates.side_effect = ManagerNotFoundException()
+
+        # Act
+        response = client.get(f"/employees/manager/employees/{manager_id}")
+
+        # Assert
+        assert response.status_code == 404
+        assert response.json()["detail"] == "Manager not found"
+
+
+class TestDelegateManagerRoute:
+    @patch("src.employees.services.delegate_manager")
+    async def test_delegate_manager_success(self, mock_delegate_manager):
+        # Arrange
+        staff_id = 1
+        delegate_manager_id = 2
+        mock_delegate_log = MagicMock(spec=DelegateLogCreate)
+        mock_delegate_log.manager_id = staff_id
+        mock_delegate_log.delegate_manager_id = delegate_manager_id
+        mock_delegate_log.date_of_delegation = datetime.now()
+        mock_delegate_log.status_of_delegation = DelegationStatus.pending
+        mock_delegate_log.model_dump.return_value = {
+            "manager_id": staff_id,
+            "delegate_manager_id": delegate_manager_id,
+            "date_of_delegation": mock_delegate_log.date_of_delegation.isoformat(),
+            "status_of_delegation": mock_delegate_log.status_of_delegation.value,
+        }
+        mock_delegate_manager.return_value = mock_delegate_log
+
+        # Act
+        response = client.post(
+            f"/employees/manager/delegate/{staff_id}?delegate_manager_id={delegate_manager_id}"
+        )
+
+        # Assert
+        assert response.status_code == 200
+        assert response.json() == mock_delegate_log.model_dump()
+
+    @patch("src.employees.services.delegate_manager")
+    async def test_delegate_manager_failure(self, mock_delegate_manager):
+        # Arrange
+        staff_id = 1
+        delegate_manager_id = 2
+        error_message = "Existing delegation error"
+        mock_delegate_manager.return_value = error_message
+
+        # Act
+        response = client.post(
+            f"/employees/manager/delegate/{staff_id}?delegate_manager_id={delegate_manager_id}"
+        )
+
+        # Assert
+        assert response.status_code == 400
+        assert response.json()["detail"] == error_message
+
+
+class TestUpdateDelegationStatusRoute:
+    @patch("src.employees.services.process_delegation_status")
+    async def test_update_delegation_status_success(self, mock_process_status):
+        # Arrange
+        staff_id = 1
+        status = DelegationApprovalStatus.accept
+        description = "Approved delegation"
+        mock_delegate_log = MagicMock(spec=DelegateLogCreate)
+        mock_delegate_log.manager_id = staff_id
+        mock_delegate_log.delegate_manager_id = 2
+        mock_delegate_log.date_of_delegation = datetime.now()
+        mock_delegate_log.status_of_delegation = DelegationStatus.accepted
+        mock_delegate_log.model_dump.return_value = {
+            "manager_id": staff_id,
+            "delegate_manager_id": 2,
+            "date_of_delegation": mock_delegate_log.date_of_delegation.isoformat(),
+            "status_of_delegation": mock_delegate_log.status_of_delegation.value,
+        }
+        mock_process_status.return_value = mock_delegate_log
+
+        # Act
+        response = client.put(
+            f"/employees/manager/delegate/{staff_id}/status",
+            params={"status": status.value},
+            data={"description": description},
+        )
+
+        # Assert
+        assert response.status_code == 200
+        assert response.json() == mock_delegate_log.model_dump()
+
+    @patch("src.employees.services.process_delegation_status")
+    async def test_update_delegation_status_reject_without_comment(self, mock_process_status):
+        # Act
+        response = client.put(
+            f"/employees/manager/delegate/1/status",
+            params={"status": DelegationApprovalStatus.reject.value},
+        )
+
+        # Assert
+        assert response.status_code == 400
+        assert response.json()["detail"] == "Comment is required for rejected status."
+
+    @patch("src.employees.services.process_delegation_status")
+    async def test_update_delegation_status_not_found(self, mock_process_status):
+        # Arrange
+        staff_id = 1
+        status = DelegationApprovalStatus.reject
+        mock_process_status.return_value = "Delegation not found"
+
+        # Act
+        response = client.put(
+            f"/employees/manager/delegate/{staff_id}/status",
+            params={"status": status.value},
+            data={"description": "Rejection reason"},
+        )
+
+        # Assert
+        assert response.status_code == 404
+        assert response.json()["detail"] == "Delegation not found"
+
+
+class TestUndelegateManagerRoute:
+    @patch("src.employees.services.undelegate_manager")
+    async def test_undelegate_manager_success(self, mock_undelegate_manager):
+        # Arrange
+        staff_id = 1
+        mock_delegate_log = MagicMock(spec=DelegateLogCreate)
+        mock_delegate_log.manager_id = staff_id
+        mock_delegate_log.delegate_manager_id = 2
+        mock_delegate_log.date_of_delegation = datetime.now()
+        mock_delegate_log.status_of_delegation = DelegationStatus.undelegated
+        mock_delegate_log.model_dump.return_value = {
+            "manager_id": staff_id,
+            "delegate_manager_id": 2,
+            "date_of_delegation": mock_delegate_log.date_of_delegation.isoformat(),
+            "status_of_delegation": mock_delegate_log.status_of_delegation.value,
+        }
+        mock_undelegate_manager.return_value = mock_delegate_log
+
+        # Act
+        response = client.put(f"/employees/manager/undelegate/{staff_id}")
+
+        # Assert
+        assert response.status_code == 200
+        assert response.json() == mock_delegate_log.model_dump()
+
+    @patch("src.employees.services.undelegate_manager")
+    async def test_undelegate_manager_not_found(self, mock_undelegate_manager):
+        # Arrange
+        staff_id = 1
+        error_message = "Delegation not found"
+        mock_undelegate_manager.return_value = error_message
+
+        # Act
+        response = client.put(f"/employees/manager/undelegate/{staff_id}")
+
+        # Assert
+        assert response.status_code == 404
+        assert response.json()["detail"] == error_message
+
+    @patch("src.employees.services.undelegate_manager")
+    async def test_undelegate_manager_other_error(self, mock_undelegate_manager):
+        # Arrange
+        staff_id = 1
+        error_message = "Invalid delegation status"  # Any error message not containing "not found"
+        mock_undelegate_manager.return_value = error_message
+
+        # Act
+        response = client.put(f"/employees/manager/undelegate/{staff_id}")
+
+        # Assert
+        assert response.status_code == 400
+        assert response.json()["detail"] == error_message
+
+
+class TestViewDelegationsRoute:
+    @patch("src.employees.services.view_delegations")
+    def test_view_delegations_success(self, mock_view_delegations):
+        # Arrange
+        staff_id = 1
+        mock_delegations = [{"staff_id": staff_id, "delegate_manager_id": 2, "status": "pending"}]
+        mock_view_delegations.return_value = mock_delegations
+
+        # Act
+        response = client.get(f"/employees/manager/viewdelegations/{staff_id}")
+
+        # Assert
+        assert response.status_code == 200
+        assert response.json() == mock_delegations
+
+    @patch("src.employees.services.view_delegations")
+    def test_view_delegations_failure(self, mock_view_delegations):
+        # Arrange
+        staff_id = 1
+        mock_view_delegations.side_effect = Exception("Unexpected error")
+
+        # Act
+        response = client.get(f"/employees/manager/viewdelegations/{staff_id}")
+
+        # Assert
+        assert response.status_code == 500
+        assert (
+            response.json()["detail"] == "An unexpected error occurred while fetching delegations."
+        )
+
+
+class TestViewAllDelegationsRoute:
+    @patch("src.employees.services.view_all_delegations")
+    def test_view_all_delegations_success(self, mock_view_all_delegations):
+        # Arrange
+        staff_id = 1
+        mock_delegations = {
+            "sent_delegations": [
+                {"staff_id": staff_id, "delegate_manager_id": 2, "status": "accepted"}
+            ],
+            "received_delegations": [
+                {"staff_id": staff_id, "delegate_manager_id": 3, "status": "pending"}
+            ],
+        }
+        mock_view_all_delegations.return_value = mock_delegations
+
+        # Act
+        response = client.get(f"/employees/manager/viewalldelegations/{staff_id}")
+
+        # Assert
+        assert response.status_code == 200
+        assert response.json() == mock_delegations
+
+    @patch("src.employees.services.view_all_delegations")
+    def test_view_all_delegations_failure(self, mock_view_all_delegations):
+        # Arrange
+        staff_id = 1
+        mock_view_all_delegations.side_effect = Exception("Unexpected error")
+
+        # Act
+        response = client.get(f"/employees/manager/viewalldelegations/{staff_id}")
+
+        # Assert
+        assert response.status_code == 500
+        assert (
+            response.json()["detail"] == "An unexpected error occurred while fetching delegations."
+        )
