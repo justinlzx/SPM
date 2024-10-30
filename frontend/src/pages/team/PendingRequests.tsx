@@ -53,24 +53,6 @@ type TWFHRequest = {
   supporting_doc_3?: string | null;
 };
 
-// Define Status Action Mapping
-export const STATUS_ACTION_MAPPING = {
-  [ApprovalStatus.PendingApproval]: {
-    approve: ApprovalStatus.Approved,
-    reject: ApprovalStatus.Rejected,
-    cancel: ApprovalStatus.Cancelled,
-  },
-  [ApprovalStatus.Approved]: {
-    withdraw: ApprovalStatus.PendingWithdrawal,
-  },
-  [ApprovalStatus.PendingWithdrawal]: {
-    approve: ApprovalStatus.Withdrawn,
-    reject: ApprovalStatus.Approved,
-  },
-  [ApprovalStatus.Rejected]: {},
-  [ApprovalStatus.Withdrawn]: {},
-};
-
 export const PendingRequests = () => {
   const [actionRequests, setActionRequests] = useState<TWFHRequest[]>([]);
   const [page, setPage] = useState(0);
@@ -131,7 +113,6 @@ export const PendingRequests = () => {
     }
     setLoading(true); //
     try {
-      // Prepare form data for the request
       const formData = new FormData();
       formData.append("action", action);
       formData.append("reason_description", reason_description);
