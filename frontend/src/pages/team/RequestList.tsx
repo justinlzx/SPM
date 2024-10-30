@@ -45,6 +45,8 @@ export const RequestList = () => {
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [loading, setLoading] = useState(true);
+  const [snackbarMessage, setSnackbarMessage] = useState("");
+  const [snackbarSeverity, setSnackbarSeverity] = useState<"success" | "error">("success");
   const [error, setError] = useState<string | null>(null);
   const { user } = useContext(UserContext);
 
@@ -67,8 +69,9 @@ export const RequestList = () => {
           const allRequests: TWFHRequest[] = response.data.data;
           setRequests(allRequests);
         } catch (error) {
-          console.error("Failed to fetch all requests:", error);
-          setError("Failed to fetch requests. Please try again later.");
+          console.error("Failed to fetch WFH requests:", error);
+          setSnackbarMessage("Failed to fetch WFH requests. Please try again later.");
+          setSnackbarSeverity("error");  // Set severity to error
         } finally {
           setLoading(false);
         }
@@ -108,6 +111,7 @@ export const RequestList = () => {
 
   if (error) {
     return (
+
       <Typography color="error" align="center" sx={{ marginTop: 4 }}>
         {error}
       </Typography>
@@ -116,7 +120,7 @@ export const RequestList = () => {
 
   return (
     <div>
-      <Typography variant="h4" gutterBottom align="center" sx={{ marginTop: 4 }}>
+      <Typography variant="h4" gutterBottom align="left" sx={{ marginTop: 4 }}>
         My Team's WFH/OOO Requests
       </Typography>
 
