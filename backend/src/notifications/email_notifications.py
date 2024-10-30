@@ -315,26 +315,57 @@ def craft_email_content_for_delegation(
     return subject, content
 
 
-# ================================== DEPRECATED FUNCTIONS ==================================
-# async def fetch_manager_info(staff_id: int):
-#     """Fetch manager information by making an HTTP request to the
-#     /employees/manager/peermanager/{staff_id} route."""
-#     try:
-#         async with httpx.AsyncClient() as client:
-#             response = await client.get(f"{BASE_URL}/employees/manager/peermanager/{staff_id}")
+async def craft_and_send_auto_rejection_email(
+    employee: employee_models.Employee,
+    arrangements: List[ArrangementResponse],
+    manager: employee_models.Employee,
+):
+    email_list = []
 
-#             # Check if the response is successful
-#             if response.status_code != 200:
-#                 raise HTTPException(
-#                     status_code=response.status_code,
-#                     detail=f"Error fetching manager info: {response.text}",
-#                 )
+    formatted_details = format_details(arrangements)
 
-#             manager_info = response.json()
-#             return manager_info
+    # Email for employee
+    employee_subject = "[All-In-One] Your WFH Request Has Been Auto-Rejected"
+    employee_content = (
+        f"Dear {employee.staff_fname} {employee.staff_lname},\n\n"
+        f"Your WFH request has been automatically rejected as it was submitted less than 24 hours "
+        f"before the requested WFH date.\n\n"
+        f"Please refer to the following details:\n\n"
+        f"{formatted_details}\n\n"
+        f"Please ensure future WFH requests are submitted at least 24 hours in advance.\n\n"
+        f"This email is auto-generated. Please do not reply to this email. Thank you."
+    )
 
-#     except httpx.RequestError as exc:
-#         raise HTTPException(
-#             status_code=500,
-#             detail=f"An error occurred while fetching manager info: {str(exc)}",
-#         )
+    # Email for manager
+    manager_subject = "[All-In-One] Staff WFH Request Auto-Rejected"
+    manager_content = (
+        f"Dear {manager.staff_fname} {manager.staff_lname},\n\n"
+        f"A WFH request from your staff has been automatically rejected as it was submitted less "
+        f"than 24 hours before the requested WFH date.\n\n"
+        f"Please refer to the following details:\n\n"
+        f"{formatted_details}\n\n"
+        f"This email is auto-generated. Please do not reply to this email. Thank you."
+    )
+
+    email_list.extend(
+        [
+            (employee.email, employee_subject, employee_content),
+            (manager.email, manager_subject, manager_content),
+        ]
+    )
+
+    email_errors = []
+
+    for email in email_list:
+        try:
+            await send_email(*email)
+        except HTTPException:
+            email_errors.append(email[0])
+
+    if email_errors:
+        raise exceptions.EmailNotificationException(email_errors)
+
+    for email, subject, content in email_list:
+        logger.info(
+            f"Auto-rejection email sent successfully to {email} with the following content:\n\n{subject}\n{content}\n\n"
+        )
