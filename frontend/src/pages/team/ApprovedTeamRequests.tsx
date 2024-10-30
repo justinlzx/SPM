@@ -29,7 +29,7 @@ import CheckIcon from "@mui/icons-material/Check";
 import CloseIcon from "@mui/icons-material/Close";
 import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
-import { TEmployee } from "../../hooks/auth/employee/employee.utils";
+import { TEmployee } from "../../hooks/employee/employee.utils";
 import { ApprovalStatus } from "../../types/approvalStatus";
 import { TWFHRequest } from "../../types/requests";
 import { UserContext } from "../../context/UserContextProvider";
@@ -184,7 +184,7 @@ const EmployeeRow = ({ request, openWithdrawModal }: TEmployeeRow) => {
   } = request;
 
   const arrangements = request.approved_arrangements.filter(
-    (arrangement) => arrangement.approval_status === ApprovalStatus.Approved
+    (arrangement) => arrangement.current_approval_status === ApprovalStatus.Approved
   );
 
   const [isCollapsed, setIsCollapsed] = useState(true);
