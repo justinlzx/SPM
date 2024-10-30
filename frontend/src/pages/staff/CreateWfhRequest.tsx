@@ -158,7 +158,7 @@ export const CreateWfhRequestPage: React.FC = () => {
         if (value instanceof Date) {
           form.append(key, value.toISOString().split("T")[0]);
         } else {
-          form.append(key, value.toString()); // Ensure all values are strings
+          form.append(key, value.toString()); 
         }
       });
 

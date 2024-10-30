@@ -14,7 +14,7 @@ export type TAction = "approve" | "reject" | "allow withdraw" | "reject withdraw
   
 // Type for individual work-from-home requests
 export type TWFHRequest = {
-  staff_id: number;
+  requester_staff_id: number;
   requester_info: {
     staff_fname: string;
     staff_lname: string;
@@ -26,7 +26,7 @@ export type TWFHRequest = {
   wfh_type: string;
   arrangement_id: number;
   reason_description: string;
-  approval_status: ApprovalStatus;
+  current_approval_status: ApprovalStatus;
   supporting_doc_1: string;
   supporting_doc_2: string;
   supporting_doc_3: string;

@@ -29,7 +29,6 @@ export const MyWfhSchedulePage: React.FC = () => {
         const allRequests: TWFHRequest[] = response.data.data.map(
           (request: any) => ({
             ...request,
-            approval_status: ApprovalStatus[request.approval_status as keyof typeof ApprovalStatus],
           })
         );
 
@@ -55,7 +54,7 @@ export const MyWfhSchedulePage: React.FC = () => {
     setRequests((prevRequests) =>
       prevRequests.map((request) =>
         request.arrangement_id === id
-          ? { ...request, approval_status: updatedStatus }
+          ? { ...request, current_approval_status: updatedStatus }
           : request
       )
     );

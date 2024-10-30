@@ -15,14 +15,14 @@ import { ApprovalStatus } from "../../types/approvalStatus";
 import { capitalize } from "../../utils/utils";
 
 
-const getChipColor = (status: ApprovalStatus): "default" | "primary" | "secondary" | "error" | "info" | "success" | "warning" => {
+const getChipColor = (status: ApprovalStatus) => {
     switch (status) {
         case ApprovalStatus.Approved:
             return "success";
         case ApprovalStatus.Rejected:
             return "error";
         case ApprovalStatus.PendingApproval:
-            case ApprovalStatus.PendingWithdrawal:
+        case ApprovalStatus.PendingWithdrawal:
             return "warning";
         default:
             return "default";
@@ -50,11 +50,9 @@ useEffect(() => {
         const allRequests: TWFHRequest[] = response.data.data.map(
         (request: any) => ({
             ...request,
-            approval_status: ApprovalStatus[request.approval_status as keyof typeof ApprovalStatus],
-            wfh_date: new Date(request.wfh_date),
         })
         );
-
+        console.log(allRequests);
         setRequests(allRequests);
     } catch (error) {
         console.error("Failed to fetch WFH requests:", error);
@@ -95,19 +93,19 @@ return (
         ) : (
             requests.map((request) => (
             <TableRow key={request.arrangement_id}>
-                <TableCell>{request.staff_id}</TableCell>
+                <TableCell>{request.requester_staff_id}</TableCell>
                 <TableCell>{request.wfh_date}</TableCell>
-                {/* <TableCell>{request.end_date || "-"}</TableCell> */}
+                <TableCell>{request.end_date || "-"}</TableCell>
                 <TableCell>{request.wfh_type?.toUpperCase() || "-"}</TableCell>
                 <TableCell sx={{ maxWidth: "200px", wordBreak: "break-word", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                 {request.reason_description || "-"}
                 </TableCell>
                 <TableCell>
                 <Chip
-                    color={getChipColor(request.approval_status)}
-                    label={capitalize(request.approval_status.toString())}
+                    color={getChipColor(request.current_approval_status)}
+                    label={capitalize(request.current_approval_status ? request.current_approval_status : "Unknown Status")}
                     variant={
-                    request.approval_status === ApprovalStatus.PendingWithdrawal
+                    request.current_approval_status === ApprovalStatus.PendingWithdrawal
                         ? "outlined"
                         : "filled"
                     }
