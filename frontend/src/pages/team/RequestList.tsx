@@ -45,7 +45,6 @@ export const RequestList = () => {
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [loading, setLoading] = useState(true);
-  const [openSnackbar, setOpenSnackbar] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState("");
   const [snackbarSeverity, setSnackbarSeverity] = useState<"success" | "error">("success");
   const [error, setError] = useState<string | null>(null);
@@ -112,6 +111,7 @@ export const RequestList = () => {
 
   if (error) {
     return (
+
       <Typography color="error" align="center" sx={{ marginTop: 4 }}>
         {error}
       </Typography>
@@ -120,7 +120,7 @@ export const RequestList = () => {
 
   return (
     <div>
-      <Typography variant="h4" gutterBottom align="center" sx={{ marginTop: 4 }}>
+      <Typography variant="h4" gutterBottom align="left" sx={{ marginTop: 4 }}>
         My Team's WFH/OOO Requests
       </Typography>
 

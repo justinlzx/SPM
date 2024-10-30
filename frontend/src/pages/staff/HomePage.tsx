@@ -38,7 +38,7 @@ export const HomePage = () => {
           variant="contained"
           color="primary"
           startIcon={<AddIcon />}
-          onClick={() => handleCreateApplication('/request')}
+          onClick={() => handleCreateApplication("/create-request")}
         >
           Create a WFH Request
         </Button>
