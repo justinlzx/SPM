@@ -45,6 +45,9 @@ export const RequestList = () => {
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [loading, setLoading] = useState(true);
+  const [openSnackbar, setOpenSnackbar] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState("");
+  const [snackbarSeverity, setSnackbarSeverity] = useState<"success" | "error">("success");
   const [error, setError] = useState<string | null>(null);
   const { user } = useContext(UserContext);
 
@@ -67,8 +70,9 @@ export const RequestList = () => {
           const allRequests: TWFHRequest[] = response.data.data;
           setRequests(allRequests);
         } catch (error) {
-          console.error("Failed to fetch all requests:", error);
-          setError("Failed to fetch requests. Please try again later.");
+          console.error("Failed to fetch WFH requests:", error);
+          setSnackbarMessage("Failed to fetch WFH requests. Please try again later.");
+          setSnackbarSeverity("error");  // Set severity to error
         } finally {
           setLoading(false);
         }
