@@ -5,7 +5,7 @@ from datetime import datetime
 from os import getenv
 from typing import List, Optional
 
-from backend.src.arrangements.commons.models import LatestArrangement
+from src.arrangements.commons.models import LatestArrangement
 import httpx
 from dotenv import load_dotenv
 from fastapi import HTTPException
