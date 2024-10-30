@@ -2,243 +2,224 @@ from datetime import datetime
 from unittest.mock import MagicMock
 
 import pytest
+from src.auth.models import Auth
 from src.employees.models import DelegateLog, DelegationStatus, Employee
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+from src.database import Base
+from datetime import datetime
+from src.employees.models import Employee, DelegateLog, DelegationStatus
+
+# pls do not delete this, this needs to be here for mock_db_session to work
+# pls do not ask me why this is the case, i dont know...
+from src.arrangements.commons.models import (
+    ArrangementLog,
+    LatestArrangement,
+    WfhType,
+    ApprovalStatus,
+    Action,
+)
+
+
+@pytest.fixture
+def mock_db_session():
+    engine = create_engine("sqlite:///:memory:")
+    Base.metadata.create_all(engine)
+    TestingSessionLocal = sessionmaker(bind=engine)
+    session = TestingSessionLocal()
+
+    auth_records = [
+        Auth(email="manager@example.com", hashed_password="hashed_test123"),
+        Auth(email="employee@example.com", hashed_password="hashed_test123"),
+        Auth(email="delegate@example.com", hashed_password="hashed_test123"),
+        Auth(email="test@example.com", hashed_password="hashed_test123"),
+    ]
+    session.add_all(auth_records)
+    session.commit()
+
+    try:
+        yield session
+    finally:
+        session.close()
+        Base.metadata.drop_all(engine)
+
+
+@pytest.fixture
+def auth_test_data(mock_db_session):
+    """Fixture to provide test auth records."""
+    return {
+        "manager": "manager@example.com",
+        "employee": "employee@example.com",
+        "delegate": "delegate@example.com",
+        "test": "test@example.com",
+    }
 
 
 def test_create_employee(mock_db_session):
-    # Create a mock Auth entry
-    mock_auth_entry = MagicMock()
-    mock_auth_entry.email = "jane.doe@test.com"
-
-    # Create a mock Employee entry
     employee = Employee(
-        staff_id=1,
-        staff_fname="Jane",
-        staff_lname="Doe",
-        email="jane.doe@test.com",
+        staff_fname="Test",
+        staff_lname="User",
         dept="IT",
-        position="Manager",
+        position="Engineer",
         country="USA",
+        email="test@example.com",
         role=2,
-        reporting_manager=None,
     )
-
-    # Add the mock employee to the session and commit the transaction
     mock_db_session.add(employee)
-    mock_db_session.commit()  # Ensure commit is called
-    mock_db_session.commit.assert_called_once()
+    mock_db_session.commit()
+
+    assert employee.staff_id is not None
+    assert employee.staff_fname == "Test"
 
 
 def test_employee_relationships(mock_db_session):
-    # Create mock Auth entries
-    mock_auth_entry_director = MagicMock()
-    mock_auth_entry_director.email = "john.smith@test.com"
-
-    mock_auth_entry_manager = MagicMock()
-    mock_auth_entry_manager.email = "jane.doe@test.com"
-
-    # Create mock Employee entries
-    director = Employee(
-        staff_id=2,
-        staff_fname="John",
-        staff_lname="Smith",
-        email="john.smith@test.com",
-        dept="IT",
-        position="Director",
-        country="USA",
-        role=1,
-    )
-
     manager = Employee(
-        staff_id=1,
-        staff_fname="Jane",
-        staff_lname="Doe",
-        email="jane.doe@test.com",
+        staff_fname="Manager",
+        staff_lname="User",
         dept="IT",
         position="Manager",
         country="USA",
+        email="manager@example.com",
         role=2,
-        reporting_manager=2,
     )
-
-    # Add mock employees to the session and commit the transaction
-    mock_db_session.add(director)
     mock_db_session.add(manager)
-    mock_db_session.commit()  # Ensure commit is called
-    mock_db_session.commit.assert_called_once()
+    mock_db_session.commit()
 
-    # Check the relationship between manager and director
-    assert manager.reporting_manager == director.staff_id
+    employee = Employee(
+        staff_fname="Employee",
+        staff_lname="User",
+        dept="IT",
+        position="Engineer",
+        country="USA",
+        email="employee@example.com",
+        role=3,
+        reporting_manager=manager.staff_id,
+    )
+    mock_db_session.add(employee)
+    mock_db_session.commit()
+
+    assert employee.manager.staff_fname == "Manager"
+    assert employee.reporting_manager == manager.staff_id
 
 
 def test_invalid_role(mock_db_session):
-    # Create a mock Employee entry with an invalid role
-    invalid_employee = Employee(
-        staff_id=3,
-        staff_fname="Invalid",
-        staff_lname="User",
-        email="invalid.user@test.com",
-        dept="HR",
-        position="Analyst",
-        country="USA",
-        role=4,  # Invalid role, should be 1, 2, or 3
-        reporting_manager=None,
-    )
-
-    # Simulate manual role validation for the purpose of this test
-    def mock_commit():
-        if invalid_employee.role not in [1, 2, 3]:
-            raise ValueError("Invalid role. Role must be 1, 2, or 3.")
-        mock_db_session._real_commit()  # Call the real commit method
-
-    # Patch the commit method to add custom validation
-    mock_db_session._real_commit = mock_db_session.commit
-    mock_db_session.commit = mock_commit
-
-    # Add the mock employee and expect the validation to raise an exception
-    mock_db_session.add(invalid_employee)
-    with pytest.raises(ValueError, match="Invalid role"):
+    with pytest.raises(Exception):
+        employee = Employee(
+            staff_fname="Test",
+            staff_lname="User",
+            dept="IT",
+            position="Engineer",
+            country="USA",
+            email="test@example.com",
+            role=4,  # Invalid role
+        )
+        mock_db_session.add(employee)
         mock_db_session.commit()
-
-    # Verify commit was not called
-    mock_db_session._real_commit.assert_not_called()
 
 
 def test_create_delegate_log(mock_db_session):
-    # Create mock employees
     manager = Employee(
-        staff_id=1,
-        staff_fname="Jane",
-        staff_lname="Doe",
-        email="jane.doe@test.com",
+        staff_fname="Manager",
+        staff_lname="User",
         dept="IT",
         position="Manager",
         country="USA",
+        email="manager@example.com",
         role=2,
-        reporting_manager=None,
     )
-
-    delegate_manager = Employee(
-        staff_id=2,
-        staff_fname="John",
-        staff_lname="Smith",
-        email="john.smith@test.com",
+    delegate = Employee(
+        staff_fname="Delegate",
+        staff_lname="User",
         dept="IT",
-        position="Director",
+        position="Manager",
         country="USA",
+        email="delegate@example.com",
         role=2,
-        reporting_manager=None,
     )
+    mock_db_session.add_all([manager, delegate])
+    mock_db_session.commit()
 
-    # Create a DelegateLog entry
     delegate_log = DelegateLog(
-        manager_id=1,
-        delegate_manager_id=2,
-        status_of_delegation=DelegationStatus.pending,
-        description="Delegation for leave approval",
+        manager_id=manager.staff_id,
+        delegate_manager_id=delegate.staff_id,
         date_of_delegation=datetime.utcnow(),
+        status_of_delegation=DelegationStatus.pending,
+        description="Test delegation",
     )
-
-    # Configure mock behavior to simulate adding and committing employees and logs
-    mock_db_session.add(manager)
-    mock_db_session.add(delegate_manager)
     mock_db_session.add(delegate_log)
     mock_db_session.commit()
 
-    # Set up mock return values for query().get()
-    mock_db_session.query().get.return_value = delegate_log
-
-    # Expunge the object to simulate real-world behavior
-    mock_db_session.expunge(delegate_log)
-
-    # Re-query the delegate log object using mock
-    retrieved_delegate_log = mock_db_session.query(DelegateLog).get(delegate_log.id)
-
-    # Check if the relationships are set correctly
-    assert retrieved_delegate_log.manager_id == manager.staff_id
-    assert retrieved_delegate_log.delegate_manager_id == delegate_manager.staff_id
+    assert delegate_log.id is not None
+    assert delegate_log.status_of_delegation == DelegationStatus.pending
 
 
 def test_delegate_status_change(mock_db_session):
-    # Create a mock delegate log with initial pending status
-    delegate_log = DelegateLog(
-        manager_id=1,
-        delegate_manager_id=2,
-        status_of_delegation=DelegationStatus.pending,
-        description="Delegation for project management",
-        date_of_delegation=datetime.utcnow(),
-    )
-
-    # Add the delegate log to the session
-    mock_db_session.add(delegate_log)
-    mock_db_session.commit()
-
-    # Ensure initial status is pending
-    assert delegate_log.status_of_delegation == DelegationStatus.pending
-
-    # Change status to accepted
-    delegate_log.status_of_delegation = DelegationStatus.accepted
-    mock_db_session.commit()
-
-    # Check that the status changed correctly
-    assert delegate_log.status_of_delegation == DelegationStatus.accepted
-
-    # Change status to rejected
-    delegate_log.status_of_delegation = DelegationStatus.rejected
-    mock_db_session.commit()
-
-    # Check that the status changed to rejected
-    assert delegate_log.status_of_delegation == DelegationStatus.rejected
-
-
-def test_delegate_log_relationships(mock_db_session):
-    # Create mock employees
     manager = Employee(
-        staff_id=1,
-        staff_fname="Jane",
-        staff_lname="Doe",
-        email="jane.doe@test.com",
+        staff_fname="Manager",
+        staff_lname="User",
         dept="IT",
         position="Manager",
         country="USA",
+        email="manager@example.com",
         role=2,
-        reporting_manager=None,
     )
-
-    delegate_manager = Employee(
-        staff_id=2,
-        staff_fname="John",
-        staff_lname="Smith",
-        email="john.smith@test.com",
+    delegate = Employee(
+        staff_fname="Delegate",
+        staff_lname="User",
         dept="IT",
-        position="Director",
+        position="Manager",
         country="USA",
+        email="delegate@example.com",
         role=2,
-        reporting_manager=None,
     )
+    mock_db_session.add_all([manager, delegate])
+    mock_db_session.commit()
 
-    # Create a DelegateLog entry
     delegate_log = DelegateLog(
-        manager_id=1,
-        delegate_manager_id=2,
-        status_of_delegation=DelegationStatus.pending,
-        description="Delegation for temporary coverage",
+        manager_id=manager.staff_id,
+        delegate_manager_id=delegate.staff_id,
         date_of_delegation=datetime.utcnow(),
+        status_of_delegation=DelegationStatus.pending,
     )
-
-    # Configure mock behavior to simulate adding and committing employees and logs
-    mock_db_session.add(manager)
-    mock_db_session.add(delegate_manager)
     mock_db_session.add(delegate_log)
     mock_db_session.commit()
 
-    # Set up mock return values for query().filter_by().first()
-    mock_db_session.query().filter_by().first.return_value = delegate_log
+    delegate_log.status_of_delegation = DelegationStatus.accepted
+    mock_db_session.commit()
 
-    # Query the session to retrieve the latest delegate log using mock
-    reloaded_delegate_log = mock_db_session.query(DelegateLog).filter_by(manager_id=1).first()
+    assert delegate_log.status_of_delegation == DelegationStatus.accepted
 
-    # Check relationships
-    assert reloaded_delegate_log.manager_id == manager.staff_id
-    assert reloaded_delegate_log.delegate_manager_id == delegate_manager.staff_id
-    assert reloaded_delegate_log.status_of_delegation == DelegationStatus.pending
+
+def test_delegate_log_relationships(mock_db_session):
+    manager = Employee(
+        staff_fname="Manager",
+        staff_lname="User",
+        dept="IT",
+        position="Manager",
+        country="USA",
+        email="manager@example.com",
+        role=2,
+    )
+    delegate = Employee(
+        staff_fname="Delegate",
+        staff_lname="User",
+        dept="IT",
+        position="Manager",
+        country="USA",
+        email="delegate@example.com",
+        role=2,
+    )
+    mock_db_session.add_all([manager, delegate])
+    mock_db_session.commit()
+
+    delegate_log = DelegateLog(
+        manager_id=manager.staff_id,
+        delegate_manager_id=delegate.staff_id,
+        date_of_delegation=datetime.utcnow(),
+        status_of_delegation=DelegationStatus.pending,
+    )
+    mock_db_session.add(delegate_log)
+    mock_db_session.commit()
+
+    assert delegate_log.manager.staff_fname == "Manager"
+    assert delegate_log.delegator.staff_fname == "Delegate"
