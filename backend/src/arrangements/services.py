@@ -212,8 +212,8 @@ async def create_arrangements_from_request(
         file_paths = []
         created_arrangements = []
 
-        if supporting_docs:
-            for file in supporting_docs:
+        for file in supporting_docs:
+            if file:
                 response = await upload_file(
                     wfh_request.requester_staff_id,
                     wfh_request.update_datetime.isoformat(),
@@ -259,6 +259,7 @@ async def create_arrangements_from_request(
             employee=employee,
             arrangements=created_arrangements,
             action=Action.CREATE,
+            current_approval_status=wfh_request.current_approval_status,
             manager=approving_officer,
         )
 

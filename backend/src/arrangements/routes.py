@@ -177,7 +177,7 @@ def get_team_arrangements(
 @router.post("/request")
 async def create_wfh_request(
     request: schemas.CreateArrangementRequest = Depends(schemas.CreateArrangementRequest.as_form),
-    supporting_docs: Annotated[Optional[List[UploadFile]], File()] = None,
+    supporting_docs: Annotated[Optional[List[UploadFile]], File()] = [],
     db: Session = Depends(get_db),
 ) -> JSendResponse:
     try:
