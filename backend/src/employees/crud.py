@@ -4,6 +4,8 @@ from typing import List
 from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
 
+from ..arrangements.commons.enums import ApprovalStatus
+
 from ..arrangements.commons.models import LatestArrangement
 from . import models
 from .models import DelegateLog, DelegationStatus, Employee
@@ -146,6 +148,7 @@ def get_delegation_log_by_delegate(db: Session, staff_id: int):
     return (
         db.query(models.DelegateLog)
         .filter(models.DelegateLog.delegate_manager_id == staff_id)
+        .filter(models.DelegateLog.status_of_delegation == DelegationStatus.pending)
         .first()
     )
 
@@ -204,7 +207,7 @@ def update_pending_arrangements_for_delegate(
         .filter(
             LatestArrangement.approving_officer == manager_id,
             LatestArrangement.current_approval_status.in_(
-                ["pending approval", "pending withdrawal"]
+                [ApprovalStatus.PENDING_APPROVAL, ApprovalStatus.PENDING_WITHDRAWAL]
             ),
         )
         .all()
@@ -251,7 +254,7 @@ def remove_delegate_from_arrangements(db: Session, delegate_manager_id: int):
         .filter(
             LatestArrangement.delegate_approving_officer == delegate_manager_id,
             LatestArrangement.current_approval_status.in_(
-                ["pending approval", "pending withdrawal"]
+                [ApprovalStatus.PENDING_APPROVAL, ApprovalStatus.PENDING_WITHDRAWAL]
             ),
         )
         .all()
