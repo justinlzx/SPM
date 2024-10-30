@@ -180,7 +180,7 @@ export const ApprovedRequests = () => {
 
 const EmployeeRow = ({ request, openWithdrawModal }: TEmployeeRow) => {
   const {
-    employee: { staff_id, staff_fname, staff_lname, dept, position, email },
+    employee: { requester_staff_id, staff_fname, staff_lname, dept, position, email },
   } = request;
 
   const arrangements = request.approved_arrangements.filter(
@@ -198,13 +198,13 @@ const EmployeeRow = ({ request, openWithdrawModal }: TEmployeeRow) => {
 
   return (
     <>
-      <TableRow key={request.employee.staff_id}>
+      <TableRow key={request.employee.requester_staff_id}>
         <TableCell>
           <Button onClick={() => setIsCollapsed(!isCollapsed)}>
             {isCollapsed ? <ExpandMoreIcon /> : <ExpandLessIcon />}
           </Button>
         </TableCell>
-        <TableCell>{staff_id}</TableCell>
+        <TableCell>{requester_staff_id}</TableCell>
         <TableCell>
           {staff_fname} {staff_lname}
         </TableCell>

@@ -1,5 +1,6 @@
 import React, { useContext, useEffect, useState } from "react";
 import axios from "axios";
+import { useNavigate } from "react-router-dom";
 import { Container, Typography, Snackbar, Alert } from "@mui/material";
 import { UserContext } from "../../context/UserContextProvider";
 import { WFHRequestTable } from "../../components/WFHRequestTable";
@@ -16,6 +17,13 @@ export const MyWfhSchedulePage: React.FC = () => {
 
   const { user } = useContext(UserContext);
   const userId = user!.id;
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!user) {
+      navigate("/login");
+    }
+  }, [user, navigate]);
 
   useEffect(() => {
     const fetchRequests = async () => {
@@ -31,8 +39,6 @@ export const MyWfhSchedulePage: React.FC = () => {
             ...request,
           })
         );
-
-        console.log(allRequests);  
         setRequests(allRequests);
       } catch (error) {
         console.error("Failed to fetch WFH requests:", error);
