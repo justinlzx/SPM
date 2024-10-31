@@ -8,7 +8,7 @@ WORKDIR /app
 COPY package*.json ./
 
 # use new github protocols
-RUN config --global url."git@github.com:"
+RUN git config --global url."git@github.com:"
 
 # Install dependencies
 RUN npm install
