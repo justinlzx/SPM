@@ -47,7 +47,7 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-          cache: "~/.cache/pip"
+          cache: "pip"
       # Create pip cache directory explicitly if needed
 
       - name: Ensure frontend .env exists
