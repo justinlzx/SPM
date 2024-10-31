@@ -48,7 +48,6 @@ jobs:
         with:
           python-version: "3.11"
           cache: "pip"
-      # Create pip cache directory explicitly if needed
 
       - name: Ensure frontend .env exists
         run: |

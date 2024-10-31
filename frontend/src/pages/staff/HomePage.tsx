@@ -29,6 +29,7 @@ export const HomePage = () => {
   return (
     <Box sx={{ flexGrow: 1 }}>
       <Container maxWidth="lg" sx={{ padding: 0 }}>
+        <span>CICD test. Remove when it works</span>
         <Typography variant="h4" sx={{ my: 4 }}>
           Welcome back, {userName}
         </Typography>
