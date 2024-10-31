@@ -11,14 +11,15 @@ COPY package*.json ./
 RUN apk add --no-cache git
 
 # Install dependencies
-RUN git config --global url."git@github.com:".insteadOf git://github.com/ && npm install
+RUN git config --global url."git@github.com:".insteadOf git://github.com/
 
+RUN npm ci
 
 # Copy the rest of the application code
 COPY . .
 
 # Build the app
-RUN npm run build
+RUN npm run build --verbose
 
 # Use nginx to serve the static files
 FROM nginx:alpine

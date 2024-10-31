@@ -26,3 +26,5 @@ yarn-error.log*
 
 # OS generated files
 Thumbs.db
+
+package-lock.json
