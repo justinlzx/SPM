@@ -82,6 +82,7 @@ jobs:
   deploy:
     environment: production
     runs-on: self-hosted
+    needs: build
 
     steps:
       - name: Checkout
