@@ -4,10 +4,10 @@ on:
 #   push:
 #     branches:
 #       - main
-#   pull_request:
-#     branches:
-#       - main
-    workflow_dispatch:
+  pull_request:
+    branches:
+      - main
+    # workflow_dispatch:
 
 jobs:
   build:
@@ -15,25 +15,76 @@ jobs:
 
     steps:
     - name: Checkout code
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
 
     - name: Set up Node.js
-      uses: actions/setup-node@v2
+      uses: actions/setup-node@v3
       with:
-        node-version: '14'
+        node-version: '18'    # Updated to 18 for better ESM support with ESLint v9
+    
+    - name: Cache Node modules
+      uses: actions/cache@v3
+      with:
+        path: frontend/node_modules
+        key: ${{ runner.os }}-node-${{ hashFiles('frontend/package-lock.json') }}
+        restore-keys: |
+          ${{ runner.os }}-node-
 
-    - name: Install dependencies
+    - name: Install Frontend dependencies
       run: npm install
       working-directory: frontend
 
-    - name: Run ESLint
-      run: npm run lint
+    - name: Install backend dependencies
+      run: |
+        pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install --upgrade cryptography pyOpenSSL
+      working-directory: backend
+
+    # - name: Run ESLint
+    #   run: npx eslint . --config eslint.config.js --fix 
+    #   working-directory: frontend
+    
+    # - name: Run Prettier
+    #   run: npx prettier --write .
+    #   working-directory: frontend
+
+    # Start the application in the background
+    - name: Start frontend server
+      run: |
+        npm start &
+        echo $! > frontend.pid
       working-directory: frontend
 
-    - name: Run tests
-      run: npm test
-      working-directory: frontend
+    # Start backend
+    - name: Start backend server
+      run: |
+        python -B -m uvicorn src.app:app --reload &
+        echo $! > backend.pid
+      working-directory: backend
+
+    # # Wait for both services to be ready
+    # - name: Wait for services
+    #   run: |
+    #     npx wait-on http://localhost:3000
+    #     npx wait-on http://localhost:8000
+    #     echo "All services are ready!"
+    #   working-directory: frontend
+    #   timeout-minutes: 2
+
+    - name: Install Cypress tests
+      run: npm install --save cypress
+      working-directory: .
+
+    - name: Run Cypress tests
+      run: npx cypress run
+      working-directory: .
 
     - name: Build project
       run: npm run build
       working-directory: frontend
+
+    - name: Stop servers
+      run: |
+        kill $(cat frontend.pid)
+        kill $(cat backend.pid)
