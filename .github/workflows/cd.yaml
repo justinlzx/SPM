@@ -5,13 +5,13 @@ on:
     workflows: ["CI Pipeline"]
     types:
       - completed
-  push:
-    branches: ["main", "justinlzx/cd"]
+#   push:
+#     branches: ["main", "justinlzx/cd"]
 
 jobs:
   builds:
     runs-on: self-hosted
-    if: github.event.workflow_run.conclusion == 'success' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/justinlzx/cd')
+
     steps:
       - name: Pull Docker images
         run: docker compose pull
