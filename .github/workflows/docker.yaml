@@ -24,6 +24,15 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
+      - name: Ensure .env exists
+        run: |
+          if [ ! -f "frontend/.env" ]; then
+            echo "Creating .env file..."
+            touch frontend/.env
+            echo "REACT_APP_BACKEND_URL=${{ secrets.REACT_APP_BACKEND_URL }}" >> frontend/.env
+            # Add other environment variables as needed
+          fi
+
       - name: Build and push
         run: |
           docker compose -f docker-compose.yaml build

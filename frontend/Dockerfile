@@ -7,6 +7,9 @@ WORKDIR /app
 # Copy package.json and package-lock.json
 COPY package*.json ./
 
+# use new github protocols
+RUN config --global url."git@github.com:"
+
 # Install dependencies
 RUN npm install
 
