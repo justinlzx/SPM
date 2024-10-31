@@ -7,11 +7,12 @@ WORKDIR /app
 # Copy package.json and package-lock.json
 COPY package*.json ./
 
-# use new github protocols
-RUN git config --global url."git@github.com:"
+# Install git before npm install
+RUN apk add --no-cache git
 
 # Install dependencies
-RUN npm install
+RUN git config --global url."git@github.com:".insteadOf git://github.com/ && npm install
+
 
 # Copy the rest of the application code
 COPY . .
