@@ -51,7 +51,8 @@
     "react-scripts": "5.0.1",
     "serialize-javascript": "^6.0.2",
     "web-vitals": "^2.1.4",
-    "yup": "^1.4.0"
+    "yup": "^1.4.0",
+    "axios": "^0.24.0"
   },
   "devDependencies": {
     "@babel/plugin-proposal-private-property-in-object": "^7.21.11",
