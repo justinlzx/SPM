@@ -7,6 +7,7 @@ import DashboardCards from "../../common/DashboardCards";
 import { DelegateButton } from "../manager/DelegateButton";
 import { PersonalRequests } from "./PersonalRequests";
 
+
 export const HomePage = () => {
   const navigate = useNavigate();
   const { user } = useContext(UserContext);
@@ -18,6 +19,7 @@ export const HomePage = () => {
   }, [user, navigate]);
 
   const storedUser = localStorage.getItem("user");
+
   const userName = storedUser
     ? storedUser
         .split("@")[0]
@@ -43,7 +45,7 @@ export const HomePage = () => {
           variant="contained"
           color="primary"
           startIcon={<AddIcon />}
-          onClick={() => handleCreateApplication("/create-request")}
+          onClick={() => handleCreateApplication('/create-request')}
         >
           Create a WFH Request
         </Button>

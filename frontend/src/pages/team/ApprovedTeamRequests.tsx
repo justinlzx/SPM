@@ -42,9 +42,7 @@ type TArrangementByEmployee = {
 };
 
 export const ApprovedRequests = () => {
-  const [approvedRequests, setApprovedRequests] = useState<
-    TArrangementByEmployee[]
-  >([]);
+  const [approvedRequests, setApprovedRequests] = useState<TArrangementByEmployee[]>([]);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const { user } = useContext(UserContext);
@@ -52,11 +50,9 @@ export const ApprovedRequests = () => {
 
   // State for modal handling
   const [withdrawReason, setWithdrawReason] = useState("");
-  const [selectedArrangementId, setSelectedArrangementId] = useState<
-    number | null
-  >(null);
+  const [selectedArrangementId, setSelectedArrangementId] = useState<number | null>(null);
   const [withdrawModalOpen, setWithdrawModalOpen] = useState(false);
-
+      
   // Fetch approved requests from subordinates
   useEffect(() => {
     const fetchApprovedRequestsFromSubordinates = async () => {
@@ -82,7 +78,7 @@ export const ApprovedRequests = () => {
       formData.append("reason_description", withdrawReason);
       formData.append("approving_officer", userId?.toString() || "");
       formData.append("current_approval_status", ApprovalStatus.Withdrawn);
-
+ 
       await axios.put(
         `${BACKEND_URL}/arrangements/${selectedArrangementId}/status`,
         formData,
@@ -111,10 +107,7 @@ export const ApprovedRequests = () => {
       <Typography variant="h4" gutterBottom align="left" sx={{ marginTop: 4 }}>
         Approved Requests
       </Typography>
-      <TableContainer
-        component={Paper}
-        sx={{ marginTop: 3, textAlign: "center" }}
-      >
+      <TableContainer component={Paper} sx={{ marginTop: 3, textAlign: "center" }}>
         <Table>
           <TableHead>
             <TableRow>
@@ -159,10 +152,7 @@ export const ApprovedRequests = () => {
       />
 
       {/* Withdraw Approval Modal */}
-      <Dialog
-        open={withdrawModalOpen}
-        onClose={() => setWithdrawModalOpen(false)}
-      >
+      <Dialog open={withdrawModalOpen} onClose={() => setWithdrawModalOpen(false)}>
         <DialogTitle>Withdraw Approval</DialogTitle>
         <DialogContent>
           <TextField
@@ -222,19 +212,11 @@ const EmployeeRow = ({ request, openWithdrawModal }: TEmployeeRow) => {
         <TableCell>{position}</TableCell>
         <TableCell>{email}</TableCell>
         <TableCell>
-          <Chip variant="outlined" label={arrangements.length} />
+          <Chip variant="outlined" label={arrangements.length} /> 
         </TableCell>
       </TableRow>
       <TableRow>
-        <TableCell
-          style={{
-            paddingBottom: 0,
-            paddingTop: 0,
-            paddingLeft: 40,
-            paddingRight: 0,
-          }}
-          colSpan={7}
-        >
+        <TableCell style={{ paddingBottom: 0, paddingTop: 0, paddingLeft: 40, paddingRight: 0 }} colSpan={7}>
           <Collapse in={!isCollapsed} timeout="auto" unmountOnExit>
             <Box>
               <Table size="small">
@@ -244,9 +226,7 @@ const EmployeeRow = ({ request, openWithdrawModal }: TEmployeeRow) => {
                     <TableCell sx={{ fontWeight: "bold" }}>Date</TableCell>
                     <TableCell sx={{ fontWeight: "bold" }}>WFH Type</TableCell>
                     <TableCell sx={{ fontWeight: "bold" }}>Reason</TableCell>
-                    <TableCell sx={{ fontWeight: "bold" }}>
-                      Supporting Documents
-                    </TableCell>
+                    <TableCell sx={{ fontWeight: "bold" }}>Supporting Documents</TableCell>
                     <TableCell sx={{ fontWeight: "bold" }}>Action</TableCell>
                   </TableRow>
                 </TableHead>
@@ -269,13 +249,9 @@ const EmployeeRow = ({ request, openWithdrawModal }: TEmployeeRow) => {
                         <TableCell>{wfh_type?.toUpperCase()}</TableCell>
                         <TableCell sx={{ maxWidth: 200 }}>
                           <Tooltip title="Scroll to view more">
-                            <Box sx={{ position: "relative" }}>
-                              <Box
-                                sx={{
-                                  overflowX: "scroll",
-                                  scrollbarWidth: "none",
-                                }}
-                              >
+
+                            <Box sx={{ position: 'relative' }}>
+                              <Box sx={{ overflowX: 'scroll', scrollbarWidth: 'none' }}>
                                 {reason_description}
                               </Box>
                             </Box>
@@ -296,11 +272,7 @@ const EmployeeRow = ({ request, openWithdrawModal }: TEmployeeRow) => {
                               }
                               sx={{ textTransform: "none" }}
                             >
-                              <Typography
-                                style={{ textDecoration: "underline" }}
-                              >
-                                View more ...
-                              </Typography>
+                              <Typography style={{ textDecoration: "underline" }}>View more ...</Typography>
                             </Button>
                           ) : (
                             "NA"
@@ -311,7 +283,10 @@ const EmployeeRow = ({ request, openWithdrawModal }: TEmployeeRow) => {
                             size="small"
                             color="warning"
                             startIcon={<CheckIcon />}
-                            onClick={() => openWithdrawModal(arrangement_id)}
+
+                            onClick={() =>
+                              openWithdrawModal(arrangement_id)
+                            }
                           >
                             Withdraw Approval
                           </Button>
@@ -348,10 +323,7 @@ type TDocumentDialog = {
 const DocumentDialog = ({ isOpen, documents, onClose }: TDocumentDialog) => {
   return (
     <Dialog open={isOpen} onClose={onClose} fullWidth>
-      <DialogTitle
-        className="flex justify-between items-center"
-        sx={{ paddingBottom: 0 }}
-      >
+      <DialogTitle className="flex justify-between items-center" sx={{ paddingBottom: 0 }}>
         Supporting Documents
         <DialogActions>
           <Button onClick={onClose}>
@@ -364,12 +336,7 @@ const DocumentDialog = ({ isOpen, documents, onClose }: TDocumentDialog) => {
           {documents.map((document, idx) => (
             <ListItem key={document}>
               {idx + 1}.
-              <Link
-                href={document}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="ps-2"
-              >
+              <Link href={document} target="_blank" rel="noopener noreferrer" className="ps-2">
                 Click to View...
               </Link>
             </ListItem>
