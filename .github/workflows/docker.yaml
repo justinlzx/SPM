@@ -39,10 +39,15 @@ jobs:
             ${{ runner.os }}-
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-          cache: "pip" # caching pip dependencies
+          cache: "pip"
+      # Create pip cache directory explicitly if needed
+      - name: Create pip cache directory
+        run: |
+          mkdir -p ~/.cache/pip
+          chmod -R 777 ~/.cache/pip
 
       - name: Ensure frontend .env exists
         run: |
