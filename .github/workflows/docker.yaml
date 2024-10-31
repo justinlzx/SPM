@@ -78,3 +78,19 @@ jobs:
         run: |
           docker compose -f docker-compose.yaml build
           docker compose -f docker-compose.yaml push
+
+  deploy:
+    environment: production
+    runs-on: self-hosted
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_branch }}
+
+      - name: Pull Docker images
+        run: docker compose pull
+
+      - name: Deploy to production
+        run: docker compose -f docker-compose.yaml up -d
