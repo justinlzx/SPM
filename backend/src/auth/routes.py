@@ -7,7 +7,6 @@ from ..auth.models import Auth, get_user_by_email
 from ..auth.utils import generate_JWT, verify_password
 from ..database import get_db
 from ..employees.models import Employee
-
 from ..logger import logger
 
 router = APIRouter()

@@ -5,7 +5,6 @@ from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
 
 from ..arrangements.commons.enums import ApprovalStatus
-
 from ..arrangements.commons.models import LatestArrangement
 from . import models
 from .models import DelegateLog, DelegationStatus, Employee

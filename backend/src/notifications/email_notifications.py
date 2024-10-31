@@ -5,17 +5,17 @@ from datetime import datetime
 from os import getenv
 from typing import List, Optional
 
-from src.arrangements.commons.models import LatestArrangement
 import httpx
 from dotenv import load_dotenv
 from fastapi import HTTPException
+from sqlalchemy.orm import Session
+from src.arrangements.commons.models import LatestArrangement
 
 from ..arrangements.commons.dataclasses import ArrangementResponse
 from ..arrangements.commons.enums import Action, ApprovalStatus
 from ..employees import models as employee_models
 from ..logger import logger
 from . import exceptions
-from sqlalchemy.orm import Session
 
 load_dotenv()
 BASE_URL = getenv("BACKEND_BASE_URL", "http://localhost:8000")

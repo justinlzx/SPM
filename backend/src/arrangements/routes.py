@@ -5,7 +5,6 @@ from typing import Annotated, List, Optional
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
-
 from src.notifications.email_notifications import craft_and_send_auto_rejection_email
 
 from ..database import get_db

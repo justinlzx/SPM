@@ -4,9 +4,12 @@ from unittest.mock import MagicMock, patch
 import pytest
 from sqlalchemy import Enum, create_engine
 from sqlalchemy.orm import sessionmaker
-from src.employees import schemas
 from src.auth.models import Auth
-from src.employees.exceptions import EmployeeNotFoundException, ManagerWithIDNotFoundException
+from src.employees import schemas
+from src.employees.exceptions import (
+    EmployeeNotFoundException,
+    ManagerWithIDNotFoundException,
+)
 from src.employees.models import Base, DelegateLog, DelegationStatus, Employee
 from src.employees.services import (
     DelegationApprovalStatus,
@@ -805,7 +808,7 @@ async def test_process_delegation_status_invalid_status(test_db, seed_data):
 
 
 def test_print_statements_coverage(test_db):
-    """Test to cover print statements in the code"""
+    """Test to cover print statements in the code."""
     # Create a standalone manager first
     manager = Employee(
         staff_id=15,
@@ -869,7 +872,7 @@ def test_print_statements_coverage(test_db):
 
 
 def test_get_reporting_manager_and_peer_employees_no_manager(test_db):
-    """Test when an employee has no manager"""
+    """Test when an employee has no manager."""
     # Create an employee with no manager
     employee = Employee(
         staff_id=30,
@@ -892,7 +895,7 @@ def test_get_reporting_manager_and_peer_employees_no_manager(test_db):
 
 
 def test_get_subordinates_by_manager_id_success(test_db):
-    """Test successful retrieval of subordinates"""
+    """Test successful retrieval of subordinates."""
     # Create a manager
     manager = Employee(
         staff_id=40,
@@ -938,7 +941,7 @@ def test_get_subordinates_by_manager_id_success(test_db):
 
 
 def test_get_subordinates_by_manager_id_not_found(test_db):
-    """Test when manager has no subordinates"""
+    """Test when manager has no subordinates."""
     # Create a manager with no subordinates
     manager = Employee(
         staff_id=50,
@@ -965,7 +968,7 @@ def test_get_subordinates_by_manager_id_not_found(test_db):
 def test_get_reporting_manager_and_peer_employees_full_flow(
     mock_convert, mock_get_subordinates, mock_get_manager, test_db
 ):
-    """Test the complete flow of get_reporting_manager_and_peer_employees"""
+    """Test the complete flow of get_reporting_manager_and_peer_employees."""
     # Create test data
     manager = Employee(
         staff_id=20,
@@ -1029,7 +1032,7 @@ def test_get_reporting_manager_and_peer_employees_full_flow(
 def test_get_reporting_manager_and_peer_employees_print_statement(
     mock_convert, mock_get_subordinates, mock_get_manager, test_db
 ):
-    """Test to ensure print statement is covered"""
+    """Test to ensure print statement is covered."""
     # Create test manager
     manager = Employee(
         staff_id=60,

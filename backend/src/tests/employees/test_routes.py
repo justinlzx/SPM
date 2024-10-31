@@ -1,18 +1,18 @@
 from datetime import datetime
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
+
 from fastapi.testclient import TestClient
+from src.app import app
 from src.employees.exceptions import EmployeeNotFoundException, ManagerNotFoundException
 from src.employees.models import DelegationStatus
-from src.app import app
 from src.employees.schemas import DelegateLogCreate
 from src.employees.services import DelegationApprovalStatus
-
 
 client = TestClient(app)
 
 
 def create_mock_employee():
-    """Helper function to create a mock employee with all required fields"""
+    """Helper function to create a mock employee with all required fields."""
     return {
         "staff_id": 12345,
         "staff_fname": "John",
@@ -271,7 +271,7 @@ class TestUpdateDelegationStatusRoute:
     async def test_update_delegation_status_reject_without_comment(self, mock_process_status):
         # Act
         response = client.put(
-            f"/employees/manager/delegate/1/status",
+            "/employees/manager/delegate/1/status",
             params={"status": DelegationApprovalStatus.reject.value},
         )
 

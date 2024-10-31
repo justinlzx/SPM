@@ -172,7 +172,7 @@ class TestGetArrangementById:
         result = crud.get_arrangement_by_id(mock_db_session, arrangement_id=1)
 
         mock_db_session.query().get.assert_called_once_with(1)
-         
+
         assert result == mock_arrangement
 
 
