@@ -38,16 +38,17 @@ jobs:
             ${{ runner.os }}-build-
             ${{ runner.os }}-
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-          cache: "pip"
-      # Create pip cache directory explicitly if needed
       - name: Create pip cache directory
         run: |
           mkdir -p ~/.cache/pip
           chmod -R 777 ~/.cache/pip
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "~/.cache/pip"
+      # Create pip cache directory explicitly if needed
 
       - name: Ensure frontend .env exists
         run: |
@@ -86,13 +87,13 @@ jobs:
 
     steps:
       # Optional: Set up Node.js using nvm if your application requires it
-      - name: Install Node.js using nvm
-        run: |
-          curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.5/install.sh | bash
-          export NVM_DIR="$HOME/.nvm"
-          [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
-          nvm install 16  # specify your desired Node.js version
-          nvm use 16
+      # - name: Install Node.js using nvm
+      #   run: |
+      #     curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.5/install.sh | bash
+      #     export NVM_DIR="$HOME/.nvm"
+      #     [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+      #     nvm install 16  # specify your desired Node.js version
+      #     nvm use 16
 
       - name: Checkout
         uses: actions/checkout@v4
