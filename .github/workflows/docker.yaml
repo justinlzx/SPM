@@ -85,21 +85,19 @@ jobs:
     needs: build
 
     steps:
-       # Optional: Set up Node.js using nvm if your application requires it
+      # Optional: Set up Node.js using nvm if your application requires it
       - name: Install Node.js using nvm
         run: |
           curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.5/install.sh | bash
           export NVM_DIR="$HOME/.nvm"
           [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
-          nvm install 18  # specify your desired Node.js version
-          nvm use 18
-          
+          nvm install 16  # specify your desired Node.js version
+          nvm use 16
+
       - name: Checkout
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event.workflow_run.head_branch }}
-
-     
 
       - name: Pull Docker images
         run: docker compose pull

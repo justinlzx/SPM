@@ -15,7 +15,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 # Install Python dependencies
 COPY requirements.prod.txt .
-RUN pip install --no-cache-dir -r requirements.prod.txt
+RUN pip install -r requirements.prod.txt
 
 # Install Watchfiles for improved file watching
 # RUN pip install watchfiles
