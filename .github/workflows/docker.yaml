@@ -91,6 +91,23 @@ jobs:
         with:
           path: .
           ref: ${{ github.event.workflow_run.head_branch }}
+      
+      - name: Ensure backend .env exists
+        run: |
+          if [ ! -f "backend/.env" ]; then
+            echo "Creating .env file..."
+            touch backend/.env
+            echo "AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }}" >> backend/.env
+            echo "AWS_S3_BUCKET_NAME=${{ secrets.AWS_S3_BUCKET_NAME }}" >> backend/.env
+            echo "AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }}" >> backend/.env
+            echo "SMTP_PASSWORD=${{ secrets.SMTP_PASSWORD }}" >> backend/.env
+            echo "SMTP_USERNAME=${{ secrets.SMTP_USERNAME }}" >> backend/.env
+            echo "TOKEN_SECRET=${{ secrets.TOKEN_SECRET }}" >> backend/.env
+            echo "ENV=${{ vars.ENV}}" >> backend/.env
+            echo "FRONTEND_URL=${{ vars.FRONTEND_URL}}" >> backend/.env
+            echo "SMTP_PORT=${{ vars.SMTP_PORT}}" >> backend/.env
+            echo "SMTP_SERVER=${{ vars.SMTP_SERVER}}" >> backend/.env
+          fi
 
       - name: Pull Docker images
         run: docker compose pull
