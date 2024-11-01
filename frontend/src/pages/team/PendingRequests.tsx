@@ -31,6 +31,8 @@ import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import { ApprovalStatus, Action, STATUS_ACTION_MAPPING } from "../../types/approvalStatus";
 import { UserContext } from "../../context/UserContextProvider";
+import { SnackBarComponent, AlertStatus } from "../../common/SnackBar";
+import { LoadingSpinner } from "../../common/LoadingSpinner";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 
@@ -54,9 +56,15 @@ export const PendingRequests = () => {
   const { user } = useContext(UserContext);
   const userId = user?.id;
 
+  const [showSnackbar, setShowSnackbar] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState("");
+  const [alertStatus, setAlertStatus] = useState<AlertStatus>(AlertStatus.Info);
+  const [loading, setLoading] = useState(true);
+
   useEffect(() => {
     const fetchPendingRequestsFromSubordinates = async () => {
       if (!user || !userId) return;
+      setLoading(true);
       try {
         const response = await axios.get(
           `${BACKEND_URL}/arrangements/subordinates/${userId}`,
@@ -69,6 +77,11 @@ export const PendingRequests = () => {
         console.log(requests);
       } catch (error) {
         console.error("Failed to fetch subordinates' requests:", error);
+        setAlertStatus(AlertStatus.Error);
+        setSnackbarMessage("Failed to fetch requests.");
+        setShowSnackbar(true);
+      } finally { 
+        setLoading(false);
       }
     };
     fetchPendingRequestsFromSubordinates();
@@ -85,7 +98,7 @@ export const PendingRequests = () => {
       console.warn(`Action '${action}' is not allowed for status '${current_approval_status}'`);
       return;
     }
-
+    setLoading(true); //
     try {
       const formData = new FormData();
       formData.append("action", action);
@@ -101,11 +114,31 @@ export const PendingRequests = () => {
         }
       );
 
-      console.log(`Request '${action}' successfully updated to status '${nextStatus}'`);
+      //console.log(`Request '${action}' successfully updated to status '${nextStatus}'`);
+      setAlertStatus(AlertStatus.Success);
+      setSnackbarMessage(`Request '${action}' successfully updated to status '${nextStatus}'`);
+      setShowSnackbar(true);
     } catch (error) {
       console.error(`Error performing action '${action}':`, error);
+      setAlertStatus(AlertStatus.Error);
+      setSnackbarMessage(`Error performing action '${action}'`);
+      setShowSnackbar(true);
+    } finally {
+      setLoading(false);
     }
   };
+
+  const handleCloseSnackBar = () => {
+    setShowSnackbar(false);
+  };
+
+  if (loading) {
+    return (
+      <Container sx={{ textAlign: "center", marginTop: 5 }}>
+        <LoadingSpinner />
+      </Container>
+    );
+  }
 
   return (
     <>
@@ -163,6 +196,13 @@ export const PendingRequests = () => {
         page={page}
         onPageChange={(event, newPage) => setPage(newPage)}
         onRowsPerPageChange={(event) => setRowsPerPage(parseInt(event.target.value, 10))}
+      />
+
+      <SnackBarComponent
+        showSnackbar={showSnackbar}
+        handleCloseSnackBar={handleCloseSnackBar}
+        alertStatus={alertStatus}
+        snackbarMessage={snackbarMessage}
       />
     </>
   );

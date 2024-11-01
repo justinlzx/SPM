@@ -23,9 +23,7 @@ export const TeamPage = () => {
 
   return (
     <div>
-      <PendingRequests />
-      <RequestList/>
-      { (user?.role === 1 || user?.role === 3) && (
+       { (user?.role === 1 || user?.role === 3) && (
          <Box 
          display="flex" 
          alignItems="center" 
@@ -41,6 +39,8 @@ export const TeamPage = () => {
          <DelegateButton />
        </Box>
       )}
+      <PendingRequests />
+      <RequestList/>
     </div>
   );
 };
