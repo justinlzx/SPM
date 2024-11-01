@@ -112,6 +112,18 @@ def get_team_arrangements(
     return get_arrangements_by_staff_ids(db, team_member_ids, filters)
 
 
+def get_arrangement_logs(
+    db: Session,
+) -> List[Dict]:
+    # TODO: Pagination and filters if have time
+    query = db.query(models.ArrangementLog)
+    query = query.order_by(models.ArrangementLog.update_datetime.desc())
+
+    logs = query.all()
+
+    return [log.__dict__ for log in logs]
+
+
 def create_arrangement_log(
     db: Session,
     arrangement: models.LatestArrangement,

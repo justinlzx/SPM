@@ -117,6 +117,26 @@ class ArrangementResponse(BaseClass):
 
 
 @dataclass
+class ArrangementLogResponse(BaseClass):
+    """Dataclass for created arrangement."""
+
+    log_id: int
+    update_datetime: datetime
+    requester_staff_id: int
+    wfh_date: date
+    wfh_type: WfhType
+    action: Action
+    previous_approval_status: ApprovalStatus
+    updated_approval_status: ApprovalStatus
+    approving_officer: int
+    reason_description: Optional[str]
+    batch_id: Optional[int]
+    supporting_doc_1: Optional[File]
+    supporting_doc_2: Optional[File]
+    supporting_doc_3: Optional[File]
+
+
+@dataclass
 class CreatedArrangementGroupByDate(BaseClass):
     """Dataclass for created arrangement."""
 
