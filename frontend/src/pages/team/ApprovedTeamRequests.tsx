@@ -56,7 +56,7 @@ export const ApprovedRequests = () => {
     number | null
   >(null);
   const [withdrawModalOpen, setWithdrawModalOpen] = useState(false);
-
+      
   // Fetch approved requests from subordinates
   useEffect(() => {
     const fetchApprovedRequestsFromSubordinates = async () => {
