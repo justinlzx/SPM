@@ -82,7 +82,7 @@ export const ApprovedRequests = () => {
       formData.append("reason_description", withdrawReason);
       formData.append("approving_officer", userId?.toString() || "");
       formData.append("current_approval_status", ApprovalStatus.Withdrawn);
- 
+
       await axios.put(
         `${BACKEND_URL}/arrangements/${selectedArrangementId}/status`,
         formData,
