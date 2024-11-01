@@ -27,6 +27,7 @@ import { SelectChangeEvent } from '@mui/material';
 import { SnackBarComponent, AlertStatus } from '../../common/SnackBar';
 import { UserContext } from '../../context/UserContextProvider';
 import { capitalize } from "../../utils/utils";
+import { LoadingSpinner } from "../../common/LoadingSpinner";
 
 interface Peer {
   staff_id: string;
@@ -61,10 +62,12 @@ export const SendDelegation: React.FC = () => {
   });
   const [openModal, setOpenModal] = useState(false);
   const [delegationLogs, setDelegationLogs] = useState<TDelegationLog[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchPeers = async () => {
       if (userId) {
+        setLoading(true);
         try {
           const response = await axios.get(`${BACKEND_URL}/employees/manager/peermanager/${userId}`);
           const peers = response.data.peer_employees
@@ -77,6 +80,8 @@ export const SendDelegation: React.FC = () => {
         } catch (error) {
           console.error('Error fetching peers:', error);
           handleSnackbar(AlertStatus.Error, 'Failed to load peers.');
+        } finally { 
+          setLoading(false);
         }
       }
     };
@@ -87,6 +92,7 @@ export const SendDelegation: React.FC = () => {
   useEffect(() => {
     const fetchDelegationLogs = async () => {
       if (!user || !userId) return;
+      setLoading(true);
       try {
         const response = await axios.get(
           `${BACKEND_URL}/employees/manager/viewalldelegations/${userId}`
@@ -96,6 +102,8 @@ export const SendDelegation: React.FC = () => {
       } catch (error) {
         console.error("Failed to fetch delegation logs:", error);
         handleSnackbar(AlertStatus.Error, 'Failed to load delegation logs.');
+      } finally {
+        setLoading(false);
       }
     };
     fetchDelegationLogs();
@@ -119,6 +127,7 @@ export const SendDelegation: React.FC = () => {
       return;
     }
 
+    setLoading(true);
     try {
       const response = await axios.post(`${BACKEND_URL}/employees/manager/delegate/${userId}`, null, {
         params: {
@@ -140,11 +149,13 @@ export const SendDelegation: React.FC = () => {
       console.error('Error delegating peer:', error);
       handleSnackbar(AlertStatus.Error, 'Failed to delegate peer as manager.');
     } finally {
+      setLoading(false);
       setOpenModal(false);
     }
   };
 
   const handleCancelDelegation = async (delegateManagerId: number) => {
+    setLoading(true);
     try {
       await axios.put(`${BACKEND_URL}/employees/manager/undelegate/${userId}`, {
         params: { delegate_manager_id: delegateManagerId },
@@ -154,6 +165,8 @@ export const SendDelegation: React.FC = () => {
     } catch (error) {
       console.error('Error canceling delegation:', error);
       handleSnackbar(AlertStatus.Error, 'Failed to cancel delegation.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -182,6 +195,12 @@ export const SendDelegation: React.FC = () => {
 
   return (
     <Container>
+       {loading ? (
+        <Box display="flex" justifyContent="center" alignItems="center" minHeight="50vh">
+          <LoadingSpinner />
+        </Box>
+      ) : (
+        <>
       <Box 
         display="flex" 
         alignItems="center" 
@@ -299,6 +318,8 @@ export const SendDelegation: React.FC = () => {
           </TableBody>
         </Table>
       </TableContainer>
+      </>
+      )}
     </Container>
   );
 };

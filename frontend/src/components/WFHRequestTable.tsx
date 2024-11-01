@@ -17,7 +17,7 @@ import {
 } from "@mui/material";
 import axios from "axios";
 import { ChipProps } from "@mui/material/Chip";
-import { ApprovalStatus } from "../types/approvalStatus"; 
+import { ApprovalStatus } from "../types/approvalStatus";
 import { capitalize } from "../utils/utils";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
