@@ -22,7 +22,27 @@ from .commons.exceptions import (
     S3UploadFailedException,
 )
 
+
 router = APIRouter()
+
+
+@router.get("/", summary="Get all arrangements with optional filters")
+def get_arrangements(
+    db: Session = Depends(get_db),
+    request_filters: schemas.ArrangementFilters = Depends(schemas.ArrangementFilters),
+) -> JSendResponse:
+    try:
+        logger.info("Route: Fetching all arrangements")
+        filters = dc.ArrangementFilters.from_dict(request_filters.dict())
+        data = services.get_all_arrangements(db, filters)
+        logger.info(f"Route: Found {len(data)} arrangements")
+
+        return JSendResponse(
+            status="success",
+            data=[schemas.ArrangementResponse(**asdict(arrangement)) for arrangement in data],
+        )
+    except SQLAlchemyError as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/{arrangement_id}", summary="Get an arrangement by its arrangement_id")
