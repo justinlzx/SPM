@@ -3,7 +3,7 @@
 # from email.mime.text import MIMEText
 from datetime import datetime
 from os import getenv
-from typing import List, Optional
+from typing import List
 
 import httpx
 from dotenv import load_dotenv
@@ -48,11 +48,8 @@ async def craft_and_send_email(
     action: Action,
     current_approval_status: ApprovalStatus,
     manager: employee_models.Employee,
-    error_message: Optional[str] = None,
 ):
     logger.info("Crafting and sending email notifications...")
-    if error_message is not None and error_message == "":
-        raise ValueError("Error message cannot be an empty string.")
 
     email_list = []
 
@@ -61,26 +58,24 @@ async def craft_and_send_email(
         arrangements=arrangements,
         action=action,
         current_approval_status=current_approval_status,
-        error_message=error_message,
         manager=manager,
     )
 
-    if email_content.get("employee"):
-        email_list.append(
-            (
-                employee.email,
-                email_content["employee"]["subject"],
-                email_content["employee"]["content"],
-            )
+    email_list.append(
+        (
+            employee.email,
+            email_content["employee"]["subject"],
+            email_content["employee"]["content"],
         )
-    if email_content.get("manager"):
-        email_list.append(
-            (
-                manager.email,
-                email_content["manager"]["subject"],
-                email_content["manager"]["content"],
-            )
+    )
+
+    email_list.append(
+        (
+            manager.email,
+            email_content["manager"]["subject"],
+            email_content["manager"]["content"],
         )
+    )
 
     email_errors = []
 
@@ -105,7 +100,6 @@ def craft_email_content(
     action: Action,
     current_approval_status: ApprovalStatus,
     manager: employee_models.Employee,
-    error_message: Optional[str] = None,
 ):
     formatted_details = format_details(arrangements, action)
 
@@ -119,10 +113,6 @@ def craft_email_content(
             "content": format_email_body(manager, formatted_details),
         },
     }
-
-    # TODO: Handle failed actions
-    # if action == "create":
-    #     result = result.get("failure") if error_message else result.get("success")
 
     return result
 
@@ -138,7 +128,7 @@ def format_details(arrangements: List[ArrangementResponse], action: Action):
             (
                 f"Request ID: {arrangement.arrangement_id}\n"
                 f"WFH Date: {arrangement.wfh_date}\n"
-                f"Type: {arrangement.wfh_type.value}\n"
+                f"WFH Type: {arrangement.wfh_type.value}\n"
                 f"Reason for WFH Request: {arrangement.reason_description}\n"
                 f"Batch ID: {arrangement.batch_id}\n"
                 f"Request Status: {arrangement.current_approval_status.value}\n"
