@@ -29,7 +29,11 @@ import CheckIcon from "@mui/icons-material/Check";
 import CloseIcon from "@mui/icons-material/Close";
 import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
-import { ApprovalStatus, Action, STATUS_ACTION_MAPPING } from "../../types/approvalStatus";
+import {
+  ApprovalStatus,
+  Action,
+  STATUS_ACTION_MAPPING,
+} from "../../types/status";
 import { UserContext } from "../../context/UserContextProvider";
 import { SnackBarComponent, AlertStatus } from "../../common/SnackBar";
 import { LoadingSpinner } from "../../common/LoadingSpinner";
@@ -69,10 +73,17 @@ export const PendingRequests = () => {
         const response = await axios.get(
           `${BACKEND_URL}/arrangements/subordinates/${userId}`,
           {
-            params: { current_approval_status: [ApprovalStatus.PendingApproval, ApprovalStatus.PendingWithdrawal] },
+            params: {
+              current_approval_status: [
+                ApprovalStatus.PendingApproval,
+                ApprovalStatus.PendingWithdrawal,
+              ],
+            },
           }
         );
-        const requests = response.data.data.flatMap((dateEntry: any) => dateEntry.pending_arrangements);
+        const requests = response.data.data.flatMap(
+          (dateEntry: any) => dateEntry.pending_arrangements
+        );
         setActionRequests(requests);
         console.log(requests);
       } catch (error) {
@@ -80,7 +91,7 @@ export const PendingRequests = () => {
         setAlertStatus(AlertStatus.Error);
         setSnackbarMessage("Failed to fetch requests.");
         setShowSnackbar(true);
-      } finally { 
+      } finally {
         setLoading(false);
       }
     };
@@ -95,7 +106,9 @@ export const PendingRequests = () => {
   ) => {
     const nextStatus = STATUS_ACTION_MAPPING[current_approval_status]?.[action];
     if (!nextStatus) {
-      console.warn(`Action '${action}' is not allowed for status '${current_approval_status}'`);
+      console.warn(
+        `Action '${action}' is not allowed for status '${current_approval_status}'`
+      );
       return;
     }
     setLoading(true); //
@@ -116,7 +129,9 @@ export const PendingRequests = () => {
 
       //console.log(`Request '${action}' successfully updated to status '${nextStatus}'`);
       setAlertStatus(AlertStatus.Success);
-      setSnackbarMessage(`Request '${action}' successfully updated to status '${nextStatus}'`);
+      setSnackbarMessage(
+        `Request '${action}' successfully updated to status '${nextStatus}'`
+      );
       setShowSnackbar(true);
     } catch (error) {
       console.error(`Error performing action '${action}':`, error);
@@ -145,7 +160,10 @@ export const PendingRequests = () => {
       <Typography variant="h4" gutterBottom align="left" sx={{ marginTop: 4 }}>
         Action Required
       </Typography>
-      <TableContainer component={Paper} sx={{ marginTop: 3, textAlign: "center" }}>
+      <TableContainer
+        component={Paper}
+        sx={{ marginTop: 3, textAlign: "center" }}
+      >
         <Table>
           <TableHead>
             <TableRow>
@@ -153,15 +171,19 @@ export const PendingRequests = () => {
               <TableCell sx={{ fontWeight: "bold" }}>WFH Date</TableCell>
               <TableCell sx={{ fontWeight: "bold" }}>WFH Type</TableCell>
               <TableCell sx={{ fontWeight: "bold" }}>Reason</TableCell>
-              <TableCell sx={{ fontWeight: "bold" }}>Supporting Documents</TableCell>
+              <TableCell sx={{ fontWeight: "bold" }}>
+                Supporting Documents
+              </TableCell>
               <TableCell sx={{ fontWeight: "bold" }}>Action</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
             {actionRequests.filter(
               (request) =>
-                request.current_approval_status === ApprovalStatus.PendingApproval ||
-                request.current_approval_status === ApprovalStatus.PendingWithdrawal
+                request.current_approval_status ===
+                  ApprovalStatus.PendingApproval ||
+                request.current_approval_status ===
+                  ApprovalStatus.PendingWithdrawal
             ).length === 0 ? (
               <TableRow>
                 <TableCell colSpan={7} align="center">
@@ -172,8 +194,10 @@ export const PendingRequests = () => {
               actionRequests
                 .filter(
                   (request) =>
-                    request.current_approval_status === ApprovalStatus.PendingApproval ||
-                    request.current_approval_status === ApprovalStatus.PendingWithdrawal
+                    request.current_approval_status ===
+                      ApprovalStatus.PendingApproval ||
+                    request.current_approval_status ===
+                      ApprovalStatus.PendingWithdrawal
                 )
                 .map((arrangement) => (
                   <ArrangementRow
@@ -184,7 +208,6 @@ export const PendingRequests = () => {
                 ))
             )}
           </TableBody>
-
         </Table>
       </TableContainer>
 
@@ -195,7 +218,9 @@ export const PendingRequests = () => {
         rowsPerPage={rowsPerPage}
         page={page}
         onPageChange={(event, newPage) => setPage(newPage)}
-        onRowsPerPageChange={(event) => setRowsPerPage(parseInt(event.target.value, 10))}
+        onRowsPerPageChange={(event) =>
+          setRowsPerPage(parseInt(event.target.value, 10))
+        }
       />
 
       <SnackBarComponent
@@ -209,7 +234,13 @@ export const PendingRequests = () => {
 };
 
 // ArrangementRow Component
-const ArrangementRow = ({ arrangement, handleRequestAction }: { arrangement: TWFHRequest; handleRequestAction: any }) => {
+const ArrangementRow = ({
+  arrangement,
+  handleRequestAction,
+}: {
+  arrangement: TWFHRequest;
+  handleRequestAction: any;
+}) => {
   const {
     arrangement_id,
     requester_staff_id,
@@ -227,7 +258,11 @@ const ArrangementRow = ({ arrangement, handleRequestAction }: { arrangement: TWF
 
   const handleDialogOpen = () => {
     setDialogOpen(true);
-    setDocuments([supporting_doc_1, supporting_doc_2, supporting_doc_3].filter(Boolean) as string[]);
+    setDocuments(
+      [supporting_doc_1, supporting_doc_2, supporting_doc_3].filter(
+        Boolean
+      ) as string[]
+    );
   };
 
   return (
@@ -238,7 +273,7 @@ const ArrangementRow = ({ arrangement, handleRequestAction }: { arrangement: TWF
         <TableCell>{wfh_type?.toUpperCase()}</TableCell>
         <TableCell sx={{ maxWidth: 200 }}>
           <Tooltip title="Scroll to view more">
-            <Box sx={{ overflowX: 'scroll', scrollbarWidth: 'none' }}>
+            <Box sx={{ overflowX: "scroll", scrollbarWidth: "none" }}>
               {reason_description}
             </Box>
           </Tooltip>
@@ -246,35 +281,75 @@ const ArrangementRow = ({ arrangement, handleRequestAction }: { arrangement: TWF
         <TableCell>
           {documents.length ? (
             <Button variant="text" onClick={handleDialogOpen}>
-              <Typography sx={{ textDecoration: "underline" }}>View more...</Typography>
+              <Typography sx={{ textDecoration: "underline" }}>
+                View more...
+              </Typography>
             </Button>
-          ) : "NA"}
+          ) : (
+            "NA"
+          )}
         </TableCell>
         <TableCell>
           {current_approval_status === ApprovalStatus.PendingApproval && (
             <ButtonGroup variant="contained">
-              <Button color="success" startIcon={<CheckIcon />} onClick={() =>
-                handleRequestAction(Action.Approve, arrangement_id, reason_description, current_approval_status)
-              }>
+              <Button
+                color="success"
+                startIcon={<CheckIcon />}
+                onClick={() =>
+                  handleRequestAction(
+                    Action.Approve,
+                    arrangement_id,
+                    reason_description,
+                    current_approval_status
+                  )
+                }
+              >
                 Approve
               </Button>
-              <Button color="error" startIcon={<CloseIcon />} onClick={() =>
-                handleRequestAction(Action.Reject, arrangement_id, reason_description, current_approval_status)
-              }>
+              <Button
+                color="error"
+                startIcon={<CloseIcon />}
+                onClick={() =>
+                  handleRequestAction(
+                    Action.Reject,
+                    arrangement_id,
+                    reason_description,
+                    current_approval_status
+                  )
+                }
+              >
                 Reject
               </Button>
             </ButtonGroup>
           )}
           {current_approval_status === ApprovalStatus.PendingWithdrawal && (
             <ButtonGroup variant="contained">
-              <Button color="success" startIcon={<CheckIcon />} onClick={() =>
-                handleRequestAction(Action.Approve, arrangement_id, reason_description, current_approval_status)
-              }>
+              <Button
+                color="success"
+                startIcon={<CheckIcon />}
+                onClick={() =>
+                  handleRequestAction(
+                    Action.Approve,
+                    arrangement_id,
+                    reason_description,
+                    current_approval_status
+                  )
+                }
+              >
                 Approve Withdraw
               </Button>
-              <Button color="error" startIcon={<CloseIcon />} onClick={() =>
-                handleRequestAction(Action.Reject, arrangement_id, reason_description, current_approval_status)
-              }>
+              <Button
+                color="error"
+                startIcon={<CloseIcon />}
+                onClick={() =>
+                  handleRequestAction(
+                    Action.Reject,
+                    arrangement_id,
+                    reason_description,
+                    current_approval_status
+                  )
+                }
+              >
                 Reject
               </Button>
             </ButtonGroup>
@@ -290,7 +365,15 @@ const ArrangementRow = ({ arrangement, handleRequestAction }: { arrangement: TWF
   );
 };
 
-const DocumentDialog = ({ isOpen, documents, onClose }: { isOpen: boolean; documents: string[]; onClose: () => void; }) => (
+const DocumentDialog = ({
+  isOpen,
+  documents,
+  onClose,
+}: {
+  isOpen: boolean;
+  documents: string[];
+  onClose: () => void;
+}) => (
   <Dialog open={isOpen} onClose={onClose} fullWidth>
     <DialogTitle sx={{ paddingBottom: 0 }}>Supporting Documents</DialogTitle>
     <DialogContent>
@@ -306,8 +389,9 @@ const DocumentDialog = ({ isOpen, documents, onClose }: { isOpen: boolean; docum
       </List>
     </DialogContent>
     <DialogActions>
-      <Button onClick={onClose}><CloseIcon /></Button>
+      <Button onClick={onClose}>
+        <CloseIcon />
+      </Button>
     </DialogActions>
   </Dialog>
 );
-

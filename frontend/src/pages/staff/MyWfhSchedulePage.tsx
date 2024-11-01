@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { Container, Typography, Snackbar, Alert } from "@mui/material";
 import { UserContext } from "../../context/UserContextProvider";
 import { WFHRequestTable } from "../../components/WFHRequestTable";
-import { ApprovalStatus } from "../../types/approvalStatus"; 
+import { ApprovalStatus } from "../../types/status";
 import { TWFHRequest } from "../../types/requests";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
@@ -22,7 +22,9 @@ export const MyWfhSchedulePage: React.FC = () => {
   const [requests, setRequests] = useState<TWFHRequest[]>([]);
   const [openSnackbar, setOpenSnackbar] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState("");
-  const [snackbarSeverity, setSnackbarSeverity] = useState<"success" | "error">("success");
+  const [snackbarSeverity, setSnackbarSeverity] = useState<"success" | "error">(
+    "success"
+  );
 
   useEffect(() => {
     const fetchRequests = async () => {
@@ -41,8 +43,10 @@ export const MyWfhSchedulePage: React.FC = () => {
         setRequests(allRequests);
       } catch (error) {
         console.error("Failed to fetch WFH requests:", error);
-        setSnackbarMessage("Failed to fetch WFH requests. Please try again later.");
-        setSnackbarSeverity("error"); 
+        setSnackbarMessage(
+          "Failed to fetch WFH requests. Please try again later."
+        );
+        setSnackbarSeverity("error");
         setOpenSnackbar(true);
       }
     };
@@ -69,7 +73,7 @@ export const MyWfhSchedulePage: React.FC = () => {
         ? "Your WFH request has been successfully cancelled!"
         : "Withdrawal Request has been sent to your manager for review."
     );
-    setSnackbarSeverity("success");  // Set severity to success
+    setSnackbarSeverity("success"); // Set severity to success
     setOpenSnackbar(true);
   };
 
