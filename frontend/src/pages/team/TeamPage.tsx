@@ -6,7 +6,7 @@ import { RequestList } from "./RequestList";
 import { Box, Typography } from "@mui/material";
 import { DelegateButton } from "../manager/DelegateButton";
 import PeopleOutlineIcon from '@mui/icons-material/PeopleOutline';
-
+import { ApprovedRequests } from "./ApprovedTeamRequests";
 
 export const TeamPage = () => {
   const navigate = useNavigate();
@@ -39,7 +39,7 @@ export const TeamPage = () => {
          <DelegateButton />
        </Box>
       )}
-      <PendingRequests />
+      <ApprovedRequests />
       <RequestList/>
     </div>
   );

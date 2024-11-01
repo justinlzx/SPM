@@ -44,11 +44,7 @@ export const PersonalRequests = () => {
           `${BACKEND_URL}/arrangements/personal/${userId}`
         );
 
-        const allRequests: TWFHRequest[] = response.data.data.map(
-          (request: any) => ({
-            ...request,
-          })
-        );
+        const allRequests: TWFHRequest[] = response.data.data;
         console.log(allRequests);
         setRequests(allRequests);
       } catch (error) {

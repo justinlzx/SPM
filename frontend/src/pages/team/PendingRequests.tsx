@@ -325,7 +325,7 @@ const ArrangementRow = ({
           {current_approval_status === ApprovalStatus.PendingWithdrawal && (
             <ButtonGroup variant="contained">
               <Button
-                color="success"
+                color="warning"
                 startIcon={<CheckIcon />}
                 onClick={() =>
                   handleRequestAction(
@@ -336,7 +336,7 @@ const ArrangementRow = ({
                   )
                 }
               >
-                Approve Withdraw
+                Withdraw
               </Button>
               <Button
                 color="error"

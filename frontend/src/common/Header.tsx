@@ -8,7 +8,7 @@ import MenuIcon from "@mui/icons-material/Menu";
 import Toolbar from "@mui/material/Toolbar";
 import Typography from "@mui/material/Typography";
 import Button from "@mui/material/Button";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useContext } from "react";
 import { UserContext } from "../context/UserContextProvider";
 import { Sidebar } from "./Sidebar";
@@ -23,9 +23,15 @@ interface Props {
 export const Header = ({ window }: Props) => {
   const [mobileOpen, setMobileOpen] = React.useState(false);
   const { user, logout } = useContext(UserContext);
+  const navigate = useNavigate(); // Add useNavigate hook
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
+  };
+
+  const handleLogout = () => {
+    logout(); 
+    navigate("/login"); 
   };
 
   const container = window !== undefined ? () => window().document.body : undefined;
@@ -41,7 +47,7 @@ export const Header = ({ window }: Props) => {
           color: "black",
           boxShadow: "none",
           borderBottom: "1px solid #e0e0e0",
-          pb:1
+          pb: 1,
         }}
       >
         <Toolbar>
@@ -54,14 +60,14 @@ export const Header = ({ window }: Props) => {
           >
             <MenuIcon />
           </IconButton>
-            <Link to="/home" style={{ display: "flex", alignItems: "center", textDecoration: "none", color: "inherit" }}>
-              <img src={logo} alt="logo" style={{ height: "40px", width: "40px", marginRight: "8px" }} />
-              <Typography variant="h6" noWrap component="div">
-                All-in-One
-              </Typography>
-            </Link>
+          <Link to="/home" style={{ display: "flex", alignItems: "center", textDecoration: "none", color: "inherit" }}>
+            <img src={logo} alt="logo" style={{ height: "40px", width: "40px", marginRight: "8px" }} />
+            <Typography variant="h6" noWrap component="div">
+              All-in-One
+            </Typography>
+          </Link>
           <Box sx={{ flexGrow: 1 }} />
-          <Button onClick={logout} color="inherit">
+          <Button onClick={handleLogout} color="inherit">
             Log Out
           </Button>
         </Toolbar>

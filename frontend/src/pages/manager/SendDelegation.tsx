@@ -21,6 +21,7 @@ import {
   Paper,
   Typography,
   Chip,
+  Tooltip
 } from '@mui/material';
 import NotificationsNoneIcon from '@mui/icons-material/NotificationsNone';
 import { SelectChangeEvent } from '@mui/material';
@@ -109,24 +110,34 @@ export const SendDelegation: React.FC = () => {
     fetchDelegationLogs();
   }, [user, userId]);
 
+  const hasPendingOrActiveDelegation = delegationLogs.some(
+    (log) =>
+      log.status_of_delegation === DelegationStatus.Pending ||
+      log.status_of_delegation === DelegationStatus.Accepted
+  );
+
   const handlePeerSelect = (event: SelectChangeEvent<string>) => {
     setSelectedPeer(event.target.value);
   };
 
   const handleDelegate = async () => {
+    // Check if the selected peer already has a delegation
     const existingDelegation = delegationLogs.find(
       (log) =>
         log.delegate_manager_id === parseInt(selectedPeer) &&
         (log.status_of_delegation === DelegationStatus.Pending || log.status_of_delegation === DelegationStatus.Accepted)
     );
+  
     if (existingDelegation) {
+      // If an existing delegation is found, show an error message and return early
       handleSnackbar(
         AlertStatus.Error,
-        'You have an active or pending delegation request for this manager. You cannot send another one right now.'
+        'This peer already has an active or pending delegation. Please select a different manager.'
       );
       return;
     }
-
+  
+    // Proceed with sending delegation if validation passes
     setLoading(true);
     try {
       const response = await axios.post(`${BACKEND_URL}/employees/manager/delegate/${userId}`, null, {
@@ -134,6 +145,7 @@ export const SendDelegation: React.FC = () => {
           delegate_manager_id: selectedPeer,
         },
       });
+  
       setDelegationLogs((prevLogs) => [
         ...prevLogs,
         {
@@ -142,8 +154,9 @@ export const SendDelegation: React.FC = () => {
           delegate_manager_name: peers.find((peer) => peer.staff_id === selectedPeer)?.name || "Unknown",
           date_of_delegation: response.data.date_of_delegation,
           status_of_delegation: response.data.status_of_delegation,
-        }
+        },
       ]);
+  
       handleSnackbar(AlertStatus.Success, 'Request to delegate peer manager sent');
     } catch (error) {
       console.error('Error delegating peer:', error);
@@ -153,6 +166,7 @@ export const SendDelegation: React.FC = () => {
       setOpenModal(false);
     }
   };
+  
 
   const handleCancelDelegation = async (delegateManagerId: number) => {
     setLoading(true);
@@ -218,9 +232,25 @@ export const SendDelegation: React.FC = () => {
           </Typography>
         </Box>
       </Box>
-      <Button variant="outlined" color="primary" onClick={handleOpenModal}>
-        Delegate a Manager
-      </Button>
+
+      <Tooltip
+        title={
+          hasPendingOrActiveDelegation
+            ? "You have a pending delegation in progress."
+            : ""
+        }
+      >
+        <span> 
+          <Button
+            variant="outlined"
+            color="primary"
+            onClick={handleOpenModal}
+            disabled={hasPendingOrActiveDelegation}
+          >
+            Delegate a Manager
+          </Button>
+        </span>
+      </Tooltip>
     </Box>
 
 
@@ -330,8 +360,13 @@ interface SeePeerManagerButtonProps {
   onClick: () => void;
 }
 
-export const SeePeerManagerButton: React.FC<SeePeerManagerButtonProps> = ({ onClick }) => (
-  <Button variant="outlined" color="primary" onClick={onClick}>
+interface SeePeerManagerButtonProps {
+  onClick: () => void;
+  hasPendingOrActiveDelegation: boolean;
+}
+
+export const SeePeerManagerButton: React.FC<SeePeerManagerButtonProps> = ({ onClick, hasPendingOrActiveDelegation }) => (
+  <Button variant="outlined" color="primary" onClick={onClick} disabled={hasPendingOrActiveDelegation}>
     Delegate a Manager
   </Button>
 );

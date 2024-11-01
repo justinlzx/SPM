@@ -43,10 +43,11 @@ export const HomePage = () => {
           Create a WFH Request
         </Button>
         <DelegateButton />
-        <PersonalRequests />
+        {user && <PersonalRequests />} {/* Only render PersonalRequests if user is defined */}
       </Container>
     </Box>
   );
 };
 
 export default HomePage;
+
