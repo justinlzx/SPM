@@ -2,7 +2,7 @@ from copy import deepcopy
 from dataclasses import asdict
 from datetime import datetime
 from math import ceil
-from typing import List, Optional, Tuple, Union
+from typing import Dict, List, Optional, Tuple, Union
 
 import boto3
 import botocore
@@ -50,6 +50,14 @@ def get_arrangement_by_id(db: Session, arrangement_id: int) -> ArrangementRespon
     return ArrangementResponse.from_dict(arrangement)
 
 
+def get_all_arrangements(db: Session, filters: ArrangementFilters) -> List[ArrangementResponse]:
+    arrangements: List[Dict] = crud.get_arrangements(db, filters=filters)
+
+    response = [ArrangementResponse.from_dict(arrangement) for arrangement in arrangements]
+
+    return response
+
+
 def get_personal_arrangements(
     db: Session, staff_id: int, current_approval_status: Optional[List[ApprovalStatus]] = None
 ) -> List[ArrangementResponse]:
@@ -57,7 +65,7 @@ def get_personal_arrangements(
     filters = ArrangementFilters(current_approval_status=current_approval_status)
 
     logger.info(f"Service: Fetching personal arrangements for staff ID {staff_id}")
-    arrangements = crud.get_arrangements_by_staff_ids(db, [staff_id], filters=filters)
+    arrangements = crud.get_arrangements(db, [staff_id], filters=filters)
     logger.info(f"Service: Found {len(arrangements)} arrangements for staff ID {staff_id}")
 
     return [ArrangementResponse.from_dict(arrangement) for arrangement in arrangements]
@@ -79,7 +87,7 @@ def get_subordinates_arrangements(
 
     # Get arrangements for the subordinates
     logger.info(f"Service: Fetching arrangements for employees under manager ID: {manager_id}")
-    arrangements = crud.get_arrangements_by_staff_ids(
+    arrangements = crud.get_arrangements(
         db=db,
         staff_ids=employees_under_manager_ids,
         filters=filters,
@@ -141,7 +149,7 @@ def get_team_arrangements(
 
     # Get team arrangements
     logger.info(f"Service: Fetching arrangements for team of staff ID {staff_id}")
-    arrangements = crud.get_arrangements_by_staff_ids(
+    arrangements = crud.get_arrangements(
         db=db,
         staff_ids=[employee.staff_id for employee in employees],
         filters=filters,
