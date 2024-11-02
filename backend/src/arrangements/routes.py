@@ -22,6 +22,8 @@ from .commons.exceptions import (
     S3UploadFailedException,
 )
 
+from .scheduler import auto_reject_old_requests
+
 router = APIRouter()
 
 
@@ -294,3 +296,18 @@ async def send_auto_reject_email(
     except SQLAlchemyError as e:
         logger.error(f"Database error: {str(e)}")
         raise HTTPException(status_code=500, detail="Database error")
+
+
+@router.post("/manual-auto-reject")
+async def manual_auto_reject():
+    """
+    Manually trigger the auto-reject process for old WFH requests.
+    """
+    try:
+        await auto_reject_old_requests()
+        return {"message": "Auto-rejection process executed successfully."}
+    except Exception as e:
+        logger.error(f"Error in manual auto-reject: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail="An error occurred during the auto-reject process."
+        )
