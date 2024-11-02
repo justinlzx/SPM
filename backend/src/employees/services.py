@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import List
+from typing import List, Tuple, Union
 
 from sqlalchemy.orm import Session
 
@@ -47,7 +47,9 @@ class DelegationApprovalStatus(Enum):
     reject = "rejected"
 
 
-def get_manager_by_subordinate_id(db: Session, staff_id: int) -> models.Employee:
+def get_manager_by_subordinate_id(
+    db: Session, staff_id: int
+) -> Union[Tuple[models.Employee, List[models.Employee]], Tuple[None, None]]:
     """
     The function `get_manager_by_subordinate_id` retrieves the manager for a given subordinate ID,
     ensuring that the manager's peer employees are not locked in an active delegation relationship and
@@ -66,7 +68,7 @@ def get_manager_by_subordinate_id(db: Session, staff_id: int) -> models.Employee
     """
     # Auto Approve for Jack Sim and bypass manager check
     if staff_id == 130002:
-        return None  # Auto-approve for Jack Sim
+        return None, None  # Auto-approve for Jack Sim
 
     # Retrieve the employee
     emp = get_employee_by_id(db, staff_id)
@@ -76,7 +78,7 @@ def get_manager_by_subordinate_id(db: Session, staff_id: int) -> models.Employee
     # Get the manager of the employee
     manager = crud.get_manager_of_employee(db, emp)
     if not manager:
-        return None  # Return None if there's no valid manager
+        return None, None  # Return None if there's no valid manager
 
     # Retrieve all peers reporting to the manager
     all_peers = crud.get_peer_employees(db, manager.staff_id)
