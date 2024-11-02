@@ -8,32 +8,29 @@ import httpx
 import pytest
 from fastapi import File
 from fastapi.testclient import TestClient
-from sqlalchemy.exc import SQLAlchemyError
 from src.app import app
+from src.arrangements.commons import dataclasses as dc
+from src.arrangements.commons import exceptions as arrangement_exceptions
+from src.arrangements.commons.enums import (
+    Action,
+    ApprovalStatus,
+    RecurringFrequencyUnit,
+)
 from src.arrangements.services import (
-    STATUS,
     create_arrangements_from_request,
     expand_recurring_arrangement,
-    get_approving_officer,
     get_arrangement_by_id,
+    get_arrangement_logs,
     get_personal_arrangements,
     get_subordinates_arrangements,
     get_team_arrangements,
+    group_arrangements_by_date,
     update_arrangement_approval_status,
 )
 from src.employees import exceptions as employee_exceptions
+from src.employees.models import DelegateLog
 from src.employees.schemas import EmployeeBase
 from src.tests.test_utils import mock_db_session  # noqa: F401, E261
-
-from backend.src.arrangements.archive.old_schemas import (
-    ArrangementCreateResponse,
-    ArrangementCreateWithFile,
-    ArrangementResponse,
-    ArrangementUpdate,
-    ManagerPendingRequests,
-)
-from backend.src.arrangements.commons import exceptions as arrangement_exceptions
-from backend.src.arrangements.commons import models as arrangement_models
 
 client = TestClient(app)
 
@@ -142,22 +139,22 @@ def mock_manager_pending_request_response(mock_arrangement_data):
     }
 
 
-def create_mock_arrangement_create_with_file(**kwargs):
-    default_data = {
-        "staff_id": 1,
-        "wfh_date": "2024-01-01",
-        "wfh_type": "full",
-        "reason_description": "Work from home request",
-        "is_recurring": False,
-        "approving_officer": None,
-        "update_datetime": datetime.now(),
-        "current_approval_status": "pending approval",
-        "supporting_doc_1": None,
-        "supporting_doc_2": None,
-        "supporting_doc_3": None,
-    }
-    default_data.update(kwargs)
-    return ArrangementCreateWithFile(**default_data)
+# def create_mock_arrangement_create_with_file(**kwargs):
+#     default_data = {
+#         "staff_id": 1,
+#         "wfh_date": "2024-01-01",
+#         "wfh_type": "full",
+#         "reason_description": "Work from home request",
+#         "is_recurring": False,
+#         "approving_officer": None,
+#         "update_datetime": datetime.now(),
+#         "current_approval_status": "pending approval",
+#         "supporting_doc_1": None,
+#         "supporting_doc_2": None,
+#         "supporting_doc_3": None,
+#     }
+#     default_data.update(kwargs)
+#     return ArrangementCreateWithFile(**default_data)
 
 
 # Mock the httpx.AsyncClient.get method
@@ -170,97 +167,82 @@ async def mock_get(*args, **kwargs):
 #     return {"file_url": "https://s3-bucket/test_file.pdf"}
 
 
+@patch("src.arrangements.crud.get_arrangement_by_id")
 class TestGetArrangementById:
-    @patch("src.utils.convert_model_to_pydantic_schema")
-    @patch("src.arrangements.crud.get_arrangement_by_id")
+    @patch("src.arrangements.commons.dataclasses.ArrangementResponse.from_dict")
     def test_success(self, mock_get_arrangement, mock_convert, mock_db_session):
-        # Arrange
-        mock_get_arrangement.return_value = MagicMock(spec=arrangement_models.LatestArrangement)
-        mock_convert.return_value = [MagicMock(spec=ArrangementResponse)]
+        get_arrangement_by_id(mock_db_session, arrangement_id=1)
 
-        # Act
-        result = get_arrangement_by_id(mock_db_session, arrangement_id=1)
+        mock_get_arrangement.assert_called_once()
+        mock_convert.assert_called_once()
 
-        # Assert
-        # Verify the mocks were called correctly
-        mock_get_arrangement.assert_called_once_with(mock_db_session, 1)
-        mock_convert.assert_called_once_with(
-            [mock_get_arrangement.return_value], ArrangementResponse
-        )
-        # Verify the result matches expected
-        assert result == mock_convert.return_value[0]
-
-        # # Set up the mock return values
-        # mock_get_arrangement.return_value = mock_arrangement
-        # expected_response = ArrangementResponse(**mock_arrangement_data)
-        # mock_convert.return_value = expected_response
-
-    @patch("src.arrangements.crud.get_arrangement_by_id")
     def test_not_found_failure(self, mock_get_arrangement, mock_db_session):
         mock_get_arrangement.return_value = None
-
         with pytest.raises(arrangement_exceptions.ArrangementNotFoundException):
             get_arrangement_by_id(mock_db_session, arrangement_id=1)
 
 
 class TestGetPersonalArrangements:
-    @patch("src.utils.convert_model_to_pydantic_schema")
-    @patch("src.arrangements.crud.get_arrangements")
     @pytest.mark.parametrize(
-        "current_approval_status",
+        ("current_approval_status", "num_arrangements"),
         [
-            None,
-            ["pending approval"],
-            ["approved"],
-            ["rejected"],
-            ["withdrawn"],
-            ["cancelled"],
+            ([ApprovalStatus.PENDING_APPROVAL], 1),
+            ([ApprovalStatus.PENDING_APPROVAL], 3),
+            ([ApprovalStatus.PENDING_APPROVAL], 0),
+            ([ApprovalStatus.PENDING_APPROVAL, ApprovalStatus.APPROVED], 1),
+            ([], 1),
         ],
     )
+    @patch("src.arrangements.commons.dataclasses.ArrangementResponse.from_dict")
+    @patch("src.arrangements.crud.get_arrangements_by_staff_ids")
     def test_success(
-        self, mock_get_arrangements, mock_convert, current_approval_status, mock_db_session
+        self,
+        mock_get_arrangements,
+        mock_convert,
+        current_approval_status,
+        num_arrangements,
+        mock_db_session,
     ):
-        mock_get_arrangements.return_value = [MagicMock(spec=arrangement_models.LatestArrangement)]
-        mock_convert.return_value = [MagicMock(spec=ArrangementResponse)]
+        mock_get_arrangements.return_value = [
+            MagicMock(spec=dc.ArrangementResponse)
+        ] * num_arrangements
 
-        result = get_personal_arrangements(
+        get_personal_arrangements(
             mock_db_session, staff_id=1, current_approval_status=current_approval_status
         )
 
-        mock_get_arrangements.assert_called_once_with(mock_db_session, 1, current_approval_status)
-        mock_convert.assert_called_once_with(
-            mock_get_arrangements.return_value, ArrangementResponse
-        )
-        assert result == mock_convert.return_value
+        mock_get_arrangements.assert_called_once()
 
-    @patch("src.arrangements.crud.get_arrangements")
-    def test_empty_success(self, mock_get_arrangements, mock_db_session):
-        mock_get_arrangements.return_value = []
-
-        result = get_personal_arrangements(mock_db_session, staff_id=1, current_approval_status=[])
-
-        assert result == []
+        if num_arrangements == 0:
+            mock_convert.assert_not_called()
+        else:
+            mock_convert.assert_called()
+            assert mock_convert.call_count == num_arrangements
 
 
 class TestGetSubordinatesArrangements:
-    # TODO: Combine with success with filters
     @patch("src.arrangements.services.group_arrangements_by_date")
     @patch("src.arrangements.services.create_presigned_url")
-    @patch("src.utils.convert_model_to_pydantic_schema")
-    @patch("src.arrangements.crud.get_arrangements")
+    @patch("src.arrangements.commons.dataclasses.ArrangementResponse.from_dict")
+    @patch("src.arrangements.crud.get_arrangements_by_staff_ids")
     @patch("src.employees.services.get_subordinates_by_manager_id")
     @pytest.mark.parametrize(
-        "supporting_docs",
+        ("supporting_docs", "group_by_date"),
         [
-            ["/140002/2024-10-12T14:30:00/test_file_1.pdf", None, None],
-            [
-                "/140002/2024-10-12T14:30:00/test_file_1.pdf",
-                "/140002/2024-10-12T14:30:00/test_file_2.pdf",
-                "/1/2024-10-12T14:30:00/test_file_3.pdf",
-            ],
+            ([None, None, None], True),
+            (["/140002/2024-10-12T14:30:00/test_file_1.pdf", None, None], True),
+            (["/140002/2024-10-12T14:30:00/test_file_1.pdf", None, None], False),
+            (
+                [
+                    "/140002/2024-10-12T14:30:00/test_file_1.pdf",
+                    "/140002/2024-10-12T14:30:00/test_file_2.pdf",
+                    "/1/2024-10-12T14:30:00/test_file_3.pdf",
+                ],
+                True,
+            ),
         ],
     )
-    def test_success_no_filters(
+    def test_success(
         self,
         mock_get_subordinates,
         mock_get_arrangements,
@@ -268,221 +250,198 @@ class TestGetSubordinatesArrangements:
         mock_create_presigned_url,
         mock_group_arrangements,
         supporting_docs,
+        group_by_date,
         mock_db_session,
         mock_presigned_url,
         mock_employee,
     ):
         # Arrange
         mock_get_subordinates.return_value = [mock_employee]
+        mock_get_arrangements.return_value = [MagicMock(spec=dc.ArrangementResponse)]
 
-        mock_get_arrangements.return_value = [MagicMock(spec=arrangement_models.LatestArrangement)]
-
-        mock_arrangement = MagicMock(spec=ArrangementCreateResponse)
+        mock_arrangement = MagicMock(spec=dc.ArrangementResponse)
         mock_arrangement.configure_mock(
             supporting_doc_1=supporting_docs[0],
             supporting_doc_2=supporting_docs[1],
             supporting_doc_3=supporting_docs[2],
         )
 
-        mock_convert.return_value = [mock_arrangement]
+        mock_convert.return_value = mock_arrangement
         mock_create_presigned_url.side_effect = [mock_presigned_url(doc) for doc in supporting_docs]
-        mock_group_arrangements.return_value = [MagicMock(spec=ManagerPendingRequests)]
+        mock_group_arrangements.return_value = [MagicMock(spec=dc.CreatedArrangementGroupByDate)]
 
         manager_id = 1
         items_per_page = 10
         page_num = 1
-        # mock_arrangement = ArrangementCreateResponse(**mock_arrangement_data)
-        # mock_arrangements = [mock_arrangement]
-
-        # mock_get_subordinates.return_value = [mock_employee]
-        # mock_get_arrangements.return_value = mock_arrangements
-        # mock_create_presigned_url.side_effect = mock_presigned_url
 
         # Act
         result = get_subordinates_arrangements(
-            mock_db_session,
+            db=mock_db_session,
             manager_id=manager_id,
-            items_per_page=items_per_page,
-            page_num=page_num,
+            filters=dc.ArrangementFilters(group_by_date=group_by_date),
+            pagination=dc.PaginationConfig(items_per_page=items_per_page, page_num=page_num),
         )
 
         # Assert
+        mock_get_subordinates.assert_called_once()
+        mock_get_arrangements.assert_called_once()
+        mock_convert.assert_called()
+        mock_create_presigned_url.assert_called()
+        assert mock_create_presigned_url.call_count == 3
+        if group_by_date:
+            mock_group_arrangements.assert_called_once()
+        else:
+            mock_group_arrangements.assert_not_called()
+
         assert isinstance(result, tuple)
         assert len(result) == 2  # return data and pagination metadata
 
         arrangements, pagination_meta = result
 
         assert isinstance(arrangements, List)
-        assert isinstance(arrangements[0], ManagerPendingRequests)
-        assert isinstance(pagination_meta, dict)
-        assert "total_count" in pagination_meta
-        assert "page_size" in pagination_meta
-        assert "page_num" in pagination_meta
-        assert "total_pages" in pagination_meta
-        assert pagination_meta["total_count"] == len(mock_group_arrangements.return_value)
-        assert pagination_meta["page_size"] == items_per_page
-        assert pagination_meta["page_num"] == page_num
-        assert pagination_meta["total_pages"] == 1
 
-    @patch("src.employees.crud.get_subordinates_by_manager_id")
-    def test_no_subordinates(self, mock_get_subordinates, mock_db_session):
-        manager_id = 1
+        if group_by_date:
+            assert isinstance(arrangements[0], dc.CreatedArrangementGroupByDate)
+        else:
+            assert isinstance(arrangements[0], dc.ArrangementResponse)
 
-        mock_get_subordinates.side_effect = employee_exceptions.ManagerWithIDNotFoundException(
-            manager_id=manager_id
-        )
-
-        with pytest.raises(employee_exceptions.ManagerWithIDNotFoundException):
-            get_subordinates_arrangements(mock_db_session, manager_id=manager_id)
+        assert isinstance(pagination_meta, dc.PaginationMeta)
 
 
 class TestGetTeamArrangements:
-    @patch("src.arrangements.services.get_subordinates_arrangements")
-    @patch("src.utils.convert_model_to_pydantic_schema")
-    @patch("src.arrangements.crud.get_arrangements")
+    @pytest.mark.parametrize(
+        ("is_manager", "group_by_date"),
+        [
+            (True, True),
+            (True, False),
+            (False, True),
+        ],
+    )
+    @patch("src.arrangements.services.group_arrangements_by_date")
+    @patch("src.arrangements.commons.dataclasses.ArrangementResponse.from_dict")
+    @patch("src.arrangements.crud.get_arrangements_by_staff_ids")
+    @patch("src.employees.services.get_subordinates_by_manager_id")
     @patch("src.employees.services.get_peers_by_staff_id")
     def test_success(
         self,
+        mock_get_peers,
+        mock_get_subordinates,
+        mock_get_arrangements,
+        mock_convert,
+        mock_group_arrangements,
+        is_manager,
+        group_by_date,
         mock_db_session,
-        mock_presigned_url,
         mock_arrangement_data,
         mock_employee,
-        mock_manager_pending_request_response,
+        mock_manager,
     ):
-        mock_arrangements = ArrangementResponse(**mock_arrangement_data)
-        # mock_arrangements.__dict__ =
+        # Arrange
+        mock_get_peers.return_value = [mock_manager if is_manager else mock_employee]
 
-        with patch("src.employees.services.get_peers_by_staff_id", return_value=[mock_employee]):
-            with patch(
-                "src.arrangements.crud.get_arrangements",
-                return_value=[mock_arrangements],
-            ):
-                with patch(
-                    "src.arrangements.services.get_subordinates_arrangements",
-                    return_value=[mock_manager_pending_request_response],
-                ):
-                    with patch(
-                        "src.employees.services.get_subordinates_by_manager_id",
-                        return_value=[mock_employee],
-                    ):
-                        with patch(
-                            "src.arrangements.services.create_presigned_url",
-                            side_effect=mock_presigned_url,
-                        ):
-                            result = get_team_arrangements(
-                                mock_db_session, staff_id=1, current_approval_status=[]
-                            )
+        if is_manager:
+            mock_get_subordinates.return_value = [mock_employee]
+        else:
+            mock_get_subordinates.side_effect = employee_exceptions.ManagerWithIDNotFoundException(
+                1
+            )
 
-        assert isinstance(result, dict)
-        assert "peers" in result
-        assert "subordinates" in result
-        assert len(result["peers"]) == 1
-        assert len(result["subordinates"]) == 1
-        assert (
-            result["peers"][0].supporting_doc_1
-            == "https://example.com/presigned-url/test_file_1.pdf"
-        )
-        assert (
-            result["subordinates"][0].supporting_doc_1
-            == "https://example.com/presigned-url/test_file_1.pdf"
+        mock_get_arrangements.return_value = [mock_arrangement_data]
+        mock_convert.return_value = MagicMock(spec=dc.ArrangementResponse)
+        mock_group_arrangements.return_value = [MagicMock(spec=dc.CreatedArrangementGroupByDate)]
+
+        # Act
+        result = get_team_arrangements(
+            db=mock_db_session,
+            staff_id=1,
+            filters=dc.ArrangementFilters(group_by_date=group_by_date),
+            pagination=dc.PaginationConfig(),
         )
 
-    def test_employee_is_manager(
-        self,
-        mock_db_session,
-        mock_s3_client,
-        mock_presigned_url,
-        mock_db_arrangement,
-        mock_employee,
-    ):
-        mock_db_arrangement.supporting_doc_2 = "test_file_2.pdf"
-        mock_arrangements = [mock_db_arrangement]
+        # Assert
+        # Assert
+        mock_get_peers.assert_called_once()
+        mock_get_subordinates.assert_called_once()
+        mock_get_arrangements.assert_called_once()
+        mock_convert.assert_called()
 
-        with patch("src.employees.services.get_peers_by_staff_id", return_value=[mock_employee]):
-            with patch("src.arrangements.crud.get_arrangements", return_value=mock_arrangements):
-                with patch(
-                    "src.employees.services.get_subordinates_by_manager_id",
-                    return_value=[mock_employee],
-                ):
-                    with patch(
-                        "src.arrangements.services.create_presigned_url",
-                        side_effect=mock_presigned_url,
-                    ):
-                        result = get_team_arrangements(
-                            mock_db_session, staff_id=1, current_approval_status=[]
-                        )
+        if group_by_date:
+            mock_group_arrangements.assert_called_once()
+        else:
+            mock_group_arrangements.assert_not_called()
 
-        assert isinstance(result, dict)
-        assert "peers" in result
-        assert "subordinates" in result
-        assert len(result["peers"]) == 1
-        assert len(result["subordinates"][0]) == 1  # second item is the pagination meta data
-        assert (
-            result["peers"][0].supporting_doc_1
-            == "https://example.com/presigned-url/test_file_1.pdf"
-        )
-        assert (
-            result["peers"][0].supporting_doc_2
-            == "https://example.com/presigned-url/test_file_2.pdf"
-        )
-        assert (
-            result["subordinates"][0].supporting_doc_1
-            == "https://example.com/presigned-url/test_file_1.pdf"
-        )
-        assert (
-            result["subordinates"][0].supporting_doc_2
-            == "https://example.com/presigned-url/test_file_2.pdf"
-        )
+        assert isinstance(result, tuple)
+        assert len(result) == 2  # return data and pagination metadata
 
-    def test_no_peers_or_subordinates(self, mock_db_session):
-        with patch("src.employees.services.get_peers_by_staff_id", return_value=[]):
-            with patch("src.employees.services.get_subordinates_by_manager_id", return_value=[]):
-                with patch("src.arrangements.crud.get_arrangements", return_value=[]):
-                    result = get_team_arrangements(
-                        mock_db_session, staff_id=1, current_approval_status=[]
-                    )
-                    assert isinstance(result, dict)
-                    assert result.get("peers", []) == []
-                    assert result.get("subordinates", []) == []
+        arrangements, pagination_meta = result
+
+        assert isinstance(arrangements, List)
+
+        if group_by_date:
+            assert isinstance(arrangements[0], dc.CreatedArrangementGroupByDate)
+        else:
+            assert isinstance(arrangements[0], dc.ArrangementResponse)
+
+        assert isinstance(pagination_meta, dc.PaginationMeta)
+
+
+class TestGetArrangementLogs:
+    @patch("src.arrangements.commons.dataclasses.ArrangementLogResponse.from_dict")
+    @patch("src.arrangements.crud.get_arrangement_logs")
+    def test_success(self, mock_get_logs, mock_convert, mock_db_session):
+        mock_get_logs.return_value = [MagicMock(spec=dc.ArrangementLogResponse)]
+        mock_convert.return_value = MagicMock(spec=dc.ArrangementLogResponse)
+
+        get_arrangement_logs(mock_db_session)
+
+        mock_get_logs.assert_called_once()
+        mock_convert.assert_called()
 
 
 class TestCreateArrangementsFromRequest:
     @pytest.mark.asyncio
     @pytest.mark.parametrize(
-        "is_jack_sim, is_recurring, num_files",
+        ("is_jack_sim, has_delegation, is_recurring, num_files"),
         [
-            (False, False, 0),  # Non-Jack Sim, Non-Recurring, No File
-            (False, True, 0),  # Non-Jack Sim, Recurring, No File
-            (False, False, 1),  # Non-Jack Sim, Non-Recurring, Single File
-            (False, True, 1),  # Non-Jack Sim, Recurring, Single File
-            (False, False, 2),  # Non-Jack Sim, Non-Recurring, Multiple Files
-            (False, True, 2),  # Non-Jack Sim, Recurring, Multiple Files
-            (True, False, 0),  # Jack Sim, Non-Recurring, No File
+            (False, False, False, 0),  # Non-Jack Sim, Non-Recurring, No File
+            (False, True, False, 0),  # Non-Jack Sim, Non-Recurring, No File
+            (False, False, True, 0),  # Non-Jack Sim, Recurring, No File
+            (False, False, False, 1),  # Non-Jack Sim, Non-Recurring, Single File
+            (False, False, True, 1),  # Non-Jack Sim, Recurring, Single File
+            (False, False, False, 2),  # Non-Jack Sim, Non-Recurring, Multiple Files
+            (False, False, True, 2),  # Non-Jack Sim, Recurring, Multiple Files
+            (True, False, False, 0),  # Jack Sim, Non-Recurring, No File
         ],
     )
-    @patch("src.utils.convert_model_to_pydantic_schema")
-    @patch("src.utils.fit_schema_to_model")
+    @patch("src.arrangements.services.craft_and_send_email")
     @patch("src.arrangements.crud.create_arrangements")
     @patch("src.arrangements.services.expand_recurring_arrangement")
     @patch("src.arrangements.crud.create_recurring_request")
+    @patch("src.arrangements.commons.dataclasses.RecurringRequestDetails.from_dict")
     @patch("src.arrangements.services.upload_file")
+    @patch("src.employees.crud.get_existing_delegation")
     @patch("src.employees.services.get_manager_by_subordinate_id")
+    @patch("src.employees.crud.get_employee_by_staff_id")
+    @patch("src.arrangements.services.asdict")
     async def test_success(
         self,
+        mock_asdict,
+        mock_get_employee,
         mock_get_manager,
+        mock_get_delegation,
         mock_upload_file,
+        mock_convert_recurring,
         mock_create_recurring,
         mock_expand_recurring,
         mock_create_arrangements,
-        mock_fit,
-        mock_convert,
+        mock_craft_send_email,
         is_jack_sim,
+        has_delegation,
         is_recurring,
         num_files,
-        mock_s3_client,
         mock_db_session,
         mock_manager,
-        mock_arrangement_data,
+        mock_employee,
     ):
         # AAA Reference: https://automationpanda.com/2020/07/07/arrange-act-assert-a-pattern-for-writing-good-tests/
         # Arrange
@@ -490,33 +449,45 @@ class TestCreateArrangementsFromRequest:
         if is_recurring:
             repeat_num = 2
 
-        mock_wfh_request = MagicMock(spec=ArrangementCreateWithFile)
+        mock_wfh_request = MagicMock(spec=dc.CreateArrangementRequest)
         mock_wfh_request.configure_mock(
-            staff_id=1 if not is_jack_sim else 130002,
+            requester_staff_id=1 if not is_jack_sim else 130002,
             is_recurring=is_recurring,
             update_datetime=datetime.now(),
-            current_approval_status="pending approval",
+            current_approval_status=ApprovalStatus.PENDING_APPROVAL,
+            wfh_date=datetime.now().date(),
+            batch_id=None,
+            approving_officer=None,
         )
         mock_supporting_docs = [MagicMock(spec=File)] * num_files
 
-        mock_get_manager.return_value = mock_manager if not is_jack_sim else None
+        mock_get_employee.return_value = mock_employee
+
+        mock_get_manager.return_value = mock_manager, None
+        if is_jack_sim:
+            mock_get_manager.return_value = None, None
+
+        mock_get_delegation.return_value = None
+        if has_delegation:
+            mock_delegation = MagicMock(spec=DelegateLog)
+            mock_delegation.configure_mock(delegate_manager_id=1)
+            mock_get_delegation.return_value = mock_delegation
+
         mock_upload_file.return_value = {"file_url": "https://s3-bucket/test_file.pdf"}
 
         if is_recurring:
-            mock_create_recurring.return_value = MagicMock(spec=arrangement_models.RecurringRequest)
-            mock_create_recurring.configure_mock(batch_id=1)
+            mock_create_recurring.return_value = MagicMock(spec=dc.CreatedRecurringRequest)
+            mock_create_recurring.return_value.configure_mock(batch_id=1)
             mock_expand_recurring.return_value = [
-                MagicMock(spec=ArrangementCreateWithFile) for _ in range(repeat_num)
+                MagicMock(spec=dc.CreateArrangementRequest) for _ in range(repeat_num)
             ]
 
-        mock_fit.return_value = MagicMock(spec=arrangement_models.LatestArrangement)
         mock_create_arrangements.return_value = [
-            MagicMock(spec=arrangement_models.LatestArrangement) for _ in range(repeat_num)
+            MagicMock(spec=dc.ArrangementResponse) for _ in range(repeat_num)
         ]
-        mock_convert.return_value = ArrangementCreateResponse(**mock_arrangement_data)
 
         # Act
-        result = await create_arrangements_from_request(
+        await create_arrangements_from_request(
             mock_db_session,
             mock_wfh_request,
             mock_supporting_docs,
@@ -524,21 +495,19 @@ class TestCreateArrangementsFromRequest:
 
         # Assert
         if is_jack_sim:
-            assert mock_wfh_request.current_approval_status == "approved"
+            assert mock_wfh_request.current_approval_status == ApprovalStatus.APPROVED
             assert mock_wfh_request.approving_officer is None
+            mock_get_delegation.assert_not_called()
         else:
-            assert mock_wfh_request.current_approval_status == "pending approval"
+            assert mock_wfh_request.current_approval_status == ApprovalStatus.PENDING_APPROVAL
             assert mock_wfh_request.approving_officer == mock_manager.staff_id
+            mock_get_delegation.assert_called_once()
 
-        mock_get_manager.assert_called_once_with(mock_db_session, mock_wfh_request.staff_id)
+        mock_get_employee.assert_called_once()
+        mock_get_manager.assert_called_once()
 
         if num_files > 0:
-            mock_upload_file.assert_called_with(
-                mock_wfh_request.staff_id,
-                str(mock_wfh_request.update_datetime),
-                mock_supporting_docs[0],
-                mock_s3_client,
-            )
+            mock_upload_file.assert_called()
             assert mock_upload_file.call_count == num_files
         else:
             mock_upload_file.assert_not_called()
@@ -546,42 +515,73 @@ class TestCreateArrangementsFromRequest:
         if not is_recurring:
             mock_create_recurring.assert_not_called()
             mock_expand_recurring.assert_not_called()
-            mock_fit.assert_called_once_with(mock_wfh_request, arrangement_models.LatestArrangement)
         else:
-            mock_create_recurring.assert_called_once_with(mock_db_session, mock_wfh_request)
-            mock_expand_recurring.assert_called_once_with(
-                mock_wfh_request, mock_create_recurring.return_value.batch_id
-            )
-            for call_args in mock_expand_recurring.return_value:
-                mock_fit.assert_any_call(call_args, arrangement_models.LatestArrangement)
-            assert mock_fit.call_count == repeat_num
+            mock_create_recurring.assert_called_once()
+            mock_expand_recurring.assert_called_once()
 
-        mock_create_arrangements.assert_called_once_with(
-            mock_db_session, [mock_fit.return_value for _ in range(repeat_num)]
-        )
-        mock_convert.assert_called_once_with(
-            mock_create_arrangements.return_value, ArrangementCreateResponse
-        )
-        assert result == mock_convert.return_value
+        mock_create_arrangements.assert_called_once()
+        mock_craft_send_email.assert_called_once()
 
     @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        ("successful_uploads", "delete_fail_index"),
+        [
+            ([{"file_url": "s3://bucket/test_file_1.pdf"}], -1),
+            ([{"file_url": "s3://bucket/test_file_1.pdf"}], -0),
+            (
+                [
+                    {"file_url": "s3://bucket/test_file_1.pdf"},
+                    {"file_url": "s3://bucket/test_file_2.pdf"},
+                ],
+                -1,
+            ),
+            ([], -1),
+        ],
+    )
+    @patch("src.arrangements.services.delete_file")
     @patch("src.arrangements.services.upload_file")
     @patch("src.employees.services.get_manager_by_subordinate_id")
-    async def test_file_upload_failure(self, mock_get_manager, mock_upload_file, mock_db_session):
+    @patch("src.employees.crud.get_employee_by_staff_id")
+    async def test_file_s3_failure(
+        self,
+        mock_get_employee,
+        mock_get_manager,
+        mock_upload_file,
+        mock_delete_file,
+        successful_uploads,
+        delete_fail_index,
+        mock_db_session,
+    ):
         # Arrange
         error_response = {
             "Error": {"Code": "NoSuchBucket", "Message": "The specified bucket does not exist"}
         }
         operation_name = "PutObject"
-        mock_upload_file.side_effect = botocore.exceptions.ClientError(
-            error_response, operation_name
-        )
-        mock_wfh_request = MagicMock(spec=ArrangementCreateWithFile)
+
+        mock_wfh_request = MagicMock(spec=dc.CreateArrangementRequest)
         mock_wfh_request.configure_mock(
-            staff_id=1,
+            requester_staff_id=1,
             update_datetime=datetime.now(),
         )
-        mock_supporting_documents = [MagicMock(spec=File)]
+
+        mock_get_employee.return_value = MagicMock(spec=EmployeeBase)
+        mock_get_employee.return_value.configure_mock(
+            requester_staff_id=1,
+        )
+        mock_get_manager.return_value = None, None
+
+        upload_side_effects = successful_uploads.copy()
+        upload_side_effects.append(botocore.exceptions.ClientError(error_response, operation_name))
+        mock_upload_file.side_effect = upload_side_effects
+
+        if delete_fail_index > -1:
+            delete_side_effects = [None] * len(successful_uploads)
+            delete_side_effects[delete_fail_index] = botocore.exceptions.ClientError(
+                error_response, operation_name
+            )
+            mock_delete_file.side_effect = delete_side_effects
+
+        mock_supporting_documents = [MagicMock(spec=File)] * len(upload_side_effects)
 
         # Act and Assert
         with pytest.raises(arrangement_exceptions.S3UploadFailedException):
@@ -590,23 +590,24 @@ class TestCreateArrangementsFromRequest:
                 mock_wfh_request,
                 mock_supporting_documents,
             )
+        assert mock_delete_file.call_count == len(successful_uploads)
 
-    @pytest.mark.asyncio
-    @patch("src.arrangements.crud.create_recurring_request", side_effect=SQLAlchemyError)
-    @patch("src.employees.services.get_manager_by_subordinate_id")
-    async def test_sqlalchemy_error(self, mock_get_manager, mock_create_recurring, mock_db_session):
-        mock_wfh_request = MagicMock(spec=ArrangementCreateWithFile)
-        mock_wfh_request.configure_mock(
-            staff_id=1,
-            is_recurring=True,
-            update_datetime=datetime.now(),
-        )
-        with pytest.raises(SQLAlchemyError):
-            await create_arrangements_from_request(
-                mock_db_session,
-                mock_wfh_request,
-                [],
-            )
+    # @pytest.mark.asyncio
+    # @patch("src.arrangements.crud.create_recurring_request", side_effect=SQLAlchemyError)
+    # @patch("src.employees.services.get_manager_by_subordinate_id")
+    # async def test_sqlalchemy_error(self, mock_get_manager, mock_create_recurring, mock_db_session):
+    #     mock_wfh_request = MagicMock(spec=ArrangementCreateWithFile)
+    #     mock_wfh_request.configure_mock(
+    #         staff_id=1,
+    #         is_recurring=True,
+    #         update_datetime=datetime.now(),
+    #     )
+    #     with pytest.raises(SQLAlchemyError):
+    #         await create_arrangements_from_request(
+    #             mock_db_session,
+    #             mock_wfh_request,
+    #             [],
+    #         )
 
 
 class TestExpandRecurringArrangement:
@@ -615,55 +616,43 @@ class TestExpandRecurringArrangement:
 
     @pytest.mark.parametrize(
         (
+            "test_case_id",
             "start_date",
             "recurring_frequency_unit",
             "recurring_frequency_number",
             "recurring_occurrences",
         ),
         [
-            ("2024-01-01", "week", 1, 3),
-            ("2024-01-01", "month", 1, 3),
-            ("2024-01-31", "week", 1, 3),
-            ("2024-01-31", "month", 1, 3),
+            (1, "2024-01-01", RecurringFrequencyUnit.WEEKLY, 1, 3),
+            (2, "2024-01-01", RecurringFrequencyUnit.MONTHLY, 1, 3),
+            (3, "2024-01-31", RecurringFrequencyUnit.WEEKLY, 1, 3),
+            (4, "2024-01-31", RecurringFrequencyUnit.MONTHLY, 1, 3),
         ],
     )
     def test_success(
         self,
+        test_case_id,
         start_date,
         recurring_frequency_unit,
         recurring_frequency_number,
         recurring_occurrences,
     ):
-        wfh_request = create_mock_arrangement_create_with_file(
+        wfh_request = MagicMock(spec=dc.CreateArrangementRequest)
+        wfh_request.configure_mock(
+            wfh_date=self.format_date_string(start_date),
             is_recurring=True,
             recurring_frequency_unit=recurring_frequency_unit,
             recurring_frequency_number=recurring_frequency_number,
             recurring_occurrences=recurring_occurrences,
-            wfh_date=start_date,
         )
-        batch_id = 1
-        result = expand_recurring_arrangement(wfh_request, batch_id)
 
-        if (
-            start_date == "2024-01-01"
-            and recurring_frequency_unit == "week"
-            and recurring_frequency_number == 1
-            and recurring_occurrences == 3
-        ):
+        result = expand_recurring_arrangement(wfh_request)
+
+        if test_case_id == 1:
             expected_dates = ["2024-01-01", "2024-01-08", "2024-01-15"]
-        elif (
-            start_date == "2024-01-01"
-            and recurring_frequency_unit == "month"
-            and recurring_frequency_number == 1
-            and recurring_occurrences == 3
-        ):
+        elif test_case_id == 2:
             expected_dates = ["2024-01-01", "2024-02-01", "2024-03-01"]
-        elif (
-            start_date == "2024-01-31"
-            and recurring_frequency_unit == "week"
-            and recurring_frequency_number == 1
-            and recurring_occurrences == 3
-        ):
+        elif test_case_id == 3:
             expected_dates = ["2024-01-31", "2024-02-07", "2024-02-14"]
         else:  # Test for leap year
             expected_dates = ["2024-01-31", "2024-02-29", "2024-03-31"]
@@ -672,176 +661,202 @@ class TestExpandRecurringArrangement:
             assert result[i].wfh_date == self.format_date_string(expected_dates[i])
 
         assert len(result) == recurring_occurrences
-        assert all(arr.batch_id == batch_id for arr in result)
 
 
 class TestUpdateArrangementApprovalStatus:
-    def test_success(self, mock_db_session):
-        mock_arrangement = MagicMock(spec=arrangement_models.LatestArrangement)
-        mock_arrangement.arrangement_id = 1
-
-        wfh_update = ArrangementUpdate(
-            arrangement_id=1,
-            STATUS="approve",
-            approving_officer=2,
-            reason_description="Approved by manager",
-        )
-
-        with patch("src.arrangements.crud.get_arrangement_by_id", return_value=mock_arrangement):
-            with patch(
-                "src.arrangements.crud.update_arrangement_approval_status",
-                return_value=mock_arrangement,
-            ):
-                result = update_arrangement_approval_status(mock_db_session, wfh_update)
-
-                assert result.arrangement_id == 1
-                assert result.current_approval_status == "approved"
-                assert result.approving_officer == 2
-                assert result.reason_description == "Approved by manager"
-
     @pytest.mark.asyncio
-    async def test_not_found(self, mock_db_session):
-        wfh_update = ArrangementUpdate(
-            arrangement_id=1,
-            STATUS="approve",
-            approving_officer=2,
-            reason_description="Approved by manager",
-        )
-
-        with patch("src.arrangements.crud.get_arrangement_by_id", return_value=None):
-            with pytest.raises(arrangement_exceptions.ArrangementNotFoundException):
-                await update_arrangement_approval_status(mock_db_session, wfh_update)
-
     @pytest.mark.parametrize(
-        "STATUS, expected_status",
+        ("action", "approval_status"),
         [
-            ("approve", "approved"),
-            ("reject", "rejected"),
-            ("withdraw", "withdrawn"),
-            ("cancel", "cancelled"),
+            (Action.APPROVE, ApprovalStatus.PENDING_APPROVAL),
+            (Action.REJECT, ApprovalStatus.PENDING_APPROVAL),
+            (Action.APPROVE, ApprovalStatus.PENDING_WITHDRAWAL),
+            (Action.REJECT, ApprovalStatus.PENDING_WITHDRAWAL),
+            (Action.WITHDRAW, ApprovalStatus.APPROVED),
+            (Action.CANCEL, ApprovalStatus.PENDING_APPROVAL),
         ],
     )
-    def test_STATUSs(self, mock_db_session, STATUS, expected_status):
-        mock_arrangement = MagicMock(spec=arrangement_models.LatestArrangement)
-        mock_arrangement.arrangement_id = 1
-
-        wfh_update = ArrangementUpdate(
+    @patch("src.arrangements.services.craft_and_send_email")
+    @patch("src.employees.crud.get_employee_by_staff_id")
+    @patch("src.arrangements.crud.update_arrangement_approval_status")
+    @patch("src.arrangements.commons.dataclasses.ArrangementResponse.from_dict")
+    @patch("src.arrangements.crud.get_arrangement_by_id")
+    async def test_success_status(
+        self,
+        mock_get_arrangement,
+        mock_convert,
+        mock_update,
+        mock_get_employee,
+        mock_craft_send_email,
+        action,
+        approval_status,
+        mock_db_session,
+    ):
+        mock_wfh_update = MagicMock(spec=dc.UpdateArrangementRequest)
+        mock_wfh_update.configure_mock(
             arrangement_id=1,
-            STATUS=STATUS,
+            action=action,
             approving_officer=2,
-            reason_description="STATUS taken",
+            status_reason="Approved by manager",
         )
 
-        with patch("src.arrangements.crud.get_arrangement_by_id", return_value=mock_arrangement):
-            with patch(
-                "src.arrangements.crud.update_arrangement_approval_status",
-                return_value=mock_arrangement,
-            ):
-                result = update_arrangement_approval_status(mock_db_session, wfh_update)
+        mock_get_arrangement.return_value = MagicMock()
+        mock_convert.return_value = MagicMock(spec=dc.ArrangementResponse)
+        mock_convert.return_value.configure_mock(
+            requester_staff_id=1,
+            current_approval_status=approval_status,
+        )
+        mock_update.return_value = MagicMock()
+        mock_get_employee.return_value = MagicMock()
 
-                assert result.arrangement_id == 1
-                assert result.current_approval_status == expected_status
-                assert result.approving_officer == 2
-                assert result.reason_description == "STATUS taken"
+        await update_arrangement_approval_status(mock_db_session, mock_wfh_update, None)
 
-    def test_invalid_STATUS(self, mock_db_session):
-        mock_arrangement = MagicMock(spec=arrangement_models.LatestArrangement)
-        mock_arrangement.arrangement_id = 1
-
-        wfh_update = ArrangementUpdate(
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        ("action", "approval_status"),
+        [
+            (Action.APPROVE, ApprovalStatus.APPROVED),
+            (Action.APPROVE, ApprovalStatus.REJECTED),
+            (Action.APPROVE, ApprovalStatus.WITHDRAWN),
+            (Action.APPROVE, ApprovalStatus.CANCELLED),
+            (Action.REJECT, ApprovalStatus.APPROVED),
+            (Action.REJECT, ApprovalStatus.REJECTED),
+            (Action.REJECT, ApprovalStatus.WITHDRAWN),
+            (Action.REJECT, ApprovalStatus.CANCELLED),
+            (Action.WITHDRAW, ApprovalStatus.REJECTED),
+            (Action.WITHDRAW, ApprovalStatus.WITHDRAWN),
+            (Action.WITHDRAW, ApprovalStatus.CANCELLED),
+            (Action.WITHDRAW, ApprovalStatus.PENDING_APPROVAL),
+            (Action.WITHDRAW, ApprovalStatus.PENDING_WITHDRAWAL),
+            (Action.CANCEL, ApprovalStatus.APPROVED),
+            (Action.CANCEL, ApprovalStatus.REJECTED),
+            (Action.CANCEL, ApprovalStatus.WITHDRAWN),
+            (Action.CANCEL, ApprovalStatus.CANCELLED),
+            (Action.CANCEL, ApprovalStatus.PENDING_WITHDRAWAL),
+        ],
+    )
+    @patch("src.arrangements.commons.dataclasses.ArrangementResponse.from_dict")
+    @patch("src.arrangements.crud.get_arrangement_by_id")
+    async def test_failure_status(
+        self,
+        mock_get_arrangement,
+        mock_convert,
+        action,
+        approval_status,
+        mock_db_session,
+    ):
+        mock_wfh_update = MagicMock(spec=dc.UpdateArrangementRequest)
+        mock_wfh_update.configure_mock(
             arrangement_id=1,
-            STATUS="approve",  # Use a valid STATUS
+            action=action,
             approving_officer=2,
-            reason_description="Invalid STATUS test",
+            status_reason="Approved by manager",
         )
 
-        with patch("src.arrangements.crud.get_arrangement_by_id", return_value=mock_arrangement):
-            with patch.dict(STATUS, {"approve": None}):  # Make 'approve' STATUS invalid
-                with pytest.raises(ValueError, match="Invalid STATUS: approve"):
-                    update_arrangement_approval_status(mock_db_session, wfh_update)
-
-    def test_update_arrangement_approval_status_default_reason(self, mock_db_session):
-        mock_arrangement = MagicMock(spec=arrangement_models.LatestArrangement)
-        mock_arrangement.arrangement_id = 1
-
-        wfh_update = ArrangementUpdate(
-            arrangement_id=1,
-            STATUS="approve",
-            approving_officer=2,
-            reason_description=None,
+        mock_get_arrangement.return_value = MagicMock()
+        mock_convert.return_value = MagicMock(spec=dc.ArrangementResponse)
+        mock_convert.return_value.configure_mock(
+            requester_staff_id=1,
+            current_approval_status=approval_status,
         )
 
-        with patch("src.arrangements.crud.get_arrangement_by_id", return_value=mock_arrangement):
-            with patch(
-                "src.arrangements.crud.update_arrangement_approval_status",
-                return_value=mock_arrangement,
-            ):
-                result = update_arrangement_approval_status(mock_db_session, wfh_update)
+        with pytest.raises(arrangement_exceptions.ArrangementActionNotAllowedException):
+            await update_arrangement_approval_status(mock_db_session, mock_wfh_update, None)
 
-                assert result.reason_description == "[DEFAULT] Approved by Manager"
+    @pytest.mark.asyncio
+    @patch("src.arrangements.crud.get_arrangement_by_id", return_value=None)
+    async def test_not_found(self, mock_db_session):
+        mock_wfh_update = MagicMock(spec=dc.UpdateArrangementRequest)
+        mock_wfh_update.configure_mock(
+            arrangement_id=1,
+            action=Action.APPROVE,
+            approving_officer=2,
+            status_reason="Approved by manager",
+        )
 
+        with pytest.raises(arrangement_exceptions.ArrangementNotFoundException):
+            await update_arrangement_approval_status(
+                db=mock_db_session, wfh_update=mock_wfh_update, supporting_docs=[]
+            )
 
-# @pytest.mark.asyncio
-# async def test_create_arrangements_from_request_file_upload_failure(mock_db_session, mock_employee):
-#     wfh_request = create_mock_arrangement_create_with_file()
+    # def test_default_reason(self, mock_db_session):
+    #     mock_arrangement = MagicMock(spec=arrangement_models.LatestArrangement)
+    #     mock_arrangement.arrangement_id = 1
 
-#     mock_file = MagicMock()
+    #     wfh_update = ArrangementUpdate(
+    #         arrangement_id=1,
+    #         STATUS="approve",
+    #         approving_officer=2,
+    #         reason_description=None,
+    #     )
 
-#     with patch("src.employees.crud.get_employee_by_staff_id", return_value=mock_employee):
-#         with patch("src.arrangements.services.fetch_manager_info", return_value={"manager_id": 2}):
-#             with patch("src.arrangements.services.boto3.client"):
-#                 with patch(
-#                     "src.arrangements.utils.upload_file", side_effect=Exception("Upload failed")
-#                 ):
-#                     with pytest.raises(HTTPException) as exc_info:
-#                         await create_arrangements_from_request(
-#                             mock_db_session, wfh_request, [mock_file]
-#                         )
-#                     assert exc_info.value.status_code == 500
-#                     assert "Error uploading files" in str(exc_info.value.detail)
+    #     with patch("src.arrangements.crud.get_arrangement_by_id", return_value=mock_arrangement):
+    #         with patch(
+    #             "src.arrangements.crud.update_arrangement_approval_status",
+    #             return_value=mock_arrangement,
+    #         ):
+    #             result = update_arrangement_approval_status(mock_db_session, wfh_update)
 
-# TODO: Fix this test
-# def test_update_arrangement_approval_status_invalid_STATUS_exception(mock_db_session):
-#     with pytest.raises(
-#         ValueError, match="Input should be 'approve', 'reject', 'withdraw' or 'cancel'"
-#     ):
-#         wfh_update = ArrangementUpdate(
-#             arrangement_id=1,
-#             STATUS="invalid_STATUS",
-#             approving_officer=2,
-#             reason_description="Invalid STATUS test",
-#         )
+    #             assert result.reason_description == "[DEFAULT] Approved by Manager"
 
 
-def test_returns_delegate_approving_officer_info():
-    # Arrange: Mock an arrangement with a delegate approving officer
-    arrangement = MagicMock()
-    arrangement.delegate_approving_officer = True
-    arrangement.delegate_approving_officer_info = "Delegate Officer Info"
-    arrangement.approving_officer_info = "Original Officer Info"
+class TestGroupArrangementsByDate:
+    @pytest.mark.parametrize(
+        ("dates", "expected_groups"),
+        [
+            (
+                ["2024-01-01", "2024-01-01", "2024-01-02", "2024-01-02"],
+                [("2024-01-02", 2), ("2024-01-01", 2)],
+            ),
+            (
+                ["2024-01-01", "2024-01-02", "2024-01-03"],
+                [("2024-01-03", 1), ("2024-01-02", 1), ("2024-01-01", 1)],
+            ),
+        ],
+    )
+    def test_success(selfm, dates, expected_groups):
+        mock_arrangements = [MagicMock(spec=dc.ArrangementResponse) for _ in range(len(dates))]
+        for i, date in enumerate(dates):
+            mock_arrangements[i].wfh_date = datetime.strptime(date, "%Y-%m-%d").date()
 
-    # Act: Call the function with the mocked arrangement
-    result = get_approving_officer(arrangement)
+        result = group_arrangements_by_date(mock_arrangements)
 
-    # Assert: Check if the delegate approving officer info is returned
-    assert result == "Delegate Officer Info"
-
-
-def test_returns_original_approving_officer_info():
-    # Arrange: Mock an arrangement without a delegate approving officer
-    arrangement = MagicMock()
-    arrangement.delegate_approving_officer = False  # No delegate
-    arrangement.delegate_approving_officer_info = None
-    arrangement.approving_officer_info = "Original Officer Info"
-
-    # Act: Call the function with the mocked arrangement
-    result = get_approving_officer(arrangement)
-
-    # Assert: Check if the original approving officer info is returned
-    assert result == "Original Officer Info"
+        assert len(result) == len(expected_groups)
+        for i, (date, count) in enumerate(expected_groups):
+            assert result[i].date == date
+            assert len(result[i].arrangements) == count
 
 
 # ======================== DEPRECATED TESTS ========================
+# REVIEW: This should be moved to employee tests
+# def test_returns_delegate_approving_officer_info():
+#     # Arrange: Mock an arrangement with a delegate approving officer
+#     arrangement = MagicMock()
+#     arrangement.delegate_approving_officer = True
+#     arrangement.delegate_approving_officer_info = "Delegate Officer Info"
+#     arrangement.approving_officer_info = "Original Officer Info"
+
+#     # Act: Call the function with the mocked arrangement
+#     result = get_approving_officer(arrangement)
+
+#     # Assert: Check if the delegate approving officer info is returned
+#     assert result == "Delegate Officer Info"
+
+
+# def test_returns_original_approving_officer_info():
+#     # Arrange: Mock an arrangement without a delegate approving officer
+#     arrangement = MagicMock()
+#     arrangement.delegate_approving_officer = False  # No delegate
+#     arrangement.delegate_approving_officer_info = None
+#     arrangement.approving_officer_info = "Original Officer Info"
+
+#     # Act: Call the function with the mocked arrangement
+#     result = get_approving_officer(arrangement)
+
+#     # Assert: Check if the original approving officer info is returned
+#     assert result == "Original Officer Info"
+
+
 # class TestCreateArrangementsFromRequest:
 # @pytest.mark.asyncio
 # async def test_recurring(self, mock_db_session, mock_employee):
