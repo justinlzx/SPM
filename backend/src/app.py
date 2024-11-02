@@ -18,6 +18,10 @@ from .init_db import load_data
 
 from dotenv import load_dotenv
 from main import ENV
+from fastapi import FastAPI
+from contextlib import asynccontextmanager
+from .arrangements.scheduler import scheduler, auto_reject_old_requests
+from apscheduler.triggers.cron import CronTrigger
 
 """
 Create a context manager to handle the lifespan of the FastAPI application
@@ -51,7 +55,23 @@ async def lifespan(app: FastAPI):
     # Load arrangements data from CSV
     load_data.load_latest_arrangement_data_from_csv("./src/init_db/latest_arrangement.csv")
 
+    # Startup: Initialize services before the application starts
+    print("Starting scheduler...")
+    scheduler.add_job(
+        auto_reject_old_requests,
+        CronTrigger(hour=0, minute=0),
+        id="auto_reject_job",
+        replace_existing=True,
+        misfire_grace_time=300,  # 5 minutes grace time
+        max_instances=1,  # Ensure only one instance runs at a time
+    )
+    scheduler.start()
+
     yield
+
+    # Shutdown: Clean up resources when the application is shutting down
+    print("Stopping scheduler...")
+    scheduler.shutdown(wait=False)
 
     # Drop all tables
     arrangement_models.Base.metadata.drop_all(bind=engine)
@@ -78,6 +98,7 @@ app.add_middleware(
     allow_headers=["*"],
     expose_headers=["*"],
 )
+
 
 # Include the auth and user routes
 app.include_router(auth_router, prefix="/auth", tags=["Authentication"])
