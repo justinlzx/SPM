@@ -2,7 +2,7 @@ from datetime import date, datetime
 from typing import Annotated, List, Optional
 
 from fastapi import Form
-from pydantic import Field, field_serializer
+from pydantic import Field, ValidationInfo, field_serializer, field_validator
 
 from ...base import BaseSchema
 from .enums import Action, ApprovalStatus, RecurringFrequencyUnit, WfhType
@@ -58,6 +58,17 @@ class PersonalArrangementsRequest(BaseSchema):
 
 
 class CreateArrangementRequest(BaseSchema):
+    @field_validator(
+        "recurring_frequency_number", "recurring_frequency_unit", "recurring_occurrences"
+    )
+    def validate_recurring_fields(cls, v: str, info: ValidationInfo) -> str:
+        if info.data.get("is_recurring"):
+            if not v:
+                raise ValueError(
+                    "When 'is_recurring' is True, 'recurring_frequency_number', 'recurring_frequency_unit', and 'recurring_occurrences' must have a non-zero value"
+                )
+        return v
+
     requester_staff_id: int = Field(
         ...,
         title="Staff ID of the employee who made the request",
@@ -153,6 +164,14 @@ class ArrangementResponse(BaseSchema):
     def serialize_update_datetime(self, update_datetime: datetime) -> str:
         return update_datetime.isoformat()
 
+    @field_serializer("wfh_type")
+    def serialize_wfh_type(self, wfh_type: WfhType) -> str:
+        return wfh_type.value
+
+    @field_serializer("current_approval_status")
+    def serialize_current_approval_status(self, current_approval_status: ApprovalStatus) -> str:
+        return current_approval_status.value
+
     arrangement_id: int = Field(
         ...,
         title="ID of the arrangement",
@@ -225,6 +244,22 @@ class ArrangementLogResponse(BaseSchema):
     def serialize_update_datetime(self, update_datetime: datetime) -> str:
         return update_datetime.isoformat()
 
+    @field_serializer("wfh_type")
+    def serialize_wfh_type(self, wfh_type: WfhType) -> str:
+        return wfh_type.value
+
+    @field_serializer("action")
+    def serialize_action(self, action: Action) -> str:
+        return action.value
+
+    @field_serializer("previous_approval_status")
+    def serialize_previous_approval_status(self, previous_approval_status: ApprovalStatus) -> str:
+        return previous_approval_status.value
+
+    @field_serializer("updated_approval_status")
+    def serialize_updated_approval_status(self, updated_approval_status: ApprovalStatus) -> str:
+        return updated_approval_status.value
+
     log_id: int = Field(
         ...,
         title="ID of the log",
@@ -232,6 +267,10 @@ class ArrangementLogResponse(BaseSchema):
     update_datetime: datetime = Field(
         ...,
         title="Datetime that the log was last updated",
+    )
+    arrangement_id: int = Field(
+        ...,
+        title="ID of the arrangement",
     )
     requester_staff_id: int = Field(
         ...,
