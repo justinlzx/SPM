@@ -133,6 +133,7 @@ def create_arrangement_log(
     logger.info(f"Crud: Creating arrangement log for action {action}")
 
     arrangement_log = models.ArrangementLog(
+        arrangement_id=arrangement.arrangement_id,
         update_datetime=arrangement.update_datetime,
         requester_staff_id=arrangement.requester_staff_id,
         wfh_date=arrangement.wfh_date,
