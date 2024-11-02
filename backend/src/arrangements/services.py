@@ -21,6 +21,7 @@ from . import crud
 from .commons import exceptions
 from .commons.dataclasses import (
     ArrangementFilters,
+    ArrangementLogResponse,
     ArrangementResponse,
     CreateArrangementRequest,
     CreatedArrangementGroupByDate,
@@ -114,22 +115,6 @@ def get_subordinates_arrangements(
     return arrangements, pagination_meta
 
 
-def group_arrangements_by_date(
-    arrangements: List[ArrangementResponse],
-) -> List[CreatedArrangementGroupByDate]:
-    arrangements_dict = {}
-
-    logger.info(f"Grouping {len(arrangements)} arrangements by date")
-    for arrangement in arrangements:
-        arrangements_dict.setdefault(arrangement.wfh_date.isoformat(), []).append(arrangement)
-
-    result = []
-    for key, val in arrangements_dict.items():
-        result.append(CreatedArrangementGroupByDate(date=key, arrangements=val))
-    logger.info(f"Service: Grouped into {len(result)} dates")
-    return result
-
-
 def get_team_arrangements(
     db: Session,
     staff_id: int,
@@ -183,6 +168,17 @@ def get_team_arrangements(
     return arrangements, pagination_meta
 
 
+def get_arrangement_logs(
+    db: Session,
+) -> List[ArrangementLogResponse]:
+    arrangement_logs = crud.get_arrangement_logs(db)
+    arrangement_logs = [
+        ArrangementLogResponse.from_dict(arrangement) for arrangement in arrangement_logs
+    ]
+
+    return arrangement_logs
+
+
 async def create_arrangements_from_request(
     db: Session,
     wfh_request: CreateArrangementRequest,
@@ -212,6 +208,7 @@ async def create_arrangements_from_request(
         file_paths = []
         created_arrangements = []
 
+        logger.info(f"Service: Uploading {len(supporting_docs)} supporting documents to S3")
         for file in supporting_docs:
             if file:
                 response = await upload_file(
@@ -222,6 +219,7 @@ async def create_arrangements_from_request(
                 )
 
                 file_paths.append(response["file_url"])
+        logger.info(f"Service: Successfully uploaded {len(file_paths)} supporting documents to S3")
 
         # Update request with the file paths to the documents in S3
         wfh_request.supporting_doc_1 = file_paths[0] if file_paths else None
@@ -279,28 +277,6 @@ async def create_arrangements_from_request(
     # TODO: Email notification error
 
 
-def expand_recurring_arrangement(
-    request: CreateArrangementRequest,
-) -> List[CreateArrangementRequest]:
-    arrangements_list = []
-
-    for i in range(request.recurring_occurrences):
-        arrangement_copy = replace(request)
-
-        if request.recurring_frequency_unit.value == "week":
-            arrangement_copy.wfh_date = request.wfh_date + relativedelta(
-                weeks=i * request.recurring_frequency_number
-            )
-        else:
-            arrangement_copy.wfh_date = request.wfh_date + relativedelta(
-                months=i * request.recurring_frequency_number
-            )
-
-        arrangements_list.append(arrangement_copy)
-
-    return arrangements_list
-
-
 async def update_arrangement_approval_status(
     db: Session, wfh_update: UpdateArrangementRequest, supporting_docs: List[File]
 ) -> ArrangementResponse:
@@ -356,6 +332,44 @@ async def update_arrangement_approval_status(
     )
 
     return updated_arrangement
+
+
+def group_arrangements_by_date(
+    arrangements: List[ArrangementResponse],
+) -> List[CreatedArrangementGroupByDate]:
+    arrangements_dict = {}
+
+    logger.info(f"Grouping {len(arrangements)} arrangements by date")
+    for arrangement in arrangements:
+        arrangements_dict.setdefault(arrangement.wfh_date.isoformat(), []).append(arrangement)
+
+    result = []
+    for key, val in arrangements_dict.items():
+        result.append(CreatedArrangementGroupByDate(date=key, arrangements=val))
+    logger.info(f"Service: Grouped into {len(result)} dates")
+    return result
+
+
+def expand_recurring_arrangement(
+    request: CreateArrangementRequest,
+) -> List[CreateArrangementRequest]:
+    arrangements_list = []
+
+    for i in range(request.recurring_occurrences):
+        arrangement_copy = replace(request)
+
+        if request.recurring_frequency_unit.value == "week":
+            arrangement_copy.wfh_date = request.wfh_date + relativedelta(
+                weeks=i * request.recurring_frequency_number
+            )
+        else:
+            arrangement_copy.wfh_date = request.wfh_date + relativedelta(
+                months=i * request.recurring_frequency_number
+            )
+
+        arrangements_list.append(arrangement_copy)
+
+    return arrangements_list
 
 
 # ============================ DEPRECATED FUNCTIONS ============================

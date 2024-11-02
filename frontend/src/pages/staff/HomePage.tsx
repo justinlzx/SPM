@@ -1,11 +1,11 @@
-import React, { useContext, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom'; 
-import { UserContext } from '../../context/UserContextProvider';
-import AddIcon from '@mui/icons-material/Add';
-import { Button, Box, Container, Typography } from '@mui/material';
-import DashboardCards from '../../common/DashboardCards';
-import { DelegateButton } from '../manager/DelegateButton';
-import { PersonalRequests }  from './PersonalRequests';
+import { useContext, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { UserContext } from "../../context/UserContextProvider";
+import AddIcon from "@mui/icons-material/Add";
+import { Button, Box, Container, Typography } from "@mui/material";
+import DashboardCards from "../../common/DashboardCards";
+import { DelegateButton } from "../manager/DelegateButton";
+import { PersonalRequests } from "./PersonalRequests";
 
 export const HomePage = () => {
   const navigate = useNavigate();
@@ -17,9 +17,13 @@ export const HomePage = () => {
     }
   }, [user, navigate]);
 
-  const storedUser = localStorage.getItem('user');
+  const storedUser = localStorage.getItem("user");
   const userName = storedUser
-    ? storedUser.split('@')[0].split('.').map(part => part[0].toUpperCase() + part.slice(1).toLowerCase()).join(' ')
+    ? storedUser
+        .split("@")[0]
+        .split(".")
+        .map((part) => part[0].toUpperCase() + part.slice(1).toLowerCase())
+        .join(" ")
     : "Guest";
 
   const handleCreateApplication = (path: string) => {
@@ -33,12 +37,12 @@ export const HomePage = () => {
           Welcome back, {userName}
         </Typography>
         <DashboardCards />
-        
+
         <Button
           variant="contained"
           color="primary"
           startIcon={<AddIcon />}
-          onClick={() => handleCreateApplication('/create-request')}
+          onClick={() => handleCreateApplication("/create-request")}
         >
           Create a WFH Request
         </Button>

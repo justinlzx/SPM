@@ -175,6 +175,25 @@ def get_team_arrangements(
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.get("/logs/all", summary="Get all arrangement logs")
+def get_arrangement_logs(db: Session = Depends(get_db)) -> JSendResponse:
+    try:
+        logger.info("Route: Fetching arrangement logs")
+        data = services.get_arrangement_logs(db)
+        logger.info(f"Route: Found {len(data)} logs")
+
+        logger.info(data[0])
+
+        arrangement_logs = [schemas.ArrangementLogResponse(**asdict(log)) for log in data]
+
+        return JSendResponse(
+            status="success",
+            data=arrangement_logs,
+        )
+    except SQLAlchemyError as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.post("/request")
 async def create_wfh_request(
     request: schemas.CreateArrangementRequest = Depends(schemas.CreateArrangementRequest.as_form),

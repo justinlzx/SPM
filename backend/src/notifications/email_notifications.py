@@ -21,6 +21,27 @@ load_dotenv()
 BASE_URL = getenv("BACKEND_BASE_URL", "http://localhost:8000")
 
 
+async def send_email(to_email: str, subject: str, content: str):
+    """Sends an email by making a POST request to the /email/sendemail route."""
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                f"{BASE_URL}/email/sendemail",  # Use the base URL from environment variables
+                data={"to_email": to_email, "subject": subject, "content": content},
+            )
+            # Check if the response is successful
+            if response.status_code != 200:
+                raise HTTPException(status_code=response.status_code, detail=response.text)
+
+            return response.json()
+
+    except httpx.RequestError as exc:
+        raise HTTPException(
+            status_code=500,
+            detail=f"An error occurred while sending the email: {str(exc)}",
+        )
+
+
 async def craft_and_send_email(
     employee: employee_models.Employee,
     arrangements: List[ArrangementResponse],
@@ -29,6 +50,7 @@ async def craft_and_send_email(
     manager: employee_models.Employee,
     error_message: Optional[str] = None,
 ):
+    logger.info("Crafting and sending email notifications...")
     if error_message is not None and error_message == "":
         raise ValueError("Error message cannot be an empty string.")
 
@@ -77,20 +99,55 @@ async def craft_and_send_email(
         )
 
 
-def format_details(arrangements: List[ArrangementResponse]):
-    return "\n".join(
-        [
-            f"Request ID: {arrangement.arrangement_id}\n"
-            f"WFH Date: {arrangement.wfh_date}\n"
-            f"Type: {arrangement.wfh_type}\n"
-            f"Reason for WFH Request: {arrangement.reason_description}\n"
-            f"Batch ID: {arrangement.batch_id}\n"
-            f"Request Status: {arrangement.current_approval_status}\n"
-            f"Updated At: {arrangement.update_datetime}\n"
-            # f"Approval Reason: {arrangement.reason_description}\n"
-            for arrangement in arrangements
-        ]
-    )
+def craft_email_content(
+    employee: employee_models.Employee,
+    arrangements: List[ArrangementResponse],
+    action: Action,
+    current_approval_status: ApprovalStatus,
+    manager: employee_models.Employee,
+    error_message: Optional[str] = None,
+):
+    formatted_details = format_details(arrangements, action)
+
+    result = {
+        "employee": {
+            "subject": format_email_subject("employee", action, current_approval_status),
+            "content": format_email_body(employee, formatted_details),
+        },
+        "manager": {
+            "subject": format_email_subject("manager", action, current_approval_status),
+            "content": format_email_body(manager, formatted_details),
+        },
+    }
+
+    # TODO: Handle failed actions
+    # if action == "create":
+    #     result = result.get("failure") if error_message else result.get("success")
+
+    return result
+
+
+def format_details(arrangements: List[ArrangementResponse], action: Action):
+
+    details = []
+    for arrangement in arrangements:
+        status_change_reason = ""
+        if action != Action.CREATE:
+            status_change_reason = f"Reason for Status Change: {arrangement.status_reason}\n"
+        details.append(
+            (
+                f"Request ID: {arrangement.arrangement_id}\n"
+                f"WFH Date: {arrangement.wfh_date}\n"
+                f"Type: {arrangement.wfh_type.value}\n"
+                f"Reason for WFH Request: {arrangement.reason_description}\n"
+                f"Batch ID: {arrangement.batch_id}\n"
+                f"Request Status: {arrangement.current_approval_status.value}\n"
+                f"Updated At: {arrangement.update_datetime}\n"
+                f"{status_change_reason}"
+            )
+        )
+
+    return "\n".join(details)
 
 
 def format_email_subject(role: str, action: Action, current_approval_status: ApprovalStatus):
@@ -138,55 +195,6 @@ def format_email_body(
     body += formatted_details
     body += "\n\nThis email is auto-generated. Please do not reply to this email. Thank you."
     return body
-
-
-def craft_email_content(
-    employee: employee_models.Employee,
-    arrangements: List[ArrangementResponse],
-    action: Action,
-    current_approval_status: ApprovalStatus,
-    manager: employee_models.Employee,
-    error_message: Optional[str] = None,
-):
-    formatted_details = format_details(arrangements)
-
-    result = {
-        "employee": {
-            "subject": format_email_subject("employee", action, current_approval_status),
-            "content": format_email_body(employee, formatted_details),
-        },
-        "manager": {
-            "subject": format_email_subject("manager", action, current_approval_status),
-            "content": format_email_body(manager, formatted_details),
-        },
-    }
-
-    # TODO: Handle failed actions
-    # if action == "create":
-    #     result = result.get("failure") if error_message else result.get("success")
-
-    return result
-
-
-async def send_email(to_email: str, subject: str, content: str):
-    """Sends an email by making a POST request to the /email/sendemail route."""
-    try:
-        async with httpx.AsyncClient() as client:
-            response = await client.post(
-                f"{BASE_URL}/email/sendemail",  # Use the base URL from environment variables
-                data={"to_email": to_email, "subject": subject, "content": content},
-            )
-            # Check if the response is successful
-            if response.status_code != 200:
-                raise HTTPException(status_code=response.status_code, detail=response.text)
-
-            return response.json()
-
-    except httpx.RequestError as exc:
-        raise HTTPException(
-            status_code=500,
-            detail=f"An error occurred while sending the email: {str(exc)}",
-        )
 
 
 def craft_email_content_for_delegation(
