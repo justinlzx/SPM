@@ -1,7 +1,7 @@
 name: Backend CI
 
 on:
-#   workflow_dispatch:  # This can be triggered manually, or you can uncomment the 'push' or 'pull_request' if needed.
+#   workflow_dispatch:  # This can be triggered manually, or you can uncomment the 'push' or 'pull_request' if needed!
 # #   push:
 # #     branches:
 # #       - main
