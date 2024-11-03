@@ -29,6 +29,8 @@ import CheckIcon from "@mui/icons-material/Check";
 import CloseIcon from "@mui/icons-material/Close";
 import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import { Filters } from "../../common/Filters";
+import { fetchEmployeeByStaffId } from "../../hooks/employee/employee.utils";
 import {
   ApprovalStatus,
   Action,
@@ -43,6 +45,7 @@ const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 type TWFHRequest = {
   arrangement_id: number;
   requester_staff_id: number;
+  requester_name?:string; 
   wfh_date: string;
   wfh_type: string;
   current_approval_status: ApprovalStatus;
@@ -55,6 +58,7 @@ type TWFHRequest = {
 
 export const PendingRequests = () => {
   const [actionRequests, setActionRequests] = useState<TWFHRequest[]>([]);
+  const [filteredRequests, setFilteredRequests] = useState<TWFHRequest[]>([]);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const { user } = useContext(UserContext);
@@ -64,6 +68,7 @@ export const PendingRequests = () => {
   const [snackbarMessage, setSnackbarMessage] = useState("");
   const [alertStatus, setAlertStatus] = useState<AlertStatus>(AlertStatus.Info);
   const [loading, setLoading] = useState(true);
+  const [filters, setFilters] = useState({});
 
   useEffect(() => {
     const fetchPendingRequestsFromSubordinates = async () => {
@@ -84,7 +89,21 @@ export const PendingRequests = () => {
         const requests = response.data.data.flatMap(
           (dateEntry: any) => dateEntry.pending_arrangements
         );
-        setActionRequests(requests);
+
+        // Fetch name for each requester
+        const requestsWithNames = await Promise.all(
+          requests.map(async (request: TWFHRequest) => {
+            const employee = await fetchEmployeeByStaffId(request.requester_staff_id);
+            return {
+              ...request,
+              requester_name: employee ? `${employee.staff_fname} ${employee.staff_lname}` : "N/A",
+            };
+          })
+        );
+
+        setActionRequests(requestsWithNames);
+        setFilteredRequests(requestsWithNames);
+        console.log(requests)
         console.log(requests);
       } catch (error) {
         console.error("Failed to fetch subordinates' requests:", error);
@@ -97,6 +116,35 @@ export const PendingRequests = () => {
     };
     fetchPendingRequestsFromSubordinates();
   }, [user, userId]);
+
+  const handleApplyFilters = (newFilters: any) => {
+    setFilters(newFilters);
+  
+    const filtered = actionRequests.filter((request) => {
+      const matchesDate =
+        (!newFilters.startDate || new Date(request.wfh_date) >= newFilters.startDate) &&
+        (!newFilters.endDate || new Date(request.wfh_date) <= newFilters.endDate);
+  
+      const matchesStatus =
+        newFilters.status.length === 0 || newFilters.status.includes(request.current_approval_status);
+  
+      const searchQuery = newFilters.searchQuery.toLowerCase();
+  
+      const matchesSearchQuery =
+        !searchQuery ||
+        request.reason_description.toLowerCase().includes(searchQuery) ||
+        request.wfh_type.toLowerCase().includes(searchQuery) ||
+        request.wfh_date.includes(searchQuery) ||
+        request.requester_staff_id.toString().includes(searchQuery) ||
+        (request.requester_name && request.requester_name.toLowerCase().includes(searchQuery)); // Check requester_name
+  
+      return matchesDate && matchesStatus && matchesSearchQuery;
+    });
+  
+    setFilteredRequests(filtered);
+  };
+  
+  
 
   const handleRequestAction = async (
     action: Action,
@@ -143,6 +191,10 @@ export const PendingRequests = () => {
     }
   };
 
+  const handleClearFilters = () => {
+    setFilteredRequests(actionRequests); 
+  };
+
   const handleCloseSnackBar = () => {
     setShowSnackbar(false);
   };
@@ -160,6 +212,10 @@ export const PendingRequests = () => {
       <Typography variant="h4" gutterBottom align="left" sx={{ marginTop: 4 }}>
         Action Required
       </Typography>
+
+      {/* Filters Component */}
+      <Filters onApplyFilters={handleApplyFilters} onClearFilters={handleClearFilters} />
+
       <TableContainer
         component={Paper}
         sx={{ marginTop: 3, textAlign: "center" }}
@@ -168,44 +224,29 @@ export const PendingRequests = () => {
           <TableHead>
             <TableRow>
               <TableCell sx={{ fontWeight: "bold" }}>Staff ID</TableCell>
+              <TableCell sx={{ fontWeight: "bold" }}>Staff Name</TableCell>
               <TableCell sx={{ fontWeight: "bold" }}>WFH Date</TableCell>
               <TableCell sx={{ fontWeight: "bold" }}>WFH Type</TableCell>
               <TableCell sx={{ fontWeight: "bold" }}>Reason</TableCell>
-              <TableCell sx={{ fontWeight: "bold" }}>
-                Supporting Documents
-              </TableCell>
+              <TableCell sx={{ fontWeight: "bold" }}>Supporting Documents</TableCell>
               <TableCell sx={{ fontWeight: "bold" }}>Action</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
-            {actionRequests.filter(
-              (request) =>
-                request.current_approval_status ===
-                  ApprovalStatus.PendingApproval ||
-                request.current_approval_status ===
-                  ApprovalStatus.PendingWithdrawal
-            ).length === 0 ? (
+            {filteredRequests.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={7} align="center">
                   No pending requests
                 </TableCell>
               </TableRow>
             ) : (
-              actionRequests
-                .filter(
-                  (request) =>
-                    request.current_approval_status ===
-                      ApprovalStatus.PendingApproval ||
-                    request.current_approval_status ===
-                      ApprovalStatus.PendingWithdrawal
-                )
-                .map((arrangement) => (
-                  <ArrangementRow
-                    key={arrangement.arrangement_id}
-                    arrangement={arrangement}
-                    handleRequestAction={handleRequestAction}
-                  />
-                ))
+              filteredRequests.map((arrangement) => (
+                <ArrangementRow
+                  key={arrangement.arrangement_id}
+                  arrangement={arrangement}
+                  handleRequestAction={handleRequestAction}
+                />
+              ))
             )}
           </TableBody>
         </Table>
@@ -214,7 +255,7 @@ export const PendingRequests = () => {
       <TablePagination
         component="div"
         rowsPerPageOptions={[10, 20, 30]}
-        count={actionRequests.length}
+        count={filteredRequests.length}
         rowsPerPage={rowsPerPage}
         page={page}
         onPageChange={(event, newPage) => setPage(newPage)}
@@ -244,6 +285,7 @@ const ArrangementRow = ({
   const {
     arrangement_id,
     requester_staff_id,
+    requester_name,
     wfh_date,
     wfh_type,
     current_approval_status,
@@ -269,6 +311,7 @@ const ArrangementRow = ({
     <>
       <TableRow key={arrangement_id}>
         <TableCell>{requester_staff_id}</TableCell>
+        <TableCell >{requester_name}</TableCell>
         <TableCell>{wfh_date}</TableCell>
         <TableCell>{wfh_type?.toUpperCase()}</TableCell>
         <TableCell sx={{ maxWidth: 200 }}>

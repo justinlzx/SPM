@@ -1,4 +1,5 @@
 import { useNavigate } from "react-router-dom";
+import { Container } from "@mui/material";
 import { PendingRequests } from "./PendingRequests";
 import { useContext } from "react";
 import { UserContext } from "../../context/UserContextProvider";
@@ -21,7 +22,7 @@ export const TeamPage = () => {
   };
 
   return (
-    <div>
+    <Container sx={{ flexGrow: 1 }}>
        { (user?.role === 1 || user?.role === 3) && (
          <Box 
          display="flex" 
@@ -40,6 +41,6 @@ export const TeamPage = () => {
       )}
       <ApprovedRequests />
       <RequestList/>
-    </div>
+    </Container>
   );
 };

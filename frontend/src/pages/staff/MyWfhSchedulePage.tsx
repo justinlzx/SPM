@@ -12,15 +12,11 @@ const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 
 export const MyWfhSchedulePage: React.FC = () => {
   const { user } = useContext(UserContext);
-  const userId = user!.id;
+  const userId = user?.id;
   const navigate = useNavigate();
 
-  useEffect(() => {
-    if (!user) {
-      navigate("/login");
-    }
-  }, [user, navigate]);
   const [requests, setRequests] = useState<TWFHRequest[]>([]);
+  const [filteredRequests, setFilteredRequests] = useState<TWFHRequest[]>([]);
   const [openSnackbar, setOpenSnackbar] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState("");
   const [snackbarSeverity, setSnackbarSeverity] = useState<"success" | "error">(
@@ -28,32 +24,87 @@ export const MyWfhSchedulePage: React.FC = () => {
   );
 
   useEffect(() => {
-    const fetchRequests = async () => {
-      if (!user || !userId) return;
+    if (!user) {
+      navigate("/login");
+    }
+  }, [user, navigate]);
 
-      try {
-        const response = await axios.get(
-          `${BACKEND_URL}/arrangements/personal/${userId}`
-        );
+  const fetchRequests = async () => {
+    if (!user || !userId) return;
 
-        const allRequests: TWFHRequest[] = response.data.data.map(
-          (request: any) => ({
-            ...request,
-          })
-        );
-        setRequests(allRequests);
-      } catch (error) {
-        console.error("Failed to fetch WFH requests:", error);
-        setSnackbarMessage(
-          "Failed to fetch WFH requests. Please try again later."
-        );
-        setSnackbarSeverity("error");
-        setOpenSnackbar(true);
-      }
-    };
+    try {
+      const response = await axios.get(
+        `${BACKEND_URL}/arrangements/personal/${userId}`
+      );
 
+      const allRequests: TWFHRequest[] = response.data.data.map(
+        (request: any) => ({
+          ...request,
+        })
+      );
+      setRequests(allRequests);
+      setFilteredRequests(allRequests); // Initialize filteredRequests with original data
+    } catch (error) {
+      console.error("Failed to fetch WFH requests:", error);
+      setSnackbarMessage(
+        "Failed to fetch WFH requests. Please try again later."
+      );
+      setSnackbarSeverity("error");
+      setOpenSnackbar(true);
+    }
+  };
+
+  useEffect(() => {
     fetchRequests();
   }, [user, userId]);
+
+  const handleApplyFilters = (filters: {
+    startDate: Date | null;
+    endDate: Date | null;
+    department: string[];
+    status: ApprovalStatus[];
+    searchQuery: string;
+    workStatus: string[];
+  }) => {
+    const { startDate, endDate, department, status, searchQuery, workStatus } = filters;
+
+    // Filter based on searchQuery and other filters
+    const filtered = requests.filter((request) => {
+      const matchesDate =
+        (!startDate || new Date(request.wfh_date) >= startDate) &&
+        (!endDate || new Date(request.wfh_date) <= endDate);
+
+      const matchesStatus =
+        status.length === 0 || status.includes(request.current_approval_status);
+
+      // const matchesDepartment =
+      //   department.length === 0 || department.includes(request.department); // Assuming department is a field
+
+      const matchesWorkStatus =
+        workStatus.length === 0 || workStatus.includes(request.wfh_type);
+
+      const matchesSearchQuery =
+        !searchQuery ||
+        request.requester_staff_id.toString().includes(searchQuery) ||
+        request.wfh_date.includes(searchQuery) ||
+        request.reason_description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        request.wfh_type.toLowerCase().includes(searchQuery.toLowerCase());
+
+      return (
+        matchesDate &&
+        matchesStatus &&
+        //matchesDepartment &&
+        matchesWorkStatus &&
+        matchesSearchQuery
+      );
+    });
+
+    setFilteredRequests(filtered);
+  };
+
+  const handleClearFilters = () => {
+    fetchRequests(); // Refetch the original data and reset filters
+  };
 
   const handleSuccess = (id: number, action: "cancel" | "withdraw") => {
     const updatedStatus =
@@ -74,7 +125,7 @@ export const MyWfhSchedulePage: React.FC = () => {
         ? "Your WFH request has been successfully cancelled!"
         : "Withdrawal Request has been sent to your manager for review."
     );
-    setSnackbarSeverity("success"); // Set severity to success
+    setSnackbarSeverity("success");
     setOpenSnackbar(true);
   };
 
@@ -85,8 +136,11 @@ export const MyWfhSchedulePage: React.FC = () => {
       <Typography variant="h4" gutterBottom align="left" sx={{ marginTop: 4 }}>
         My WFH Request Overview
       </Typography>
-      <Filters onApplyFilters={(filters) => console.log(filters)} />
-      <WFHRequestTable requests={requests} handleSuccess={handleSuccess} />
+      <Filters
+        onApplyFilters={handleApplyFilters}
+        onClearFilters={handleClearFilters}
+      />
+      <WFHRequestTable requests={filteredRequests} handleSuccess={handleSuccess} />
       <Snackbar
         open={openSnackbar}
         autoHideDuration={3000}
