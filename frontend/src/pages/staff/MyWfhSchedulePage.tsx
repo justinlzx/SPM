@@ -5,6 +5,7 @@ import { Container, Typography, Snackbar, Alert } from "@mui/material";
 import { UserContext } from "../../context/UserContextProvider";
 import { WFHRequestTable } from "../../components/WFHRequestTable";
 import { ApprovalStatus } from "../../types/status";
+import { Filters } from "../../common/Filters";
 import { TWFHRequest } from "../../types/requests";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
@@ -84,7 +85,7 @@ export const MyWfhSchedulePage: React.FC = () => {
       <Typography variant="h4" gutterBottom align="left" sx={{ marginTop: 4 }}>
         My WFH Request Overview
       </Typography>
-
+      <Filters onApplyFilters={(filters) => console.log(filters)} />
       <WFHRequestTable requests={requests} handleSuccess={handleSuccess} />
       <Snackbar
         open={openSnackbar}

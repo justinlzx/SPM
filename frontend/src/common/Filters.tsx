@@ -1,175 +1,131 @@
 import React, { useState } from "react";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
-import {
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
-  TextField,
-  Button,
-  InputAdornment,
-  IconButton,
-} from "@mui/material";
-import CalendarTodayIcon from "@mui/icons-material/CalendarToday";
+import { TextField, Checkbox, FormControl, FormGroup, FormControlLabel, Select, MenuItem, InputLabel, Button, Box, Stack } from '@mui/material';
 
-export type FilterDatePickerProps = {
-  label: string;
-  selectedDate: Date | null;
-  onChange: (date: Date | null) => void;
-};
-
-const FilterDatePicker = ({
-  label,
-  selectedDate,
-  onChange,
-}: FilterDatePickerProps) => {
-  return (
-    <DatePicker
-      selected={selectedDate}
-      onChange={onChange}
-      dateFormat="dd/MM/yyyy"
-      placeholderText={label}
-      customInput={
-        <TextField
-          variant="outlined"
-          sx={{ minWidth: 200 }}
-          InputProps={{
-            endAdornment: (
-              <InputAdornment position="end">
-                <IconButton>
-                  <CalendarTodayIcon />
-                </IconButton>
-              </InputAdornment>
-            ),
-          }}
-        />
-      }
-    />
-  );
-};
-
-type TFilterProps = {
-  onApply: (filters: {
+interface FiltersProps {
+  onApplyFilters: (filters: {
     startDate: Date | null;
     endDate: Date | null;
-    wfhType: string;
-    requestStatus: string[];
-    departments: string[];
-    workType: string;
+    department: string[];
+    status: string;
+    name: string;
+    approver: string;
+    workStatus: string[];
   }) => void;
-};
+}
 
-export const Filters = ({ onApply }: TFilterProps) => {
+export const Filters: React.FC<FiltersProps> = ({ onApplyFilters }) => {
   const [startDate, setStartDate] = useState<Date | null>(null);
   const [endDate, setEndDate] = useState<Date | null>(null);
-  const [wfhType, setWfhType] = useState<string>("");
-  const [requestStatus, setRequestStatus] = useState<string[]>([]);
-  const [sortByDate, setSortByDate] = useState<"asc" | "desc">("asc");
-  const [error, setError] = useState<string | null>(null);
+  const [department, setDepartment] = useState<string[]>([]);
+  const [status, setStatus] = useState("approved");
+  const [name, setName] = useState("");
+  const [approver, setApprover] = useState("");
+  const [workStatus, setWorkStatus] = useState<string[]>([]);
 
   const handleApplyFilters = () => {
-    if (startDate && endDate && startDate > endDate) {
-      setError("Start date cannot be after end date.");
-      return;
-    }
-    setError(null);
-    onApply({
+    onApplyFilters({
       startDate,
       endDate,
-      wfhType,
-      requestStatus,
-      departments: [],
-      workType: "", 
+      department,
+      status,
+      name,
+      approver,
+      workStatus
     });
   };
 
   return (
-    <div
-      style={{
-        marginBottom: "20px",
-        padding: "10px",
-        border: "1px solid #ccc",
-        borderRadius: "8px",
-      }}
-    >
-      <div
-        style={{
-          display: "flex",
-          flexWrap: "nowrap",
-          gap: "15px",
-          alignItems: "center",
-        }}
-      >
-        {/* Start Date Picker */}
-        <FilterDatePicker
-          label="Select Start Date"
-          selectedDate={startDate}
-          onChange={(date) => setStartDate(date)}
-        />
+    <Box padding={2}>
+      <Stack direction="column" spacing={2}>
+        {/* Date Range Filter */}
+        <Box display="flex" alignItems="center">
+          <label style={{ marginRight: '8px' }}>Start Date:</label>
+          <DatePicker
+            selected={startDate}
+            onChange={(date) => setStartDate(date)}
+            placeholderText="Select start date"
+          />
+        </Box>
+        <Box display="flex" alignItems="center">
+          <label style={{ marginRight: '8px' }}>End Date:</label>
+          <DatePicker
+            selected={endDate}
+            onChange={(date) => setEndDate(date)}
+            placeholderText="Select end date"
+          />
+        </Box>
 
-        {/* End Date Picker */}
-        <FilterDatePicker
-          label="Select End Date"
-          selectedDate={endDate}
-          onChange={(date: Date | null) => setEndDate(date)}
-        />
-
-        {/* WFH Type Filter */}
-        <FormControl variant="outlined" sx={{ minWidth: 150 }}>
-          <InputLabel>WFH Type</InputLabel>
-          <Select
-            value={wfhType}
-            onChange={(e) => setWfhType(e.target.value as string)}
-            label="WFH Type"
-          >
-            <MenuItem value="Recurring">Recurring</MenuItem>
-            <MenuItem value="AdHoc">AdHoc</MenuItem>
-          </Select>
-        </FormControl>
-
-        {/* Request Status Filter */}
-        <FormControl variant="outlined" sx={{ minWidth: 200 }}>
-          <InputLabel>Request Status</InputLabel>
+        {/* Department Filter */}
+        <FormControl fullWidth>
+          <InputLabel>Department</InputLabel>
           <Select
             multiple
-            value={requestStatus}
-            onChange={(e) => setRequestStatus(e.target.value as string[])}
-            label="Request Status"
-            renderValue={(selected) => (selected as string[]).join(", ")}
+            value={department}
+            onChange={(e) => setDepartment(e.target.value as string[])}
           >
-            <MenuItem value="Pending Approval">Pending Approval</MenuItem>
-            <MenuItem value="Pending Withdrawal">Pending Withdrawal</MenuItem>
-            <MenuItem value="Approved">Approved</MenuItem>
-            <MenuItem value="Rejected">Rejected</MenuItem>
+            <MenuItem value="Sales">Sales</MenuItem>
+            <MenuItem value="HR">HR</MenuItem>
+            <MenuItem value="Engineering">Engineering</MenuItem>
           </Select>
         </FormControl>
 
-        {/* Sort By Date */}
-        <FormControl variant="outlined" sx={{ minWidth: 120 }}>
-          <InputLabel>Sort by</InputLabel>
+        {/* Status Filter */}
+        <FormControl fullWidth>
+          <InputLabel>Status</InputLabel>
           <Select
-            value={wfhType}
-            onChange={(e) => setSortByDate(e.target.value as "asc" | "desc")}
-            label="Sort By Date"
+            value={status}
+            onChange={(e) => setStatus(e.target.value)}
           >
-            <MenuItem value="asc">Ascending</MenuItem>
-            <MenuItem value="desc">Descending</MenuItem>
+            <MenuItem value="approved">Approved</MenuItem>
+            <MenuItem value="pending">Pending</MenuItem>
           </Select>
         </FormControl>
 
-        {/* Apply Button */}
-        <Button
-          variant="contained"
-          color="primary"
-          onClick={handleApplyFilters}
-          sx={{ height: "fit-content" }}
-        >
-          Apply
+        {/* Name Search */}
+        <TextField
+          fullWidth
+          label="Search by Staff Name"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+        />
+
+        {/* Approver Search */}
+        <TextField
+          fullWidth
+          label="Search by Approver Name"
+          value={approver}
+          onChange={(e) => setApprover(e.target.value)}
+        />
+
+        {/* WFH/OFFICE/LEAVE Filter */}
+        <FormGroup row>
+          {['WFH', 'OFFICE', 'LEAVE'].map((statusOption) => (
+            <FormControlLabel
+              key={statusOption}
+              control={
+                <Checkbox
+                  checked={workStatus.includes(statusOption)}
+                  onChange={(e) => {
+                    const newStatus = e.target.checked
+                      ? [...workStatus, statusOption]
+                      : workStatus.filter((s) => s !== statusOption);
+                    setWorkStatus(newStatus);
+                  }}
+                />
+              }
+              label={statusOption}
+            />
+          ))}
+        </FormGroup>
+
+        {/* Apply Filters Button */}
+        <Button variant="contained" onClick={handleApplyFilters}>
+          Apply Filters
         </Button>
-      </div>
-      {error && <div style={{ color: "red", marginTop: "10px" }}>{error}</div>}
-    </div>
+      </Stack>
+    </Box>
   );
 };
 

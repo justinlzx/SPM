@@ -1,19 +1,31 @@
-import React from 'react';
-import { Box, Card, CardContent, Typography } from '@mui/material';
+import React from "react";
+import { Box, Card, CardContent, Typography } from "@mui/material";
 
-export const DashboardCards = () => {
-  //hardcoded
-  const wfhDaysTaken = 5; 
-  const unreadNotifications = 3; 
-  const importantMessage = "Remember to submit your WFH requests a day in advance."; 
+interface DashboardCardsProps {
+  wfhDaysTaken: number;
+  approvedRequests: number;
+  importantMessage: string;
+}
 
+export const DashboardCards: React.FC<DashboardCardsProps> = ({
+  wfhDaysTaken,
+  approvedRequests,
+  importantMessage,
+}) => {
   return (
-    <Box sx={{ display: 'grid', gridTemplateColumns: { xs: 'repeat(1, 1fr)', sm: 'repeat(2, 1fr)', md: 'repeat(3, 1fr)' }, gap: 2, mb: 2 }}>
+    <Box
+      sx={{
+        display: "grid",
+        gridTemplateColumns: { xs: "repeat(1, 1fr)", sm: "repeat(2, 1fr)", md: "repeat(3, 1fr)" },
+        gap: 2,
+        mb: 2,
+      }}
+    >
       {/* WFH Days Taken Card */}
-      <Card sx={{ border: '1px solid lightgrey', borderRadius: '8px' }}>
+      <Card sx={{ border: "1px solid lightgrey", borderRadius: "8px" }}>
         <CardContent>
           <Typography variant="h5" component="div" gutterBottom>
-            WFH Days Taken
+            WFH Days Taken This Month
           </Typography>
           <Typography variant="h6" color="text.secondary">
             {wfhDaysTaken}
@@ -21,20 +33,20 @@ export const DashboardCards = () => {
         </CardContent>
       </Card>
 
-      {/* Unread Inbox Notifications Card */}
-      <Card sx={{ border: '1px solid lightgrey', borderRadius: '8px' }}>
+      {/* Approved Requests Card */}
+      <Card sx={{ border: "1px solid lightgrey", borderRadius: "8px" }}>
         <CardContent>
           <Typography variant="h5" component="div" gutterBottom>
-            Unread Notifications
+            Approved Requests
           </Typography>
           <Typography variant="h6" color="text.secondary">
-            {unreadNotifications}
+            {approvedRequests}
           </Typography>
         </CardContent>
       </Card>
 
       {/* Important Message Card */}
-      <Card sx={{ border: '1px solid lightgrey', borderRadius: '8px' }}>
+      <Card sx={{ border: "1px solid lightgrey", borderRadius: "8px" }}>
         <CardContent>
           <Typography variant="h5" component="div" gutterBottom>
             Important Notice
