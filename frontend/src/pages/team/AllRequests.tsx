@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useContext } from "react";
 import axios from "axios";
 import {
-  Container,
+  Box,
   Table,
   TableBody,
   TableCell,
@@ -20,6 +20,7 @@ import {
   ListItem,
   Link,
   Chip,
+  Tooltip, 
 } from "@mui/material";
 import { UserContext } from "../../context/UserContextProvider";
 import { ApprovalStatus } from "../../types/status";
@@ -127,13 +128,13 @@ export const AllRequests = () => {
           <Table>
             <TableHead>
               <TableRow>
-                <TableCell>Staff ID</TableCell>
-                <TableCell>Staff Name</TableCell>
-                <TableCell>Start Date</TableCell>
-                <TableCell>Type</TableCell>
-                <TableCell>Reason</TableCell>
-                <TableCell>Supporting Documents</TableCell>
-                <TableCell>Status</TableCell>
+                <TableCell sx={{ fontWeight: "bold" }}>Staff ID</TableCell>
+                <TableCell sx={{ fontWeight: "bold" }}>Staff Name</TableCell>
+                <TableCell sx={{ fontWeight: "bold" }}>Start Date</TableCell>
+                <TableCell sx={{ fontWeight: "bold" }}>Type</TableCell>
+                <TableCell sx={{ fontWeight: "bold" }}>Reason</TableCell>
+                <TableCell sx={{ fontWeight: "bold" }}>Supporting Documents</TableCell>
+                <TableCell sx={{ fontWeight: "bold" }}>Status</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -165,16 +166,12 @@ export const AllRequests = () => {
                         <TableCell>{request.requester_name}</TableCell>
                         <TableCell>{request.wfh_date}</TableCell>
                         <TableCell>{request.wfh_type?.toUpperCase() || "-"}</TableCell>
-                        <TableCell
-                          sx={{
-                            maxWidth: "200px",
-                            wordBreak: "break-word",
-                            whiteSpace: "nowrap",
-                            overflow: "hidden",
-                            textOverflow: "ellipsis",
-                          }}
-                        >
-                          {request.reason_description || "-"}
+                        <TableCell>
+                            <Tooltip title="Scroll to view more">
+                            <Box sx={{ overflowX: "scroll", maxWidth: 150, whiteSpace: "nowrap" }}>
+                                {request.reason_description}
+                            </Box>
+                            </Tooltip>
                         </TableCell>
                         <TableCell>
                           {docs.length > 0 ? (
@@ -193,12 +190,7 @@ export const AllRequests = () => {
                                 ? request.current_approval_status
                                 : "Unknown Status"
                             )}
-                            variant={
-                              request.current_approval_status ===
-                              ApprovalStatus.PendingWithdrawal
-                                ? "outlined"
-                                : "filled"
-                            }
+                            variant="outlined"
                           />
                         </TableCell>
                       </TableRow>

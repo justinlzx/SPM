@@ -222,12 +222,12 @@ export const PendingRequests = () => {
 
   return (
     <>
-      <Typography variant="h4" gutterBottom align="left" sx={{ marginTop: 4 }}>
-        Action Required
-      </Typography>
 
       <Filters onApplyFilters={handleApplyFilters} onClearFilters={() => setFilteredRequests(actionRequests)} />
 
+      <Typography variant="h4" gutterBottom align="left" sx={{ marginTop: 4 }}>
+        Action Required
+      </Typography>
       <TableContainer component={Paper} sx={{ marginTop: 3, textAlign: "center" }}>
         <Table>
           <TableHead>
