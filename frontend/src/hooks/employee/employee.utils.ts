@@ -19,10 +19,8 @@ export const fetchEmployeeByStaffId = async (staffId: number): Promise<TEmployee
   try {
     const response = await axios.get(`${BACKEND_URL}/employees/${staffId}`);
     const data = response.data;
-
     const requester_name = `${data.staff_fname} ${data.staff_lname}`;
     console.log(requester_name);
-
     return {
       ...data,
       requester_name, 

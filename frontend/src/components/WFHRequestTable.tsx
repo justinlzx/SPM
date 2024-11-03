@@ -232,6 +232,7 @@ export const WFHRequestTable: React.FC<TWFHRequestTableProps> = ({
     }
   };
 
+
   return (
     <>
       <TableContainer component={Paper} sx={{ marginTop: 3 }}>

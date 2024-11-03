@@ -80,8 +80,7 @@ export const PendingRequests = () => {
           {
             params: {
               current_approval_status: [
-                ApprovalStatus.PendingApproval,
-                ApprovalStatus.PendingWithdrawal,
+                "pending approval", "pending withdrawal"
               ],
             },
           }
@@ -89,6 +88,7 @@ export const PendingRequests = () => {
         const requests = response.data.data.flatMap(
           (dateEntry: any) => dateEntry.pending_arrangements
         );
+        console.log(requests)
 
         // Fetch name for each requester
         const requestsWithNames = await Promise.all(
@@ -103,8 +103,6 @@ export const PendingRequests = () => {
 
         setActionRequests(requestsWithNames);
         setFilteredRequests(requestsWithNames);
-        console.log(requests)
-        console.log(requests);
       } catch (error) {
         console.error("Failed to fetch subordinates' requests:", error);
         setAlertStatus(AlertStatus.Error);
@@ -117,6 +115,8 @@ export const PendingRequests = () => {
     fetchPendingRequestsFromSubordinates();
   }, [user, userId]);
 
+  
+
   const handleApplyFilters = (newFilters: any) => {
     setFilters(newFilters);
   
@@ -125,8 +125,10 @@ export const PendingRequests = () => {
         (!newFilters.startDate || new Date(request.wfh_date) >= newFilters.startDate) &&
         (!newFilters.endDate || new Date(request.wfh_date) <= newFilters.endDate);
   
-      const matchesStatus =
-        newFilters.status.length === 0 || newFilters.status.includes(request.current_approval_status);
+        const matchesStatus =
+        [ApprovalStatus.PendingApproval, ApprovalStatus.PendingWithdrawal].includes(
+          request.current_approval_status
+        );
   
       const searchQuery = newFilters.searchQuery.toLowerCase();
   
@@ -306,6 +308,7 @@ const ArrangementRow = ({
       ) as string[]
     );
   };
+  
 
   return (
     <>

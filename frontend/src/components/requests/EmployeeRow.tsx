@@ -14,31 +14,52 @@ type EmployeeRowProps = {
   ) => void;
 };
 
-const EmployeeRow: React.FC<EmployeeRowProps> = ({ request, openDocumentDialog, handleRequestAction }) => {
-  const { arrangement_id, requester_staff_id, requester_info, wfh_type, reason_description, supporting_doc_1, supporting_doc_2, supporting_doc_3, current_approval_status } = request;
+const EmployeeRow: React.FC<EmployeeRowProps> = ({
+  request,
+  openDocumentDialog,
+  handleRequestAction
+}) => {
+  const {
+    arrangement_id,
+    requester_staff_id,
+    requester_info,
+    wfh_type,
+    reason_description,
+    supporting_doc_1,
+    supporting_doc_2,
+    supporting_doc_3,
+    current_approval_status
+  } = request;
+
+  // Filter documents to only include non-null values
+  const documents = [supporting_doc_1, supporting_doc_2, supporting_doc_3].filter(Boolean) as string[];
 
   return (
     <TableRow>
       <TableCell>{requester_staff_id}</TableCell>
-      <TableCell>{`${requester_info.staff_fname} ${requester_info.staff_lname}`}</TableCell>
-      <TableCell>{requester_info.dept}</TableCell>
-      <TableCell>{requester_info.position}</TableCell>
-      <TableCell>{wfh_type}</TableCell>
-      <TableCell>{reason_description}</TableCell>
       <TableCell>
-        {supporting_doc_1 || supporting_doc_2 || supporting_doc_3 ? (
-          <Button variant="text" onClick={() => openDocumentDialog([supporting_doc_1, supporting_doc_2, supporting_doc_3])}>
+        {requester_info ? `${requester_info.staff_fname} ${requester_info.staff_lname}` : "N/A"}
+      </TableCell>
+      <TableCell>{requester_info?.dept || "N/A"}</TableCell>
+      <TableCell>{requester_info?.position || "N/A"}</TableCell>
+      <TableCell>{wfh_type || "N/A"}</TableCell>
+      <TableCell>{reason_description || "N/A"}</TableCell>
+      <TableCell>
+        {documents.length > 0 ? (
+          <Button variant="text" onClick={() => openDocumentDialog(documents)}>
             View Documents
           </Button>
-        ) : "None"}
+        ) : (
+          "None"
+        )}
       </TableCell>
       <TableCell>
-        {current_approval_status === ApprovalStatus.PendingApproval && (
+        {current_approval_status === ApprovalStatus.PendingApproval && handleRequestAction && (
           <ButtonGroup>
-            <Button onClick={() => handleRequestAction && handleRequestAction("approve", arrangement_id, reason_description)}>
+            <Button onClick={() => handleRequestAction("approve", arrangement_id, reason_description)}>
               <CheckIcon /> Approve
             </Button>
-            <Button onClick={() => handleRequestAction && handleRequestAction("reject", arrangement_id, reason_description)}>
+            <Button onClick={() => handleRequestAction("reject", arrangement_id, reason_description)}>
               <CloseIcon /> Reject
             </Button>
           </ButtonGroup>
