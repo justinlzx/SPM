@@ -211,7 +211,7 @@ export const SendDelegation: React.FC = () => {
     <Container>
        {loading ? (
         <Box display="flex" justifyContent="center" alignItems="center" minHeight="50vh">
-          <LoadingSpinner />
+          <LoadingSpinner open={loading} />
         </Box>
       ) : (
         <>

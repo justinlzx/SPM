@@ -122,11 +122,17 @@ export const PendingRequests = () => {
     reason_description: string,
     current_approval_status: ApprovalStatus
   ) => {
-    const nextStatus = STATUS_ACTION_MAPPING[current_approval_status]?.[action];
+    // Handle rejection action directly
+    const nextStatus =
+      action === Action.Reject
+        ? ApprovalStatus.Rejected
+        : STATUS_ACTION_MAPPING[current_approval_status]?.[action];
+  
     if (!nextStatus) {
       console.warn(`Action '${action}' is not allowed for status '${current_approval_status}'`);
       return;
     }
+  
     setLoading(true);
     try {
       const formData = new FormData();
@@ -134,11 +140,11 @@ export const PendingRequests = () => {
       formData.append("reason_description", reason_description);
       formData.append("approving_officer", userId?.toString() || "");
       formData.append("current_approval_status", nextStatus);
-
+  
       await axios.put(`${BACKEND_URL}/arrangements/${arrangement_id}/status`, formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
-
+  
       setAlertStatus(AlertStatus.Success);
       setSnackbarMessage(`Request '${action}' successfully updated to status '${nextStatus}'`);
       setShowSnackbar(true);
@@ -152,6 +158,7 @@ export const PendingRequests = () => {
       setRejectModalOpen(false);
     }
   };
+  
 
   const handleRejectClick = (arrangementId: number) => {
     setSelectedArrangementId(arrangementId);
@@ -160,7 +167,11 @@ export const PendingRequests = () => {
 
   const handleConfirmReject = () => {
     if (selectedArrangementId && rejectionReason.trim()) {
-      handleRequestAction(Action.Reject, selectedArrangementId, rejectionReason, ApprovalStatus.PendingApproval);
+      handleRequestAction(
+        Action.Reject, 
+        selectedArrangementId, 
+        rejectionReason, 
+        ApprovalStatus.PendingApproval);
       setRejectionReason("");
     }
   };
@@ -204,7 +215,7 @@ export const PendingRequests = () => {
   if (loading) {
     return (
       <Container sx={{ textAlign: "center", marginTop: 5 }}>
-        <LoadingSpinner />
+        <LoadingSpinner open={loading} />
       </Container>
     );
   }

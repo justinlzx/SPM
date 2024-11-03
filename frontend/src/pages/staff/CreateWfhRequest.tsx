@@ -24,6 +24,7 @@ import "react-datepicker/dist/react-datepicker.css";
 import axios from "axios";
 import { Recurring } from "../../components/requests/Recurring";
 import { DragAndDrop } from "../../common/DragAndDrop";
+import { LoadingSpinner } from "../../common/LoadingSpinner";
 
 export const CreateWfhRequestPage: React.FC = () => {
   const { user } = useContext(UserContext);
@@ -269,6 +270,7 @@ export const CreateWfhRequestPage: React.FC = () => {
       ),
   });
 
+  <LoadingSpinner open={loading} />
   return (
     <Container maxWidth="sm">
       <Formik

@@ -237,7 +237,7 @@ export const ApprovedRequests = () => {
         onClose={() => setWithdrawModalOpen(false)}
         sx={{ '& .MuiDialog-paper': { minWidth: '400px' } }} 
       >
-        <DialogTitle>Withdraw Approval</DialogTitle>
+        <DialogTitle>Withdraw Employee WFH Request</DialogTitle>
         <DialogContent>
           <TextField
             autoFocus
@@ -253,11 +253,11 @@ export const ApprovedRequests = () => {
           />
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setWithdrawModalOpen(false)} color="secondary">
+          <Button onClick={() => setWithdrawModalOpen(false)} color="secondary" variant="outlined">
             Cancel
           </Button>
-          <Button onClick={handleWithdrawApproval} color="primary">
-            Submit
+          <Button onClick={handleWithdrawApproval} color="warning" variant="outlined">
+            Withdraw Request
           </Button>
         </DialogActions>
       </Dialog>
