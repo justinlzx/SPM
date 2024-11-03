@@ -25,6 +25,7 @@ import CheckIcon from "@mui/icons-material/Check";
 import CloseIcon from "@mui/icons-material/Close";
 import { capitalize } from "../../utils/utils";
 import { SnackBarComponent, AlertStatus } from "../../common/SnackBar";
+import { LoadingSpinner } from "../../common/LoadingSpinner";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 
@@ -60,6 +61,9 @@ export const PendingDelegations = () => {
   const [reason, setReason] = useState("");
   const [selectedStaffId, setSelectedStaffId] = useState<number | null>(null);
 
+  const [loading, setLoading] = useState(true);
+  const [actionLoading, setActionLoading] = useState(false);  
+
   useEffect(() => {
     const fetchPendingDelegationRequests = async () => {
       if (!user || !userId) return;
@@ -82,6 +86,7 @@ export const PendingDelegations = () => {
   }, [user, userId]);
 
   const handleDelegationAction = async (action: TAction, staff_id: number, reason?: string) => {
+    setActionLoading(true); 
     try {
       await axios.put(
         `${BACKEND_URL}/employees/manager/delegate/${userId}/status`,
@@ -109,6 +114,8 @@ export const PendingDelegations = () => {
       setSnackbarMessage(`Error processing delegation request.`);
       setAlertStatus(AlertStatus.Error);
       setShowSnackbar(true);
+    } finally {
+      setActionLoading(false);
     }
   };
 
@@ -162,6 +169,7 @@ export const PendingDelegations = () => {
           <TableCell>{new Date(date_of_delegation).toLocaleDateString()}</TableCell>
           <TableCell>
             <Chip
+              variant="outlined"
               label={capitalize(status_of_delegation)}
               color={
                 status_of_delegation === DelegationStatus.Accepted
@@ -180,7 +188,7 @@ export const PendingDelegations = () => {
                   <Button
                     size="small"
                     color="success"
-                    startIcon={<CheckIcon />}
+                    startIcon={loading ? <LoadingSpinner /> : <CheckIcon />}
                     onClick={() => handleDelegationAction("accepted", staff_id)}
                   >
                     Accept
@@ -190,7 +198,7 @@ export const PendingDelegations = () => {
                   <Button
                     size="small"
                     color="error"
-                    startIcon={<CloseIcon />}
+                    startIcon={loading ? <LoadingSpinner /> : <CheckIcon />}
                     onClick={() => handleOpenRejectModal(staff_id)}
                   >
                     Reject
@@ -226,18 +234,18 @@ export const PendingDelegations = () => {
           />
         </DialogContent>
         <DialogActions sx={{ m: 2 }}>
-          <Button onClick={handleCloseRejectModal} color="secondary">
-            Cancel
-          </Button>
-          <Button
-            onClick={() => handleDelegationAction("rejected", selectedStaffId!, reason)}
-            variant="outlined"
-            color="error"
-            disabled={!reason.trim()}
-          >
-            Confirm
-          </Button>
-        </DialogActions>
+        <Button onClick={handleCloseRejectModal} color="secondary">
+          Cancel
+        </Button>
+        <Button
+          onClick={() => handleDelegationAction("rejected", selectedStaffId!, reason)}
+          variant="outlined"
+          color="error"
+          disabled={!reason.trim() || actionLoading} // Disable when loading or reason is empty
+        >
+          {actionLoading ? <LoadingSpinner /> : "Confirm"}
+        </Button>
+      </DialogActions>
       </Dialog>
 
       <SnackBarComponent

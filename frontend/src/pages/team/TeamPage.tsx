@@ -1,4 +1,5 @@
 import { useNavigate } from "react-router-dom";
+import { Container } from "@mui/material";
 import { PendingRequests } from "./PendingRequests";
 import { useContext } from "react";
 import { UserContext } from "../../context/UserContextProvider";
@@ -6,7 +7,7 @@ import { RequestList } from "./RequestList";
 import { Box, Typography } from "@mui/material";
 import { DelegateButton } from "../manager/DelegateButton";
 import PeopleOutlineIcon from '@mui/icons-material/PeopleOutline';
-
+import { ApprovedRequests } from "./ApprovedTeamRequests";
 
 export const TeamPage = () => {
   const navigate = useNavigate();
@@ -21,7 +22,7 @@ export const TeamPage = () => {
   };
 
   return (
-    <div>
+    <Container sx={{ flexGrow: 1 }}>
        { (user?.role === 1 || user?.role === 3) && (
          <Box 
          display="flex" 
@@ -38,8 +39,8 @@ export const TeamPage = () => {
          <DelegateButton />
        </Box>
       )}
-      <PendingRequests />
+      <ApprovedRequests />
       <RequestList/>
-    </div>
+    </Container>
   );
 };
