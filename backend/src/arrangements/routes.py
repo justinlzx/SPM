@@ -5,7 +5,6 @@ from typing import Annotated, List, Optional
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
-
 from src.notifications.email_notifications import craft_and_send_auto_rejection_email
 
 from ..database import get_db
@@ -171,6 +170,25 @@ def get_team_arrangements(
             status="success",
             data=arrangements,
             pagination_meta=PaginationMeta(**asdict(pagination_meta)),
+        )
+    except SQLAlchemyError as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/logs/all", summary="Get all arrangement logs")
+def get_arrangement_logs(db: Session = Depends(get_db)) -> JSendResponse:
+    try:
+        logger.info("Route: Fetching arrangement logs")
+        data = services.get_arrangement_logs(db)
+        logger.info(f"Route: Found {len(data)} logs")
+
+        logger.info(data[0])
+
+        arrangement_logs = [schemas.ArrangementLogResponse(**asdict(log)) for log in data]
+
+        return JSendResponse(
+            status="success",
+            data=arrangement_logs,
         )
     except SQLAlchemyError as e:
         raise HTTPException(status_code=500, detail=str(e))

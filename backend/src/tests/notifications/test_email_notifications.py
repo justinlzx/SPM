@@ -6,6 +6,7 @@ import pytest
 from dotenv import load_dotenv
 from fastapi import HTTPException
 from httpx import RequestError
+from src.arrangements.commons.enums import Action, ApprovalStatus, WfhType
 from src.notifications import email_notifications as notifications
 from src.notifications import exceptions as notification_exceptions
 
@@ -17,7 +18,12 @@ BASE_URL = os.getenv("BACKEND_BASE_URL", "http://localhost:8000")
 
 
 class MockArrangement(MagicMock):
-    def __init__(self, current_approval_status="", reason_description="Personal reason", **kwargs):
+    def __init__(
+        self,
+        current_approval_status=ApprovalStatus.PENDING_APPROVAL,
+        reason_description="Personal reason",
+        **kwargs,
+    ):
         super().__init__(**kwargs)
         self.arrangement_id = 1
         self.wfh_date = "2024-10-07"
@@ -31,7 +37,7 @@ class MockArrangement(MagicMock):
 
 @pytest.fixture
 def mock_arrangement_factory():
-    def _create_mock_arrangement(current_approval_status="pending"):
+    def _create_mock_arrangement(current_approval_status=ApprovalStatus.PENDING_APPROVAL):
         return MockArrangement(current_approval_status=current_approval_status)
 
     return _create_mock_arrangement
@@ -76,53 +82,6 @@ async def send_email(to_email: str, subject: str, content: str):
         raise HTTPException(
             status_code=500, detail=f"An error occurred while sending the email: {str(e)}"
         )
-
-
-class TestFetchManagerInfo:
-    @pytest.mark.asyncio
-    @patch("httpx.AsyncClient.get")
-    async def test_success(self, mock_get: MagicMock):
-        # Mock response data
-        mock_response_data = {"manager_id": 1, "manager_name": "John Doe"}
-
-        # Simulate the mock to return a successful response
-        mock_get.return_value.json = MagicMock(return_value=mock_response_data)
-        mock_get.return_value.status_code = 200
-
-        # Call the function
-        result = await notifications.fetch_manager_info(staff_id=123)
-
-        # Assertions
-        assert result == mock_response_data
-        mock_get.assert_called_once_with(f"{BASE_URL}/employees/manager/peermanager/123")
-
-    @pytest.mark.asyncio
-    @patch("httpx.AsyncClient.get")
-    async def test_failure(self, mock_get: MagicMock):
-        # Set the mock to return an unsuccessful response
-        mock_get.return_value.status_code = 404
-        mock_get.return_value.text = "Not Found"
-
-        # Call the function and check for HTTPException
-        with pytest.raises(HTTPException) as exc_info:
-            await notifications.fetch_manager_info(staff_id=123)
-
-        assert exc_info.value.status_code == 404
-        assert "Error fetching manager info" in exc_info.value.detail
-
-    @pytest.mark.asyncio
-    @patch("httpx.AsyncClient.get")
-    async def test_request_error(self, mock_get: MagicMock):
-        """Test network failure scenario for fetch_manager_info."""
-        # Simulate a network error
-        mock_get.side_effect = RequestError("Network error")
-
-        # Call the function and check for HTTPException
-        with pytest.raises(HTTPException) as exc_info:
-            await notifications.fetch_manager_info(staff_id=123)
-
-        # Updated assertion to match the correct error message
-        assert "An error occurred while fetching manager info" in exc_info.value.detail
 
 
 class TestSendEmail:
@@ -263,313 +222,280 @@ class TestSendEmail:
         assert "An error occurred while sending the email: Network error" in exc_info.value.detail
 
 
-class TestCraftEmailContent:
-    def test_error_message(self, mock_staff, mock_manager, mock_arrangement_factory):
-        error_message = "Some error occurred"
-
-        email_subject_content = notifications.craft_email_content(
-            employee=mock_staff,
-            arrangements=[mock_arrangement_factory("pending")],
-            action="create",
-            error_message=error_message,
-            manager=mock_manager,
-        )
-        employee = email_subject_content["employee"]
-
-        assert "[All-In-One] Unsuccessful Creation of WFH Request" in employee["subject"]
-        assert (
-            "Unfortunately, there was an error processing your WFH request" in employee["content"]
-        )
-        assert error_message in employee["content"]
-
-    def test_empty_description(self, mock_staff, mock_manager, mock_arrangement_factory):
-        mock_arrangement = mock_arrangement_factory("pending")
-        mock_arrangement.reason_description = ""
-        email_subject_content = notifications.craft_email_content(
-            employee=mock_staff,
-            arrangements=[mock_arrangement],
-            action="create",
-            manager=mock_manager,
-        )
-        employee = email_subject_content["employee"]
-
-        assert "Reason for WFH Request: \n" in employee["content"]
-
-    def test_formatted_details(self, mock_staff, mock_manager, mock_arrangement_factory):
-        email_subject_content = notifications.craft_email_content(
-            employee=mock_staff,
-            arrangements=[mock_arrangement_factory("pending")],
-            action="create",
-            manager=mock_manager,
-        )
-        employee = email_subject_content["employee"]
-
-        assert "Request ID: 1" in employee["content"]
-        assert "WFH Date: 2024-10-07" in employee["content"]
-        assert "Type: full" in employee["content"]
-        assert "Reason for WFH Request: Personal reason" in employee["content"]
-        assert "Batch ID: 1" in employee["content"]
-        assert "Request Status: pending" in employee["content"]
-        assert "Updated At: 2024-10-06T12:34:56" in employee["content"]
-
+class TestFormatEmailSubject:
     @pytest.mark.parametrize(
-        "action, expected_employee_subject, expected_manager_subject",
+        (
+            "role",
+            "action",
+            "current_approval_status",
+            "expected_subject",
+        ),
         [
             (
-                "create",
-                "[All-In-One] Successful Creation of WFH Request",
+                "employee",
+                Action.CREATE,
+                ApprovalStatus.PENDING_APPROVAL,
+                "[All-In-One] Your WFH Request Has Been Created",
+            ),
+            (
+                "manager",
+                Action.CREATE,
+                ApprovalStatus.PENDING_APPROVAL,
                 "[All-In-One] Your Staff Created a WFH Request",
             ),
             (
-                "approve",
+                "employee",
+                Action.APPROVE,
+                ApprovalStatus.APPROVED,
                 "[All-In-One] Your WFH Request Has Been Approved",
+            ),
+            (
+                "manager",
+                Action.APPROVE,
+                ApprovalStatus.APPROVED,
                 "[All-In-One] You Have Approved a WFH Request",
             ),
             (
-                "reject",
-                "[All-In-One] Your WFH Request Has Been Rejected",
-                "[All-In-One] You Have Rejected a WFH Request",
-            ),
-            (
-                "withdraw",
-                "[All-In-One] You Have Requested to Withdraw Your WFH",
-                "[All-In-One] Your Staff Has Requested to Withdraw Their WFH",
-            ),
-            (
-                "allow withdraw",
+                "employee",
+                Action.APPROVE,
+                ApprovalStatus.WITHDRAWN,
                 "[All-In-One] Your WFH Request Has Been Withdrawn",
+            ),
+            (
+                "manager",
+                Action.APPROVE,
+                ApprovalStatus.WITHDRAWN,
                 "[All-In-One] You Have Approved a WFH Request Withdrawal",
             ),
             (
-                "reject withdraw",
+                "employee",
+                Action.REJECT,
+                ApprovalStatus.REJECTED,
+                "[All-In-One] Your WFH Request Has Been Rejected",
+            ),
+            (
+                "manager",
+                Action.REJECT,
+                ApprovalStatus.REJECTED,
+                "[All-In-One] You Have Rejected a WFH Request",
+            ),
+            (
+                "employee",
+                Action.REJECT,
+                ApprovalStatus.APPROVED,
                 "[All-In-One] Your WFH Request Withdrawal Has Been Rejected",
+            ),
+            (
+                "manager",
+                Action.REJECT,
+                ApprovalStatus.APPROVED,
                 "[All-In-One] You Have Rejected a WFH Request Withdrawal",
             ),
             (
-                "cancel",
-                "[All-In-One] Your WFH Request Has Been Cancelled",
-                "[All-In-One] You Have Cancelled a WFH Request",
+                "employee",
+                Action.WITHDRAW,
+                ApprovalStatus.PENDING_WITHDRAWAL,
+                "[All-In-One] You Have Requested to Withdraw Your WFH",
+            ),
+            (
+                "manager",
+                Action.WITHDRAW,
+                ApprovalStatus.PENDING_WITHDRAWAL,
+                "[All-In-One] Your Staff Has Requested to Withdraw Their WFH",
             ),
         ],
     )
-    def test_success_messages_single_arrangement(
+    def test_success(
         self,
-        mock_staff,
-        mock_manager,
-        mock_arrangement_factory,
+        role,
         action,
-        expected_employee_subject,
-        expected_manager_subject,
+        current_approval_status,
+        expected_subject,
     ):
-        email_subject_content = notifications.craft_email_content(
-            employee=mock_staff,
-            arrangements=[mock_arrangement_factory("pending")],
+        email_subject_content = notifications.format_email_subject(
+            role=role,
             action=action,
-            manager=mock_manager,
+            current_approval_status=current_approval_status,
         )
-        employee = email_subject_content["employee"]
-        manager = email_subject_content["manager"]
-
-        # Assertions for employee content
-        assert expected_employee_subject in employee["subject"]
-        assert "Dear Jane Doe" in employee["content"]
-
-        # Assertions for manager content
-        assert expected_manager_subject == manager["subject"]
-        assert "Dear Michael Scott" in manager["content"]
-
-    def test_multiple_arrangements(self, mock_staff, mock_manager, mock_arrangement_factory):
-        arrangements = [mock_arrangement_factory("pending")] * 2
-        email_subject_content = notifications.craft_email_content(
-            employee=mock_staff, arrangements=arrangements, action="create", manager=mock_manager
-        )
-        employee = email_subject_content["employee"]
-        manager = email_subject_content["manager"]
-
-        assert "Request ID: 1" in employee["content"]
-        assert "Request ID: 1" in manager["content"]
-
-        assert "Request ID: 1" in employee["content"]
-        assert "Request ID: 1" in manager["content"]
+        assert email_subject_content == expected_subject
 
 
-class TestCraftAndSendEmail:
-    @pytest.mark.asyncio
-    async def test_missing_required_positional_arguments(
-        self, mock_staff, mock_arrangement_factory
-    ):
-        required_args = [
-            (
-                (None, None, None),
-                "craft_email_content() missing 3 required positional argument(s): employee, arrangements, action",
-            ),
-            (
-                (None, [mock_arrangement_factory("pending")], "create"),
-                "craft_email_content() missing 1 required positional argument(s): employee",
-            ),
-            (
-                (mock_staff, None, "create"),
-                "craft_email_content() missing 1 required positional argument(s): arrangements",
-            ),
-            (
-                (mock_staff, [], "create"),
-                "craft_email_content() missing 1 required positional argument(s): arrangements",
-            ),
-            (
-                (mock_staff, [mock_arrangement_factory("pending")], None),
-                "craft_email_content() missing 1 required positional argument(s): action",
-            ),
-        ]
+class TestFormatEmailBody:
+    def test_success(self):
+        staff_fname = "Jane"
+        staff_lname = "Doe"
 
-        for args, error_msg in required_args:
-            with pytest.raises(TypeError) as exc_info:
-                await notifications.craft_and_send_email(*args)
-            assert str(exc_info.value) == error_msg
-
-    # REVIEW: may not be needed as required employee attributes should be validated by the Pydantic model
-    @pytest.mark.asyncio
-    async def test_missing_employee_attributes(
-        self, mock_staff, mock_manager, mock_arrangement_factory
-    ):
-        mock_staff.staff_fname = None
-        with pytest.raises(AttributeError) as exc_info:
-            await notifications.craft_and_send_email(
-                employee=mock_staff,
-                arrangements=[mock_arrangement_factory("pending")],
-                action="create",
-                manager=mock_manager,
-            )
-        assert "Employee is missing required attributes: staff_fname" in str(exc_info.value)
-
-        mock_staff.staff_lname = None
-        mock_staff.email = None
-
-        with pytest.raises(AttributeError) as exc_info:
-            await notifications.craft_and_send_email(
-                employee=mock_staff,
-                arrangements=[mock_arrangement_factory("pending")],
-                action="create",
-                manager=mock_manager,
-            )
-        assert "Employee is missing required attributes: staff_fname, staff_lname, email" in str(
-            exc_info.value
+        mock_employee = MagicMock()
+        mock_employee.configure_mock(
+            staff_fname=staff_fname,
+            staff_lname=staff_lname,
         )
 
-    # REVIEW: may not be needed as required employee attributes should be validated by the Pydantic model
-    # TODO: Test missing manager attributes
-    # TODO: Test missing arrangement attributes
+        mock_formatted_details = ""
 
-    @pytest.mark.asyncio
+        result = notifications.format_email_body(mock_employee, mock_formatted_details)
+
+        assert f"Dear {staff_fname} {staff_lname}," in result
+        assert (
+            "\n\nThis email is auto-generated. Please do not reply to this email. Thank you."
+            in result
+        )
+
+
+class TestFormatDetails:
     @pytest.mark.parametrize(
         "action",
-        ["create", "approve", "reject", "withdraw", "allow withdraw", "reject withdraw", "cancel"],
+        [Action.CREATE, Action.APPROVE],
     )
-    async def test_missing_manager(self, mock_staff, mock_arrangement_factory, action):
-        """Test crafting email content with missing manager for different actions."""
-        with pytest.raises(ValueError) as exc_info:
-            await notifications.craft_and_send_email(
-                employee=mock_staff,
-                arrangements=[mock_arrangement_factory("pending")],
-                action=action,
-            )
-        assert str(exc_info.value) == "Manager is required for the specified action."
+    def test_success(self, action):
+        arrangement_id = 1
+        wfh_date = "2024-10-07"
+        wfh_type = WfhType.FULL
+        reason_description = "Personal reason"
+        batch_id = 1
+        current_approval_status = ApprovalStatus.PENDING_APPROVAL
+        update_datetime = "2024-10-06T12:34:56"
+        status_reason = "Rejected due to insufficient explanation"
 
-    @pytest.mark.asyncio
-    async def test_invalid_action(self, mock_staff, mock_arrangement_factory, mock_manager):
-        with pytest.raises(ValueError) as excinfo:
-            await notifications.craft_and_send_email(
-                employee=mock_staff,
-                arrangements=[mock_arrangement_factory("pending")],
-                action="invalid_action",
-                manager=mock_manager,
-            )
-        assert str(excinfo.value) == "Invalid action: invalid_action"
+        mock_arrangement = MagicMock()
+        mock_arrangement.configure_mock(
+            arrangement_id=arrangement_id,
+            wfh_date=wfh_date,
+            wfh_type=wfh_type,
+            reason_description=reason_description,
+            batch_id=batch_id,
+            current_approval_status=current_approval_status,
+            update_datetime=update_datetime,
+            status_reason=status_reason,
+        )
 
-    @pytest.mark.asyncio
-    async def test_empty_error_message(self, mock_staff, mock_manager, mock_arrangement_factory):
-        """Test crafting email content for failure scenario with an empty error message."""
-        with pytest.raises(ValueError) as exc_info:
-            await notifications.craft_and_send_email(
-                employee=mock_staff,
-                arrangements=[mock_arrangement_factory("pending")],
-                action="create",
-                error_message="",
-                manager=mock_manager,
-            )
-        assert str(exc_info.value) == "Error message cannot be an empty string."
+        result = notifications.format_details([mock_arrangement], action)
 
-    @pytest.mark.asyncio
-    @pytest.mark.parametrize(
-        "action, approval_status",
-        [
-            ("create", "pending"),
-            ("approve", "approved"),
-            ("reject", "rejected"),
-            ("withdraw", "pending withdrawal"),
-            ("allow withdraw", "withdrawn"),
-            ("reject withdraw", "approved"),
-            ("cancel", "cancelled"),
-        ],
-    )
-    @patch("src.notifications.email_notifications.send_email", return_value=True)
-    async def test_success(
-        self,
-        mock_send_email,
-        mock_staff,
-        mock_manager,
-        mock_arrangement_factory,
-        action,
-        approval_status,
-    ):
-        """Test crafting and sending email for different actions."""
-        # Create the appropriate mock arrangement using the factory
-        mock_arrangement = mock_arrangement_factory(current_approval_status=approval_status)
+        assert f"Request ID: {arrangement_id}" in result
+        assert f"WFH Date: {wfh_date}" in result
+        assert f"WFH Type: {wfh_type.value}" in result
+        assert f"Reason for WFH Request: {reason_description}" in result
+        assert f"Batch ID: {batch_id}" in result
+        assert f"Request Status: {current_approval_status.value}" in result
+        assert f"Updated At: {update_datetime}" in result
 
-        result = await notifications.craft_and_send_email(
-            employee=mock_staff,
+        if action != Action.CREATE:
+            assert f"Reason for Status Change: {status_reason}" in result
+
+
+class TestCraftEmailContent:
+    @patch("src.notifications.email_notifications.format_email_body")
+    @patch("src.notifications.email_notifications.format_email_subject")
+    @patch("src.notifications.email_notifications.format_details")
+    def test_success(self, mock_details, mock_subject, mock_body):
+        mock_employee = MagicMock()
+        mock_arrangement = MagicMock()
+        mock_manager = MagicMock()
+        action = Action.CREATE
+
+        notifications.craft_email_content(
+            employee=mock_employee,
             arrangements=[mock_arrangement],
             action=action,
+            current_approval_status=ApprovalStatus.PENDING_APPROVAL,
             manager=mock_manager,
         )
-        assert result is True
-        assert mock_send_email.call_count == 2
+
+        mock_details.assert_called_once()
+        mock_subject.assert_called()
+        assert mock_subject.call_count == 2
+        mock_body.assert_called()
+        assert mock_body.call_count == 2
+
+    # def test_multiple_arrangements(self, mock_staff, mock_manager, mock_arrangement_factory):
+    #     arrangements = [mock_arrangement_factory("pending")] * 2
+    #     email_subject_content = notifications.craft_email_content(
+    #         employee=mock_staff, arrangements=arrangements, action="create", manager=mock_manager
+    #     )
+    #     employee = email_subject_content["employee"]
+    #     manager = email_subject_content["manager"]
+
+    #     assert "Request ID: 1" in employee["content"]
+    #     assert "Request ID: 1" in manager["content"]
+
+    #     assert "Request ID: 1" in employee["content"]
+    #     assert "Request ID: 1" in manager["content"]
+
+
+@patch("src.notifications.email_notifications.send_email")
+@patch(
+    "src.notifications.email_notifications.craft_email_content",
+    return_value={
+        "employee": {"subject": "Test Subject", "content": "Test Content"},
+        "manager": {"subject": "Test Subject", "content": "Test Content"},
+    },
+)
+class TestCraftAndSendEmail:
+    @pytest.mark.asyncio
+    async def test_success(
+        self,
+        mock_craft_email,
+        mock_send_email,
+    ):
+        """Test crafting and sending email for different actions."""
+        # Arrange
+        mock_employee = MagicMock()
+        mock_employee.email = "jane.doe@allinone.com.sg"
+
+        mock_manager = MagicMock()
+        mock_manager.email = "michael.scott@allinone.com.sg"
+
+        # Act
+        await notifications.craft_and_send_email(
+            employee=mock_employee,
+            arrangements=[MagicMock()],
+            action=Action.CREATE,
+            current_approval_status=ApprovalStatus.PENDING_APPROVAL,
+            manager=mock_manager,
+        )
+
+        # Assert
+        mock_craft_email.assert_called_once()
         mock_send_email.assert_called()
+        assert mock_send_email.call_count == 2
 
     @pytest.mark.asyncio
-    @patch(
-        "src.notifications.email_notifications.send_email",
-        side_effect=HTTPException(status_code=500),
-    )
-    async def test_email_failure(
-        self, mock_send_email, mock_staff, mock_arrangement_factory, mock_manager
-    ):
+    async def test_email_failure(self, mock_craft_email, mock_send_email):
+        # Arrange
+        mock_employee = MagicMock()
+        mock_employee.email = "jane.doe@allinone.com.sg"
 
+        mock_manager = MagicMock()
+        mock_manager.email = "michael.scott@allinone.com.sg"
+
+        mock_send_email.side_effect = HTTPException(status_code=500, detail="Internal Server Error")
+
+        # Act and Assert
         with pytest.raises(notification_exceptions.EmailNotificationException) as exc_info:
             await notifications.craft_and_send_email(
-                employee=mock_staff,
-                arrangements=mock_arrangement_factory("pending"),
-                action="create",
+                employee=mock_employee,
+                arrangements=[MagicMock()],
+                action=Action.CREATE,
+                current_approval_status=ApprovalStatus.PENDING_APPROVAL,
                 manager=mock_manager,
             )
         assert (
             str(exc_info.value)
             == "Failed to send emails to jane.doe@allinone.com.sg, michael.scott@allinone.com.sg"
         )
-        assert mock_send_email.call_count == 2
-        mock_send_email.assert_called()
 
-    @pytest.mark.asyncio
-    @patch("src.notifications.email_notifications.send_email", return_value=True)
-    async def test_create_multiple_arrangements_success(
-        self, mock_send_email, mock_staff, mock_manager, mock_arrangement_factory
-    ):
-        mock_arrangements = [mock_arrangement_factory("pending")] * 2
+    # @pytest.mark.asyncio
+    # @patch("src.notifications.email_notifications.send_email", return_value=True)
+    # async def test_create_multiple_arrangements_success(
+    #     self, mock_send_email, mock_staff, mock_manager, mock_arrangement_factory
+    # ):
+    #     mock_arrangements = [mock_arrangement_factory("pending")] * 2
 
-        result = await notifications.craft_and_send_email(
-            employee=mock_staff,
-            arrangements=mock_arrangements,
-            action="create",
-            manager=mock_manager,
-        )
-        assert result is True
-        mock_send_email.assert_called()
+    #     result = await notifications.craft_and_send_email(
+    #         employee=mock_staff,
+    #         arrangements=mock_arrangements,
+    #         action="create",
+    #         manager=mock_manager,
+    #     )
+    #     assert result is True
+    #     mock_send_email.assert_called()

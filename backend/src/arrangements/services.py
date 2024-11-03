@@ -1,4 +1,5 @@
-from dataclasses import asdict, replace
+from copy import deepcopy
+from dataclasses import asdict
 from datetime import datetime
 from math import ceil
 from typing import List, Optional, Tuple, Union
@@ -13,6 +14,7 @@ from src.arrangements.utils import delete_file, upload_file
 
 from ..arrangements.utils import delete_file, upload_file
 from ..employees import crud as employee_crud
+from ..employees import exceptions as employee_exceptions
 from ..employees import models as employee_models
 from ..employees import services as employee_services
 from ..logger import logger
@@ -21,6 +23,7 @@ from . import crud
 from .commons import exceptions
 from .commons.dataclasses import (
     ArrangementFilters,
+    ArrangementLogResponse,
     ArrangementResponse,
     CreateArrangementRequest,
     CreatedArrangementGroupByDate,
@@ -29,7 +32,12 @@ from .commons.dataclasses import (
     RecurringRequestDetails,
     UpdateArrangementRequest,
 )
-from .commons.enums import STATUS_ACTION_MAPPING, Action, ApprovalStatus
+from .commons.enums import (
+    STATUS_ACTION_MAPPING,
+    Action,
+    ApprovalStatus,
+    RecurringFrequencyUnit,
+)
 from .utils import create_presigned_url
 
 
@@ -114,22 +122,6 @@ def get_subordinates_arrangements(
     return arrangements, pagination_meta
 
 
-def group_arrangements_by_date(
-    arrangements: List[ArrangementResponse],
-) -> List[CreatedArrangementGroupByDate]:
-    arrangements_dict = {}
-
-    logger.info(f"Grouping {len(arrangements)} arrangements by date")
-    for arrangement in arrangements:
-        arrangements_dict.setdefault(arrangement.wfh_date.isoformat(), []).append(arrangement)
-
-    result = []
-    for key, val in arrangements_dict.items():
-        result.append(CreatedArrangementGroupByDate(date=key, arrangements=val))
-    logger.info(f"Service: Grouped into {len(result)} dates")
-    return result
-
-
 def get_team_arrangements(
     db: Session,
     staff_id: int,
@@ -141,8 +133,11 @@ def get_team_arrangements(
     employees: List[employee_models.Employee] = []
     employees.extend(employee_services.get_peers_by_staff_id(db, staff_id))
 
-    # Get subordinate employees
-    employees.extend(employee_services.get_subordinates_by_manager_id(db, staff_id))
+    try:
+        # Get subordinate employees
+        employees.extend(employee_services.get_subordinates_by_manager_id(db, staff_id))
+    except employee_exceptions.ManagerWithIDNotFoundException:
+        logger.info("Employee is not a manager, skipping subordinate retrieval")
 
     # Get team arrangements
     logger.info(f"Service: Fetching arrangements for team of staff ID {staff_id}")
@@ -183,6 +178,17 @@ def get_team_arrangements(
     return arrangements, pagination_meta
 
 
+def get_arrangement_logs(
+    db: Session,
+) -> List[ArrangementLogResponse]:
+    arrangement_logs = crud.get_arrangement_logs(db)
+    arrangement_logs = [
+        ArrangementLogResponse.from_dict(arrangement) for arrangement in arrangement_logs
+    ]
+
+    return arrangement_logs
+
+
 async def create_arrangements_from_request(
     db: Session,
     wfh_request: CreateArrangementRequest,
@@ -194,12 +200,14 @@ async def create_arrangements_from_request(
         approving_officer, _ = employee_services.get_manager_by_subordinate_id(
             db=db, staff_id=wfh_request.requester_staff_id
         )
-        delegation = employee_crud.get_existing_delegation(
-            db=db, staff_id=approving_officer.staff_id, delegate_manager_id=None
-        )
+        delegation = None
 
         # Assign approving officers
-        wfh_request.approving_officer = approving_officer.__dict__["staff_id"]
+        if approving_officer:
+            wfh_request.approving_officer = approving_officer.__dict__["staff_id"]
+            delegation = employee_crud.get_existing_delegation(
+                db=db, staff_id=approving_officer.staff_id, delegate_manager_id=None
+            )
         if delegation:
             wfh_request.delegate_approving_officer = delegation.__dict__["delegate_manager_id"]
 
@@ -212,16 +220,17 @@ async def create_arrangements_from_request(
         file_paths = []
         created_arrangements = []
 
+        logger.info(f"Service: Uploading {len(supporting_docs)} supporting documents to S3")
         for file in supporting_docs:
-            if file:
-                response = await upload_file(
-                    wfh_request.requester_staff_id,
-                    wfh_request.update_datetime.isoformat(),
-                    file,
-                    s3_client,
-                )
+            response = await upload_file(
+                wfh_request.requester_staff_id,
+                wfh_request.update_datetime.isoformat(),
+                file,
+                s3_client,
+            )
 
-                file_paths.append(response["file_url"])
+            file_paths.append(response["file_url"])
+        logger.info(f"Service: Successfully uploaded {len(file_paths)} supporting documents to S3")
 
         # Update request with the file paths to the documents in S3
         wfh_request.supporting_doc_1 = file_paths[0] if file_paths else None
@@ -268,37 +277,14 @@ async def create_arrangements_from_request(
     except botocore.exceptions.ClientError as upload_error:
         # If any error occurs, delete uploaded files from S3
         logger.info(f"Deleting files due to error: {str(upload_error)}")
-        if file_paths:
-            for path in file_paths:
-                try:
-                    await delete_file(path, datetime.now(), s3_client)
-                except botocore.exceptions.ClientError as delete_error:
-                    # Log deletion error, but do not raise to avoid overriding the main exception
-                    logger.info(f"Error deleting file {path} from S3: {str(delete_error)}")
+        for path in file_paths:
+            try:
+                await delete_file(path, datetime.now(), s3_client)
+            except botocore.exceptions.ClientError as delete_error:
+                # Log deletion error, but do not raise to avoid overriding the main exception
+                logger.info(f"Error deleting file {path} from S3: {str(delete_error)}")
         raise exceptions.S3UploadFailedException(str(upload_error))
     # TODO: Email notification error
-
-
-def expand_recurring_arrangement(
-    request: CreateArrangementRequest,
-) -> List[CreateArrangementRequest]:
-    arrangements_list = []
-
-    for i in range(request.recurring_occurrences):
-        arrangement_copy = replace(request)
-
-        if request.recurring_frequency_unit.value == "week":
-            arrangement_copy.wfh_date = request.wfh_date + relativedelta(
-                weeks=i * request.recurring_frequency_number
-            )
-        else:
-            arrangement_copy.wfh_date = request.wfh_date + relativedelta(
-                months=i * request.recurring_frequency_number
-            )
-
-        arrangements_list.append(arrangement_copy)
-
-    return arrangements_list
 
 
 async def update_arrangement_approval_status(
@@ -356,6 +342,43 @@ async def update_arrangement_approval_status(
     )
 
     return updated_arrangement
+
+
+def group_arrangements_by_date(
+    arrangements: List[ArrangementResponse],
+) -> List[CreatedArrangementGroupByDate]:
+    arrangements_dict = {}
+
+    logger.info(f"Grouping {len(arrangements)} arrangements by date")
+
+    arrangements.sort(key=lambda x: x.wfh_date, reverse=True)
+
+    for arrangement in arrangements:
+        arrangements_dict.setdefault(arrangement.wfh_date.isoformat(), []).append(arrangement)
+
+    result = []
+    for key, val in arrangements_dict.items():
+        result.append(CreatedArrangementGroupByDate(date=key, arrangements=val))
+    logger.info(f"Service: Grouped into {len(result)} dates")
+    return result
+
+
+def expand_recurring_arrangement(
+    request: CreateArrangementRequest,
+) -> List[CreateArrangementRequest]:
+    arrangements_list = [deepcopy(request) for _ in range(request.recurring_occurrences)]
+
+    for i in range(len(arrangements_list)):
+        if request.recurring_frequency_unit == RecurringFrequencyUnit.WEEKLY:
+            arrangements_list[i].wfh_date = request.wfh_date + relativedelta(
+                weeks=i * request.recurring_frequency_number
+            )
+        else:
+            arrangements_list[i].wfh_date = request.wfh_date + relativedelta(
+                months=i * request.recurring_frequency_number
+            )
+
+    return arrangements_list
 
 
 # ============================ DEPRECATED FUNCTIONS ============================

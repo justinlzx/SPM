@@ -44,4 +44,5 @@ STATUS_ACTION_MAPPING = {
     },
     ApprovalStatus.REJECTED: {},
     ApprovalStatus.WITHDRAWN: {},
+    ApprovalStatus.CANCELLED: {},
 }

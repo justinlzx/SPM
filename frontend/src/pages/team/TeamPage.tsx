@@ -12,14 +12,13 @@ export const TeamPage = () => {
   const navigate = useNavigate();
   const { user } = useContext(UserContext);
 
-
   if (!user) {
     navigate("/login");
   }
 
   const handleNominateManager = () => {
     navigate("/delegate");
-  }
+  };
 
   return (
     <div>
