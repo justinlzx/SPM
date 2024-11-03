@@ -241,10 +241,13 @@ export const ApprovedRequests = () => {
         <DialogContent>
           <TextField
             autoFocus
-            margin="dense"
-            label="Withdrawal Reason"
-            type="text"
+            label="Input a reason for withdrwal"
             fullWidth
+            multiline
+            rows={2}
+            sx={{ mt:2 }}
+            margin="dense"
+            type="text"
             value={withdrawReason}
             onChange={(e) => setWithdrawReason(e.target.value)}
           />
@@ -303,10 +306,10 @@ const ArrangementRow = ({
         <TableCell>{wfh_type?.toUpperCase()}</TableCell>
         <TableCell sx={{ maxWidth: 200 }}>
           <Tooltip title="Scroll to view more">
-            <Box sx={{ overflowX: "scroll", scrollbarWidth: "none" }}>
-              {reason_description}
-            </Box>
-          </Tooltip>
+          <Box sx={{ overflowX: "scroll", maxWidth: 200, whiteSpace: "nowrap" }}>
+            {reason_description}
+          </Box>
+        </Tooltip>
         </TableCell>
         <TableCell>
           {documents.length > 0 ? (
