@@ -237,24 +237,27 @@ export const ApprovedRequests = () => {
         onClose={() => setWithdrawModalOpen(false)}
         sx={{ '& .MuiDialog-paper': { minWidth: '400px' } }} 
       >
-        <DialogTitle>Withdraw Approval</DialogTitle>
+        <DialogTitle>Withdraw Employee WFH Request</DialogTitle>
         <DialogContent>
           <TextField
             autoFocus
-            margin="dense"
-            label="Withdrawal Reason"
-            type="text"
+            label="Input a reason for withdrwal"
             fullWidth
+            multiline
+            rows={2}
+            sx={{ mt:2 }}
+            margin="dense"
+            type="text"
             value={withdrawReason}
             onChange={(e) => setWithdrawReason(e.target.value)}
           />
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setWithdrawModalOpen(false)} color="secondary">
+          <Button onClick={() => setWithdrawModalOpen(false)} color="secondary" variant="outlined">
             Cancel
           </Button>
-          <Button onClick={handleWithdrawApproval} color="primary">
-            Submit
+          <Button onClick={handleWithdrawApproval} color="warning" variant="outlined">
+            Withdraw Request
           </Button>
         </DialogActions>
       </Dialog>
@@ -303,10 +306,10 @@ const ArrangementRow = ({
         <TableCell>{wfh_type?.toUpperCase()}</TableCell>
         <TableCell sx={{ maxWidth: 200 }}>
           <Tooltip title="Scroll to view more">
-            <Box sx={{ overflowX: "scroll", scrollbarWidth: "none" }}>
-              {reason_description}
-            </Box>
-          </Tooltip>
+          <Box sx={{ overflowX: "scroll", maxWidth: 200, whiteSpace: "nowrap" }}>
+            {reason_description}
+          </Box>
+        </Tooltip>
         </TableCell>
         <TableCell>
           {documents.length > 0 ? (

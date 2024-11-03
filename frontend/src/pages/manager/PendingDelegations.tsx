@@ -19,6 +19,8 @@ import {
   DialogContent,
   DialogActions,
   TextField,
+  Backdrop,
+  CircularProgress,
 } from "@mui/material";
 import { UserContext } from "../../context/UserContextProvider";
 import CheckIcon from "@mui/icons-material/Check";
@@ -188,7 +190,7 @@ export const PendingDelegations = () => {
                   <Button
                     size="small"
                     color="success"
-                    startIcon={loading ? <LoadingSpinner /> : <CheckIcon />}
+                    startIcon={<CheckIcon />}
                     onClick={() => handleDelegationAction("accepted", staff_id)}
                   >
                     Accept
@@ -198,7 +200,7 @@ export const PendingDelegations = () => {
                   <Button
                     size="small"
                     color="error"
-                    startIcon={loading ? <LoadingSpinner /> : <CheckIcon />}
+                    startIcon={<CloseIcon />}
                     onClick={() => handleOpenRejectModal(staff_id)}
                   >
                     Reject
@@ -243,7 +245,7 @@ export const PendingDelegations = () => {
           color="error"
           disabled={!reason.trim() || actionLoading} // Disable when loading or reason is empty
         >
-          {actionLoading ? <LoadingSpinner /> : "Confirm"}
+          {actionLoading ? <LoadingSpinner open={true} /> : "Confirm"}
         </Button>
       </DialogActions>
       </Dialog>
@@ -254,6 +256,11 @@ export const PendingDelegations = () => {
         alertStatus={alertStatus}
         snackbarMessage={snackbarMessage}
       />
+
+      {/* Full Page Loading Overlay */}
+      <Backdrop open={actionLoading} sx={{ color: "#fff", zIndex: (theme) => theme.zIndex.drawer + 1 }}>
+        <CircularProgress color="inherit" />
+      </Backdrop>
     </Container>
   );
 };
