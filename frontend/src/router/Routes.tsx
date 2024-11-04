@@ -59,7 +59,7 @@ const routes: routesProps[] = [
             element: <DelegateManagerPage />
           },
           {
-            path: "request-history",
+            path: "/request-history",
             element: <RequestHistoryPage />
           }
         ],

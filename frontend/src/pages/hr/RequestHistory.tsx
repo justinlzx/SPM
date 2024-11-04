@@ -25,7 +25,7 @@ export const RequestHistoryPage: React.FC = () => {
     const [logs, setLogs] = useState<any[]>([]);
     const [showSnackbar, setShowSnackbar] = useState(false);
     const [snackbarMessage, setSnackbarMessage] = useState("");
-    const [alertStatus, setAlertStatus] = useState<AlertStatus>(AlertStatus.Info);
+    const [alertStatus, setAlertStatus] = useState<"success" | "error">("success");
     const [loading, setLoading] = useState(true);
     const navigate = useNavigate();
     const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
@@ -36,19 +36,19 @@ export const RequestHistoryPage: React.FC = () => {
         );
     }
 
-    // Function to handle Snackbar close
     const handleCloseSnackBar = () => setShowSnackbar(false);
 
-    // Function to fetch arrangement logs
     const fetchLogs = async () => {
         try {
-            const response = await axios.get(`${BACKEND_URL}/arrangements/logs/all`, {
-            });
+            const response = await axios.get(`${BACKEND_URL}/arrangements/logs/all`);
+            const fetchedLogs = response.data.data; // Access the correct path from the response
 
-            setLogs(response.data);
+            setLogs(fetchedLogs);
+
+            console.log(fetchedLogs);
         } catch (error) {
             console.error("Error fetching arrangement logs:", error);
-            setAlertStatus(AlertStatus.Error);
+            setAlertStatus("error");
             setSnackbarMessage("Failed to load Request History.");
             setShowSnackbar(true);
         } finally {
