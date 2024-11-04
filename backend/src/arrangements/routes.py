@@ -1,16 +1,19 @@
-from dataclasses import asdict
 from datetime import datetime
 from typing import Annotated, List, Optional
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
-from src.notifications.email_notifications import craft_and_send_auto_rejection_email
 
 from ..database import get_db
-from ..employees import exceptions as employee_exceptions
+from ..employees.exceptions import (
+    EmployeeNotFoundException,
+    ManagerWithIDNotFoundException,
+)
 from ..logger import logger
 from ..notifications import exceptions as notification_exceptions
+from ..notifications.email_notifications import craft_and_send_auto_rejection_email
+from ..notifications.exceptions import EmailNotificationException
 from ..schemas import JSendResponse, PaginationMeta
 from . import services
 from .commons import dataclasses as dc
@@ -32,27 +35,36 @@ def get_arrangements(
     request_filters: schemas.ArrangementFilters = Depends(schemas.ArrangementFilters.as_query),
 ) -> JSendResponse:
     try:
-        logger.info("Route: Fetching all arrangements")
+        # Convert to dataclasses
         filters = dc.ArrangementFilters.from_dict(request_filters.model_dump())
+
+        # Get arrangements
+        logger.info("Route: Fetching all arrangements")
         data = services.get_all_arrangements(db, filters)
         logger.info(f"Route: Found {len(data)} arrangements")
 
+        # Convert to Pydantic model
+        response_data = format_arrangements_response(data)
+
         return JSendResponse(
             status="success",
-            data=[schemas.ArrangementResponse(**asdict(arrangement)) for arrangement in data],
+            data=response_data,
         )
-    except SQLAlchemyError as e:
+    except Exception as e:
+        logger.error(f"Error occurred: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/{arrangement_id}", summary="Get an arrangement by its arrangement_id")
 def get_arrangement_by_id(arrangement_id: int, db: Session = Depends(get_db)) -> JSendResponse:
     try:
+        # Get arrangement
         logger.info(f"Route: Fetching arrangement with ID: {arrangement_id}")
         data = services.get_arrangement_by_id(db, arrangement_id)
         logger.info("Route: Found arrangement")
 
-        response_data = schemas.ArrangementResponse(**asdict(data))
+        # Convert to Pydantic model
+        response_data = format_arrangement_response(data)
 
         return JSendResponse(
             status="success",
@@ -60,7 +72,8 @@ def get_arrangement_by_id(arrangement_id: int, db: Session = Depends(get_db)) ->
         )
     except ArrangementNotFoundException as e:
         raise HTTPException(status_code=404, detail=str(e))
-    except SQLAlchemyError as e:
+    except Exception as e:
+        logger.error(f"Error occurred: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -74,6 +87,7 @@ def get_personal_arrangements(
     db: Session = Depends(get_db),
 ) -> JSendResponse:
     try:
+        # Get arrangements
         logger.info(f"Route: Fetching personal arrangements for staff ID: {staff_id}")
         data = services.get_personal_arrangements(
             db=db,
@@ -82,13 +96,15 @@ def get_personal_arrangements(
         )
         logger.info(f"Route: Found {len(data)} arrangements for staff ID {staff_id}")
 
-        response_data = [schemas.ArrangementResponse(**asdict(arrangement)) for arrangement in data]
+        # Convert to Pydantic model
+        response_data = format_arrangements_response(data)
 
         return JSendResponse(
             status="success",
             data=response_data,
         )
-    except SQLAlchemyError as e:
+    except Exception as e:
+        logger.error(f"Error occurred: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -112,10 +128,9 @@ def get_subordinates_arrangements(
         data, pagination_meta = services.get_subordinates_arrangements(
             db=db, manager_id=manager_id, filters=filters, pagination=pagination
         )
-        if filters.group_by_date:
-            logger.info(f"Route: Found {pagination_meta.total_count} dates")
-        else:
-            logger.info(f"Route: Found {pagination_meta.total_count} arrangements")
+        logger.info(
+            f"Route: Found {pagination_meta.total_count} {'dates' if filters.group_by_date else 'arrangements'}"
+        )
 
         # Convert to Pydantic model
         response_data = format_arrangements_response(data)
@@ -126,9 +141,10 @@ def get_subordinates_arrangements(
             data=response_data,
             pagination_meta=response_pagination_meta,
         )
-    except employee_exceptions.ManagerWithIDNotFoundException as e:
+    except ManagerWithIDNotFoundException as e:
         raise HTTPException(status_code=404, detail=str(e))
-    except SQLAlchemyError as e:
+    except Exception as e:
+        logger.error(f"Error occurred: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -150,10 +166,9 @@ def get_team_arrangements(
         # Get arrangements
         logger.info(f"Route: Fetching arrangements for team of staff ID: {staff_id}")
         data, pagination_meta = services.get_team_arrangements(db, staff_id, filters, pagination)
-        if filters.group_by_date:
-            logger.info(f"Route: Found {pagination_meta.total_count} dates")
-        else:
-            logger.info(f"Route: Found {pagination_meta.total_count} arrangements")
+        logger.info(
+            f"Route: Found {pagination_meta.total_count} {'dates' if filters.group_by_date else 'arrangements'}"
+        )
 
         # Convert to Pydantic model
         response_data = format_arrangements_response(data)
@@ -164,7 +179,8 @@ def get_team_arrangements(
             data=response_data,
             pagination_meta=response_pagination_meta,
         )
-    except SQLAlchemyError as e:
+    except Exception as e:
+        logger.error(f"Error occurred: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -181,7 +197,7 @@ def get_arrangement_logs(db: Session = Depends(get_db)) -> JSendResponse:
             status="success",
             data=arrangement_logs,
         )
-    except SQLAlchemyError as e:
+    except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -211,7 +227,12 @@ async def create_wfh_request(
             status="success",
             data=response_data,
         )
-    except S3UploadFailedException as e:
+    except (ManagerWithIDNotFoundException, EmployeeNotFoundException) as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except (S3UploadFailedException, EmailNotificationException) as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    except Exception as e:
+        logger.error(f"Error occurred: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -248,13 +269,13 @@ async def update_wfh_request(
         raise HTTPException(status_code=404, detail=str(e))
 
     except ArrangementActionNotAllowedException as e:
-        raise HTTPException(status_code=406, detail=str(e))
+        raise HTTPException(status_code=409, detail=str(e))
 
-    except notification_exceptions.EmailNotificationException as e:
+    except EmailNotificationException as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-    except SQLAlchemyError as e:
-        logger.error(f"Database error occurred: {str(e)}")  # Log the database error
+    except Exception as e:
+        logger.error(f"Error occurred: {str(e)}")
         raise HTTPException(status_code=500, detail="Database error")
 
 
