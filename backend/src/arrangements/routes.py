@@ -1,4 +1,3 @@
-from dataclasses import asdict
 from datetime import datetime
 from typing import Annotated, List, Optional
 
@@ -47,7 +46,8 @@ def get_arrangements(
             status="success",
             data=response_data,
         )
-    except SQLAlchemyError as e:
+    except Exception as e:
+        logger.error(f"Error occurred: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -68,8 +68,6 @@ def get_arrangement_by_id(arrangement_id: int, db: Session = Depends(get_db)) ->
         )
     except ArrangementNotFoundException as e:
         raise HTTPException(status_code=404, detail=str(e))
-    except SQLAlchemyError as e:
-        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get(
@@ -82,6 +80,7 @@ def get_personal_arrangements(
     db: Session = Depends(get_db),
 ) -> JSendResponse:
     try:
+        # Get arrangements
         logger.info(f"Route: Fetching personal arrangements for staff ID: {staff_id}")
         data = services.get_personal_arrangements(
             db=db,
@@ -90,7 +89,8 @@ def get_personal_arrangements(
         )
         logger.info(f"Route: Found {len(data)} arrangements for staff ID {staff_id}")
 
-        response_data = [schemas.ArrangementResponse(**asdict(arrangement)) for arrangement in data]
+        # Convert to Pydantic model
+        response_data = format_arrangements_response(data)
 
         return JSendResponse(
             status="success",
@@ -172,8 +172,8 @@ def get_team_arrangements(
             data=response_data,
             pagination_meta=response_pagination_meta,
         )
-    except SQLAlchemyError as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    except ArrangementNotFoundException as e:
+        raise HTTPException(status_code=404, detail=str(e))
 
 
 @router.get("/logs/all", summary="Get all arrangement logs")
