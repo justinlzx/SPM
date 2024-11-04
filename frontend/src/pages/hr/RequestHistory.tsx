@@ -125,8 +125,8 @@ export const RequestHistoryPage: React.FC = () => {
 
     return (
         <Container maxWidth="md">
-            <Typography variant="h4" sx={{ mb: 2 }}>
-                Department Request History
+            <Typography variant="h4" gutterBottom align="left" sx={{ marginTop: 4 }}>
+                WFH Request History
             </Typography>
             <Divider sx={{ mb: 2 }} />
 
