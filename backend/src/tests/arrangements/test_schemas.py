@@ -376,9 +376,11 @@ class TestArrangementLogResponse:
     def test_model_dump(self, arrangement_log_response):
         response = arrangement_log_response
         json_data = response.model_dump()
-        assert json_data["wfh_date"] == "2024-10-12"
-        assert json_data["update_datetime"] == "2024-09-10T00:00:00"
-        assert json_data["action"] == "approve"
-        assert json_data["previous_approval_status"] == "pending approval"
-        assert json_data["updated_approval_status"] == "approved"
-        assert json_data["wfh_type"] == "full"
+        assert json_data["wfh_date"].isoformat() == "2024-10-12"
+        assert json_data["update_datetime"].isoformat() == "2024-09-10T00:00:00"
+        assert json_data["action"].value == "approve"
+        assert json_data["previous_approval_status"].value == "pending approval"
+        assert json_data["updated_approval_status"].value == "approved"
+        assert json_data["wfh_type"].value == "full"
+
+
