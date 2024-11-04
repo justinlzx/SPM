@@ -4,8 +4,17 @@ import pytest
 from fastapi.testclient import TestClient
 from src.app import app
 from src.arrangements.commons import dataclasses as dc
-from src.arrangements.commons.exceptions import ArrangementNotFoundException
-from src.employees.exceptions import ManagerWithIDNotFoundException
+from src.arrangements.commons.enums import Action, ApprovalStatus
+from src.arrangements.commons.exceptions import (
+    ArrangementActionNotAllowedException,
+    ArrangementNotFoundException,
+    S3UploadFailedException,
+)
+from src.employees.exceptions import (
+    EmployeeNotFoundException,
+    ManagerWithIDNotFoundException,
+)
+from src.notifications.exceptions import EmailNotificationException
 from src.schemas import JSendResponse
 from src.tests.test_utils import mock_db_session  # noqa: F401, E261
 
@@ -32,6 +41,41 @@ def mock_pagination_params():
         "items_per_page": 10,
         "page_num": 1,
     }
+
+
+@pytest.fixture
+def mock_create_request_body():
+    return {
+        "requester_staff_id": 1,
+        "wfh_date": "2021-01-01",
+        "wfh_type": "full",
+        "is_recurring": True,
+        "reason_description": "Test reason",
+        "recurring_frequency_number": 1,
+        "recurring_frequency_unit": "week",
+        "recurring_occurrences": 3,
+    }
+
+
+@pytest.fixture
+def mock_supporting_docs():
+    files = [
+        (
+            "supporting_docs",
+            ("dummy.pdf", open("src/tests/arrangements/dummy.pdf", "rb"), "application/pdf"),
+        ),
+        (
+            "supporting_docs",
+            ("dog.jpg", open("src/tests/arrangements/dog.jpg", "rb"), "image/jpeg"),
+        ),
+        (
+            "supporting_docs",
+            ("cat.png", open("src/tests/arrangements/cat.png", "rb"), "image/png"),
+        ),
+    ]
+    yield files
+    for _, (filename, file, _) in files:
+        file.close()
 
 
 @patch("src.arrangements.services.get_all_arrangements")
@@ -285,84 +329,178 @@ class TestGetArrangementLogs:
         assert mock_pydantic.call_count == num_logs
 
 
+@patch("src.arrangements.services.create_arrangements_from_request")
 class TestCreateWfhRequest:
     @patch("src.arrangements.routes.format_arrangements_response")
-    @patch("src.arrangements.services.create_arrangements_from_request")
-    def test_success(self, mock_create_arrangements, mock_format_response):
+    def test_success(
+        self,
+        mock_format_response,
+        mock_create_arrangements,
+        mock_create_request_body,
+        mock_supporting_docs,
+    ):
+        # Act
+        result = client.post(
+            "/arrangements/request",
+            data=mock_create_request_body,
+            files=mock_supporting_docs,
+        )
+
+        # Assert
+        assert result.status_code == 200
+        assert "data" in result.json()
+
+    def test_failure_manager_not_found(
+        self, mock_create_arrangements, mock_create_request_body, mock_supporting_docs
+    ):
         # Arrange
-        files = [
-            (
-                "supporting_docs",
-                ("dummy.pdf", open("src/tests/arrangements/dummy.pdf", "rb"), "application/pdf"),
-            ),
-            (
-                "supporting_docs",
-                ("dog.jpg", open("src/tests/arrangements/dog.jpg", "rb"), "image/jpeg"),
-            ),
-            (
-                "supporting_docs",
-                ("cat.png", open("src/tests/arrangements/cat.png", "rb"), "image/png"),
-            ),
-        ]
-        try:
-            # Act
-            result = client.post(
-                "/arrangements/request",
-                data={
-                    "requester_staff_id": 1,
-                    "wfh_date": "2021-01-01",
-                    "wfh_type": "full",
-                    "is_recurring": True,
-                    "reason_description": "Test reason",
-                    "recurring_frequency_number": 1,
-                    "recurring_frequency_unit": "week",
-                    "recurring_occurrences": 3,
-                },  # type: ignore
-                files=files,
-            )
+        mock_create_arrangements.side_effect = ManagerWithIDNotFoundException(1)
 
-            # Assert
-            assert result.status_code == 200
-            assert "data" in result.json()
-        finally:
-            for _, (filename, file, _) in files:
-                file.close()
+        # Act
+        result = client.post(
+            "/arrangements/request",
+            data=mock_create_request_body,
+        )
+
+        # Assert
+        assert result.status_code == 404
+
+    def test_failure_employee_not_found(
+        self, mock_create_arrangements, mock_create_request_body, mock_supporting_docs
+    ):
+        # Arrange
+        mock_create_arrangements.side_effect = EmployeeNotFoundException(1)
+
+        # Act
+        result = client.post(
+            "/arrangements/request",
+            data=mock_create_request_body,
+        )
+
+        # Assert
+        assert result.status_code == 404
+
+    def test_failure_s3_upload(
+        self, mock_create_arrangements, mock_create_request_body, mock_supporting_docs
+    ):
+        # Arrange
+        mock_create_arrangements.side_effect = S3UploadFailedException("Some test message")
+
+        # Act
+        result = client.post(
+            "/arrangements/request",
+            data=mock_create_request_body,
+            files=mock_supporting_docs,
+        )
+
+        # Assert
+        assert result.status_code == 500
+
+    def test_failure_email(
+        self, mock_create_arrangements, mock_create_request_body, mock_supporting_docs
+    ):
+        # Arrange
+        mock_create_arrangements.side_effect = EmailNotificationException(["A", "B"])
+
+        # Act
+        result = client.post("/arrangements/request", data=mock_create_request_body)
+
+        # Assert
+        assert result.status_code == 500
+
+    def test_failure_unknown(
+        self, mock_create_arrangements, mock_create_request_body, mock_supporting_docs
+    ):
+        # Arrange
+        mock_create_arrangements.side_effect = Exception()
+
+        # Act
+        result = client.post("/arrangements/request", data=mock_create_request_body)
+
+        # Assert
+        assert result.status_code == 500
 
 
+@patch("src.arrangements.services.update_arrangement_approval_status")
 class TestUpdateWfhRequest:
     @patch("src.arrangements.routes.format_arrangement_response")
-    @patch("src.arrangements.services.update_arrangement_approval_status")
-    def test_success(self, mock_update_arrangement, mock_format_response):
+    def test_success(self, mock_format_response, mock_update_arrangement, mock_supporting_docs):
+        # Act
+        result = client.put(
+            "/arrangements/1/status",
+            data={
+                "action": "approve",
+                "approving_officer": 1,
+            },  # type: ignore
+            files=mock_supporting_docs,
+        )
+
+        # Assert
+        assert result.status_code == 200
+        assert "data" in result.json()
+
+    def test_failure_arrangement_not_found(self, mock_update_arrangement):
         # Arrange
-        files = [
-            (
-                "supporting_docs",
-                ("dummy.pdf", open("src/tests/arrangements/dummy.pdf", "rb"), "application/pdf"),
-            ),
-            (
-                "supporting_docs",
-                ("dog.jpg", open("src/tests/arrangements/dog.jpg", "rb"), "image/jpeg"),
-            ),
-            (
-                "supporting_docs",
-                ("cat.png", open("src/tests/arrangements/cat.png", "rb"), "image/png"),
-            ),
-        ]
+        mock_update_arrangement.side_effect = ArrangementNotFoundException(1)
 
-        try:
-            # Act
-            result = client.put(
-                "/arrangements/1/status",
-                data={
-                    "action": "approve",
-                    "approving_officer": 1,
-                },  # type: ignore
-                files=files,
-            )
+        # Act
+        result = client.put(
+            "/arrangements/1/status",
+            data={
+                "action": "approve",
+                "approving_officer": 1,
+            },  # type: ignore
+        )
 
-            # Assert
-            assert result.status_code == 200
-            assert "data" in result.json()
-        finally:
-            for _, (filename, file, _) in files:
-                file.close()
+        # Assert
+        assert result.status_code == 404
+
+    def test_failure_arrangement_action_not_allowed(self, mock_update_arrangement):
+        # Arrange
+        mock_update_arrangement.side_effect = ArrangementActionNotAllowedException(
+            ApprovalStatus.APPROVED, Action.APPROVE
+        )
+
+        # Act
+        result = client.put(
+            "/arrangements/1/status",
+            data={
+                "action": "approve",
+                "approving_officer": 1,
+            },  # type: ignore
+        )
+
+        # Assert
+        assert result.status_code == 409
+
+    def test_failure_email(self, mock_update_arrangement):
+        # Arrange
+        mock_update_arrangement.side_effect = EmailNotificationException(["A", "B"])
+
+        # Act
+        result = client.put(
+            "/arrangements/1/status",
+            data={
+                "action": "approve",
+                "approving_officer": 1,
+            },  # type: ignore
+        )
+
+        # Assert
+        assert result.status_code == 500
+
+    def test_failure_unknown(self, mock_update_arrangement):
+        # Arrange
+        mock_update_arrangement.side_effect = Exception()
+
+        # Act
+        result = client.put(
+            "/arrangements/1/status",
+            data={
+                "action": "approve",
+                "approving_officer": 1,
+            },  # type: ignore
+        )
+
+        # Assert
+        assert result.status_code == 500

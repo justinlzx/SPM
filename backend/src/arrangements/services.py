@@ -9,9 +9,12 @@ from fastapi import File
 from sqlalchemy.orm import Session
 
 from ..employees import crud as employee_crud
-from ..employees import exceptions as employee_exceptions
 from ..employees import models as employee_models
 from ..employees import services as employee_services
+from ..employees.exceptions import (
+    EmployeeNotFoundException,
+    ManagerWithIDNotFoundException,
+)
 from ..logger import logger
 from ..notifications.email_notifications import craft_and_send_email
 from . import crud
@@ -132,7 +135,7 @@ def get_team_arrangements(
     try:
         # Get subordinate employees
         employees.extend(employee_services.get_subordinates_by_manager_id(db, staff_id))
-    except employee_exceptions.ManagerWithIDNotFoundException:
+    except ManagerWithIDNotFoundException:
         logger.info("Employee is not a manager, skipping subordinate retrieval")
 
     # Get team arrangements
@@ -184,6 +187,10 @@ async def create_arrangements_from_request(
     try:
         # Get all required staff objects
         employee = employee_crud.get_employee_by_staff_id(db, wfh_request.requester_staff_id)
+
+        if employee is None:
+            raise EmployeeNotFoundException(wfh_request.requester_staff_id)
+
         approving_officer, _ = employee_services.get_manager_by_subordinate_id(
             db=db, staff_id=wfh_request.requester_staff_id
         )

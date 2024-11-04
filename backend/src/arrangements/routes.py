@@ -4,12 +4,16 @@ from typing import Annotated, List, Optional
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
-from src.notifications.email_notifications import craft_and_send_auto_rejection_email
 
 from ..database import get_db
-from ..employees.exceptions import ManagerWithIDNotFoundException
+from ..employees.exceptions import (
+    EmployeeNotFoundException,
+    ManagerWithIDNotFoundException,
+)
 from ..logger import logger
 from ..notifications import exceptions as notification_exceptions
+from ..notifications.email_notifications import craft_and_send_auto_rejection_email
+from ..notifications.exceptions import EmailNotificationException
 from ..schemas import JSendResponse, PaginationMeta
 from . import services
 from .commons import dataclasses as dc
@@ -100,6 +104,7 @@ def get_personal_arrangements(
             data=response_data,
         )
     except Exception as e:
+        logger.error(f"Error occurred: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -139,6 +144,7 @@ def get_subordinates_arrangements(
     except ManagerWithIDNotFoundException as e:
         raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
+        logger.error(f"Error occurred: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -177,6 +183,7 @@ def get_team_arrangements(
     except ArrangementNotFoundException as e:
         raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
+        logger.error(f"Error occurred: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -223,7 +230,12 @@ async def create_wfh_request(
             status="success",
             data=response_data,
         )
-    except S3UploadFailedException as e:
+    except (ManagerWithIDNotFoundException, EmployeeNotFoundException) as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except (S3UploadFailedException, EmailNotificationException) as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    except Exception as e:
+        logger.error(f"Error occurred: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -260,13 +272,13 @@ async def update_wfh_request(
         raise HTTPException(status_code=404, detail=str(e))
 
     except ArrangementActionNotAllowedException as e:
-        raise HTTPException(status_code=406, detail=str(e))
+        raise HTTPException(status_code=409, detail=str(e))
 
-    except notification_exceptions.EmailNotificationException as e:
+    except EmailNotificationException as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-    except SQLAlchemyError as e:
-        logger.error(f"Database error occurred: {str(e)}")  # Log the database error
+    except Exception as e:
+        logger.error(f"Error occurred: {str(e)}")
         raise HTTPException(status_code=500, detail="Database error")
 
 
