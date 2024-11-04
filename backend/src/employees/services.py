@@ -73,7 +73,7 @@ def get_manager_by_subordinate_id(
     # Retrieve the employee
     emp = get_employee_by_id(db, staff_id)
     if not emp:
-        raise exceptions.EmployeeNotFoundException()
+        raise exceptions.EmployeeNotFoundException(staff_id)
 
     # Get the manager of the employee
     manager = crud.get_manager_of_employee(db, emp)
@@ -113,7 +113,7 @@ def get_employee_by_id(db: Session, staff_id: int) -> models.Employee:
     employee: models.Employee = crud.get_employee_by_staff_id(db, staff_id)
 
     if not employee:
-        raise exceptions.EmployeeNotFoundException()
+        raise exceptions.EmployeeNotFoundException(staff_id)
 
     return employee
 
@@ -122,7 +122,7 @@ def get_employee_by_email(db: Session, email: str) -> models.Employee:
     employee: models.Employee = crud.get_employee_by_email(db, email)
 
     if not employee:
-        raise exceptions.EmployeeNotFoundException()
+        raise exceptions.EmployeeGenericNotFoundException()
 
     return employee
 
