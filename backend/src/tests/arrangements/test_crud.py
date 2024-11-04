@@ -14,6 +14,7 @@ from src.arrangements.commons.dataclasses import (
 from src.arrangements.commons.enums import Action, ApprovalStatus, WfhType
 from src.employees.models import Employee
 from src.auth.models import Auth
+from src.arrangements.commons import models
 
 
 @pytest.fixture
@@ -597,5 +598,5 @@ class TestUpdateArrangementApprovalStatus:
             mock_db_session, arrangement_response, Action.APPROVE, ApprovalStatus.PENDING_APPROVAL
         )
 
-    assert isinstance(result, dict)
-    mock_db_session.commit.assert_called_once()
+        assert isinstance(result, dict)
+        mock_db_session.commit.assert_called_once()
