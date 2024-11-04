@@ -18,6 +18,8 @@ import Toolbar from "@mui/material/Toolbar";
 import SpaceDashboardIcon from "@mui/icons-material/SpaceDashboard";
 import TeamIcon from "@mui/icons-material/Group";
 import WfhScheduleIcon from "@mui/icons-material/CalendarMonth";
+import AssignmentIndIcon from '@mui/icons-material/AssignmentInd';
+
 
 const drawerWidth = 240;
 
@@ -65,6 +67,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           icon: <InboxIcon />,
           route: "/review-requests",
         },
+        { text: "Delegation", icon: <AssignmentIndIcon />, route: "/delegate" },
       ];
     }
     if (user?.role === 1) {
@@ -75,6 +78,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           icon: <TeamIcon />,
           route: "/department-overview",
         },
+        { text: "Delegation", icon: <AssignmentIndIcon />, route: "/delegate" },
       ];
     }
     return basicSideBar;

@@ -56,29 +56,57 @@ export const RequestList = () => {
         try {
           setLoading(true);
           setError(null);
-          const response = await axios.get(
-            `${BACKEND_URL}/arrangements/team/${user.id}`,
+
+          // First, fetch the manager ID
+          const managerResponse = await axios.get(
+            `${BACKEND_URL}/employees/manager/peermanager/${user.id}`,
             {
-              withCredentials: true, // Important for CORS
+              withCredentials: true,
               headers: {
                 'Accept': 'application/json',
                 'Content-Type': 'application/json'
               }
             }
           );
-          const allRequests: TWFHRequest[] = response.data.data;
-          setRequests(allRequests);
+
+          // Ensure the manager ID is available
+          const managerId = managerResponse.data.manager_id; // Adjust the path to get the manager id
+          //console.log(managerId)
+          if (!managerId) {
+            throw new Error('Manager ID not found');
+          }
+
+          // Then, fetch the team arrangements using the manager ID
+          const arrangementsResponse = await fetch(
+            `${BACKEND_URL}/arrangements/team/${managerId}`, // Use managerId here
+            {
+              credentials: 'include',
+              headers: {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json'
+              }
+            }
+          );
+          console.log(managerId);
+
+          if (!arrangementsResponse.ok) {
+            throw new Error('Failed to fetch team arrangements');
+          }
+
+          const arrangementsData = await arrangementsResponse.json();
+          setRequests(arrangementsData.data);
         } catch (error) {
-          console.error("Failed to fetch WFH requests:", error);
-          setSnackbarMessage("Failed to fetch WFH requests. Please try again later.");
-          setSnackbarSeverity("error");  // Set severity to error
+          console.error("Failed to fetch data:", error);
+          setError("Failed to fetch team requests. Please try again later.");
         } finally {
           setLoading(false);
         }
       }
     };
+
     fetchAllRequests();
   }, [user]);
+
 
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchTerm(e.target.value);
