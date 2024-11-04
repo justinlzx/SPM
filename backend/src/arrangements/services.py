@@ -62,7 +62,7 @@ def get_personal_arrangements(
     filters = ArrangementFilters(current_approval_status=current_approval_status)
 
     logger.info(f"Service: Fetching personal arrangements for staff ID {staff_id}")
-    arrangements = crud.get_arrangements(db, [staff_id], filters=filters)
+    arrangements = crud.get_arrangements(db, staff_id, filters=filters)
     logger.info(f"Service: Found {len(arrangements)} arrangements for staff ID {staff_id}")
 
     return [ArrangementResponse.from_dict(arrangement) for arrangement in arrangements]
