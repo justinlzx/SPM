@@ -68,6 +68,9 @@ def get_arrangement_by_id(arrangement_id: int, db: Session = Depends(get_db)) ->
         )
     except ArrangementNotFoundException as e:
         raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        logger.error(f"Error occurred: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get(

@@ -81,6 +81,17 @@ class TestGetArrangementById:
         # Assert
         assert response.status_code == 404
 
+    def test_failure_unknown(self, mock_get_arrangement):
+        # Arrange
+        arrangement_id = 1
+        mock_get_arrangement.side_effect = Exception()
+
+        # Act
+        response = client.get(f"/arrangements/{arrangement_id}")
+
+        # Assert
+        assert response.status_code == 500
+
 
 class TestGetPersonalArrangements:
     @patch("src.arrangements.commons.schemas.ArrangementResponse")
