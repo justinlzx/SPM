@@ -22,6 +22,20 @@ from unittest.mock import Mock, patch, MagicMock
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, Query
 from typing import List, Optional
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+from src.arrangements.commons import models
+
+
+@pytest.fixture(scope="module")
+def in_memory_db():
+    engine = create_engine("sqlite:///:memory:")
+    models.Base.metadata.create_all(engine)  # Create tables
+    SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+    db = SessionLocal()
+    yield db
+    db.close()
+    models.Base.metadata.drop_all(engine)  # Clean up after tests
 
 
 @pytest.fixture
@@ -434,8 +448,7 @@ class TestGetArrangementLogs:
 
 
 class TestCreateRecurringRequest:
-    @patch("src.arrangements.crud.models.RecurringRequest")
-    def test_create_recurring_request_success(self, mock_recurring_request_class, mock_db_session):
+    def test_create_recurring_request_success(self, in_memory_db):
         request = RecurringRequestDetails(
             requester_staff_id=100,
             reason_description="Test recurring",
@@ -446,16 +459,13 @@ class TestCreateRecurringRequest:
             request_datetime=datetime.now(),
         )
 
-        mock_recurring_request_instance = MagicMock()
-        mock_recurring_request_class.return_value = mock_recurring_request_instance
-
         # Act
-        result = crud.create_recurring_request(mock_db_session, request)
+        result = crud.create_recurring_request(in_memory_db, request)
 
         # Assert
         assert isinstance(result, CreatedRecurringRequest)
-        mock_db_session.add.assert_called_once_with(mock_recurring_request_instance)
-        mock_db_session.commit.assert_called_once()
+        assert result.requester_staff_id == 100
+        assert result.reason_description == "Test recurring"
 
     def test_create_recurring_request_error(self, mock_db_session):
         mock_db_session.add.side_effect = SQLAlchemyError()
@@ -553,8 +563,7 @@ class TestUpdateArrangementApprovalStatus:
 
 
 class TestCreateArrangements:
-    @patch("src.arrangements.crud.models.LatestArrangement")
-    def test_create_arrangements_success(self, mock_latest_arrangement_class, mock_db_session):
+    def test_create_arrangements_success(self, in_memory_db):
         arrangements = [
             CreateArrangementRequest(
                 update_datetime=datetime.now(),
@@ -571,17 +580,14 @@ class TestCreateArrangements:
             )
         ]
 
-        mock_latest_arrangement_instance = MagicMock()
-        mock_latest_arrangement_class.return_value = mock_latest_arrangement_instance
-
         # Act
-        result = crud.create_arrangements(mock_db_session, arrangements)
+        result = crud.create_arrangements(in_memory_db, arrangements)
 
         # Assert
         assert len(result) == 1
         assert isinstance(result[0], ArrangementResponse)
-        mock_db_session.add.assert_called()
-        mock_db_session.commit.assert_called_once()
+        assert result[0].requester_staff_id == 100
+        assert result[0].reason_description == "Test"
 
     def test_create_arrangements_error(self, mock_db_session):
         arrangements = [
