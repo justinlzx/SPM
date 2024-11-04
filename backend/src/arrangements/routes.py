@@ -99,7 +99,7 @@ def get_personal_arrangements(
             status="success",
             data=response_data,
         )
-    except SQLAlchemyError as e:
+    except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 

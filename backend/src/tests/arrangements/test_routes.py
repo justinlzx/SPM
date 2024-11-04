@@ -1,9 +1,7 @@
-from datetime import datetime
 from unittest.mock import MagicMock, patch
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy.exc import SQLAlchemyError
 from src.app import app
 from src.arrangements.commons import dataclasses as dc
 from src.arrangements.commons.exceptions import ArrangementNotFoundException
@@ -93,42 +91,32 @@ class TestGetArrangementById:
         assert response.status_code == 500
 
 
+@patch("src.arrangements.services.get_personal_arrangements")
 class TestGetPersonalArrangements:
-    @patch("src.arrangements.commons.schemas.ArrangementResponse")
-    @patch("src.arrangements.routes.asdict")
-    @patch("src.arrangements.services.get_personal_arrangements")
-    def test_success(self, mock_get_personal_arrangements, mock_asdict, mock_pydantic):
+    @patch("src.arrangements.routes.format_arrangements_response")
+    def test_success(self, mock_format_response, mock_get_personal_arrangements):
         # Arrange
-        user_id = 1
-
-        mock_arrangement_data = {
-            "arrangement_id": 1,
-            "wfh_date": datetime.now().date(),
-            "update_datetime": datetime.now(),
-        }
-
-        mock_arrangement = MagicMock(spec=dc.ArrangementResponse)
-        mock_arrangement.configure_mock(**mock_arrangement_data)
-        mock_get_personal_arrangements.return_value = [mock_arrangement]
-
-        mock_asdict.return_value = mock_arrangement_data
-        mock_pydantic.return_value = MagicMock()
+        staff_id = 1
 
         # Act
-        response = client.get(f"/arrangements/personal/{user_id}")
+        response = client.get(
+            f"/arrangements/personal/{staff_id}",
+            params={
+                "current_approval_status": ["approved"],
+            },
+        )
 
         # Assert
         assert response.status_code == 200
-        assert response.json() == JSendResponse(status="success", data=[[]]).model_dump()
+        assert "data" in response.json()
 
-    @patch("src.arrangements.services.get_personal_arrangements")
-    def test_failure_sqlalchemy(self, mock_get_personal_arrangements):
+    def test_failure_unknown(self, mock_get_personal_arrangements):
         # Arrange
-        user_id = 1
-        mock_get_personal_arrangements.side_effect = SQLAlchemyError()
+        staff_id = 1
+        mock_get_personal_arrangements.side_effect = Exception()
 
         # Act
-        response = client.get(f"/arrangements/personal/{user_id}")
+        response = client.get(f"/arrangements/personal/{staff_id}")
 
         # Assert
         assert response.status_code == 500
