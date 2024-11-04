@@ -3,13 +3,11 @@
 # from email.mime.text import MIMEText
 from datetime import datetime
 from os import getenv
-from typing import List
+from typing import List, Optional
 
 import httpx
 from dotenv import load_dotenv
 from fastapi import HTTPException
-from sqlalchemy.orm import Session
-from src.arrangements.commons.models import LatestArrangement
 
 from ..arrangements.commons.dataclasses import ArrangementResponse
 from ..arrangements.commons.enums import Action, ApprovalStatus
@@ -48,6 +46,7 @@ async def craft_and_send_email(
     action: Action,
     current_approval_status: ApprovalStatus,
     manager: employee_models.Employee,
+    auto_reject: Optional[bool] = False,
 ):
     logger.info("Crafting and sending email notifications...")
 
@@ -59,6 +58,7 @@ async def craft_and_send_email(
         action=action,
         current_approval_status=current_approval_status,
         manager=manager,
+        auto_reject=auto_reject,
     )
 
     email_list.append(
@@ -100,17 +100,18 @@ def craft_email_content(
     action: Action,
     current_approval_status: ApprovalStatus,
     manager: employee_models.Employee,
+    auto_reject: bool = False,
 ):
     formatted_details = format_details(arrangements, action)
 
     result = {
         "employee": {
             "subject": format_email_subject("employee", action, current_approval_status),
-            "content": format_email_body(employee, formatted_details),
+            "content": format_email_body(employee, formatted_details, "employee", auto_reject),
         },
         "manager": {
             "subject": format_email_subject("manager", action, current_approval_status),
-            "content": format_email_body(manager, formatted_details),
+            "content": format_email_body(manager, formatted_details, "manager", auto_reject),
         },
     }
 
@@ -118,7 +119,6 @@ def craft_email_content(
 
 
 def format_details(arrangements: List[ArrangementResponse], action: Action):
-
     details = []
     for arrangement in arrangements:
         status_change_reason = ""
@@ -140,7 +140,9 @@ def format_details(arrangements: List[ArrangementResponse], action: Action):
     return "\n".join(details)
 
 
-def format_email_subject(role: str, action: Action, current_approval_status: ApprovalStatus):
+def format_email_subject(
+    role: str, action: Action, current_approval_status: ApprovalStatus, auto_reject: bool = False
+):
     statement_dict = {
         "employee": {
             Action.CREATE: "Your WFH Request Has Been Created",
@@ -149,7 +151,10 @@ def format_email_subject(role: str, action: Action, current_approval_status: App
                 ApprovalStatus.WITHDRAWN: "Your WFH Request Has Been Withdrawn",
             },
             Action.REJECT: {
-                ApprovalStatus.REJECTED: "Your WFH Request Has Been Rejected",
+                ApprovalStatus.REJECTED: {
+                    "auto": "Your WFH Request Has Been Auto-Rejected",
+                    "manual": "Your WFH Request Has Been Rejected",
+                },
                 ApprovalStatus.APPROVED: "Your WFH Request Withdrawal Has Been Rejected",
             },
             Action.WITHDRAW: "You Have Requested to Withdraw Your WFH",
@@ -162,7 +167,10 @@ def format_email_subject(role: str, action: Action, current_approval_status: App
                 ApprovalStatus.WITHDRAWN: "You Have Approved a WFH Request Withdrawal",
             },
             Action.REJECT: {
-                ApprovalStatus.REJECTED: "You Have Rejected a WFH Request",
+                ApprovalStatus.REJECTED: {
+                    "auto": "Your Staff's WFH Request Has Been Auto-Rejected",
+                    "manual": "You Have Rejected a WFH Request",
+                },
                 ApprovalStatus.APPROVED: "You Have Rejected a WFH Request Withdrawal",
             },
             Action.WITHDRAW: "Your Staff Has Requested to Withdraw Their WFH",
@@ -171,9 +179,14 @@ def format_email_subject(role: str, action: Action, current_approval_status: App
     }
 
     action_statement = statement_dict[role][action]
-
     if action == Action.APPROVE or action == Action.REJECT:
         action_statement = action_statement[current_approval_status]
+        if (
+            action == Action.REJECT
+            and current_approval_status == ApprovalStatus.REJECTED
+            and auto_reject
+        ):
+            action_statement = action_statement["auto"]
 
     return f"[All-In-One] {action_statement}"
 
@@ -181,10 +194,22 @@ def format_email_subject(role: str, action: Action, current_approval_status: App
 def format_email_body(
     employee: employee_models.Employee,
     formatted_details: str,
+    role: str,
+    auto_reject: bool = False,
 ):
     body = f"Dear {employee.staff_fname} {employee.staff_lname},\n\n"
+    body += (
+        "A WFH request has been automatically rejected as it was submitted less than 24 hours before the requested WFH date.\n\n"
+        if auto_reject
+        else ""
+    )
     body += "Please refer to the following details for the above action:\n\n"
     body += formatted_details
+    body += (
+        "Please ensure future WFH requests are submitted at least 24 hours in advance.\n\n"
+        if auto_reject and role == "employee"
+        else ""
+    )
     body += "\n\nThis email is auto-generated. Please do not reply to this email. Thank you."
     return body
 
@@ -317,71 +342,72 @@ def craft_email_content_for_delegation(
     return subject, content
 
 
-async def craft_and_send_auto_rejection_email(
-    arrangement_id: int,
-    db: Session,
-):
-    """Send auto-rejection email for arrangement submitted <24h before WFH date."""
-    # Get arrangement details
-    arrangement = (
-        db.query(LatestArrangement)
-        .filter(LatestArrangement.arrangement_id == arrangement_id)
-        .first()
-    )
+# ============================ DEPRECATED FUNCTIONS ============================
+# async def craft_and_send_auto_rejection_email(
+#     arrangement_id: int,
+#     db: Session,
+# ):
+#     """Send auto-rejection email for arrangement submitted <24h before WFH date."""
+#     # Get arrangement details
+#     arrangement = (
+#         db.query(LatestArrangement)
+#         .filter(LatestArrangement.arrangement_id == arrangement_id)
+#         .first()
+#     )
 
-    if not arrangement:
-        raise ValueError(f"Arrangement {arrangement_id} not found")
+#     if not arrangement:
+#         raise ValueError(f"Arrangement {arrangement_id} not found")
 
-    employee = arrangement.requester_info
-    manager = (
-        arrangement.delegate_approving_officer_info
-        if arrangement.delegate_approving_officer_info
-        else arrangement.approving_officer_info
-    )
+#     employee = arrangement.requester_info
+#     manager = (
+#         arrangement.delegate_approving_officer_info
+#         if arrangement.delegate_approving_officer_info
+#         else arrangement.approving_officer_info
+#     )
 
-    # Create and send emails
-    employee_subject = "[All-In-One] Your WFH Request Has Been Auto-Rejected"
-    employee_content = (
-        f"Dear {employee.staff_fname} {employee.staff_lname},\n\n"
-        f"Your WFH request has been automatically rejected as it was submitted less than 24 hours "
-        f"before the requested WFH date.\n\n"
-        f"Request Details:\n"
-        f"Request ID: {arrangement.arrangement_id}\n"
-        f"WFH Date: {arrangement.wfh_date}\n"
-        f"Type: {arrangement.wfh_type}\n"
-        f"Reason: {arrangement.reason_description}\n\n"
-        f"Please ensure future WFH requests are submitted at least 24 hours in advance.\n\n"
-        f"This email is auto-generated. Please do not reply to this email. Thank you."
-    )
+#     # Create and send emails
+#     employee_subject = "[All-In-One] Your WFH Request Has Been Auto-Rejected"
+#     employee_content = (
+#         f"Dear {employee.staff_fname} {employee.staff_lname},\n\n"
+#         f"Your WFH request has been automatically rejected as it was submitted less than 24 hours "
+#         f"before the requested WFH date.\n\n"
+#         f"Request Details:\n"
+#         f"Request ID: {arrangement.arrangement_id}\n"
+#         f"WFH Date: {arrangement.wfh_date}\n"
+#         f"Type: {arrangement.wfh_type}\n"
+#         f"Reason: {arrangement.reason_description}\n\n"
+#         f"Please ensure future WFH requests are submitted at least 24 hours in advance.\n\n"
+#         f"This email is auto-generated. Please do not reply to this email. Thank you."
+#     )
 
-    manager_subject = "[All-In-One] Staff WFH Request Auto-Rejected"
-    manager_content = (
-        f"Dear {manager.staff_fname} {manager.staff_lname},\n\n"
-        f"A WFH request from your staff has been automatically rejected as it was submitted less "
-        f"than 24 hours before the requested WFH date.\n\n"
-        f"Request Details:\n"
-        f"Staff: {employee.staff_fname} {employee.staff_lname}\n"
-        f"Request ID: {arrangement.arrangement_id}\n"
-        f"WFH Date: {arrangement.wfh_date}\n"
-        f"Type: {arrangement.wfh_type}\n"
-        f"Reason: {arrangement.reason_description}\n\n"
-        f"This email is auto-generated. Please do not reply to this email. Thank you."
-    )
+#     manager_subject = "[All-In-One] Staff WFH Request Auto-Rejected"
+#     manager_content = (
+#         f"Dear {manager.staff_fname} {manager.staff_lname},\n\n"
+#         f"A WFH request from your staff has been automatically rejected as it was submitted less "
+#         f"than 24 hours before the requested WFH date.\n\n"
+#         f"Request Details:\n"
+#         f"Staff: {employee.staff_fname} {employee.staff_lname}\n"
+#         f"Request ID: {arrangement.arrangement_id}\n"
+#         f"WFH Date: {arrangement.wfh_date}\n"
+#         f"Type: {arrangement.wfh_type}\n"
+#         f"Reason: {arrangement.reason_description}\n\n"
+#         f"This email is auto-generated. Please do not reply to this email. Thank you."
+#     )
 
-    email_errors = []
-    email_list = [
-        (employee.email, employee_subject, employee_content),
-        (manager.email, manager_subject, manager_content),
-    ]
+#     email_errors = []
+#     email_list = [
+#         (employee.email, employee_subject, employee_content),
+#         (manager.email, manager_subject, manager_content),
+#     ]
 
-    for email in email_list:
-        try:
-            await send_email(*email)
-        except HTTPException:
-            email_errors.append(email[0])
+#     for email in email_list:
+#         try:
+#             await send_email(*email)
+#         except HTTPException:
+#             email_errors.append(email[0])
 
-    if email_errors:
-        raise exceptions.EmailNotificationException(email_errors)
+#     if email_errors:
+#         raise exceptions.EmailNotificationException(email_errors)
 
-    for email, subject, content in email_list:
-        logger.info(f"Auto-rejection email sent successfully to {email} with subject: {subject}")
+#     for email, subject, content in email_list:
+#         logger.info(f"Auto-rejection email sent successfully to {email} with subject: {subject}")
