@@ -18,6 +18,8 @@ export type TLoginResponse = {
   email: string;
   role: number;
   id: number;
+  position: string;
+  dept: string;
 };
 
 export const useLogin = () => {
@@ -30,9 +32,9 @@ export const useLogin = () => {
       // Handle successful login
       console.log("Login successful");
 
-      const { email, role, id } = response;
+      const { email, role, id, position, dept } = response;
 
-      setUser({ email, role, id });
+      setUser({ email, role, id, position, dept });
       // Redirect to dashboard or home page
       navigate("/home");
     },

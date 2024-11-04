@@ -1,22 +1,20 @@
-from copy import deepcopy
 from dataclasses import asdict
 from datetime import datetime
-from math import ceil
-from typing import List, Optional, Tuple, Union
+from typing import Dict, List, Optional, Tuple, Union
 
 import boto3
 import botocore
 import botocore.exceptions
-from dateutil.relativedelta import relativedelta
 from fastapi import File
 from sqlalchemy.orm import Session
-from src.arrangements.utils import delete_file, upload_file
 
-from ..arrangements.utils import delete_file, upload_file
 from ..employees import crud as employee_crud
-from ..employees import exceptions as employee_exceptions
 from ..employees import models as employee_models
 from ..employees import services as employee_services
+from ..employees.exceptions import (
+    EmployeeNotFoundException,
+    ManagerWithIDNotFoundException,
+)
 from ..logger import logger
 from ..notifications.email_notifications import craft_and_send_email
 from . import crud
@@ -32,13 +30,15 @@ from .commons.dataclasses import (
     RecurringRequestDetails,
     UpdateArrangementRequest,
 )
-from .commons.enums import (
-    STATUS_ACTION_MAPPING,
-    Action,
-    ApprovalStatus,
-    RecurringFrequencyUnit,
+from .commons.enums import STATUS_ACTION_MAPPING, Action, ApprovalStatus
+from .utils import (
+    compute_pagination_meta,
+    create_presigned_url,
+    delete_file,
+    expand_recurring_arrangement,
+    group_arrangements_by_date,
+    upload_file,
 )
-from .utils import create_presigned_url
 
 
 def get_arrangement_by_id(db: Session, arrangement_id: int) -> ArrangementResponse:
@@ -50,6 +50,14 @@ def get_arrangement_by_id(db: Session, arrangement_id: int) -> ArrangementRespon
     return ArrangementResponse.from_dict(arrangement)
 
 
+def get_all_arrangements(db: Session, filters: ArrangementFilters) -> List[ArrangementResponse]:
+    arrangements: List[Dict] = crud.get_arrangements(db, filters=filters)
+
+    response = [ArrangementResponse.from_dict(arrangement) for arrangement in arrangements]
+
+    return response
+
+
 def get_personal_arrangements(
     db: Session, staff_id: int, current_approval_status: Optional[List[ApprovalStatus]] = None
 ) -> List[ArrangementResponse]:
@@ -57,7 +65,7 @@ def get_personal_arrangements(
     filters = ArrangementFilters(current_approval_status=current_approval_status)
 
     logger.info(f"Service: Fetching personal arrangements for staff ID {staff_id}")
-    arrangements = crud.get_arrangements_by_staff_ids(db, [staff_id], filters=filters)
+    arrangements = crud.get_arrangements(db, staff_id, filters=filters)
     logger.info(f"Service: Found {len(arrangements)} arrangements for staff ID {staff_id}")
 
     return [ArrangementResponse.from_dict(arrangement) for arrangement in arrangements]
@@ -79,7 +87,7 @@ def get_subordinates_arrangements(
 
     # Get arrangements for the subordinates
     logger.info(f"Service: Fetching arrangements for employees under manager ID: {manager_id}")
-    arrangements = crud.get_arrangements_by_staff_ids(
+    arrangements = crud.get_arrangements(
         db=db,
         staff_ids=employees_under_manager_ids,
         filters=filters,
@@ -93,17 +101,11 @@ def get_subordinates_arrangements(
         record.supporting_doc_2 = create_presigned_url(record.supporting_doc_2)
         record.supporting_doc_3 = create_presigned_url(record.supporting_doc_3)
 
-    total_count = len(arrangements)
-    total_pages = ceil(total_count / pagination.items_per_page)
-
     # Group by date if required
     if filters.group_by_date:
         arrangements = group_arrangements_by_date(arrangements)
 
         logger.info(f"Grouped arrangements into {len(arrangements)} dates")
-
-        # Pagination logic
-        total_count = len(arrangements)
 
         # slice the list based on page number and items per page
         arrangements = arrangements[
@@ -112,11 +114,8 @@ def get_subordinates_arrangements(
             * pagination.items_per_page
         ]
 
-    pagination_meta = PaginationMeta(
-        total_count=total_count,
-        page_size=pagination.items_per_page,
-        page_num=pagination.page_num,
-        total_pages=total_pages,
+    pagination_meta = compute_pagination_meta(
+        arrangements, pagination.items_per_page, pagination.page_num
     )
 
     return arrangements, pagination_meta
@@ -136,12 +135,12 @@ def get_team_arrangements(
     try:
         # Get subordinate employees
         employees.extend(employee_services.get_subordinates_by_manager_id(db, staff_id))
-    except employee_exceptions.ManagerWithIDNotFoundException:
+    except ManagerWithIDNotFoundException:
         logger.info("Employee is not a manager, skipping subordinate retrieval")
 
     # Get team arrangements
     logger.info(f"Service: Fetching arrangements for team of staff ID {staff_id}")
-    arrangements = crud.get_arrangements_by_staff_ids(
+    arrangements = crud.get_arrangements(
         db=db,
         staff_ids=[employee.staff_id for employee in employees],
         filters=filters,
@@ -149,17 +148,11 @@ def get_team_arrangements(
     arrangements = [ArrangementResponse.from_dict(arrangement) for arrangement in arrangements]
     logger.info(f"Service: Found {len(arrangements)} arrangements")
 
-    total_count = len(arrangements)
-    total_pages = ceil(total_count / pagination.items_per_page)
-
     # Group by date if required
     if filters.group_by_date:
         arrangements = group_arrangements_by_date(arrangements)
 
         logger.info(f"Grouped arrangements into {len(arrangements)} dates")
-
-        # Pagination logic
-        total_count = len(arrangements)
 
         # slice the list based on page number and items per page
         arrangements = arrangements[
@@ -168,11 +161,8 @@ def get_team_arrangements(
             * pagination.items_per_page
         ]
 
-    pagination_meta = PaginationMeta(
-        total_count=total_count,
-        page_size=pagination.items_per_page,
-        page_num=pagination.page_num,
-        total_pages=total_pages,
+    pagination_meta = compute_pagination_meta(
+        arrangements, pagination.items_per_page, pagination.page_num
     )
 
     return arrangements, pagination_meta
@@ -197,6 +187,10 @@ async def create_arrangements_from_request(
     try:
         # Get all required staff objects
         employee = employee_crud.get_employee_by_staff_id(db, wfh_request.requester_staff_id)
+
+        if employee is None:
+            raise EmployeeNotFoundException(wfh_request.requester_staff_id)
+
         approving_officer, _ = employee_services.get_manager_by_subordinate_id(
             db=db, staff_id=wfh_request.requester_staff_id
         )
@@ -342,43 +336,6 @@ async def update_arrangement_approval_status(
     )
 
     return updated_arrangement
-
-
-def group_arrangements_by_date(
-    arrangements: List[ArrangementResponse],
-) -> List[CreatedArrangementGroupByDate]:
-    arrangements_dict = {}
-
-    logger.info(f"Grouping {len(arrangements)} arrangements by date")
-
-    arrangements.sort(key=lambda x: x.wfh_date, reverse=True)
-
-    for arrangement in arrangements:
-        arrangements_dict.setdefault(arrangement.wfh_date.isoformat(), []).append(arrangement)
-
-    result = []
-    for key, val in arrangements_dict.items():
-        result.append(CreatedArrangementGroupByDate(date=key, arrangements=val))
-    logger.info(f"Service: Grouped into {len(result)} dates")
-    return result
-
-
-def expand_recurring_arrangement(
-    request: CreateArrangementRequest,
-) -> List[CreateArrangementRequest]:
-    arrangements_list = [deepcopy(request) for _ in range(request.recurring_occurrences)]
-
-    for i in range(len(arrangements_list)):
-        if request.recurring_frequency_unit == RecurringFrequencyUnit.WEEKLY:
-            arrangements_list[i].wfh_date = request.wfh_date + relativedelta(
-                weeks=i * request.recurring_frequency_number
-            )
-        else:
-            arrangements_list[i].wfh_date = request.wfh_date + relativedelta(
-                months=i * request.recurring_frequency_number
-            )
-
-    return arrangements_list
 
 
 # ============================ DEPRECATED FUNCTIONS ============================

@@ -5,7 +5,7 @@ import { UserContext } from "../context/UserContextProvider";
 import { useNavigate, useLocation } from "react-router-dom";
 
 import InboxIcon from "@mui/icons-material/MoveToInbox";
-import PostAddIcon from '@mui/icons-material/PostAdd';
+import PostAddIcon from "@mui/icons-material/PostAdd";
 import Box from "@mui/material/Box";
 import Divider from "@mui/material/Divider";
 import Drawer from "@mui/material/Drawer";
@@ -18,6 +18,7 @@ import Toolbar from "@mui/material/Toolbar";
 import SpaceDashboardIcon from "@mui/icons-material/SpaceDashboard";
 import TeamIcon from "@mui/icons-material/Group";
 import WfhScheduleIcon from "@mui/icons-material/CalendarMonth";
+import AssignmentIndIcon from '@mui/icons-material/AssignmentInd';
 
 
 const drawerWidth = 240;
@@ -25,7 +26,11 @@ const drawerWidth = 240;
 const sideBarItems = [
   { text: "Home", icon: <SpaceDashboardIcon />, route: "/home" },
   { text: "My Team", icon: <TeamIcon />, route: "/team" },
-  { text: "My WFH Schedule", icon: <WfhScheduleIcon />, route: "/wfh-schedule" },
+  {
+    text: "My WFH Schedule",
+    icon: <WfhScheduleIcon />,
+    route: "/wfh-schedule",
+  },
   { text: "Create Request", icon: <PostAddIcon />, route: "/create-request" },
 ];
 
@@ -49,13 +54,34 @@ export const Sidebar: React.FC<SidebarProps> = ({
   };
 
   const getSidebarItems = () => {
+    let basicSideBar = sideBarItems;
+
+    if (
+      user?.role === 2 ||
+      (user?.role === 1 && user?.position === "Director")
+    ) {
+      basicSideBar = [
+        ...basicSideBar,
+        {
+          text: "Review Team Requests",
+          icon: <InboxIcon />,
+          route: "/review-requests",
+        },
+        { text: "Delegation", icon: <AssignmentIndIcon />, route: "/delegate" },
+      ];
+    }
     if (user?.role === 1) {
-      return [...sideBarItems, { text: "Review Team Requests", icon: <InboxIcon />, route: "/review-requests" }];
+      basicSideBar = [
+        ...basicSideBar,
+        {
+          text: "Department Overview",
+          icon: <TeamIcon />,
+          route: "/department-overview",
+        },
+        { text: "Delegation", icon: <AssignmentIndIcon />, route: "/delegate" },
+      ];
     }
-    if (user?.role === 2) {
-      return [...sideBarItems, { text: "Department Overview", icon: <TeamIcon />, route: "/department-overview" }];
-    }
-    return sideBarItems;
+    return basicSideBar;
   };
 
   const drawer = (
@@ -67,15 +93,16 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <ListItemButton
               sx={{
                 textAlign: "left",
-                backgroundColor: location.pathname === item.route ? "navy" : "#f5f5f5",
+                backgroundColor:
+                  location.pathname === item.route ? "navy" : "#f5f5f5",
                 color: location.pathname === item.route ? "white" : "inherit",
                 "&:hover": {
-                  backgroundColor: location.pathname === item.route ? "navy" : "#e0e0e0",
+                  backgroundColor:
+                    location.pathname === item.route ? "navy" : "#e0e0e0",
                 },
               }}
-              data-cy={item.text.toLowerCase().replace(/\s+/g, '-')} // This line adds the data-cy attribute
+              data-cy={item.text.toLowerCase().replace(/\s+/g, "-")} // This line adds the data-cy attribute
               onClick={() => handleButtonClick(item.route)}
-
             >
               <ListItemIcon
                 sx={{
