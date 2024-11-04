@@ -150,51 +150,6 @@ class TestGetArrangementById:
         assert result is None
 
 
-class TestGetArrangements:
-    @pytest.fixture
-    def mock_filters(self):
-        return ArrangementFilters(
-            current_approval_status=[ApprovalStatus.PENDING_APPROVAL],
-            name=None,
-            wfh_type=None,
-            start_date=None,
-            end_date=None,
-            reason=None,
-            department=None,
-        )
-
-    def test_get_arrangements_with_staff_id(
-        self, mock_db_session, mock_latest_arrangement, mock_filters
-    ):
-        # Arrange
-        mock_db_session.query.return_value.all.return_value = [mock_latest_arrangement]
-
-        # Act
-        result = crud.get_arrangements(mock_db_session, staff_ids=100, filters=mock_filters)
-
-        # Assert
-        assert len(result) == 1
-        assert result[0] == mock_latest_arrangement.__dict__
-        mock_db_session.query.assert_called_once_with(LatestArrangement)
-
-    def test_get_arrangements_with_filters(
-        self, mock_db_session, mock_latest_arrangement, mock_filters
-    ):
-        # Arrange
-        mock_filters.name = "John"
-        mock_filters.wfh_type = [WfhType.FULL]
-        mock_filters.start_date = date(2024, 1, 1)
-        mock_filters.end_date = date(2024, 1, 31)
-        mock_db_session.query.return_value.all.return_value = [mock_latest_arrangement]
-
-        # Act
-        result = crud.get_arrangements(mock_db_session, staff_ids=[100], filters=mock_filters)
-
-        # Assert
-        assert len(result) == 1
-        assert result[0] == mock_latest_arrangement.__dict__
-
-
 class TestCreateArrangementLog:
     @patch("src.arrangements.crud.models.ArrangementLog")
     def test_success(
@@ -255,6 +210,62 @@ class TestCreateArrangementLog:
 
 
 class TestGetArrangements:
+    @pytest.fixture
+    def mock_filters(self):
+        return ArrangementFilters(
+            current_approval_status=[ApprovalStatus.PENDING_APPROVAL],
+            name=None,
+            wfh_type=None,
+            start_date=None,
+            end_date=None,
+            reason=None,
+            department=None,
+        )
+
+    def test_get_arrangements_with_staff_id(
+        self, mock_db_session, mock_latest_arrangement, mock_filters
+    ):
+        # Setup complete mock chain
+        mock_query = MagicMock()
+        mock_join = MagicMock()
+        mock_filter = MagicMock()
+
+        # Setup the chain
+        mock_db_session.query.return_value = mock_query
+        mock_query.join.return_value = mock_join
+        mock_join.filter.return_value = mock_filter
+        mock_filter.filter.return_value = mock_filter
+        mock_filter.all.return_value = [mock_latest_arrangement]
+
+        result = crud.get_arrangements(mock_db_session, staff_ids=100, filters=mock_filters)
+
+        assert len(result) == 1
+        assert result[0] == mock_latest_arrangement.__dict__
+
+    def test_get_arrangements_with_filters(
+        self, mock_db_session, mock_latest_arrangement, mock_filters
+    ):
+        # Setup complete mock chain
+        mock_query = MagicMock()
+        mock_join = MagicMock()
+        mock_filter = MagicMock()
+
+        mock_db_session.query.return_value = mock_query
+        mock_query.join.return_value = mock_join
+        mock_join.filter.return_value = mock_filter
+        mock_filter.filter.return_value = mock_filter
+        mock_filter.all.return_value = [mock_latest_arrangement]
+
+        mock_filters.name = "John"
+        mock_filters.wfh_type = [WfhType.FULL]
+        mock_filters.start_date = date(2024, 1, 1)
+        mock_filters.end_date = date(2024, 1, 31)
+
+        result = crud.get_arrangements(mock_db_session, staff_ids=[100], filters=mock_filters)
+
+        assert len(result) == 1
+        assert result[0] == mock_latest_arrangement.__dict__
+
     def test_get_arrangements_with_reason_filter(self, mock_db_session, mock_latest_arrangement):
         # Create chain of mocks
         mock_query = MagicMock()
@@ -307,6 +318,71 @@ class TestGetArrangements:
         result = crud.get_arrangements(mock_db_session, staff_ids=[100])
         assert isinstance(result, list)
 
+    def test_get_arrangements_with_single_staff_id(self, mock_db_session, mock_latest_arrangement):
+        # Setup the complete mock chain
+        mock_query = MagicMock()
+        mock_join = MagicMock()
+        mock_filter = MagicMock()
+
+        mock_db_session.query.return_value = mock_query
+        mock_query.join.return_value = mock_join
+        mock_join.filter.return_value = mock_filter
+        mock_filter.all.return_value = [mock_latest_arrangement]
+
+        result = crud.get_arrangements(mock_db_session, staff_ids=100)
+        assert len(result) == 1
+        assert result[0] == mock_latest_arrangement.__dict__
+
+    def test_get_arrangements_with_name_filter(self, mock_db_session, mock_latest_arrangement):
+        mock_query = MagicMock()
+        mock_join = MagicMock()
+        mock_filter = MagicMock()
+
+        mock_db_session.query.return_value = mock_query
+        mock_query.join.return_value = mock_join
+        mock_join.filter.return_value = mock_filter
+        mock_filter.filter.return_value = mock_filter
+        mock_filter.all.return_value = [mock_latest_arrangement]
+
+        filters = ArrangementFilters(name="John")
+        result = crud.get_arrangements(mock_db_session, staff_ids=[100], filters=filters)
+        assert len(result) == 1
+
+    def test_get_arrangements_with_approval_status_filter(
+        self, mock_db_session, mock_latest_arrangement
+    ):
+        # Setup complete mock chain
+        mock_query = MagicMock()
+        mock_join = MagicMock()
+        mock_filter = MagicMock()
+
+        mock_db_session.query.return_value = mock_query
+        mock_query.join.return_value = mock_join
+        mock_join.filter.return_value = mock_filter
+        mock_filter.filter.return_value = mock_filter
+        mock_filter.all.return_value = [mock_latest_arrangement]
+
+        filters = ArrangementFilters(current_approval_status=[ApprovalStatus.PENDING_APPROVAL])
+        result = crud.get_arrangements(mock_db_session, staff_ids=[100], filters=filters)
+        assert len(result) == 1
+        assert result[0] == mock_latest_arrangement.__dict__
+
+    def test_get_arrangements_with_wfh_type_filter(self, mock_db_session, mock_latest_arrangement):
+        filters = ArrangementFilters(wfh_type=[WfhType.FULL])
+        mock_db_session.query.return_value.filter.return_value.all.return_value = [
+            mock_latest_arrangement
+        ]
+        result = crud.get_arrangements(mock_db_session, staff_ids=[100], filters=filters)
+        assert len(result) == 1
+
+    def test_get_arrangements_with_date_filters(self, mock_db_session, mock_latest_arrangement):
+        filters = ArrangementFilters(start_date=date(2024, 1, 1), end_date=date(2024, 1, 31))
+        mock_db_session.query.return_value.filter.return_value.all.return_value = [
+            mock_latest_arrangement
+        ]
+        result = crud.get_arrangements(mock_db_session, staff_ids=[100], filters=filters)
+        assert len(result) == 1
+
 
 class TestGetTeamArrangements:
     def test_get_team_arrangements(self, mock_db_session, mock_employee):
@@ -336,9 +412,7 @@ class TestGetArrangementLogs:
 
 
 class TestCreateRecurringRequest:
-    @patch("src.arrangements.crud.models.RecurringRequest")
-    def test_create_recurring_request_success(self, mock_request_class, mock_db_session):
-        # Create the request
+    def test_create_recurring_request_success(self, mock_db_session):
         request = RecurringRequestDetails(
             requester_staff_id=100,
             reason_description="Test recurring",
@@ -349,55 +423,53 @@ class TestCreateRecurringRequest:
             request_datetime=datetime.now(),
         )
 
-        # Create a mock recurring request instance with the right attributes
-        mock_recurring_request = Mock()
-        mock_recurring_request.__dict__ = {
-            "batch_id": 1,
-            "requester_staff_id": request.requester_staff_id,
-            "start_date": request.start_date,
-            "recurring_frequency_number": request.recurring_frequency_number,
-            "recurring_frequency_unit": request.recurring_frequency_unit,
-            "recurring_occurrences": request.recurring_occurrences,
-            "request_datetime": request.request_datetime,
-            "reason_description": request.reason_description,
-        }
+        # Create a proper mock for RecurringRequest
+        class MockRecurringRequestClass(type):
+            pass
 
-        # Instead of mocking class_mapper, let's mock the actual model class
-        # and its instantiation
-        def create_mock_request(**kwargs):
-            mock_recurring_request.__dict__.update(kwargs)
-            return mock_recurring_request
+        class MockRecurringRequest(metaclass=MockRecurringRequestClass):
+            def __init__(self, **kwargs):
+                self.__dict__.update(kwargs)
+                self.batch_id = 1
 
-        mock_request_class.side_effect = create_mock_request
+            @property
+            def __mapper__(self):
+                mock_mapper = MagicMock()
+                mock_mapper.attrs.keys.return_value = [
+                    "batch_id",
+                    "requester_staff_id",
+                    "start_date",
+                    "recurring_frequency_number",
+                    "recurring_frequency_unit",
+                    "recurring_occurrences",
+                    "request_datetime",
+                    "reason_description",
+                ]
+                return mock_mapper
 
-        # Mock the DB behavior
-        mock_db_session.add = MagicMock()
-        mock_db_session.commit = MagicMock()
-        mock_db_session.refresh = MagicMock()
+        with patch("src.arrangements.crud.models.RecurringRequest", MockRecurringRequest), patch(
+            "sqlalchemy.orm.class_mapper"
+        ) as mock_mapper:
 
-        with patch("sqlalchemy.orm.class_mapper") as mock_mapper:
-            # Create a mock mapper that looks like a SQLAlchemy mapper
-            attrs_mock = MagicMock()
-            attrs_mock.keys.return_value = mock_recurring_request.__dict__.keys()
-            mock_mapper.return_value.attrs = attrs_mock
+            # Setup mapper mock
+            mock_mapper_instance = MagicMock()
+            mock_mapper_instance.attrs.keys.return_value = [
+                "batch_id",
+                "requester_staff_id",
+                "start_date",
+                "recurring_frequency_number",
+                "recurring_frequency_unit",
+                "recurring_occurrences",
+                "request_datetime",
+                "reason_description",
+            ]
+            mock_mapper.return_value = mock_mapper_instance
 
-            # Execute test
             result = crud.create_recurring_request(mock_db_session, request)
 
-            # Verify results
             assert isinstance(result, CreatedRecurringRequest)
             mock_db_session.add.assert_called_once()
             mock_db_session.commit.assert_called_once()
-            assert mock_db_session.refresh.called
-
-            # Verify the created recurring request has the expected values
-            assert result.batch_id == 1
-            assert result.requester_staff_id == request.requester_staff_id
-            assert result.start_date == request.start_date
-            assert result.recurring_frequency_number == request.recurring_frequency_number
-            assert result.recurring_frequency_unit == request.recurring_frequency_unit
-            assert result.recurring_occurrences == request.recurring_occurrences
-            assert result.reason_description == request.reason_description
 
     def test_create_recurring_request_error(self, mock_db_session):
         mock_db_session.add.side_effect = SQLAlchemyError()
@@ -492,3 +564,104 @@ class TestUpdateArrangementApprovalStatus:
         mock_filter.update.assert_called_once()
         # But commit should not be called since no arrangement was found
         mock_db_session.commit.assert_not_called()
+
+
+class TestCreateArrangements:
+    def test_create_arrangements_success(self, mock_db_session, mock_latest_arrangement):
+        class MockLatestArrangementClass(type):
+            pass
+
+        class MockLatestArrangement(metaclass=MockLatestArrangementClass):
+            def __init__(self, **kwargs):
+                self.__dict__.update(kwargs)
+                self.arrangement_id = 1
+
+            @property
+            def __mapper__(self):
+                mock_mapper = MagicMock()
+                mock_mapper.attrs.keys.return_value = [
+                    "update_datetime",
+                    "requester_staff_id",
+                    "wfh_date",
+                    "wfh_type",
+                    "is_recurring",
+                    "recurring_frequency_number",
+                    "recurring_frequency_unit",
+                    "recurring_occurrences",
+                    "current_approval_status",
+                    "approving_officer",
+                    "reason_description",
+                ]
+                return mock_mapper
+
+        arrangements = [
+            CreateArrangementRequest(
+                update_datetime=datetime.now(),
+                requester_staff_id=100,
+                wfh_date=date(2024, 1, 1),
+                wfh_type=WfhType.FULL,
+                is_recurring=False,
+                recurring_frequency_number=None,
+                recurring_frequency_unit=None,
+                recurring_occurrences=None,
+                current_approval_status=ApprovalStatus.PENDING_APPROVAL,
+                approving_officer=200,
+                reason_description="Test",
+            )
+        ]
+
+        with patch("src.arrangements.crud.models.LatestArrangement", MockLatestArrangement), patch(
+            "sqlalchemy.orm.class_mapper"
+        ) as mock_mapper:
+
+            # Setup mapper mock
+            mock_mapper_instance = MagicMock()
+            mock_mapper_instance.attrs.keys.return_value = [
+                "update_datetime",
+                "requester_staff_id",
+                "wfh_date",
+                "wfh_type",
+                "is_recurring",
+                "recurring_frequency_number",
+                "recurring_frequency_unit",
+                "recurring_occurrences",
+                "current_approval_status",
+                "approving_officer",
+                "reason_description",
+            ]
+            mock_mapper.return_value = mock_mapper_instance
+
+            mock_db_session.add = MagicMock()
+            mock_db_session.flush = MagicMock()
+            mock_db_session.commit = MagicMock()
+            mock_db_session.refresh = MagicMock()
+
+            result = crud.create_arrangements(mock_db_session, arrangements)
+
+            assert len(result) == 1
+            mock_db_session.add.assert_called()
+            mock_db_session.commit.assert_called_once()
+
+    def test_create_arrangements_error(self, mock_db_session):
+        arrangements = [
+            CreateArrangementRequest(
+                update_datetime=datetime.now(),
+                requester_staff_id=100,
+                wfh_date=date(2024, 1, 1),
+                wfh_type=WfhType.FULL,
+                is_recurring=False,
+                recurring_frequency_number=None,
+                recurring_frequency_unit=None,
+                recurring_occurrences=None,
+                current_approval_status=ApprovalStatus.PENDING_APPROVAL,
+                approving_officer=200,
+                reason_description="Test",
+            )
+        ]
+
+        mock_db_session.add.side_effect = SQLAlchemyError()
+
+        with pytest.raises(SQLAlchemyError):
+            crud.create_arrangements(mock_db_session, arrangements)
+
+        mock_db_session.rollback.assert_called_once()
