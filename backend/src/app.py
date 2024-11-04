@@ -1,12 +1,18 @@
-from contextlib import asynccontextmanager
+import asyncio
 import os
+from contextlib import asynccontextmanager
 from venv import logger
 
+from apscheduler.schedulers.background import BackgroundScheduler
+from apscheduler.triggers.cron import CronTrigger
+from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from main import ENV
 
 from .arrangements.commons import models as arrangement_models
 from .arrangements.routes import router as arrangement_router
+from .arrangements.services import auto_reject_old_requests
 from .auth import models as auth_models
 from .auth.routes import router as auth_router
 from .database import engine
@@ -15,13 +21,6 @@ from .employees import models as employee_models
 from .employees.routes import router as employee_router
 from .health.health import router as health_router
 from .init_db import load_data
-
-from dotenv import load_dotenv
-from main import ENV
-from fastapi import FastAPI
-from contextlib import asynccontextmanager
-from .arrangements.scheduler import scheduler, auto_reject_old_requests
-from apscheduler.triggers.cron import CronTrigger
 
 """
 Create a context manager to handle the lifespan of the FastAPI application
@@ -57,9 +56,10 @@ async def lifespan(app: FastAPI):
 
     # Startup: Initialize services before the application starts
     print("Starting scheduler...")
+    scheduler = BackgroundScheduler()
     scheduler.add_job(
-        auto_reject_old_requests,
-        CronTrigger(hour=0, minute=0),
+        lambda: asyncio.run(auto_reject_old_requests()),
+        CronTrigger(hour=0, minute=0),  # Run at midnight
         id="auto_reject_job",
         replace_existing=True,
         misfire_grace_time=300,  # 5 minutes grace time

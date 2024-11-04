@@ -19,6 +19,7 @@ from .commons.dataclasses import (
     RecurringRequestDetails,
 )
 from .commons.enums import Action, ApprovalStatus
+from .utils import get_tomorrow_date
 
 
 def get_arrangement_by_id(db: Session, arrangement_id: int) -> Optional[Dict]:
@@ -115,6 +116,18 @@ def get_arrangement_logs(
     logs = query.all()
 
     return [log.__dict__ for log in logs]
+
+
+def get_expiring_requests(db: Session):
+    tomorrow_date = get_tomorrow_date()
+    query = db.query(models.LatestArrangement)
+    query = query.filter(
+        models.LatestArrangement.current_approval_status == ApprovalStatus.PENDING_APPROVAL,
+        models.LatestArrangement.wfh_date == tomorrow_date.strftime("%Y-%m-%d"),
+    )
+    arrangements = query.all()
+
+    return [arrangement.__dict__ for arrangement in arrangements]
 
 
 def create_arrangement_log(
