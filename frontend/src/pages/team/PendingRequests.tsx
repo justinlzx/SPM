@@ -76,45 +76,54 @@ export const PendingRequests = () => {
   const [documentDialogOpen, setDocumentDialogOpen] = useState(false);
   const [documents, setDocuments] = useState<string[]>([]);
 
+  const fetchPendingRequests = async () => {
+    if (!user || !userId) return;
+    setLoading(true);
+    try {
+      const response = await axios.get(
+        `${BACKEND_URL}/arrangements/subordinates/${userId}`,
+        { params: { current_approval_status: ["pending approval", "pending withdrawal"] } }
+      );
+
+      const requests = response.data.data
+        .flatMap((dateEntry: any) => dateEntry.pending_arrangements)
+        .filter((request: TWFHRequest) =>
+          [ApprovalStatus.PendingApproval, ApprovalStatus.PendingWithdrawal].includes(request.current_approval_status)
+        );
+        console.log(requests);
+
+      const requestsWithNames = await Promise.all(
+        requests.map(async (request: TWFHRequest) => {
+          const employee = await fetchEmployeeByStaffId(request.requester_staff_id);
+          return {
+            ...request,
+            requester_name: employee ? `${employee.staff_fname} ${employee.staff_lname}` : "N/A",
+          };
+        })
+      );
+
+      setActionRequests(requestsWithNames);
+      setFilteredRequests(requestsWithNames);
+    } catch (error) {
+      console.error("Failed to fetch subordinates' requests:", error);
+      setAlertStatus(AlertStatus.Error);
+      setSnackbarMessage("Failed to fetch requests.");
+      setShowSnackbar(true);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Initialize data on component mount
   useEffect(() => {
-    const fetchPendingRequests = async () => {
-      if (!user || !userId) return;
-      setLoading(true);
-      try {
-        const response = await axios.get(
-          `${BACKEND_URL}/arrangements/subordinates/${userId}`,
-          { params: { current_approval_status: ["pending approval", "pending withdrawal"] } }
-        );
-
-        const requests = response.data.data
-          .flatMap((dateEntry: any) => dateEntry.pending_arrangements)
-          .filter((request: TWFHRequest) =>
-            [ApprovalStatus.PendingApproval, ApprovalStatus.PendingWithdrawal].includes(request.current_approval_status)
-          );
-
-        const requestsWithNames = await Promise.all(
-          requests.map(async (request: TWFHRequest) => {
-            const employee = await fetchEmployeeByStaffId(request.requester_staff_id);
-            return {
-              ...request,
-              requester_name: employee ? `${employee.staff_fname} ${employee.staff_lname}` : "N/A",
-            };
-          })
-        );
-
-        setActionRequests(requestsWithNames);
-        setFilteredRequests(requestsWithNames);
-      } catch (error) {
-        console.error("Failed to fetch subordinates' requests:", error);
-        setAlertStatus(AlertStatus.Error);
-        setSnackbarMessage("Failed to fetch requests.");
-        setShowSnackbar(true);
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchPendingRequests();
   }, [user, userId]);
+
+  // Refresh function to refetch data
+  const refreshData = () => {
+    fetchPendingRequests();
+  };
+
 
   const handleRequestAction = async (
     action: Action,
@@ -122,7 +131,6 @@ export const PendingRequests = () => {
     reason_description: string,
     current_approval_status: ApprovalStatus
   ) => {
-    // Handle rejection action directly
     const nextStatus =
       action === Action.Reject
         ? ApprovalStatus.Rejected
@@ -148,6 +156,7 @@ export const PendingRequests = () => {
       setAlertStatus(AlertStatus.Success);
       setSnackbarMessage(`Request '${action}' successfully updated to status '${nextStatus}'`);
       setShowSnackbar(true);
+      refreshData(); 
     } catch (error) {
       console.error(`Error performing action '${action}':`, error);
       setAlertStatus(AlertStatus.Error);
@@ -370,22 +379,45 @@ const ArrangementRow = ({
         )}
       </TableCell>
       <TableCell>
-        <ButtonGroup variant="contained">
-          <Button
-            color="success"
-            startIcon={<CheckIcon />}
-            onClick={() => handleRequestAction(Action.Approve, arrangement_id, reason_description, current_approval_status)}
-          >
-            Approve
-          </Button>
-          <Button
-            color="error"
-            startIcon={<CloseIcon />}
-            onClick={() => handleRejectClick(arrangement_id)}
-          >
-            Reject
-          </Button>
-        </ButtonGroup>
+        {current_approval_status === ApprovalStatus.PendingApproval ? (
+          <>
+            <ButtonGroup variant="contained">
+              <Button
+                color="success"
+                startIcon={<CheckIcon />}
+                onClick={() => handleRequestAction(Action.Approve, arrangement_id, reason_description, current_approval_status)}
+              >
+                Approve
+              </Button>
+              <Button
+                color="error"
+                startIcon={<CloseIcon />}
+                onClick={() => handleRejectClick(arrangement_id)}
+              >
+                Reject
+              </Button>
+            </ButtonGroup>
+          </>
+        ) : current_approval_status === ApprovalStatus.PendingWithdrawal ? (
+          <>
+            <ButtonGroup variant="contained">
+              <Button
+                color="warning" // orange color for "Withdraw"
+                startIcon={<CheckIcon />}
+                onClick={() => handleRequestAction(Action.Approve, arrangement_id, reason_description, current_approval_status)}
+              >
+                Withdraw
+              </Button>
+              <Button
+                color="error"
+                startIcon={<CloseIcon />}
+                onClick={() => handleRejectClick(arrangement_id)}
+              >
+                Reject
+              </Button>
+            </ButtonGroup>
+          </>
+        ) : null}
       </TableCell>
     </TableRow>
   );

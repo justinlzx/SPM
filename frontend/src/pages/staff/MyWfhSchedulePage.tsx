@@ -43,7 +43,8 @@ export const MyWfhSchedulePage: React.FC = () => {
         })
       );
       setRequests(allRequests);
-      setFilteredRequests(allRequests); // Initialize filteredRequests with original data
+      setFilteredRequests(allRequests); 
+      console.log(allRequests);
     } catch (error) {
       console.error("Failed to fetch WFH requests:", error);
       setSnackbarMessage(
@@ -127,6 +128,7 @@ export const MyWfhSchedulePage: React.FC = () => {
     );
     setSnackbarSeverity("success");
     setOpenSnackbar(true);
+    fetchRequests();
   };
 
   const handleCloseSnackBar = () => setOpenSnackbar(false);
@@ -140,7 +142,7 @@ export const MyWfhSchedulePage: React.FC = () => {
         onApplyFilters={handleApplyFilters}
         onClearFilters={handleClearFilters}
       />
-      <WFHRequestTable requests={filteredRequests} handleSuccess={handleSuccess} />
+      <WFHRequestTable requests={filteredRequests} handleSuccess={handleSuccess} refreshData={fetchRequests} />
       <Snackbar
         open={openSnackbar}
         autoHideDuration={3000}
