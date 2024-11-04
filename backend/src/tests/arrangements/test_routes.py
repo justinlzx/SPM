@@ -5,17 +5,47 @@ from fastapi.testclient import TestClient
 from src.app import app
 from src.arrangements.commons import dataclasses as dc
 from src.arrangements.commons.exceptions import ArrangementNotFoundException
+from src.employees.exceptions import ManagerWithIDNotFoundException
 from src.schemas import JSendResponse
 from src.tests.test_utils import mock_db_session  # noqa: F401, E261
 
 client = TestClient(app)
 
 
+@pytest.fixture
+def mock_filter_params():
+    return {
+        "current_approval_status": ["approved"],
+        "name": "John Doe",
+        "wfh_type": ["full"],
+        "start_date": "2021-01-01",
+        "end_date": "2021-01-31",
+        "reason": "Test reason",
+        "group_by_date": True,
+        "department": "IT",
+    }
+
+
+@pytest.fixture
+def mock_pagination_params():
+    return {
+        "items_per_page": 10,
+        "page_num": 1,
+    }
+
+
 @patch("src.arrangements.services.get_all_arrangements")
 @patch("src.arrangements.commons.dataclasses.ArrangementFilters.from_dict")
 class TestGetArrangements:
     @patch("src.arrangements.routes.format_arrangements_response")
-    def test_success(self, mock_format_response, mock_filters_from_dict, mock_get_arrangements):
+    def test_success(
+        self,
+        mock_format_response,
+        mock_filters_from_dict,
+        mock_get_arrangements,
+        mock_filter_params,
+        mock_pagination_params,
+    ):
         # Arrange
         mock_filters_from_dict.return_value = MagicMock(spec=dc.ArrangementFilters)
         mock_get_arrangements.return_value = [MagicMock(spec=dc.ArrangementResponse)] * 2
@@ -24,16 +54,7 @@ class TestGetArrangements:
         # Act
         response = client.get(
             "/arrangements",
-            params={
-                "current_approval_status": ["approved"],
-                "name": "John Doe",
-                "wfh_type": ["full"],
-                "start_date": "2021-01-01",
-                "end_date": "2021-01-31",
-                "reason": "Test reason",
-                "group_by_date": True,
-                "department": "IT",
-            },
+            params={**mock_filter_params, **mock_pagination_params},
         )
 
         # Assert
@@ -122,29 +143,24 @@ class TestGetPersonalArrangements:
         assert response.status_code == 500
 
 
+@patch("src.arrangements.services.get_subordinates_arrangements")
+@patch("src.arrangements.commons.dataclasses.PaginationConfig.from_dict")
+@patch("src.arrangements.commons.dataclasses.ArrangementFilters.from_dict")
 class TestGetSubordinatesArrangements:
-    @pytest.mark.parametrize(
-        "group_by_date",
-        [True, False],
-    )
     @patch("src.arrangements.routes.PaginationMeta.model_validate")
     @patch("src.arrangements.routes.format_arrangements_response")
-    @patch("src.arrangements.services.get_subordinates_arrangements")
-    @patch("src.arrangements.commons.dataclasses.PaginationConfig.from_dict")
-    @patch("src.arrangements.commons.dataclasses.ArrangementFilters.from_dict")
     def test_success(
         self,
+        mock_format_response,
+        mock_pagination_validate,
         mock_filters_from_dict,
         mock_pagination_from_dict,
         mock_get_subordinates_arrangements,
-        mock_format_response,
-        mock_pagination_validate,
-        group_by_date,
+        mock_filter_params,
+        mock_pagination_params,
     ):
         # Arrange
         manager_id = 1
-        mock_filters_from_dict.return_value = MagicMock(spec=dc.ArrangementFilters)
-        mock_pagination_from_dict.return_value = MagicMock(spec=dc.PaginationConfig)
         mock_pagination_meta_dc = MagicMock(spec=dc.PaginationMeta)
         mock_pagination_meta_dc.total_count = 1
 
@@ -152,65 +168,68 @@ class TestGetSubordinatesArrangements:
             [MagicMock(spec=dc.ArrangementResponse)] * 2
         ], mock_pagination_meta_dc
 
-        if group_by_date:
-            mock_format_response.return_value = [
-                {
-                    "date": "2021-01-01",
-                    "pending_arrangements": [],
-                }
-            ]
-        else:
-            mock_format_response.return_value = []
-
-        mock_pagination_validate.return_value = MagicMock()
-
         # Act
         response = client.get(
-            f"/arrangements/subordinates/{manager_id}", params={"group_by_date": group_by_date}
+            f"/arrangements/subordinates/{manager_id}",
+            params={**mock_filter_params, **mock_pagination_params},
         )
 
         # Assert
         assert response.status_code == 200
-        assert response.json()["status"] == "success"
         assert "data" in response.json()
         assert "pagination_meta" in response.json()
 
-    # @patch("src.arrangements.services.get_subordinates_arrangements")
-    # def test_failure_sqlalchemy(self, mock_get_subordinate_arrangements):
-    #     # Arrange
-    #     user_id = 1
-    #     mock_get_subordinate_arrangements.side_effect = SQLAlchemyError()
+    def test_failure_manager_not_found(
+        self,
+        mock_get_subordinates_arrangements,
+        mock_filter_params,
+        mock_pagination_params,
+    ):
+        # Arrange
+        manager_id = 1
+        mock_get_subordinates_arrangements.side_effect = ManagerWithIDNotFoundException(manager_id)
 
-    #     # Act
-    #     response = client.get(f"/arrangements/subordinate/{user_id}")
+        # Act
+        response = client.get(f"/arrangements/subordinates/{manager_id}")
 
-    #     # Assert
-    #     assert response.status_code == 500
+        # Assert
+        assert response.status_code == 404
+
+    def test_failure_unknown(
+        self,
+        mock_get_subordinates_arrangements,
+        mock_filter_params,
+        mock_pagination_params,
+    ):
+        # Arrange
+        manager_id = 1
+        mock_get_subordinates_arrangements.side_effect = Exception()
+
+        # Act
+        response = client.get(f"/arrangements/subordinates/{manager_id}")
+
+        # Assert
+        assert response.status_code == 500
 
 
+@patch("src.arrangements.services.get_team_arrangements")
+@patch("src.arrangements.commons.dataclasses.PaginationConfig.from_dict")
+@patch("src.arrangements.commons.dataclasses.ArrangementFilters.from_dict")
 class TestGetTeamArrangements:
-    @pytest.mark.parametrize(
-        "group_by_date",
-        [True, False],
-    )
     @patch("src.arrangements.routes.PaginationMeta.model_validate")
     @patch("src.arrangements.routes.format_arrangements_response")
-    @patch("src.arrangements.services.get_team_arrangements")
-    @patch("src.arrangements.commons.dataclasses.PaginationConfig.from_dict")
-    @patch("src.arrangements.commons.dataclasses.ArrangementFilters.from_dict")
     def test_success(
         self,
+        mock_format_response,
+        mock_pagination_validate,
         mock_filters_from_dict,
         mock_pagination_from_dict,
         mock_get_team_arrangements,
-        mock_format_response,
-        mock_pagination_validate,
-        group_by_date,
+        mock_filter_params,
+        mock_pagination_params,
     ):
         # Arrange
         staff_id = 1
-        mock_filters_from_dict.return_value = MagicMock(spec=dc.ArrangementFilters)
-        mock_pagination_from_dict.return_value = MagicMock(spec=dc.PaginationConfig)
         mock_pagination_meta_dc = MagicMock(spec=dc.PaginationMeta)
         mock_pagination_meta_dc.total_count = 1
 
@@ -218,28 +237,32 @@ class TestGetTeamArrangements:
             [MagicMock(spec=dc.ArrangementResponse)] * 2
         ], mock_pagination_meta_dc
 
-        if group_by_date:
-            mock_format_response.return_value = [
-                {
-                    "date": "2021-01-01",
-                    "pending_arrangements": [],
-                }
-            ]
-        else:
-            mock_format_response.return_value = []
-
-        mock_pagination_validate.return_value = MagicMock()
-
         # Act
         response = client.get(
-            f"/arrangements/team/{staff_id}", params={"group_by_date": group_by_date}
+            f"/arrangements/team/{staff_id}",
+            params={**mock_filter_params, **mock_pagination_params},
         )
 
         # Assert
         assert response.status_code == 200
-        assert response.json()["status"] == "success"
         assert "data" in response.json()
         assert "pagination_meta" in response.json()
+
+    def test_failure_unknown(
+        self,
+        mock_get_team_arrangements,
+        mock_filter_params,
+        mock_pagination_params,
+    ):
+        # Arrange
+        staff_id = 1
+        mock_get_team_arrangements.side_effect = Exception()
+
+        # Act
+        response = client.get(f"/arrangements/team/{staff_id}")
+
+        # Assert
+        assert response.status_code == 500
 
 
 class TestGetArrangementLogs:

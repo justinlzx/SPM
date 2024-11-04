@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from src.notifications.email_notifications import craft_and_send_auto_rejection_email
 
 from ..database import get_db
-from ..employees import exceptions as employee_exceptions
+from ..employees.exceptions import ManagerWithIDNotFoundException
 from ..logger import logger
 from ..notifications import exceptions as notification_exceptions
 from ..schemas import JSendResponse, PaginationMeta
@@ -123,10 +123,9 @@ def get_subordinates_arrangements(
         data, pagination_meta = services.get_subordinates_arrangements(
             db=db, manager_id=manager_id, filters=filters, pagination=pagination
         )
-        if filters.group_by_date:
-            logger.info(f"Route: Found {pagination_meta.total_count} dates")
-        else:
-            logger.info(f"Route: Found {pagination_meta.total_count} arrangements")
+        logger.info(
+            f"Route: Found {pagination_meta.total_count} {'dates' if filters.group_by_date else 'arrangements'}"
+        )
 
         # Convert to Pydantic model
         response_data = format_arrangements_response(data)
@@ -137,9 +136,9 @@ def get_subordinates_arrangements(
             data=response_data,
             pagination_meta=response_pagination_meta,
         )
-    except employee_exceptions.ManagerWithIDNotFoundException as e:
+    except ManagerWithIDNotFoundException as e:
         raise HTTPException(status_code=404, detail=str(e))
-    except SQLAlchemyError as e:
+    except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -177,6 +176,8 @@ def get_team_arrangements(
         )
     except ArrangementNotFoundException as e:
         raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/logs/all", summary="Get all arrangement logs")
