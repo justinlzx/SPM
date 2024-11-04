@@ -5,7 +5,9 @@ from typing import Dict, List, Optional, Union
 from sqlalchemy import func, or_
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, class_mapper
-from src.employees.models import Employee  # Ensure Employee model is correctly defined and imported
+from src.employees.models import (
+    Employee,  # Ensure Employee model is correctly defined and imported
+)
 
 from ..logger import logger
 from .commons import models
@@ -29,23 +31,6 @@ def get_arrangements(
     staff_ids: Union[None, int, List[int]] = None,
     filters: Union[None, ArrangementFilters] = None,
 ) -> List[Dict]:
-    """Fetch the WFH requests for a list of staff IDs with optional filters.
-
-    Args:
-        db: Database session
-        staff_ids: List of staff IDs to filter by
-        current_approval_status: Optional list of approval statuses
-        name: Optional employee name filter
-        type: Optional arrangement type (full/am/pm)
-        start_date: Optional start date filter
-        end_date: Optional end date filter
-        reason: Optional reason filter
-        page_num: Optional page number for pagination
-
-    Returns:
-        List of arrangements matching the criteria
-    """
-
     query = db.query(models.LatestArrangement)
     query = query.join(Employee, Employee.staff_id == models.LatestArrangement.requester_staff_id)
 
@@ -68,6 +53,7 @@ def get_arrangements(
             query = query.filter(models.LatestArrangement.requester_staff_id.in_(staff_ids))
 
     if filters:
+        # Apply optional filters
         if filters.name:
             query = query.filter(
                 or_(
@@ -75,7 +61,6 @@ def get_arrangements(
                     Employee.staff_lname.ilike(f"%{filters.name}%"),
                 )
             )
-        # Apply optional filters
         if filters.current_approval_status:
             query = query.filter(
                 models.LatestArrangement.current_approval_status.in_(

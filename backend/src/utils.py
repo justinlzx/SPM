@@ -75,6 +75,10 @@ def fit_model_to_schema(
     return schema_data
 
 
+def convert_dataclass_to_pydantic(data, schema: BaseModel):
+    return schema.model_validate(data)
+
+
 class PaginationResponse(BaseModel):
     total_count: int
     page_size: int
