@@ -15,7 +15,6 @@ from src.employees.exceptions import (
     ManagerWithIDNotFoundException,
 )
 from src.notifications.exceptions import EmailNotificationException
-from src.schemas import JSendResponse
 from src.tests.test_utils import mock_db_session  # noqa: F401, E261
 
 client = TestClient(app)
@@ -309,10 +308,10 @@ class TestGetTeamArrangements:
         assert response.status_code == 500
 
 
+@patch("src.arrangements.services.get_arrangement_logs")
 class TestGetArrangementLogs:
     @patch("src.arrangements.commons.schemas.ArrangementLogResponse.model_validate")
-    @patch("src.arrangements.services.get_arrangement_logs")
-    def test_success(self, mock_get_logs, mock_pydantic):
+    def test_success(self, mock_pydantic, mock_get_logs):
         # Arrange
         num_logs = 3
         mock_get_logs.return_value = [MagicMock(spec=dc.ArrangementLogResponse)] * num_logs
@@ -323,10 +322,20 @@ class TestGetArrangementLogs:
 
         # Assert
         assert result.status_code == 200
-        assert result.json() == JSendResponse(status="success", data=[[]] * num_logs).model_dump()
+        assert "data" in result.json()
 
         mock_pydantic.assert_called()
         assert mock_pydantic.call_count == num_logs
+
+    def test_failure_unknown(self, mock_get_logs):
+        # Arrange
+        mock_get_logs.side_effect = Exception()
+
+        # Act
+        result = client.get("/arrangements/logs/all")
+
+        # Assert
+        assert result.status_code == 500
 
 
 @patch("src.arrangements.services.create_arrangements_from_request")

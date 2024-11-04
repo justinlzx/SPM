@@ -166,10 +166,9 @@ def get_team_arrangements(
         # Get arrangements
         logger.info(f"Route: Fetching arrangements for team of staff ID: {staff_id}")
         data, pagination_meta = services.get_team_arrangements(db, staff_id, filters, pagination)
-        if filters.group_by_date:
-            logger.info(f"Route: Found {pagination_meta.total_count} dates")
-        else:
-            logger.info(f"Route: Found {pagination_meta.total_count} arrangements")
+        logger.info(
+            f"Route: Found {pagination_meta.total_count} {'dates' if filters.group_by_date else 'arrangements'}"
+        )
 
         # Convert to Pydantic model
         response_data = format_arrangements_response(data)
@@ -180,8 +179,6 @@ def get_team_arrangements(
             data=response_data,
             pagination_meta=response_pagination_meta,
         )
-    except ArrangementNotFoundException as e:
-        raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
         logger.error(f"Error occurred: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -200,7 +197,7 @@ def get_arrangement_logs(db: Session = Depends(get_db)) -> JSendResponse:
             status="success",
             data=arrangement_logs,
         )
-    except SQLAlchemyError as e:
+    except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
