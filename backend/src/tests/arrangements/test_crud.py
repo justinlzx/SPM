@@ -172,7 +172,7 @@ class TestGetArrangementById:
         result = crud.get_arrangement_by_id(mock_db_session, arrangement_id=1)
 
         mock_db_session.query().get.assert_called_once_with(1)
-         
+
         assert result == mock_arrangement
 
 
@@ -225,7 +225,7 @@ class TestGetArrangements:
         ]
 
         # Call the function with test parameters
-        results = crud.get_arrangements_by_staff_ids(db, staff_ids, **filters)
+        results = crud.get_arrangements(db, staff_ids, **filters)
 
         result_ids = [result["arrangement_id"] for result in results]
         # Verify final result
@@ -240,7 +240,7 @@ class TestGetArrangements:
         mock_query.all.return_value = mock_arrangements  # Return mocked arrangements
 
         # Call the function with multiple approval statuses
-        result = crud.get_arrangements_by_staff_ids(
+        result = crud.get_arrangements(
             mock_db_session,
             staff_ids=[12345, 130002],
             current_approval_status=["pending approval", "approved"],
@@ -262,7 +262,7 @@ class TestGetArrangements:
         mock_query.all.return_value = mock_arrangements  # Return mocked arrangements
 
         # Call the function without current_approval_status
-        result = crud.get_arrangements_by_staff_ids(
+        result = crud.get_arrangements(
             mock_db_session, staff_ids=[12345, 130002], current_approval_status=None
         )
 
