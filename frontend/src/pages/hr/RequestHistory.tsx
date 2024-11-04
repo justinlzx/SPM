@@ -25,11 +25,22 @@ import axios from "axios";
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 
 type TWFHRequest = {
+    action: string;
+    approving_officer: number;
     arrangement_id: number;
+    batch_id: number | null;
+    log_id: number;
+    previous_approval_status: string | null;
+    reason_description: string;
+    requester_staff_id: number;
+    status_reason: string | null;
+    supporting_doc_1: string | null;
+    supporting_doc_2: string | null;
+    supporting_doc_3: string | null;
+    update_datetime: string;
+    updated_approval_status: string;
     wfh_date: string;
     wfh_type: string;
-    approval_status: string;
-    reason_description: string;
 };
 
 const getChipColor = (status: string | undefined) => {
@@ -37,7 +48,7 @@ const getChipColor = (status: string | undefined) => {
     switch (status.toLowerCase()) {
         case "approved":
             return "success";
-        case "pending":
+        case "pending approval":
             return "warning";
         case "rejected":
             return "error";
@@ -92,7 +103,7 @@ export const RequestHistoryPage: React.FC = () => {
         (log) =>
             log.reason_description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
             log.wfh_type?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            log.approval_status?.toLowerCase().includes(searchTerm.toLowerCase())
+            log.updated_approval_status?.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
     const handleChangePage = (_event: unknown, newPage: number) => {
@@ -120,7 +131,7 @@ export const RequestHistoryPage: React.FC = () => {
             <Divider sx={{ mb: 2 }} />
 
             <TextField
-                label="Search by reason, type or status"
+                label="Search by reason, type, or status"
                 variant="outlined"
                 fullWidth
                 margin="normal"
@@ -133,44 +144,42 @@ export const RequestHistoryPage: React.FC = () => {
                     <TableHead>
                         <TableRow>
                             <TableCell sx={{ fontWeight: "bold" }}>Approval Status</TableCell>
-                            <TableCell sx={{ fontWeight: "bold" }}>Requester</TableCell>
-                            <TableCell sx={{ fontWeight: "bold" }}>Approver</TableCell>
+                            <TableCell sx={{ fontWeight: "bold" }}>Approving Officer ID</TableCell>
+                            <TableCell sx={{ fontWeight: "bold" }}>Requester ID</TableCell>
                             <TableCell sx={{ fontWeight: "bold" }}>WFH Type</TableCell>
                             <TableCell sx={{ fontWeight: "bold" }}>WFH Date</TableCell>
                             <TableCell sx={{ fontWeight: "bold" }}>Reason</TableCell>
+                            <TableCell sx={{ fontWeight: "bold" }}>Action</TableCell>
+                            <TableCell sx={{ fontWeight: "bold" }}>Update Date</TableCell>
                         </TableRow>
                     </TableHead>
                     <TableBody>
                         {filteredLogs.length === 0 ? (
                             <TableRow>
-                                <TableCell colSpan={6} align="center">
+                                <TableCell colSpan={8} align="center">
                                     {searchTerm ? "No matching requests found" : "No requests available"}
                                 </TableCell>
                             </TableRow>
                         ) : (
                             filteredLogs
                                 .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
-                                .map((log) => {
-                                    console.log("Log entry:", log); // Log each log entry for debugging
-
-                                    // Ensure log.approval_status is a string before accessing it
-                                    const approvalStatus = log.approval_status || "N/A"; // Fallback to "N/A" if undefined
-                                    const formattedStatus = typeof approvalStatus === 'string' ? approvalStatus.charAt(0).toUpperCase() + approvalStatus.slice(1) : approvalStatus;
-
-                                    return (
-                                        <TableRow key={log.arrangement_id}>
-                                            <TableCell>
-                                                <Chip
-                                                    color={getChipColor(approvalStatus)}
-                                                    label={formattedStatus}
-                                                />
-                                            </TableCell>
-                                            <TableCell>{log.wfh_type?.toUpperCase() || "N/A"}</TableCell>
-                                            <TableCell>{new Date(log.wfh_date).toLocaleDateString() || "N/A"}</TableCell>
-                                            <TableCell>{log.reason_description || "N/A"}</TableCell>
-                                        </TableRow>
-                                    );
-                                })
+                                .map((log) => (
+                                    <TableRow key={log.arrangement_id}>
+                                        <TableCell>
+                                            <Chip
+                                                color={getChipColor(log.updated_approval_status)}
+                                                label={log.updated_approval_status.charAt(0).toUpperCase() + log.updated_approval_status.slice(1)}
+                                            />
+                                        </TableCell>
+                                        <TableCell>{log.approving_officer || "N/A"}</TableCell>
+                                        <TableCell>{log.requester_staff_id || "N/A"}</TableCell>
+                                        <TableCell>{log.wfh_type?.toUpperCase() || "N/A"}</TableCell>
+                                        <TableCell>{new Date(log.wfh_date).toLocaleDateString() || "N/A"}</TableCell>
+                                        <TableCell>{log.reason_description || "N/A"}</TableCell>
+                                        <TableCell>{log.action || "N/A"}</TableCell>
+                                        <TableCell>{new Date(log.update_datetime).toLocaleString() || "N/A"}</TableCell>
+                                    </TableRow>
+                                ))
                         )}
                     </TableBody>
                 </Table>
