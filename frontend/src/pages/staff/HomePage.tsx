@@ -92,8 +92,11 @@ export const HomePage = () => {
         >
           Create a WFH Request
         </Button>
-        <DelegateButton />
-        {user && <PersonalRequests />}
+        {(user?.role === 2 ||
+          (user?.role === 1 && user?.position === "Director")) && (
+          <DelegateButton />
+        )}
+        <PersonalRequests />
       </Container>
     </Box>
   );

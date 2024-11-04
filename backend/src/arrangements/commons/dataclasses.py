@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from datetime import date, datetime
 from typing import List, Optional
 
+from src.employees.models import Employee
 from fastapi import File
 
 from .enums import Action, ApprovalStatus, RecurringFrequencyUnit, WfhType
@@ -48,6 +49,7 @@ class ArrangementFilters(BaseClass):
     end_date: Optional[date] = None
     reason: Optional[str] = None
     group_by_date: Optional[bool] = True
+    department: Optional[str] = None
 
 
 @dataclass
@@ -114,6 +116,7 @@ class ArrangementResponse(BaseClass):
     supporting_doc_2: Optional[File] = None
     supporting_doc_3: Optional[File] = None
     status_reason: Optional[str] = None
+    requester_info: Optional[Employee] = None
 
 
 @dataclass
