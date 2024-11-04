@@ -382,5 +382,3 @@ class TestArrangementLogResponse:
         assert json_data["previous_approval_status"].value == "pending approval"
         assert json_data["updated_approval_status"].value == "approved"
         assert json_data["wfh_type"].value == "full"
-
-
