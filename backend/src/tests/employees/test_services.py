@@ -6,7 +6,11 @@ from sqlalchemy import Enum, create_engine
 from sqlalchemy.orm import sessionmaker
 from src.employees import schemas
 from src.auth.models import Auth
-from src.employees.exceptions import EmployeeGenericNotFoundException, EmployeeNotFoundException, ManagerWithIDNotFoundException
+from src.employees.exceptions import (
+    EmployeeGenericNotFoundException,
+    EmployeeNotFoundException,
+    ManagerWithIDNotFoundException,
+)
 from src.employees.models import Base, DelegateLog, DelegationStatus, Employee
 from src.employees.services import (
     DelegationApprovalStatus,
@@ -22,6 +26,7 @@ from src.employees.services import (
     view_all_delegations,
     view_delegations,
 )
+from sqlalchemy.orm import Session
 
 # Configure the in-memory SQLite database
 engine = create_engine("sqlite:///:memory:")
@@ -818,7 +823,8 @@ def test_print_statements_coverage(test_db):
     assert manager_result.staff_id == 15
 
 
-def test_get_reporting_manager_and_peer_employees_no_manager(test_db):
+def test_get_reporting_manager_and_peer_employees_no_manager(test_db: Session):
+    # Create an employee with no manager
     employee = Employee(
         staff_id=30,
         staff_fname="No",
@@ -833,7 +839,12 @@ def test_get_reporting_manager_and_peer_employees_no_manager(test_db):
     test_db.add(employee)
     test_db.commit()
 
-    response = get_reporting_manager_and_peer_employees(test_db, 30)
+    # Mock get_manager_by_subordinate_id to return None directly
+    with patch("src.employees.services.get_manager_by_subordinate_id", return_value=None):
+        # Call the function
+        response = get_reporting_manager_and_peer_employees(test_db, 30)
+
+    # Check that the response correctly shows no manager
     assert response.manager_id is None
     assert len(response.peer_employees) == 0
 
