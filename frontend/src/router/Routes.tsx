@@ -10,6 +10,7 @@ import { TeamPage } from "../pages/team/TeamPage";
 import { MyWfhSchedulePage } from "../pages/staff/MyWfhSchedulePage";
 import { DelegateManagerPage } from "../pages/manager/DelegateManagerPage";
 import { RequestHistoryPage } from "../pages/hr/RequestHistory";
+import { DepartmentOverviewPage } from "../pages/hr/DepartmentOverview";
 
 type routesProps = {
   path: string;
@@ -59,8 +60,8 @@ const routes: routesProps[] = [
             element: <DelegateManagerPage />
           },
           {
-            path: "request-history",
-            element: <RequestHistoryPage />
+            path: "/department-overview",
+            element: <DepartmentOverviewPage />
           }
         ],
       },
