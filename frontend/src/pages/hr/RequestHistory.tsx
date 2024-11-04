@@ -43,13 +43,13 @@ export const RequestHistoryPage: React.FC = () => {
     const fetchLogs = async () => {
         try {
             const response = await axios.get(`${BACKEND_URL}/arrangements/logs/all`, {
-                params: { userId: user.id },
             });
+
             setLogs(response.data);
         } catch (error) {
             console.error("Error fetching arrangement logs:", error);
             setAlertStatus(AlertStatus.Error);
-            setSnackbarMessage("Failed to load arrangement logs.");
+            setSnackbarMessage("Failed to load Request History.");
             setShowSnackbar(true);
         } finally {
             setLoading(false);
@@ -89,16 +89,6 @@ export const RequestHistoryPage: React.FC = () => {
                     </TableBody>
                 </Table>
             </TableContainer>
-
-            <Box sx={{ display: "flex", justifyContent: "flex-end", mt: 4 }}>
-                <Button
-                    variant="outlined"
-                    color="primary"
-                    onClick={() => navigate(-1)}
-                >
-                    Back
-                </Button>
-            </Box>
 
             {/* Snackbar for alerts */}
             <Snackbar
