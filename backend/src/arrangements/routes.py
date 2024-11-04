@@ -2,7 +2,6 @@ from datetime import datetime
 from typing import Annotated, List, Optional
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
-from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from ..database import get_db
@@ -11,8 +10,6 @@ from ..employees.exceptions import (
     ManagerWithIDNotFoundException,
 )
 from ..logger import logger
-from ..notifications import exceptions as notification_exceptions
-from ..notifications.email_notifications import craft_and_send_auto_rejection_email
 from ..notifications.exceptions import EmailNotificationException
 from ..schemas import JSendResponse, PaginationMeta
 from . import services
@@ -25,8 +22,6 @@ from .commons.exceptions import (
     S3UploadFailedException,
 )
 from .utils import format_arrangement_response, format_arrangements_response
-
-from .scheduler import auto_reject_old_requests
 
 router = APIRouter()
 
@@ -281,41 +276,41 @@ async def update_wfh_request(
         raise HTTPException(status_code=500, detail="Database error")
 
 
-# FOR JOSHUA!!!! DELETE WHEN NOT NEEDED ANYMORE
-@router.post(
-    "/{arrangement_id}/forjosh/auto-reject-email",
-    summary="Send auto-rejection email for an arrangement",
-)
-async def send_auto_reject_email(
-    arrangement_id: int, db: Session = Depends(get_db)
-) -> JSendResponse:
-    try:
-        logger.info(f"Route: Sending auto-rejection email for arrangement ID: {arrangement_id}")
-        await craft_and_send_auto_rejection_email(arrangement_id, db)
+# # FOR JOSHUA!!!! DELETE WHEN NOT NEEDED ANYMORE
+# @router.post(
+#     "/{arrangement_id}/forjosh/auto-reject-email",
+#     summary="Send auto-rejection email for an arrangement",
+# )
+# async def send_auto_reject_email(
+#     arrangement_id: int, db: Session = Depends(get_db)
+# ) -> JSendResponse:
+#     try:
+#         logger.info(f"Route: Sending auto-rejection email for arrangement ID: {arrangement_id}")
+#         await craft_and_send_auto_rejection_email(arrangement_id, db)
 
-        return JSendResponse(
-            status="success",
-            data={"message": f"Auto-rejection email sent for arrangement {arrangement_id}"},
-        )
-    except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
-    except notification_exceptions.EmailNotificationException as e:
-        raise HTTPException(status_code=500, detail=str(e))
-    except SQLAlchemyError as e:
-        logger.error(f"Database error: {str(e)}")
-        raise HTTPException(status_code=500, detail="Database error")
+#         return JSendResponse(
+#             status="success",
+#             data={"message": f"Auto-rejection email sent for arrangement {arrangement_id}"},
+#         )
+#     except ValueError as e:
+#         raise HTTPException(status_code=404, detail=str(e))
+#     except notification_exceptions.EmailNotificationException as e:
+#         raise HTTPException(status_code=500, detail=str(e))
+#     except SQLAlchemyError as e:
+#         logger.error(f"Database error: {str(e)}")
+#         raise HTTPException(status_code=500, detail="Database error")
 
 
-@router.post("/manual-auto-reject")
-async def manual_auto_reject():
-    """
-    Manually trigger the auto-reject process for old WFH requests.
-    """
-    try:
-        await auto_reject_old_requests()
-        return {"message": "Auto-rejection process executed successfully."}
-    except Exception as e:
-        logger.error(f"Error in manual auto-reject: {str(e)}")
-        raise HTTPException(
-            status_code=500, detail="An error occurred during the auto-reject process."
-        )
+# @router.post("/manual-auto-reject")
+# async def manual_auto_reject():
+#     """
+#     Manually trigger the auto-reject process for old WFH requests.
+#     """
+#     try:
+#         await auto_reject_old_requests()
+#         return {"message": "Auto-rejection process executed successfully."}
+#     except Exception as e:
+#         logger.error(f"Error in manual auto-reject: {str(e)}")
+#         raise HTTPException(
+#             status_code=500, detail="An error occurred during the auto-reject process."
+#         )
