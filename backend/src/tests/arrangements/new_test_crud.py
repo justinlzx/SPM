@@ -368,11 +368,25 @@ class TestGetArrangements:
         assert result[0] == mock_latest_arrangement.__dict__
 
     def test_get_arrangements_with_wfh_type_filter(self, mock_db_session, mock_latest_arrangement):
+        # Setup complete mock chain
+        mock_query = MagicMock()
+        mock_join = MagicMock()
+        mock_filter = MagicMock()
+
+        mock_db_session.query.return_value = mock_query
+        mock_query.join.return_value = mock_join
+        mock_join.filter.return_value = mock_filter
+        mock_filter.filter.return_value = mock_filter
+        mock_filter.all.return_value = [mock_latest_arrangement]
+
         filters = ArrangementFilters(wfh_type=[WfhType.FULL])
+        # print("FILTERS ARE HERE", filters)
+        # ArrangementFilters(current_approval_status=None, name=None, wfh_type=[<WfhType.FULL: 'full'>], start_date=None, end_date=None, reason=None, group_by_date=True, department=None)
         mock_db_session.query.return_value.filter.return_value.all.return_value = [
             mock_latest_arrangement
         ]
         result = crud.get_arrangements(mock_db_session, staff_ids=[100], filters=filters)
+        print("Result:", result)  # returns []
         assert len(result) == 1
 
     def test_get_arrangements_with_date_filters(self, mock_db_session, mock_latest_arrangement):
