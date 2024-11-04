@@ -6,7 +6,6 @@ import {
     Container,
     Typography,
     Divider,
-    Button,
     Snackbar,
     Alert,
     Table,
@@ -16,39 +15,78 @@ import {
     TableHead,
     TableRow,
     Paper,
+    TextField,
+    Chip,
+    TablePagination,
+    CircularProgress,
 } from "@mui/material";
-import { SnackBarComponent, AlertStatus } from "../../common/SnackBar";
 import axios from "axios";
+
+const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
+
+type TWFHRequest = {
+    action: string;
+    approving_officer: number;
+    arrangement_id: number;
+    batch_id: number | null;
+    log_id: number;
+    previous_approval_status: string | null;
+    reason_description: string;
+    requester_staff_id: number;
+    status_reason: string | null;
+    supporting_doc_1: string | null;
+    supporting_doc_2: string | null;
+    supporting_doc_3: string | null;
+    update_datetime: string;
+    updated_approval_status: string;
+    wfh_date: string;
+    wfh_type: string;
+};
+
+const getChipColor = (status: string | undefined) => {
+    if (!status) return "default"; // Default if status is undefined
+    switch (status.toLowerCase()) {
+        case "approved":
+            return "success";
+        case "pending approval":
+            return "warning";
+        case "rejected":
+            return "error";
+        default:
+            return "default";
+    }
+};
 
 export const RequestHistoryPage: React.FC = () => {
     const { user } = useContext(UserContext);
-    const [logs, setLogs] = useState<any[]>([]);
+    const [logs, setLogs] = useState<TWFHRequest[]>([]);
+    const [searchTerm, setSearchTerm] = useState("");
+    const [page, setPage] = useState(0);
+    const [rowsPerPage, setRowsPerPage] = useState(10);
+    const [loading, setLoading] = useState(true);
     const [showSnackbar, setShowSnackbar] = useState(false);
     const [snackbarMessage, setSnackbarMessage] = useState("");
-    const [alertStatus, setAlertStatus] = useState<AlertStatus>(AlertStatus.Info);
-    const [loading, setLoading] = useState(true);
+    const [alertStatus, setAlertStatus] = useState<"success" | "error">("success");
     const navigate = useNavigate();
-    const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 
-    if (!user) {
-        return (
-            <Typography variant="h4">Please log in to access this page</Typography>
-        );
-    }
+    useEffect(() => {
+        if (!user) {
+            navigate("/login");
+            return;
+        }
+        fetchLogs();
+    }, [user, navigate]);
 
-    // Function to handle Snackbar close
     const handleCloseSnackBar = () => setShowSnackbar(false);
 
-    // Function to fetch arrangement logs
     const fetchLogs = async () => {
         try {
-            const response = await axios.get(`${BACKEND_URL}/arrangements/logs/all`, {
-            });
-
-            setLogs(response.data);
+            const response = await axios.get(`${BACKEND_URL}/arrangements/logs/all`);
+            const fetchedLogs = response.data.data; // Adjust the path as necessary
+            setLogs(fetchedLogs);
         } catch (error) {
             console.error("Error fetching arrangement logs:", error);
-            setAlertStatus(AlertStatus.Error);
+            setAlertStatus("error");
             setSnackbarMessage("Failed to load Request History.");
             setShowSnackbar(true);
         } finally {
@@ -56,39 +94,106 @@ export const RequestHistoryPage: React.FC = () => {
         }
     };
 
-    useEffect(() => {
-        fetchLogs();
-    }, []);
+    const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
+        setSearchTerm(e.target.value);
+        setPage(0); // Reset to first page when searching
+    };
+
+    const filteredLogs = logs.filter(
+        (log) =>
+            log.reason_description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            log.wfh_type?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            log.updated_approval_status?.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+
+    const handleChangePage = (_event: unknown, newPage: number) => {
+        setPage(newPage);
+    };
+
+    const handleChangeRowsPerPage = (event: React.ChangeEvent<HTMLInputElement>) => {
+        setRowsPerPage(parseInt(event.target.value, 10));
+        setPage(0);
+    };
+
+    if (loading) {
+        return (
+            <div style={{ display: 'flex', justifyContent: 'center', padding: '2rem' }}>
+                <CircularProgress />
+            </div>
+        );
+    }
 
     return (
         <Container maxWidth="md">
             <Typography variant="h4" sx={{ mb: 2 }}>
-                WFH Request History
+                Department Request History
             </Typography>
             <Divider sx={{ mb: 2 }} />
+
+            <TextField
+                label="Search by reason, type, or status"
+                variant="outlined"
+                fullWidth
+                margin="normal"
+                value={searchTerm}
+                onChange={handleSearch}
+            />
 
             <TableContainer component={Paper}>
                 <Table>
                     <TableHead>
                         <TableRow>
-                            <TableCell>Date</TableCell>
-                            <TableCell>Type</TableCell>
-                            <TableCell>Reason</TableCell>
-                            <TableCell>Status</TableCell>
+                            <TableCell sx={{ fontWeight: "bold" }}>Approval Status</TableCell>
+                            <TableCell sx={{ fontWeight: "bold" }}>Approving Officer ID</TableCell>
+                            <TableCell sx={{ fontWeight: "bold" }}>Requester ID</TableCell>
+                            <TableCell sx={{ fontWeight: "bold" }}>WFH Type</TableCell>
+                            <TableCell sx={{ fontWeight: "bold" }}>WFH Date</TableCell>
+                            <TableCell sx={{ fontWeight: "bold" }}>Reason</TableCell>
+                            <TableCell sx={{ fontWeight: "bold" }}>Action</TableCell>
+                            <TableCell sx={{ fontWeight: "bold" }}>Update Date</TableCell>
                         </TableRow>
                     </TableHead>
                     <TableBody>
-                        {logs.map((log) => (
-                            <TableRow key={log.id}>
-                                <TableCell>{new Date(log.date).toLocaleDateString()}</TableCell>
-                                <TableCell>{log.type}</TableCell>
-                                <TableCell>{log.reason}</TableCell>
-                                <TableCell>{log.status}</TableCell>
+                        {filteredLogs.length === 0 ? (
+                            <TableRow>
+                                <TableCell colSpan={8} align="center">
+                                    {searchTerm ? "No matching requests found" : "No requests available"}
+                                </TableCell>
                             </TableRow>
-                        ))}
+                        ) : (
+                            filteredLogs
+                                .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
+                                .map((log) => (
+                                    <TableRow key={log.arrangement_id}>
+                                        <TableCell>
+                                            <Chip
+                                                color={getChipColor(log.updated_approval_status)}
+                                                label={log.updated_approval_status.charAt(0).toUpperCase() + log.updated_approval_status.slice(1)}
+                                            />
+                                        </TableCell>
+                                        <TableCell>{log.approving_officer || "N/A"}</TableCell>
+                                        <TableCell>{log.requester_staff_id || "N/A"}</TableCell>
+                                        <TableCell>{log.wfh_type?.toUpperCase() || "N/A"}</TableCell>
+                                        <TableCell>{new Date(log.wfh_date).toLocaleDateString() || "N/A"}</TableCell>
+                                        <TableCell>{log.reason_description || "N/A"}</TableCell>
+                                        <TableCell>{log.action || "N/A"}</TableCell>
+                                        <TableCell>{new Date(log.update_datetime).toLocaleString() || "N/A"}</TableCell>
+                                    </TableRow>
+                                ))
+                        )}
                     </TableBody>
                 </Table>
             </TableContainer>
+
+            <TablePagination
+                component="div"
+                rowsPerPageOptions={[10, 20, 30]}
+                count={filteredLogs.length}
+                rowsPerPage={rowsPerPage}
+                page={page}
+                onPageChange={handleChangePage}
+                onRowsPerPageChange={handleChangeRowsPerPage}
+            />
 
             {/* Snackbar for alerts */}
             <Snackbar
