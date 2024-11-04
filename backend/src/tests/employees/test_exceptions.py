@@ -7,9 +7,10 @@ from src.employees.exceptions import (
 
 
 def test_employee_not_found_exception():
+    employee_id = 101
     with pytest.raises(EmployeeNotFoundException) as excinfo:
-        raise EmployeeNotFoundException()
-    assert str(excinfo.value) == "Employee not found"
+        raise EmployeeNotFoundException(employee_id)
+    assert str(excinfo.value) == f"Employee with ID {employee_id} not found"
 
 
 def test_manager_with_id_not_found_exception():
