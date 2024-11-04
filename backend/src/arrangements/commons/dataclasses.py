@@ -3,8 +3,8 @@ from dataclasses import dataclass
 from datetime import date, datetime
 from typing import List, Optional
 
-from src.employees.models import Employee
 from fastapi import File
+from src.employees.models import Employee
 
 from .enums import Action, ApprovalStatus, RecurringFrequencyUnit, WfhType
 
@@ -124,6 +124,7 @@ class ArrangementLogResponse(BaseClass):
     """Dataclass for created arrangement."""
 
     log_id: int
+    arrangement_id: int
     update_datetime: datetime
     requester_staff_id: int
     wfh_date: date
