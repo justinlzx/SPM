@@ -82,6 +82,7 @@ export const Filters: React.FC<FiltersProps> = ({ onApplyFilters, onClearFilters
         onChange={(e) => setSearchQuery(e.target.value)}
         placeholder="Search by Staff ID, Date, Reason, or Type"
         sx={{ marginBottom: 2 }}
+        data-cy="search-input" // Added data-cy for search input
       />
 
       <Box display="flex" flexWrap="wrap" gap={2} alignItems="center" padding={2} border={1} borderRadius={1} borderColor="grey.300">
@@ -103,6 +104,7 @@ export const Filters: React.FC<FiltersProps> = ({ onApplyFilters, onClearFilters
                     </InputAdornment>
                   ),
                 }}
+                data-cy="start-date-picker" // Added data-cy for start date picker
               />
             }
           />
@@ -122,13 +124,14 @@ export const Filters: React.FC<FiltersProps> = ({ onApplyFilters, onClearFilters
                     </InputAdornment>
                   ),
                 }}
+                data-cy="end-date-picker" // Added data-cy for end date picker
               />
             }
           />
         </Box>
 
         {/* Department Filter */}
-        <FormControl size="small" sx={{ minWidth: 150 }}>
+        <FormControl size="small" sx={{ minWidth: 150 }} data-cy="department-select"> {/* Added data-cy for department select */}
           <InputLabel>Department</InputLabel>
           <Select
             multiple
@@ -147,7 +150,7 @@ export const Filters: React.FC<FiltersProps> = ({ onApplyFilters, onClearFilters
         </FormControl>
 
         {/* Status Filter */}
-        <FormControl size="small" sx={{ minWidth: 150 }}>
+        <FormControl size="small" sx={{ minWidth: 150 }} data-cy="status-select"> {/* Added data-cy for status select */}
           <InputLabel>Status</InputLabel>
           <Select
             multiple
@@ -167,10 +170,20 @@ export const Filters: React.FC<FiltersProps> = ({ onApplyFilters, onClearFilters
 
         {/* Apply and Clear Filters Buttons */}
         <Box display="flex" gap={1}>
-          <Button variant="contained" color="primary" onClick={handleApplyFilters}>
+          <Button
+            variant="contained"
+            color="primary"
+            onClick={handleApplyFilters}
+            data-cy="apply-filters" // Added data-cy for apply filters button
+          >
             Apply Filters
           </Button>
-          <Button variant="outlined" color="secondary" onClick={handleClearFilters}>
+          <Button
+            variant="outlined"
+            color="secondary"
+            onClick={handleClearFilters}
+            data-cy="clear-filters" // Added data-cy for clear filters button
+          >
             Clear Filters
           </Button>
         </Box>

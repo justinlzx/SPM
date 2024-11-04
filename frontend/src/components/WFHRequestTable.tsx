@@ -80,47 +80,47 @@ const ConfirmationModal: React.FC<{
   reason,
   setReason,
 }) => (
-  <Modal open={open} onClose={handleClose}>
-    <Box
-      sx={{
-        position: "absolute",
-        top: "50%",
-        left: "50%",
-        transform: "translate(-50%, -50%)",
-        width: 400,
-        bgcolor: "background.paper",
-        borderRadius: 2,
-        p: 4,
-        boxShadow: 24,
-      }}
-    >
-      <Typography variant="h6">
-        Confirm {action === "cancel" ? "Cancellation" : "Withdrawal"}
-      </Typography>
-      <Typography mb={2}>
-        Are you sure you want to {action === "cancel" ? "cancel" : "withdraw"}{" "}
-        this request?
-      </Typography>
-      {action === "withdraw" && (
-        <TextField
-          label="Reason for withdrawal (Optional)"
-          fullWidth
-          value={reason}
-          onChange={(e) => setReason(e.target.value)}
-          margin="normal"
-        />
-      )}
-      <Box mt={2} display="flex" justifyContent="flex-end">
-        <Button onClick={handleClose} variant="outlined" color="secondary" sx={{ mr: 2 }}>
-          No
-        </Button>
-        <Button onClick={handleConfirm} variant="contained" color="primary" disabled={loading}>
-          {loading ? <CircularProgress size={24} color="inherit" /> : "Yes"}
-        </Button>
+    <Modal open={open} onClose={handleClose}>
+      <Box
+        sx={{
+          position: "absolute",
+          top: "50%",
+          left: "50%",
+          transform: "translate(-50%, -50%)",
+          width: 400,
+          bgcolor: "background.paper",
+          borderRadius: 2,
+          p: 4,
+          boxShadow: 24,
+        }}
+      >
+        <Typography variant="h6">
+          Confirm {action === "cancel" ? "Cancellation" : "Withdrawal"}
+        </Typography>
+        <Typography mb={2}>
+          Are you sure you want to {action === "cancel" ? "cancel" : "withdraw"}{" "}
+          this request?
+        </Typography>
+        {action === "withdraw" && (
+          <TextField
+            label="Reason for withdrawal (Optional)"
+            fullWidth
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            margin="normal"
+          />
+        )}
+        <Box mt={2} display="flex" justifyContent="flex-end">
+          <Button onClick={handleClose} variant="outlined" color="secondary" sx={{ mr: 2 }}>
+            No
+          </Button>
+          <Button onClick={handleConfirm} variant="contained" color="primary" disabled={loading}>
+            {loading ? <CircularProgress size={24} color="inherit" /> : "Yes"}
+          </Button>
+        </Box>
       </Box>
-    </Box>
-  </Modal>
-);
+    </Modal>
+  );
 
 // DocumentDialog component for viewing supporting documents
 const DocumentDialog: React.FC<{
@@ -225,7 +225,7 @@ export const WFHRequestTable: React.FC<TWFHRequestTableProps> = ({
                 ].filter(Boolean) as string[];
 
                 return (
-                  <TableRow key={request.arrangement_id}>
+                  <TableRow key={request.arrangement_id} data-cy="request-item"> {/* Add here */}
                     <TableCell>{request.requester_staff_id}</TableCell>
                     <TableCell>{request.wfh_date}</TableCell>
                     <TableCell>{request.wfh_type?.toUpperCase() || "-"}</TableCell>
@@ -256,7 +256,7 @@ export const WFHRequestTable: React.FC<TWFHRequestTableProps> = ({
                         label={capitalize(request.current_approval_status)}
                         variant={
                           request.current_approval_status ===
-                          ApprovalStatus.PendingWithdrawal
+                            ApprovalStatus.PendingWithdrawal
                             ? "outlined"
                             : "filled"
                         }
