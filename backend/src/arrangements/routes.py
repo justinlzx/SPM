@@ -32,14 +32,20 @@ def get_arrangements(
     request_filters: schemas.ArrangementFilters = Depends(schemas.ArrangementFilters.as_query),
 ) -> JSendResponse:
     try:
-        logger.info("Route: Fetching all arrangements")
+        # Convert to dataclasses
         filters = dc.ArrangementFilters.from_dict(request_filters.model_dump())
+
+        # Get arrangements
+        logger.info("Route: Fetching all arrangements")
         data = services.get_all_arrangements(db, filters)
         logger.info(f"Route: Found {len(data)} arrangements")
 
+        # Convert to Pydantic model
+        response_data = format_arrangements_response(data)
+
         return JSendResponse(
             status="success",
-            data=[schemas.ArrangementResponse(**asdict(arrangement)) for arrangement in data],
+            data=response_data,
         )
     except SQLAlchemyError as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -48,11 +54,13 @@ def get_arrangements(
 @router.get("/{arrangement_id}", summary="Get an arrangement by its arrangement_id")
 def get_arrangement_by_id(arrangement_id: int, db: Session = Depends(get_db)) -> JSendResponse:
     try:
+        # Get arrangement
         logger.info(f"Route: Fetching arrangement with ID: {arrangement_id}")
         data = services.get_arrangement_by_id(db, arrangement_id)
         logger.info("Route: Found arrangement")
 
-        response_data = schemas.ArrangementResponse(**asdict(data))
+        # Convert to Pydantic model
+        response_data = format_arrangement_response(data)
 
         return JSendResponse(
             status="success",
