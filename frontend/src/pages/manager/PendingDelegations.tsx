@@ -19,12 +19,15 @@ import {
   DialogContent,
   DialogActions,
   TextField,
+  Backdrop,
+  CircularProgress,
 } from "@mui/material";
 import { UserContext } from "../../context/UserContextProvider";
 import CheckIcon from "@mui/icons-material/Check";
 import CloseIcon from "@mui/icons-material/Close";
 import { capitalize } from "../../utils/utils";
 import { SnackBarComponent, AlertStatus } from "../../common/SnackBar";
+import { LoadingSpinner } from "../../common/LoadingSpinner";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 
@@ -60,6 +63,9 @@ export const PendingDelegations = () => {
   const [reason, setReason] = useState("");
   const [selectedStaffId, setSelectedStaffId] = useState<number | null>(null);
 
+  const [loading, setLoading] = useState(true);
+  const [actionLoading, setActionLoading] = useState(false);
+
   useEffect(() => {
     const fetchPendingDelegationRequests = async () => {
       if (!user || !userId) return;
@@ -82,6 +88,7 @@ export const PendingDelegations = () => {
   }, [user, userId]);
 
   const handleDelegationAction = async (action: TAction, staff_id: number, reason?: string) => {
+    setActionLoading(true);
     try {
       await axios.put(
         `${BACKEND_URL}/employees/manager/delegate/${userId}/status`,
@@ -109,6 +116,8 @@ export const PendingDelegations = () => {
       setSnackbarMessage(`Error processing delegation request.`);
       setAlertStatus(AlertStatus.Error);
       setShowSnackbar(true);
+    } finally {
+      setActionLoading(false);
     }
   };
 
@@ -144,68 +153,69 @@ export const PendingDelegations = () => {
             </TableRow>
           </TableHead>
           <TableBody>
-  {requests.length === 0 ? (
-    <TableRow>
-      <TableCell colSpan={6} align="center"> {/* Adjust colSpan as needed */}
-        No pending delegation requests
-      </TableCell>
-    </TableRow>
-  ) : (
-    requests.map((request) => {
-      const { staff_id, full_name, date_of_delegation, status_of_delegation, reason } = request;
-      const truncatedReason = reason ? (reason.length > 20 ? `${reason.substring(0, 20)}...` : reason) : '-';
-
-      return (
-        <TableRow key={staff_id}>
-          <TableCell>{staff_id}</TableCell>
-          <TableCell>{full_name}</TableCell>
-          <TableCell>{new Date(date_of_delegation).toLocaleDateString()}</TableCell>
-          <TableCell>
-            <Chip
-              label={capitalize(status_of_delegation)}
-              color={
-                status_of_delegation === DelegationStatus.Accepted
-                  ? "success"
-                  : status_of_delegation === DelegationStatus.Rejected
-                  ? "error"
-                  : "warning"
-              }
-            />
-          </TableCell>
-          <TableCell>{truncatedReason}</TableCell> {/* Displaying truncated reason or 'N/A' */}
-          <TableCell>
-            {status_of_delegation === DelegationStatus.Pending ? (
-              <ButtonGroup variant="contained" aria-label="Accept/Reject Button group">
-                <Tooltip title="Accept delegation">
-                  <Button
-                    size="small"
-                    color="success"
-                    startIcon={<CheckIcon />}
-                    onClick={() => handleDelegationAction("accepted", staff_id)}
-                  >
-                    Accept
-                  </Button>
-                </Tooltip>
-                <Tooltip title="Reject delegation">
-                  <Button
-                    size="small"
-                    color="error"
-                    startIcon={<CloseIcon />}
-                    onClick={() => handleOpenRejectModal(staff_id)}
-                  >
-                    Reject
-                  </Button>
-                </Tooltip>
-              </ButtonGroup>
+            {requests.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={6} align="center"> {/* Adjust colSpan as needed */}
+                  No pending delegation requests
+                </TableCell>
+              </TableRow>
             ) : (
-              "-"
+              requests.map((request) => {
+                const { staff_id, full_name, date_of_delegation, status_of_delegation, reason } = request;
+                const truncatedReason = reason ? (reason.length > 20 ? `${reason.substring(0, 20)}...` : reason) : '-';
+
+                return (
+                  <TableRow key={staff_id}>
+                    <TableCell>{staff_id}</TableCell>
+                    <TableCell>{full_name}</TableCell>
+                    <TableCell>{new Date(date_of_delegation).toLocaleDateString()}</TableCell>
+                    <TableCell>
+                      <Chip
+                        variant="outlined"
+                        label={capitalize(status_of_delegation)}
+                        color={
+                          status_of_delegation === DelegationStatus.Accepted
+                            ? "success"
+                            : status_of_delegation === DelegationStatus.Rejected
+                              ? "error"
+                              : "warning"
+                        }
+                      />
+                    </TableCell>
+                    <TableCell>{truncatedReason}</TableCell> {/* Displaying truncated reason or 'N/A' */}
+                    <TableCell>
+                      {status_of_delegation === DelegationStatus.Pending ? (
+                        <ButtonGroup variant="contained" aria-label="Accept/Reject Button group">
+                          <Tooltip title="Accept delegation">
+                            <Button
+                              size="small"
+                              color="success"
+                              startIcon={<CheckIcon />}
+                              onClick={() => handleDelegationAction("accepted", staff_id)}
+                            >
+                              Accept
+                            </Button>
+                          </Tooltip>
+                          <Tooltip title="Reject delegation">
+                            <Button
+                              size="small"
+                              color="error"
+                              startIcon={<CloseIcon />}
+                              onClick={() => handleOpenRejectModal(staff_id)}
+                            >
+                              Reject
+                            </Button>
+                          </Tooltip>
+                        </ButtonGroup>
+                      ) : (
+                        "-"
+                      )}
+                    </TableCell>
+                  </TableRow>
+                );
+              })
             )}
-          </TableCell>
-        </TableRow>
-      );
-    })
-  )}
-</TableBody>
+          </TableBody>
 
         </Table>
       </TableContainer>
@@ -233,9 +243,9 @@ export const PendingDelegations = () => {
             onClick={() => handleDelegationAction("rejected", selectedStaffId!, reason)}
             variant="outlined"
             color="error"
-            disabled={!reason.trim()}
+            disabled={!reason.trim() || actionLoading} // Disable when loading or reason is empty
           >
-            Confirm
+            {actionLoading ? <LoadingSpinner open={true} /> : "Confirm"}
           </Button>
         </DialogActions>
       </Dialog>
@@ -246,6 +256,11 @@ export const PendingDelegations = () => {
         alertStatus={alertStatus}
         snackbarMessage={snackbarMessage}
       />
+
+      {/* Full Page Loading Overlay */}
+      <Backdrop open={actionLoading} sx={{ color: "#fff", zIndex: (theme) => theme.zIndex.drawer + 1 }}>
+        <CircularProgress color="inherit" />
+      </Backdrop>
     </Container>
   );
 };

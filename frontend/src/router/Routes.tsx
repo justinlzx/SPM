@@ -9,6 +9,8 @@ import { HomePage } from "../pages/staff/HomePage";
 import { TeamPage } from "../pages/team/TeamPage";
 import { MyWfhSchedulePage } from "../pages/staff/MyWfhSchedulePage";
 import { DelegateManagerPage } from "../pages/manager/DelegateManagerPage";
+import { RequestHistoryPage } from "../pages/hr/RequestHistory";
+import { DepartmentOverviewPage } from "../pages/hr/DepartmentOverview";
 
 type routesProps = {
   path: string;
@@ -56,6 +58,10 @@ const routes: routesProps[] = [
           {
             path: "/delegate",
             element: <DelegateManagerPage />
+          },
+          {
+            path: "/department-overview",
+            element: <DepartmentOverviewPage />
           }
         ],
       },

@@ -18,6 +18,12 @@ class ArrangementLog(Base):
         nullable=False,
         doc="Date and time of the update",
     )
+    arrangement_id = Column(
+        Integer,
+        ForeignKey("latest_arrangements.arrangement_id"),
+        nullable=False,
+        doc="Unique identifier for the arrangement",
+    )
     requester_staff_id = Column(
         Integer,
         ForeignKey("employees.staff_id"),

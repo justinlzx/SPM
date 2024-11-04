@@ -2,436 +2,383 @@ from datetime import datetime
 
 import pytest
 from pydantic import ValidationError
-
-from backend.src.arrangements.archive.old_schemas import (
-    ArrangementCreate,
-    ArrangementCreateWithFile,
-    ArrangementLog,
+from src.arrangements.commons.enums import (
+    Action,
+    ApprovalStatus,
+    RecurringFrequencyUnit,
+    WfhType,
+)
+from src.arrangements.commons.schemas import (
+    ArrangementFilters,
+    ArrangementLogResponse,
     ArrangementResponse,
-    ArrangementUpdate,
+    CreateArrangementRequest,
+    UpdateArrangementRequest,
 )
 
 
-# Test ArrangementCreate schema with valid data
-def test_arrangement_create_valid():
-    arrangement = ArrangementCreate(
-        staff_id=1,
-        wfh_date="2024-10-10",
-        wfh_type="full",
-        approving_officer=2,
-        reason_description="Need to work from home",
-    )
-    assert arrangement.staff_id == 1
-    assert arrangement.wfh_type == "full"
-    assert arrangement.current_approval_status == "pending"
-    assert isinstance(arrangement.update_datetime, datetime)
-
-
-# Test ArrangementCreate with invalid data (missing staff_id)
-def test_arrangement_create_missing_staff_id():
-    with pytest.raises(ValidationError):
-        ArrangementCreate(
-            wfh_date="2024-10-10",
-            wfh_type="full",
-            approving_officer=2,
-            reason_description="Need to work from home",
-        )
-
-
-# Test recurring field validation (valid case)
-def test_arrangement_create_recurring_valid():
-    arrangement = ArrangementCreate(
-        staff_id=1,
-        wfh_date="2024-10-10",
-        wfh_type="am",
-        approving_officer=2,
-        reason_description="Recurring work from home",
-        is_recurring=True,
-        recurring_frequency_number=2,
-        recurring_occurrences=4,
-    )
-    assert arrangement.is_recurring is True
-    assert arrangement.recurring_frequency_number == 2
-    assert arrangement.recurring_occurrences == 4
-
-
-# Test recurring field validation (invalid case)
-def test_arrangement_create_recurring_invalid():
-    with pytest.raises(ValueError, match="must have a non-zero value"):
-        ArrangementCreate(
-            staff_id=1,
-            wfh_date="2024-10-10",
-            wfh_type="am",
-            approving_officer=2,
-            reason_description="Invalid recurring WFH",
-            is_recurring=True,
-            recurring_frequency_number=0,
-            recurring_occurrences=0,
-        )
-
-
-# Test ArrangementCreateWithFile schema with valid data
-def test_arrangement_create_with_file_valid():
-    arrangement = ArrangementCreateWithFile(
-        staff_id=1,
-        wfh_date="2024-10-10",
-        wfh_type="full",
-        approving_officer=2,
-        reason_description="Need to work from home",
-        supporting_doc_1="https://example.com/doc1",
-        supporting_doc_2="https://example.com/doc2",
-    )
-    assert arrangement.supporting_doc_1 == "https://example.com/doc1"
-    assert arrangement.supporting_doc_2 == "https://example.com/doc2"
-
-
-# Test ArrangementUpdate schema with valid data
-def test_arrangement_update_valid():
-    update = ArrangementUpdate(
-        staff_id=1,
-        wfh_date="2024-10-11",
-        wfh_type="pm",
-        action="approve",
-        approving_officer=3,
-        reason_description="Manager approved",
-    )
-    assert update.action == "approve"
-    assert update.staff_id == 1
-    assert update.wfh_type == "pm"
-
-
-# Test ArrangementUpdate with invalid action
-def test_arrangement_update_invalid_action():
-    with pytest.raises(ValidationError):
-        ArrangementUpdate(
-            staff_id=1,
-            wfh_date="2024-10-11",
-            wfh_type="pm",
-            action="invalid_action",  # Invalid action type
-            approving_officer=3,
-            reason_description="Invalid action type",
-        )
-
-
-# Test ArrangementLog schema with valid data
-def test_arrangement_log_valid():
-    log = ArrangementLog(
+@pytest.fixture
+def arrangement_response():
+    return ArrangementResponse(
         arrangement_id=1,
-        staff_id=1,
-        wfh_date="2024-10-12",
-        wfh_type="full",
-        update_datetime=datetime.now(),
-        approval_status="approved",
-        reason_description="Manager approved WFH",
-    )
-    assert log.arrangement_id == 1
-    assert log.approval_status == "approved"
-
-
-# Test ArrangementResponse schema
-def test_arrangement_response_valid():
-    response = ArrangementResponse(
-        arrangement_id=1,
-        staff_id=1,
-        wfh_date="2024-10-13",
-        wfh_type="am",
-        approval_status="pending",
+        update_datetime=datetime(2024, 9, 10, 0, 0),
+        requester_staff_id=1,
+        wfh_date=datetime(2024, 10, 10).date(),
+        wfh_type=WfhType.FULL,
+        current_approval_status=ApprovalStatus.PENDING_APPROVAL,
         approving_officer=2,
+        delegate_approving_officer=3,
         reason_description="Waiting for approval",
-        update_datetime=datetime.now(),  # Provide this required field
-    )
-    assert response.arrangement_id == 1
-    assert response.approval_status == "pending"
-    assert response.reason_description == "Waiting for approval"
-    assert isinstance(response.update_datetime, datetime)
-
-
-def test_arrangement_create_model_dump():
-    arrangement = ArrangementCreate(
-        staff_id=1,
-        wfh_date="2024-10-10",
-        wfh_type="full",
-        approving_officer=2,
-        reason_description="Need to work from home",
-    )
-
-    # Call the custom model_dump method
-    data = arrangement.model_dump()
-
-    print("dog", data)
-    print(type(data))
-
-    # Ensure fields added manually in custom model_dump are included
-    assert "update_datetime" in data
-    assert "current_approval_status" in data
-    assert data["update_datetime"] == arrangement.update_datetime
-    assert data["current_approval_status"] == arrangement.current_approval_status
-
-    # Call the superclass method directly to see what would be excluded by default
-    base_data = super(ArrangementCreate, arrangement).model_dump()
-
-    print("dog base_Data:", base_data)
-
-    # These should be excluded in the base call and added in custom dump
-    assert "update_datetime" not in base_data
-    assert "current_approval_status" not in base_data
-
-
-# Test validator when is_recurring is False (or not present)
-def test_arrangement_create_non_recurring():
-    arrangement = ArrangementCreate(
-        staff_id=1,
-        wfh_date="2024-10-10",
-        wfh_type="am",
-        approving_officer=2,
-        reason_description="One-time WFH",
-        is_recurring=False,  # Non-recurring case
-    )
-
-    # Ensure the validator doesn't raise any error and the instance is valid
-    assert arrangement.is_recurring is False
-    assert arrangement.recurring_frequency_number is None
-    assert arrangement.recurring_occurrences is None
-
-
-def test_arrangement_create_model_dump_includes_excluded_fields():
-    arrangement = ArrangementCreate(
-        staff_id=1,
-        wfh_date="2024-10-10",
-        wfh_type="full",
-        approving_officer=2,
-        reason_description="Need to work from home",
-    )
-
-    # Explicitly call model_dump to test all lines
-    data = arrangement.model_dump()
-
-    # Check that excluded fields were correctly included manually
-    assert "update_datetime" in data
-    assert "current_approval_status" in data
-    assert data["update_datetime"] == arrangement.update_datetime
-    assert data["current_approval_status"] == arrangement.current_approval_status
-
-    # Ensure the fields not originally in the dump are absent from the super call
-    base_data = super(ArrangementCreate, arrangement).model_dump()
-    assert "update_datetime" not in base_data
-    assert "current_approval_status" not in base_data
-
-
-def test_arrangement_create_recurring_fields_valid():
-    arrangement = ArrangementCreate(
-        staff_id=1,
-        wfh_date="2024-10-10",
-        wfh_type="full",
-        approving_officer=2,
-        reason_description="Recurring work from home",
-        is_recurring=True,
-        recurring_frequency_number=1,  # Valid value
-        recurring_occurrences=3,  # Valid value
-    )
-    # Validate that the recurring fields were correctly set
-    assert arrangement.is_recurring is True
-    assert arrangement.recurring_frequency_number == 1
-    assert arrangement.recurring_occurrences == 3
-
-
-def test_arrangement_create_recurring_fields_invalid_zero_values():
-    # This should raise an error because is_recurring is True, but recurring fields are zero
-    with pytest.raises(ValueError, match="must have a non-zero value"):
-        ArrangementCreate(
-            staff_id=1,
-            wfh_date="2024-10-10",
-            wfh_type="am",
-            approving_officer=2,
-            reason_description="Invalid recurring WFH",
-            is_recurring=True,  # Test the case where is_recurring is True
-            recurring_frequency_number=0,  # Invalid
-            recurring_occurrences=0,  # Invalid
-        )
-
-
-def test_arrangement_create_non_recurring_fields_not_required():
-    # Test case where is_recurring is explicitly False
-    arrangement = ArrangementCreate(
-        staff_id=1,
-        wfh_date="2024-10-10",
-        wfh_type="am",
-        approving_officer=2,
-        reason_description="One-time WFH",
-        is_recurring=False,  # Non-recurring case
-    )
-
-    # Ensure that recurring fields are not required or set
-    assert arrangement.is_recurring is False
-    assert arrangement.recurring_frequency_number is None
-    assert arrangement.recurring_occurrences is None
-
-
-def test_arrangement_create_missing_is_recurring_defaults_to_false():
-    arrangement = ArrangementCreate(
-        staff_id=1,
-        wfh_date="2024-10-10",
-        wfh_type="full",
-        approving_officer=2,
-        reason_description="One-time WFH",
-    )
-
-    # By default, is_recurring should be False
-    assert arrangement.is_recurring is False
-    assert arrangement.recurring_frequency_number is None
-    assert arrangement.recurring_occurrences is None
-
-
-# Test recurring fields when they are None (invalid when is_recurring is True)
-def test_arrangement_create_recurring_fields_none():
-    with pytest.raises(ValueError, match="must have a non-zero value"):
-        ArrangementCreate(
-            staff_id=1,
-            wfh_date="2024-10-10",
-            wfh_type="am",
-            approving_officer=2,
-            reason_description="Invalid recurring WFH",
-            is_recurring=True,  # Test case where is_recurring is True
-            recurring_frequency_number=None,  # Invalid case
-            recurring_occurrences=None,  # Invalid case
-        )
-
-
-def test_arrangement_create_with_file_model_dump():
-    arrangement = ArrangementCreateWithFile(
-        staff_id=1,
-        wfh_date="2024-10-10",
-        wfh_type="full",
-        approving_officer=2,
-        reason_description="Need to work from home",
-        supporting_doc_1="https://example.com/doc1",
-    )
-
-    # Call the custom model_dump method
-    data = arrangement.model_dump()
-
-    # Ensure all expected fields are included
-    assert "staff_id" in data
-    assert "wfh_date" in data
-    assert "wfh_type" in data
-    assert "approving_officer" in data
-    assert "reason_description" in data
-    assert "supporting_doc_1" in data
-    assert "update_datetime" in data
-    assert "current_approval_status" in data
-
-    # Check that the values are correct
-    assert data["staff_id"] == 1
-    assert data["wfh_date"] == "2024-10-10"
-    assert data["wfh_type"] == "full"
-    assert data["approving_officer"] == 2
-    assert data["reason_description"] == "Need to work from home"
-    assert data["supporting_doc_1"] == "https://example.com/doc1"
-    assert isinstance(data["update_datetime"], datetime)
-    assert data["current_approval_status"] == "pending"
-
-    # Verify that supporting_doc_2 and supporting_doc_3 are None
-    assert "supporting_doc_2" in data
-    assert data["supporting_doc_2"] is None
-    assert "supporting_doc_3" in data
-    assert data["supporting_doc_3"] is None
-
-
-def test_arrangement_create_with_file_model_dump_all_supporting_docs():
-    arrangement = ArrangementCreateWithFile(
-        staff_id=1,
-        wfh_date="2024-10-10",
-        wfh_type="full",
-        approving_officer=2,
-        reason_description="Need to work from home",
+        batch_id=1,
+        latest_log_id=1,
         supporting_doc_1="https://example.com/doc1",
         supporting_doc_2="https://example.com/doc2",
         supporting_doc_3="https://example.com/doc3",
+        status_reason="Manager approved",
     )
 
-    data = arrangement.model_dump()
 
-    # Check that all supporting doc fields are included and have correct values
-    assert data["supporting_doc_1"] == "https://example.com/doc1"
-    assert data["supporting_doc_2"] == "https://example.com/doc2"
-    assert data["supporting_doc_3"] == "https://example.com/doc3"
-
-
-def test_arrangement_create_recurring_fields_one_field_set():
-    # Test when only recurring_frequency_number is set
-    with pytest.raises(ValueError, match="must have a non-zero value"):
-        ArrangementCreate(
-            staff_id=1,
-            wfh_date="2024-10-10",
-            wfh_type="am",
-            approving_officer=2,
-            reason_description="Invalid recurring WFH",
-            is_recurring=True,
-            recurring_frequency_number=1,
-            recurring_occurrences=None,
-        )
-
-    # Test when only recurring_occurrences is set
-    with pytest.raises(ValueError, match="must have a non-zero value"):
-        ArrangementCreate(
-            staff_id=1,
-            wfh_date="2024-10-10",
-            wfh_type="am",
-            approving_officer=2,
-            reason_description="Invalid recurring WFH",
-            is_recurring=True,
-            recurring_frequency_number=None,
-            recurring_occurrences=1,
-        )
-
-
-def test_arrangement_create_recurring_fields_zero_and_none():
-    # Test when one field is zero and the other is None
-    with pytest.raises(ValueError, match="must have a non-zero value"):
-        ArrangementCreate(
-            staff_id=1,
-            wfh_date="2024-10-10",
-            wfh_type="am",
-            approving_officer=2,
-            reason_description="Invalid recurring WFH",
-            is_recurring=True,
-            recurring_frequency_number=0,
-            recurring_occurrences=None,
-        )
-
-    with pytest.raises(ValueError, match="must have a non-zero value"):
-        ArrangementCreate(
-            staff_id=1,
-            wfh_date="2024-10-10",
-            wfh_type="am",
-            approving_officer=2,
-            reason_description="Invalid recurring WFH",
-            is_recurring=True,
-            recurring_frequency_number=None,
-            recurring_occurrences=0,
-        )
-
-
-def test_arrangement_create_non_recurring_fields():
-    arrangement = ArrangementCreate(
-        staff_id=1,
-        wfh_date="2024-10-10",
-        wfh_type="full",
+@pytest.fixture
+def arrangement_log_response():
+    return ArrangementLogResponse(
+        log_id=1,
+        update_datetime=datetime(2024, 9, 10, 0, 0),
+        arrangement_id=1,
+        requester_staff_id=1,
+        wfh_date=datetime(2024, 10, 12).date(),
+        wfh_type=WfhType.FULL,
+        action=Action.APPROVE,
+        previous_approval_status=ApprovalStatus.PENDING_APPROVAL,
+        updated_approval_status=ApprovalStatus.APPROVED,
         approving_officer=2,
-        reason_description="Non-recurring work from home",
-        is_recurring=False,
-        recurring_frequency_number=None,
-        recurring_occurrences=None,
+        reason_description="Manager approved WFH",
+        batch_id=1,
+        supporting_doc_1="https://example.com/doc1",
+        supporting_doc_2="https://example.com/doc2",
+        supporting_doc_3="https://example.com/doc3",
+        status_reason="Manager approved",
     )
 
-    # Validate that the recurring fields were correctly set
-    assert arrangement.is_recurring is False
-    assert arrangement.recurring_frequency_number is None
-    assert arrangement.recurring_occurrences is None
 
-    # Ensure that the validator doesn't raise any errors for non-recurring arrangements
-    data = arrangement.model_dump()
-    assert "recurring_frequency_number" in data
-    assert data["recurring_frequency_number"] is None
-    assert "recurring_occurrences" in data
-    assert data["recurring_occurrences"] is None
+class TestArrangementFilters:
+    # Test ArrangementFilters schema with valid data
+    def test_valid(self):
+        filters = ArrangementFilters(
+            current_approval_status=[ApprovalStatus.PENDING_APPROVAL, ApprovalStatus.APPROVED],
+            name="John Doe",
+            wfh_type=[WfhType.FULL],
+            start_date=datetime(2024, 10, 10).date(),
+            end_date=datetime(2024, 10, 12).date(),
+            reason="Need to work from home",
+            group_by_date=True,
+        )
+
+        assert filters.current_approval_status == [
+            ApprovalStatus.PENDING_APPROVAL,
+            ApprovalStatus.APPROVED,
+        ]
+        assert filters.name == "John Doe"
+        assert filters.wfh_type == [WfhType.FULL]
+        assert filters.start_date == datetime(2024, 10, 10).date()
+        assert filters.end_date == datetime(2024, 10, 12).date()
+        assert filters.reason == "Need to work from home"
+        assert filters.group_by_date is True
+
+    @pytest.mark.parametrize(
+        ("current_approval_status", "wfh_type"),
+        [
+            [None, ["full"]],
+            [["pending approval", "approved"], None],
+        ],
+    )
+    def test_parse_string_to_enum(self, current_approval_status, wfh_type):
+        filters = ArrangementFilters(
+            current_approval_status=current_approval_status,
+            wfh_type=wfh_type,
+        )  # type: ignore
+
+        if current_approval_status:
+            assert filters.current_approval_status == [
+                ApprovalStatus.PENDING_APPROVAL,
+                ApprovalStatus.APPROVED,
+            ]
+        if wfh_type:
+            assert filters.wfh_type == [WfhType.FULL]
+
+    def test_parse_string_to_date(self):
+        filters = ArrangementFilters(
+            start_date="2024-10-10",
+            end_date="2024-10-12",
+        )  # type: ignore
+        assert filters.start_date == datetime(2024, 10, 10).date()
+        assert filters.end_date == datetime(2024, 10, 12).date()
+
+
+class TestCreateArrangementRequest:
+    # Test ArrangementCreate schema with valid data
+    @pytest.mark.parametrize(
+        (
+            "is_recurring",
+            "recurring_frequency_number",
+            "recurring_frequency_unit",
+            "recurring_occurrences",
+        ),
+        [
+            [False, None, None, None],
+            [True, 1, RecurringFrequencyUnit.WEEKLY, 3],
+        ],
+    )
+    def test_valid(
+        self,
+        is_recurring,
+        recurring_frequency_number,
+        recurring_frequency_unit,
+        recurring_occurrences,
+    ):
+        arrangement = CreateArrangementRequest(
+            requester_staff_id=1,
+            wfh_date=datetime.strptime("2024-10-10", "%Y-%m-%d").date(),
+            wfh_type=WfhType.FULL,
+            is_recurring=is_recurring,
+            recurring_frequency_number=recurring_frequency_number,
+            recurring_frequency_unit=recurring_frequency_unit,
+            recurring_occurrences=recurring_occurrences,
+            reason_description="Need to work from home",
+        )
+        assert arrangement.requester_staff_id == 1
+        assert arrangement.wfh_date == datetime.strptime("2024-10-10", "%Y-%m-%d").date()
+        assert arrangement.wfh_type == WfhType.FULL
+        assert arrangement.reason_description == "Need to work from home"
+        assert arrangement.is_recurring is is_recurring
+        assert arrangement.recurring_frequency_number == recurring_frequency_number
+        assert arrangement.recurring_frequency_unit == recurring_frequency_unit
+        assert arrangement.recurring_occurrences == recurring_occurrences
+
+    @pytest.mark.parametrize(
+        "field",
+        [
+            "wfh_type",
+            "recurring_frequency_unit",
+        ],
+    )
+    def test_parse_string_to_enum(self, field):
+        CreateArrangementRequest(
+            requester_staff_id=1,
+            wfh_date=datetime(2024, 10, 10).date(),
+            wfh_type="full" if field != "wfh_type" else WfhType.FULL,  # type: ignore
+            is_recurring=False,
+            recurring_frequency_number=None,
+            recurring_frequency_unit=(
+                "week" if field != "recurring_frequency_unit" else RecurringFrequencyUnit.WEEKLY
+            ),  # type: ignore
+            recurring_occurrences=None,
+            reason_description="Need to work from home",
+        )
+
+    def test_parse_string_to_date_datetime(self):
+        CreateArrangementRequest(
+            requester_staff_id=1,
+            wfh_date="2024-10-10",
+            wfh_type=WfhType.FULL,
+            is_recurring=False,
+        )  # type: ignore
+
+    def test_parse_string_to_int(self):
+        CreateArrangementRequest(
+            requester_staff_id="1",
+            wfh_date=datetime(2024, 10, 10).date(),
+            wfh_type=WfhType.FULL,
+            is_recurring=False,
+        )  # type: ignore
+
+    @pytest.mark.parametrize(
+        "field",
+        [
+            "requester_staff_id",
+            "wfh_date",
+            "wfh_type",
+            "is_recurring",
+        ],
+    )
+    def test_missing_required_fields(self, field):
+        with pytest.raises(ValidationError):
+            CreateArrangementRequest(
+                requester_staff_id=1 if field != "requester_staff_id" else None,
+                wfh_date=(
+                    datetime.strptime("2024-10-10", "%Y-%m-%d").date()
+                    if field != "wfh_date"
+                    else None
+                ),
+                wfh_type=WfhType.FULL if field != "wfh_type" else None,
+                is_recurring=False if field != "is_recurring" else None,
+            )  # type: ignore
+
+    @pytest.mark.parametrize(
+        "field",
+        [
+            "recurring_frequency_number",
+            "recurring_frequency_unit",
+            "recurring_occurrences",
+        ],
+    )
+    def test_missing_recurring_fields(self, field):
+        with pytest.raises(ValueError):
+            CreateArrangementRequest(
+                requester_staff_id=1,
+                wfh_date=datetime.strptime("2024-10-10", "%Y-%m-%d").date(),
+                wfh_type=WfhType.FULL,
+                is_recurring=True,
+                recurring_frequency_number=1 if field != "recurring_frequency_number" else None,
+                recurring_frequency_unit=(
+                    RecurringFrequencyUnit.WEEKLY if field != "recurring_frequency_unit" else None
+                ),
+                recurring_occurrences=3 if field != "recurring_occurrences" else None,
+            )  # type: ignore
+
+    @pytest.mark.parametrize(
+        "field",
+        [
+            "recurring_frequency_number",
+            "recurring_occurrences",
+        ],
+    )
+    def test_zero_value_recurring_fields(self, field):
+        with pytest.raises(ValueError):
+            CreateArrangementRequest(
+                requester_staff_id=1,
+                wfh_date=datetime.strptime("2024-10-10", "%Y-%m-%d").date(),
+                wfh_type=WfhType.FULL,
+                is_recurring=True,
+                recurring_frequency_number=1 if field != "recurring_frequency_number" else 0,
+                recurring_frequency_unit=RecurringFrequencyUnit.WEEKLY,
+                recurring_occurrences=3 if field != "recurring_occurrences" else 0,
+            )  # type: ignore
+
+
+class TestUpdateArrangementRequest:
+    # Test ArrangementUpdate schema with valid data
+    def test_valid(self):
+        update = UpdateArrangementRequest(
+            action=Action.APPROVE,
+            approving_officer=2,
+            status_reason="Manager approved",
+        )
+        assert update.action == Action.APPROVE
+        assert update.approving_officer == 2
+        assert update.status_reason == "Manager approved"
+
+    @pytest.mark.parametrize(
+        "field",
+        [
+            "action",
+            "approving_officer",
+        ],
+    )
+    def test_missing_required_field(self, field):
+        with pytest.raises(ValidationError):
+            UpdateArrangementRequest(
+                action=Action.APPROVE if field != "action" else None,
+                approving_officer=2 if field != "approving_officer" else None,
+            )  # type: ignore
+
+    def test_parse_string_to_enum(self):
+        UpdateArrangementRequest(
+            action="approve",  # type: ignore
+            approving_officer=2,
+            status_reason="Manager approved",
+        )
+
+
+class TestArrangementResponse:
+    # Test ArrangementResponse schema with valid data
+    def test_valid(self, arrangement_response):
+        response = arrangement_response
+        assert response.arrangement_id == 1
+        assert response.update_datetime == datetime(2024, 9, 10, 0, 0)
+        assert response.requester_staff_id == 1
+        assert response.wfh_date == datetime(2024, 10, 10).date()
+        assert response.wfh_type == WfhType.FULL
+        assert response.current_approval_status == ApprovalStatus.PENDING_APPROVAL
+        assert response.approving_officer == 2
+        assert response.delegate_approving_officer == 3
+        assert response.reason_description == "Waiting for approval"
+        assert response.batch_id == 1
+        assert response.latest_log_id == 1
+        assert response.supporting_doc_1 == "https://example.com/doc1"
+        assert response.supporting_doc_2 == "https://example.com/doc2"
+        assert response.supporting_doc_3 == "https://example.com/doc3"
+        assert response.status_reason == "Manager approved"
+
+    def test_field_serializers(self, arrangement_response):
+        response = arrangement_response
+        json_data = response.model_dump()
+        assert json_data["wfh_date"] == "2024-10-10"
+        assert json_data["update_datetime"] == "2024-09-10T00:00:00"
+        assert json_data["current_approval_status"] == "pending approval"
+        assert json_data["wfh_type"] == "full"
+
+
+class TestArrangementLogResponse:
+    # Test ArrangementLogResponse schema with valid data
+    def test_valid(self, arrangement_log_response):
+        assert arrangement_log_response.log_id == 1
+        assert arrangement_log_response.update_datetime == datetime(2024, 9, 10, 0, 0)
+        assert arrangement_log_response.arrangement_id == 1
+        assert arrangement_log_response.requester_staff_id == 1
+        assert arrangement_log_response.wfh_date == datetime(2024, 10, 12).date()
+        assert arrangement_log_response.wfh_type == WfhType.FULL
+        assert arrangement_log_response.action == Action.APPROVE
+        assert arrangement_log_response.previous_approval_status == ApprovalStatus.PENDING_APPROVAL
+        assert arrangement_log_response.updated_approval_status == ApprovalStatus.APPROVED
+        assert arrangement_log_response.approving_officer == 2
+        assert arrangement_log_response.reason_description == "Manager approved WFH"
+        assert arrangement_log_response.batch_id == 1
+        assert arrangement_log_response.supporting_doc_1 == "https://example.com/doc1"
+        assert arrangement_log_response.supporting_doc_2 == "https://example.com/doc2"
+        assert arrangement_log_response.supporting_doc_3 == "https://example.com/doc3"
+        assert arrangement_log_response.status_reason == "Manager approved"
+
+    @pytest.mark.parametrize(
+        "field",
+        [
+            "log_id",
+            "update_datetime",
+            "arrangement_id",
+            "requester_staff_id",
+            "wfh_date",
+            "wfh_type",
+            "action",
+            "previous_approval_status",
+            "updated_approval_status",
+            "approving_officer",
+            "status_reason",
+        ],
+    )
+    def test_missing_required_fields(self, field):
+        with pytest.raises(ValidationError):
+            ArrangementLogResponse(
+                log_id=1 if field != "log_id" else None,
+                update_datetime=datetime(2024, 9, 10, 0, 0) if field != "update_datetime" else None,
+                arrangement_id=1 if field != "arrangement_id" else None,
+                requester_staff_id=1 if field != "requester_staff_id" else None,
+                wfh_date=datetime(2024, 10, 12).date() if field != "wfh_date" else None,
+                wfh_type=WfhType.FULL if field != "wfh_type" else None,
+                action=Action.APPROVE if field != "action" else None,
+                previous_approval_status=(
+                    ApprovalStatus.PENDING_APPROVAL if field != "previous_approval_status" else None
+                ),
+                updated_approval_status=(
+                    ApprovalStatus.APPROVED if field != "updated_approval_status" else None
+                ),
+                approving_officer=2 if field != "approving_officer" else None,
+            )  # type: ignore
+
+    def test_model_dump(self, arrangement_log_response):
+        response = arrangement_log_response
+        json_data = response.model_dump()
+        assert json_data["wfh_date"] == "2024-10-12"
+        assert json_data["update_datetime"] == "2024-09-10T00:00:00"
+        assert json_data["action"] == "approve"
+        assert json_data["previous_approval_status"] == "pending approval"
+        assert json_data["updated_approval_status"] == "approved"
+        assert json_data["wfh_type"] == "full"

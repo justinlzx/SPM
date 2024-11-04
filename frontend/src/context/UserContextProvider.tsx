@@ -9,6 +9,8 @@ import { login } from "../hooks/auth/auth.utils";
 export type TUser = {
   email: string;
   role: number;
+  position: string;
+  dept: string;
   id: number;
 };
 
@@ -21,7 +23,7 @@ type TAuthenticationContext = { user?: TUser } & {
 export const UserContext = createContext<TAuthenticationContext>({
   login,
   logout: logoutUtil,
-  setUser: () => {},
+  setUser: () => { },
 });
 
 type Props = {
@@ -33,11 +35,15 @@ export const UserContextProvider = ({ children }: Props) => {
     const email = localStorage.getItem(AUTH_LOCAL_STORAGE_KEYS.EMAIL);
     const role = Number(localStorage.getItem(AUTH_LOCAL_STORAGE_KEYS.ROLE));
     const id = Number(localStorage.getItem(AUTH_LOCAL_STORAGE_KEYS.ID));
-    return email && role
+    const position = localStorage.getItem(AUTH_LOCAL_STORAGE_KEYS.POSITION);
+    const dept = localStorage.getItem(AUTH_LOCAL_STORAGE_KEYS.DEPT);
+    return email && role && id && position && dept
       ? {
           email,
           role,
           id,
+          position,
+          dept,
         }
       : undefined;
   };
