@@ -18,7 +18,7 @@ import Toolbar from "@mui/material/Toolbar";
 import SpaceDashboardIcon from "@mui/icons-material/SpaceDashboard";
 import TeamIcon from "@mui/icons-material/Group";
 import WfhScheduleIcon from "@mui/icons-material/CalendarMonth";
-
+import AssignmentIndIcon from '@mui/icons-material/AssignmentInd';
 
 const drawerWidth = 240;
 
@@ -49,11 +49,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
   };
 
   const getSidebarItems = () => {
+
     if (user?.role === 1) {
-      return [...sideBarItems, { text: "Review Team Requests", icon: <InboxIcon />, route: "/review-requests" }];
+      return [...sideBarItems, { text: "Review Team Requests", icon: <InboxIcon />, route: "/review-requests" }, { text: "Delegation", icon: <AssignmentIndIcon />, route: "/delegate" }];
     }
+
     if (user?.role === 2) {
-      return [...sideBarItems, { text: "Department Overview", icon: <TeamIcon />, route: "/department-overview" }];
+      return [...sideBarItems, { text: "Department Overview", icon: <TeamIcon />, route: "/department-overview" }, { text: "Delegation", icon: <AssignmentIndIcon />, route: "/delegate" }];
     }
     return sideBarItems;
   };

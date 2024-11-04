@@ -37,7 +37,7 @@ export const login = async (credentials: {
   password: string;
 }): Promise<TLoginResponse> => {
   const { email } = credentials;
-  
+
   try {
     const response = await axios.post(
       `${BACKEND_URL}/auth/login`,

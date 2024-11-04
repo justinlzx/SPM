@@ -21,7 +21,7 @@ type TAuthenticationContext = { user?: TUser } & {
 export const UserContext = createContext<TAuthenticationContext>({
   login,
   logout: logoutUtil,
-  setUser: () => {},
+  setUser: () => { },
 });
 
 type Props = {
@@ -35,10 +35,10 @@ export const UserContextProvider = ({ children }: Props) => {
     const id = Number(localStorage.getItem(AUTH_LOCAL_STORAGE_KEYS.ID));
     return email && role
       ? {
-          email,
-          role,
-          id,
-        }
+        email,
+        role,
+        id,
+      }
       : undefined;
   };
 
