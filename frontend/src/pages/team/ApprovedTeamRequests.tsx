@@ -241,11 +241,11 @@ export const ApprovedRequests = () => {
         <DialogContent>
           <TextField
             autoFocus
-            label="Input a reason for withdrwal"
+            label="Input a reason for withdrawal"
             fullWidth
             multiline
             rows={2}
-            sx={{ mt:2 }}
+            sx={{ mt: 2 }}
             margin="dense"
             type="text"
             value={withdrawReason}
@@ -256,7 +256,12 @@ export const ApprovedRequests = () => {
           <Button onClick={() => setWithdrawModalOpen(false)} color="secondary" variant="outlined">
             Cancel
           </Button>
-          <Button onClick={handleWithdrawApproval} color="warning" variant="outlined">
+          <Button
+            onClick={handleWithdrawApproval}
+            color="warning"
+            variant="outlined"
+            disabled={!withdrawReason.trim()}
+          >
             Withdraw Request
           </Button>
         </DialogActions>
