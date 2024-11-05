@@ -1,30 +1,28 @@
-import pytest
 from datetime import date, datetime
-from unittest.mock import Mock, patch, MagicMock
-from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.orm import Session, Query
-from typing import List, Optional
+from unittest.mock import MagicMock, patch
 
+import pytest
+from sqlalchemy import create_engine
+from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import Query, Session, sessionmaker
 from src.arrangements import crud
-from src.arrangements.commons.models import LatestArrangement, ArrangementLog
+from src.arrangements.commons import models
 from src.arrangements.commons.dataclasses import (
     ArrangementFilters,
     ArrangementResponse,
     CreateArrangementRequest,
-    RecurringRequestDetails,
     CreatedRecurringRequest,
+    RecurringRequestDetails,
 )
-from src.arrangements.commons.enums import Action, ApprovalStatus, WfhType, RecurringFrequencyUnit
-from src.employees.models import Employee
+from src.arrangements.commons.enums import (
+    Action,
+    ApprovalStatus,
+    RecurringFrequencyUnit,
+    WfhType,
+)
+from src.arrangements.commons.models import ArrangementLog, LatestArrangement
 from src.auth.models import Auth
-from datetime import date, datetime
-from unittest.mock import Mock, patch, MagicMock
-from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.orm import Session, Query
-from typing import List, Optional
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
-from src.arrangements.commons import models
+from src.employees.models import Employee
 
 
 @pytest.fixture(scope="module")
@@ -445,6 +443,21 @@ class TestGetArrangementLogs:
 
         assert len(result) == 1
         assert result[0] == mock_arrangement_log.__dict__
+
+
+class TestGetExpiringRequests:
+    def test_success(self, mock_db_session, mock_latest_arrangement):
+        # Arrange
+        mock_query = mock_db_session.query.return_value
+        mock_filter = mock_query.filter.return_value
+        mock_filter.all.return_value = [mock_latest_arrangement]
+
+        # Act
+        result = crud.get_expiring_requests(mock_db_session)
+
+        # Assert
+        assert len(result) == 1
+        assert result[0] == mock_latest_arrangement.__dict__
 
 
 class TestCreateRecurringRequest:

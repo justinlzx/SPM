@@ -22,6 +22,7 @@ import AssignmentIndIcon from '@mui/icons-material/AssignmentInd';
 
 import axios from "axios";
 
+// eslint-disable-next-line no-undef
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL
 
 const drawerWidth = 240;
@@ -74,6 +75,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       } catch (error) {
         const err = error as { response?: { data: string } };
         if (err.response?.data !== "manager ID not found") {
+          console.error(err.response?.data);
         }
       }
     };

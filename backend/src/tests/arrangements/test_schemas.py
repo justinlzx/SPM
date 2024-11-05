@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import pytest
 from pydantic import ValidationError
@@ -137,7 +137,7 @@ class TestCreateArrangementRequest:
     ):
         arrangement = CreateArrangementRequest(
             requester_staff_id=1,
-            wfh_date=datetime.strptime("2024-10-10", "%Y-%m-%d").date(),
+            wfh_date=datetime.strptime("2099-12-31", "%Y-%m-%d").date(),
             wfh_type=WfhType.FULL,
             is_recurring=is_recurring,
             recurring_frequency_number=recurring_frequency_number,
@@ -146,7 +146,7 @@ class TestCreateArrangementRequest:
             reason_description="Need to work from home",
         )
         assert arrangement.requester_staff_id == 1
-        assert arrangement.wfh_date == datetime.strptime("2024-10-10", "%Y-%m-%d").date()
+        assert arrangement.wfh_date == datetime.strptime("2099-12-31", "%Y-%m-%d").date()
         assert arrangement.wfh_type == WfhType.FULL
         assert arrangement.reason_description == "Need to work from home"
         assert arrangement.is_recurring is is_recurring
@@ -164,7 +164,7 @@ class TestCreateArrangementRequest:
     def test_parse_string_to_enum(self, field):
         CreateArrangementRequest(
             requester_staff_id=1,
-            wfh_date=datetime(2024, 10, 10).date(),
+            wfh_date=datetime(2099, 12, 31).date(),
             wfh_type="full" if field != "wfh_type" else WfhType.FULL,  # type: ignore
             is_recurring=False,
             recurring_frequency_number=None,
@@ -178,7 +178,7 @@ class TestCreateArrangementRequest:
     def test_parse_string_to_date_datetime(self):
         CreateArrangementRequest(
             requester_staff_id=1,
-            wfh_date="2024-10-10",
+            wfh_date="2099-12-31",
             wfh_type=WfhType.FULL,
             is_recurring=False,
         )  # type: ignore
@@ -186,7 +186,7 @@ class TestCreateArrangementRequest:
     def test_parse_string_to_int(self):
         CreateArrangementRequest(
             requester_staff_id="1",
-            wfh_date=datetime(2024, 10, 10).date(),
+            wfh_date=datetime(2099, 12, 31).date(),
             wfh_type=WfhType.FULL,
             is_recurring=False,
         )  # type: ignore
@@ -205,7 +205,7 @@ class TestCreateArrangementRequest:
             CreateArrangementRequest(
                 requester_staff_id=1 if field != "requester_staff_id" else None,
                 wfh_date=(
-                    datetime.strptime("2024-10-10", "%Y-%m-%d").date()
+                    datetime.strptime("2099-10-10", "%Y-%m-%d").date()
                     if field != "wfh_date"
                     else None
                 ),
@@ -225,7 +225,7 @@ class TestCreateArrangementRequest:
         with pytest.raises(ValueError):
             CreateArrangementRequest(
                 requester_staff_id=1,
-                wfh_date=datetime.strptime("2024-10-10", "%Y-%m-%d").date(),
+                wfh_date=datetime.strptime("2099-12-31", "%Y-%m-%d").date(),
                 wfh_type=WfhType.FULL,
                 is_recurring=True,
                 recurring_frequency_number=1 if field != "recurring_frequency_number" else None,
@@ -246,12 +246,23 @@ class TestCreateArrangementRequest:
         with pytest.raises(ValueError):
             CreateArrangementRequest(
                 requester_staff_id=1,
-                wfh_date=datetime.strptime("2024-10-10", "%Y-%m-%d").date(),
+                wfh_date=datetime.strptime("2099-12-31", "%Y-%m-%d").date(),
                 wfh_type=WfhType.FULL,
                 is_recurring=True,
                 recurring_frequency_number=1 if field != "recurring_frequency_number" else 0,
                 recurring_frequency_unit=RecurringFrequencyUnit.WEEKLY,
                 recurring_occurrences=3 if field != "recurring_occurrences" else 0,
+            )  # type: ignore
+
+    def test_wfh_date_less_than_24h(self):
+        wfh_date = datetime.now().date() + timedelta(hours=23)
+
+        with pytest.raises(ValueError):
+            CreateArrangementRequest(
+                requester_staff_id=1,
+                wfh_date=wfh_date,
+                wfh_type=WfhType.FULL,
+                is_recurring=False,
             )  # type: ignore
 
 

@@ -5,8 +5,6 @@ from typing import Union
 import httpx
 from dotenv import load_dotenv
 from fastapi import HTTPException
-from sqlalchemy.orm import Session
-from src.arrangements.commons.models import LatestArrangement
 
 from ..arrangements.commons.enums import Action
 from ..logger import logger
@@ -169,8 +167,18 @@ def format_email_body(
     body = f"Dear {getattr(config, role).staff_fname} {getattr(config, role).staff_lname},\n\n"
 
     if isinstance(config, ArrangementNotificationConfig):
+        body += (
+            "A WFH request has been automatically rejected as it was submitted less than 24 hours before the requested WFH date.\n\n"
+            if config.auto_reject
+            else ""
+        )
         body += "Please refer to the following details for the above action:\n\n"
         body += formatted_details
+        body += (
+            "Please ensure future WFH requests are submitted at least 24 hours in advance.\n\n"
+            if config.auto_reject and role == "employee"
+            else ""
+        )
     else:
         if role == "delegator" and config.action == "delegate":
             body += "You have delegated your approval responsibilities to "
@@ -225,73 +233,3 @@ def format_email_body(
     # Add common footer
     body += "\n\nThis email is auto-generated. Please do not reply to this email. Thank you."
     return body
-
-
-async def craft_and_send_auto_rejection_email(
-    arrangement_id: int,
-    db: Session,
-):
-    """Send auto-rejection email for arrangement submitted <24h before WFH date."""
-    # Get arrangement details
-    arrangement = (
-        db.query(LatestArrangement)
-        .filter(LatestArrangement.arrangement_id == arrangement_id)
-        .first()
-    )
-
-    if not arrangement:
-        raise ValueError(f"Arrangement {arrangement_id} not found")
-
-    employee = arrangement.requester_info
-    manager = (
-        arrangement.delegate_approving_officer_info
-        if arrangement.delegate_approving_officer_info
-        else arrangement.approving_officer_info
-    )
-
-    # Create and send emails
-    employee_subject = "[All-In-One] Your WFH Request Has Been Auto-Rejected"
-    employee_content = (
-        f"Dear {employee.staff_fname} {employee.staff_lname},\n\n"
-        f"Your WFH request has been automatically rejected as it was submitted less than 24 hours "
-        f"before the requested WFH date.\n\n"
-        f"Request Details:\n"
-        f"Request ID: {arrangement.arrangement_id}\n"
-        f"WFH Date: {arrangement.wfh_date}\n"
-        f"Type: {arrangement.wfh_type}\n"
-        f"Reason: {arrangement.reason_description}\n\n"
-        f"Please ensure future WFH requests are submitted at least 24 hours in advance.\n\n"
-        f"This email is auto-generated. Please do not reply to this email. Thank you."
-    )
-
-    manager_subject = "[All-In-One] Staff WFH Request Auto-Rejected"
-    manager_content = (
-        f"Dear {manager.staff_fname} {manager.staff_lname},\n\n"
-        f"A WFH request from your staff has been automatically rejected as it was submitted less "
-        f"than 24 hours before the requested WFH date.\n\n"
-        f"Request Details:\n"
-        f"Staff: {employee.staff_fname} {employee.staff_lname}\n"
-        f"Request ID: {arrangement.arrangement_id}\n"
-        f"WFH Date: {arrangement.wfh_date}\n"
-        f"Type: {arrangement.wfh_type}\n"
-        f"Reason: {arrangement.reason_description}\n\n"
-        f"This email is auto-generated. Please do not reply to this email. Thank you."
-    )
-
-    email_errors = []
-    email_list = [
-        (employee.email, employee_subject, employee_content),
-        (manager.email, manager_subject, manager_content),
-    ]
-
-    for email in email_list:
-        try:
-            await send_email(*email)
-        except HTTPException:
-            email_errors.append(email[0])
-
-    if email_errors:
-        raise exceptions.EmailNotificationException(email_errors)
-
-    for email, subject, content in email_list:
-        logger.info(f"Auto-rejection email sent successfully to {email} with subject: {subject}")
