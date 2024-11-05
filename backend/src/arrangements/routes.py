@@ -29,7 +29,7 @@ from .utils import format_arrangement_response, format_arrangements_response
 router = APIRouter()
 
 
-@router.get("/", summary="Get all arrangements with optional filters")
+@router.get("", summary="Get all arrangements with optional filters")
 def get_arrangements(
     db: Session = Depends(get_db),
     request_filters: schemas.ArrangementFilters = Depends(schemas.ArrangementFilters.as_query),

@@ -14,19 +14,6 @@ import { UserContext } from "../../context/UserContextProvider";
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 
 export const Statistics = () => {
-  useEffect(() => {
-    const getWFHRequests = async () => {
-      try {
-        const response = await axios.get(`${BACKEND_URL}/arrangements`);
-        // console.log(response.data);
-      } catch (error) {
-        console.error(error);
-      }
-    };
-    getWFHRequests();
-    setIsLoading(false);
-  }, []);
-
   const { user } = useContext(UserContext);
 
   const [isLoading, setIsLoading] = useState(true);
@@ -44,6 +31,27 @@ export const Statistics = () => {
     setFilters(filters);
   };
 
+  useEffect(() => {
+    const getWFHRequests = async () => {
+      try {
+        const response = await axios.get(`${BACKEND_URL}/arrangements`, {
+          params: {
+            department: filters.department,
+            status: filters.status,
+            start_date: filters.dates.start.toISOString().split("T")[0], // convert to datestring to suit backend input
+            end_date: filters.dates.end.toISOString().split("T")[0],
+          },
+        });
+        console.log(response.data.data);
+        setData(response.data.data);
+      } catch (error) {
+        console.error(error);
+      }
+    };
+    getWFHRequests();
+    setIsLoading(false);
+  }, [filters, BACKEND_URL]);
+
   if (isLoading) {
     return (
       <div
@@ -54,9 +62,6 @@ export const Statistics = () => {
     );
   }
 
-  console.log(filters);
-  console.log(user);
-
   return (
     <Container>
       <Typography variant="h4" gutterBottom align="left" sx={{ marginTop: 4 }}>
@@ -64,10 +69,12 @@ export const Statistics = () => {
       </Typography>
       <Divider sx={{ mb: 2 }} />
 
-      <StatsFilters
-        userInfo={{ department: user?.dept }}
-        action={(filterValues) => handleFilterChange(filterValues)}
-      />
+      <Box className="flex gap-4 grid-cols-2">
+        <StatsFilters
+          userInfo={{ department: user?.dept }}
+          action={(filterValues) => handleFilterChange(filterValues)}
+        />
+      </Box>
     </Container>
   );
 };

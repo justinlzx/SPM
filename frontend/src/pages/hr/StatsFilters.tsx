@@ -83,7 +83,7 @@ export const StatsFilters = ({ userInfo, action }: PropType) => {
 
   const handleFixedDateSelect = (days: number) => {
     const newEnd = new Date(
-      dates.end.getTime() - (days - 1) * 24 * 60 * 60 * 1000
+      dates.end.getTime() + (days - 1) * 24 * 60 * 60 * 1000
     );
     setDates((prev) => ({
       ...prev,
@@ -132,19 +132,19 @@ export const StatsFilters = ({ userInfo, action }: PropType) => {
             className="p-2 px-3 font-leagueSpartan-400 text-orange border border-orange rounded-lg hover:bg-lightOrange"
             onClick={() => handleFixedDateSelect(7)}
           >
-            Last 7 days
+            Next 7 days
           </button>
           <button
             className="p-2 px-3 font-leagueSpartan-400 text-orange border border-orange rounded-lg hover:bg-lightOrange"
             onClick={() => handleFixedDateSelect(15)}
           >
-            Last 15 days
+            Next 15 days
           </button>
           <button
             className="p-2 px-3 font-leagueSpartan-400 text-orange border border-orange rounded-lg hover:bg-lightOrange"
             onClick={() => handleFixedDateSelect(30)}
           >
-            Last 30 days
+            Next 30 days
           </button>
         </div>
         <div className="flex justify-center">
