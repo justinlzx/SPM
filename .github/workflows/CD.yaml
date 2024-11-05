@@ -2,7 +2,7 @@ name: CI Pipeline
 
 on:
   push:
-    branches: ["main", "justin/tele-bot"]
+    branches: ["main"]
 
 env:
   TELEGRAM_GROUP_ID: ${{ secrets.TELE_CHAT_ID }}
