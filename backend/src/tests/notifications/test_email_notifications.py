@@ -514,6 +514,7 @@ class TestCraftAndSendEmail:
         self,
         mock_craft_email,
         mock_send_email,
+        mock_arrangement_config_factory,
     ):
         """Test crafting and sending email for different actions."""
         # Arrange
@@ -523,8 +524,7 @@ class TestCraftAndSendEmail:
         mock_manager = MagicMock()
         mock_manager.email = "michael.scott@allinone.com.sg"
 
-        # Act
-        await notifications.craft_and_send_email(
+        mock_config = mock_arrangement_config_factory(
             employee=mock_employee,
             arrangements=[MagicMock()],
             action=Action.CREATE,
@@ -532,13 +532,18 @@ class TestCraftAndSendEmail:
             manager=mock_manager,
         )
 
+        # Act
+        await notifications.craft_and_send_email(mock_config)
+
         # Assert
         mock_craft_email.assert_called_once()
         mock_send_email.assert_called()
         assert mock_send_email.call_count == 2
 
     @pytest.mark.asyncio
-    async def test_email_failure(self, mock_craft_email, mock_send_email):
+    async def test_email_failure(
+        self, mock_craft_email, mock_send_email, mock_arrangement_config_factory
+    ):
         # Arrange
         mock_employee = MagicMock()
         mock_employee.email = "jane.doe@allinone.com.sg"
@@ -546,17 +551,19 @@ class TestCraftAndSendEmail:
         mock_manager = MagicMock()
         mock_manager.email = "michael.scott@allinone.com.sg"
 
+        mock_config = mock_arrangement_config_factory(
+            employee=mock_employee,
+            arrangements=[MagicMock()],
+            action=Action.CREATE,
+            current_approval_status=ApprovalStatus.PENDING_APPROVAL,
+            manager=mock_manager,
+        )
+
         mock_send_email.side_effect = HTTPException(status_code=500, detail="Internal Server Error")
 
         # Act and Assert
         with pytest.raises(notification_exceptions.EmailNotificationException) as exc_info:
-            await notifications.craft_and_send_email(
-                employee=mock_employee,
-                arrangements=[MagicMock()],
-                action=Action.CREATE,
-                current_approval_status=ApprovalStatus.PENDING_APPROVAL,
-                manager=mock_manager,
-            )
+            await notifications.craft_and_send_email(mock_config)
         assert (
             str(exc_info.value)
             == "Failed to send emails to jane.doe@allinone.com.sg, michael.scott@allinone.com.sg"
