@@ -71,6 +71,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             { text: "Delegation", icon: <AssignmentIndIcon />, route: "/delegate" },
           ]);
         }
+        
       } catch (error) {
         const err = error as { response?: { data: string } };
         if (err.response?.data !== "manager ID not found") {
