@@ -100,6 +100,12 @@ class CreateArrangementRequest(BaseSchema):
                 )
         return v
 
+    @field_validator("wfh_date")
+    def validate_wfh_date(cls, v: date, info: ValidationInfo) -> date:
+        if (v - datetime.now().date()).days < 1:
+            raise ValueError("WFH date must be at least 24 hours from the current time")
+        return v
+
     requester_staff_id: int = Field(
         ...,
         title="Staff ID of the employee who made the request",
