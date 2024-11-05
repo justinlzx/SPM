@@ -52,85 +52,35 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const { user } = useContext(UserContext);
   const navigate = useNavigate();
   const location = useLocation();
-  const [basicSideBar, setBasicSideBar] = useState<SidebarItem[]>(defaultSideBarItems);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    const fetchSubordinateData = async () => {
-      if (!user?.id) {
-        setIsLoading(false);
-        return;
+  // Set sidebar items based on user role and department
+  const basicSideBar = [...defaultSideBarItems];
+
+  if (user) {
+    // Add additional items based on user role
+    if (user.role === 2 || (user.role === 1 && user.position === "Director")) {
+      basicSideBar.push(
+        { text: "Review Team Requests", icon: <InboxIcon />, route: "/review-requests" },
+        { text: "Delegation", icon: <AssignmentIndIcon />, route: "/delegate" },
+      );
+    }
+
+    // Add "Department Overview" if user is in HR
+    if (user.dept === "HR") {
+      const departmentOverviewExists = basicSideBar.some(item => item.text === "Department Overview");
+      if (!departmentOverviewExists) {
+        basicSideBar.push({
+          text: "Department Overview",
+          icon: <SpaceDashboardIcon />,
+          route: "/department-overview",
+        });
       }
-
-      setIsLoading(true);
-      setError(null);
-
-      let updatedSidebar = [...defaultSideBarItems];
-
-      try {
-        // First check if user is manager or director
-        if (user?.role === 2 || (user?.role === 1 && user?.position === "Director")) {
-          const subordinatesResponse = await axios.get(
-            `${BACKEND_URL}/arrangements/subordinates/${user.id}`
-          );
-
-          if (subordinatesResponse.data) {
-            updatedSidebar.push(
-              { text: "Review Team Requests", icon: <InboxIcon />, route: "/review-requests" },
-              { text: "Delegation", icon: <AssignmentIndIcon />, route: "/delegate" },
-            );
-          }
-        }
-
-        // Fetch employee department data
-        const employeeResponse = await axios.get(`${BACKEND_URL}/employees/${user.id}`);
-
-        if (employeeResponse.data && employeeResponse.data.dept === "HR") {
-          // Check if "Department Overview" already exists
-          const departmentOverviewExists = updatedSidebar.some(item => item.text === "Department Overview");
-
-          // To avoid Multiple instances of department overview
-          if (!departmentOverviewExists) {
-            updatedSidebar.push({
-              text: "Department Overview",
-              icon: <SpaceDashboardIcon />,
-              route: "/department-overview"
-            });
-          }
-        }
-
-        // Update the sidebar state only once
-        setBasicSideBar(updatedSidebar);
-
-      } catch (error) {
-        console.error("Error fetching data:", error);
-        const err = error as { response?: { data?: string; status?: number } };
-
-        if (err.response?.status === 404) {
-          setError("Employee data not found");
-        } else if (err.response?.data !== "manager ID not found") {
-          setError("Error loading sidebar data");
-        }
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchSubordinateData();
-  }, [user]);
+    }
+  }
 
   const handleButtonClick = (route: string) => {
     navigate(route);
   };
-
-  if (isLoading) {
-    return <Box sx={{ p: 2 }}>Loading...</Box>;
-  }
-
-  if (error) {
-    console.error("Sidebar Error:", error);
-  }
 
   const drawer = (
     <Box sx={{ bgcolor: "#f5f5f5", height: "100%" }}>
