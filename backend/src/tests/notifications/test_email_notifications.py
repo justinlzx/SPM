@@ -1038,3 +1038,105 @@ class TestCraftAndSendEmail:
             str(exc_info.value)
             == "Failed to send emails to jane.doe@allinone.com.sg, michael.scott@allinone.com.sg"
         )
+
+
+@pytest.mark.asyncio
+class TestSendEmailComprehensive:
+    """Additional test cases to achieve 100% coverage for send_email function"""
+
+    @pytest.mark.asyncio
+    async def test_send_email_success_flow(self, monkeypatch):
+        """Test the complete success flow of send_email function"""
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {"message": "Email sent successfully"}
+
+        mock_client = AsyncMock()
+        mock_client.post = AsyncMock(return_value=mock_response)
+
+        mock_async_client = AsyncMock()
+        mock_async_client.__aenter__.return_value = mock_client
+
+        monkeypatch.setattr("httpx.AsyncClient", lambda: mock_async_client)
+
+        result = await send_email(
+            to_email="test@example.com", subject="Test Subject", content="Test Content"
+        )
+
+        assert result == {"message": "Email sent successfully"}
+        mock_client.post.assert_called_once_with(
+            f"{BASE_URL}/email/sendemail",
+            data={
+                "to_email": "test@example.com",
+                "subject": "Test Subject",
+                "content": "Test Content",
+            },
+        )
+
+    @pytest.mark.asyncio
+    async def test_send_email_non_200_response(self, monkeypatch):
+        """Test handling of non-200 response from email service"""
+        mock_response = MagicMock()
+        mock_response.status_code = 400
+        mock_response.text = "Bad Request - Invalid email format"
+
+        mock_client = AsyncMock()
+        mock_client.post = AsyncMock(return_value=mock_response)
+
+        mock_async_client = AsyncMock()
+        mock_async_client.__aenter__.return_value = mock_client
+
+        monkeypatch.setattr("httpx.AsyncClient", lambda: mock_async_client)
+
+        with pytest.raises(HTTPException) as exc_info:
+            await send_email(
+                to_email="invalid-email", subject="Test Subject", content="Test Content"
+            )
+
+        assert exc_info.value.status_code == 400
+        assert exc_info.value.detail == "Bad Request - Invalid email format"
+
+    @pytest.mark.asyncio
+    async def test_send_email_request_error(self, monkeypatch):
+        """Test handling of RequestError during email sending"""
+        mock_client = AsyncMock()
+        mock_client.post = AsyncMock(
+            side_effect=httpx.RequestError("Failed to establish connection")
+        )
+
+        mock_async_client = AsyncMock()
+        mock_async_client.__aenter__.return_value = mock_client
+
+        monkeypatch.setattr("httpx.AsyncClient", lambda: mock_async_client)
+
+        with pytest.raises(HTTPException) as exc_info:
+            await send_email(
+                to_email="test@example.com", subject="Test Subject", content="Test Content"
+            )
+
+        assert exc_info.value.status_code == 500
+        assert "Failed to establish connection" in exc_info.value.detail
+
+    @pytest.mark.asyncio
+    async def test_send_email_context_manager(self, monkeypatch):
+        """Test the context manager behavior of AsyncClient"""
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {"message": "Success"}
+
+        mock_client = AsyncMock()
+        mock_client.post = AsyncMock(return_value=mock_response)
+
+        mock_async_client = AsyncMock()
+        mock_async_client.__aenter__.return_value = mock_client
+        mock_async_client.__aexit__ = AsyncMock()
+
+        monkeypatch.setattr("httpx.AsyncClient", lambda: mock_async_client)
+
+        result = await send_email(
+            to_email="test@example.com", subject="Test Subject", content="Test Content"
+        )
+
+        assert result == {"message": "Success"}
+        assert mock_async_client.__aenter__.called
+        assert mock_async_client.__aexit__.called
