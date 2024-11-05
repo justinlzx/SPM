@@ -10,6 +10,7 @@ from src.init_db.load_data import (
 )
 
 from ...auth.utils import hash_password
+from src.tests.test_utils import mock_db_session
 
 # -------------------------------- Employee Data Tests --------------------------------
 
@@ -194,14 +195,19 @@ def test_load_latest_arrangement_data_from_csv(mock_db_session, mocker):
     load_latest_arrangement_data_from_csv(csv_path)
 
     # Check that the correct number of LatestArrangement objects were added to the session
-    assert mock_db_session.add.call_count == len(
-        df
-    ), f"Expected {len(df)} calls to session.add, but got {mock_db_session.add.call_count}"
+    assert mock_db_session.add.call_count == len(df), (
+        f"Expected {len(df)} calls to session.add, " f"but got {mock_db_session.add.call_count}"
+    )
 
     # Verify the calls to LatestArrangement
     for _, row in df.iterrows():
+        # Convert date fields from strings to datetime objects
+        wfh_date = datetime.strptime(row["wfh_date"], "%Y-%m-%d")
+        update_datetime = datetime.strptime(row["update_datetime"], "%Y-%m-%dT%H:%M:%SZ")
+
+        # Assert calls with only necessary fields for clarity
         mock_arrangement_log.assert_any_call(
-            wfh_date=row["wfh_date"],
+            wfh_date=wfh_date,
             wfh_type=row["wfh_type"],
             reason_description=row["reason_description"],
             requester_staff_id=int(row["requester_staff_id"]),
@@ -209,7 +215,7 @@ def test_load_latest_arrangement_data_from_csv(mock_db_session, mocker):
             approving_officer=(
                 int(row["approving_officer"]) if pd.notna(row["approving_officer"]) else None
             ),
-            update_datetime=datetime.strptime(row["update_datetime"], "%Y-%m-%dT%H:%M:%SZ"),
+            update_datetime=update_datetime,
             batch_id=int(row["batch_id"]) if pd.notna(row["batch_id"]) else None,
             supporting_doc_1=None,
             supporting_doc_2=None,
