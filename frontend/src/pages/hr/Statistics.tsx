@@ -10,6 +10,7 @@ import {
 } from "@mui/material";
 import { StatsFilters, TFilters } from "./StatsFilters";
 import { UserContext } from "../../context/UserContextProvider";
+import { Chart } from "./chart/Chart";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 
@@ -21,10 +22,7 @@ export const Statistics = () => {
   const [filters, setFilters] = useState<TFilters>({
     status: "approved",
     department: "",
-    dates: {
-      start: new Date(),
-      end: new Date(),
-    },
+    date: new Date(),
   });
 
   const handleFilterChange = (filters: TFilters) => {
@@ -38,8 +36,8 @@ export const Statistics = () => {
           params: {
             department: filters.department,
             status: filters.status,
-            start_date: filters.dates.start.toISOString().split("T")[0], // convert to datestring to suit backend input
-            end_date: filters.dates.end.toISOString().split("T")[0],
+            start_date: filters.date.toISOString().split("T")[0], // convert to datestring to suit backend input
+            end_date: filters.date.toISOString().split("T")[0],
           },
         });
         console.log(response.data.data);
@@ -62,6 +60,49 @@ export const Statistics = () => {
     );
   }
 
+  const TOTAL_EMPLOYEES = 500;
+
+  const countArrangements = (arrangements: TWFHRequest[]) => {
+    let counts = {
+      onLeave: 0,
+      wfh_full: 0,
+      wfh_am: 0,
+      wfh_pm: 0,
+    };
+
+    arrangements.forEach((arrangement) => {
+      switch (arrangement.wfh_type) {
+        case "WFH (Full Day)":
+          counts.wfh_full++;
+          break;
+        case "WFH (AM)":
+          counts.wfh_am++;
+          break;
+        case "WFH (PM)":
+          counts.wfh_pm++;
+          break;
+      }
+
+      if (arrangement.reason_description === "OOO") {
+        counts.onLeave++;
+      }
+    });
+
+    const inOffice =
+      TOTAL_EMPLOYEES -
+      (counts.onLeave + counts.wfh_full + counts.wfh_am + counts.wfh_pm);
+
+    return [
+      counts.onLeave,
+      counts.wfh_full,
+      counts.wfh_am,
+      counts.wfh_pm,
+      inOffice,
+    ];
+  };
+
+  const arrangementData = countArrangements(data);
+
   return (
     <Container>
       <Typography variant="h4" gutterBottom align="left" sx={{ marginTop: 4 }}>
@@ -74,6 +115,9 @@ export const Statistics = () => {
           userInfo={{ department: user?.dept }}
           action={(filterValues) => handleFilterChange(filterValues)}
         />
+        <Box className="w-full border-grey border-[1px] rounded-lg p-8 flex justify-center">
+          <Chart data={arrangementData} />
+        </Box>
       </Box>
     </Container>
   );
