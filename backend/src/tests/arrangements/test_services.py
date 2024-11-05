@@ -188,7 +188,7 @@ class TestGetPersonalArrangements:
         ],
     )
     @patch("src.arrangements.commons.dataclasses.ArrangementResponse.from_dict")
-    @patch("src.arrangements.crud.get_arrangements_by_staff_ids")
+    @patch("src.arrangements.crud.get_arrangements")
     def test_success(
         self,
         mock_get_arrangements,
@@ -218,7 +218,7 @@ class TestGetSubordinatesArrangements:
     @patch("src.arrangements.services.group_arrangements_by_date")
     @patch("src.arrangements.services.create_presigned_url")
     @patch("src.arrangements.commons.dataclasses.ArrangementResponse.from_dict")
-    @patch("src.arrangements.crud.get_arrangements_by_staff_ids")
+    @patch("src.arrangements.crud.get_arrangements")
     @patch("src.employees.services.get_subordinates_by_manager_id")
     @pytest.mark.parametrize(
         ("supporting_docs", "group_by_date"),
@@ -313,7 +313,7 @@ class TestGetTeamArrangements:
     )
     @patch("src.arrangements.services.group_arrangements_by_date")
     @patch("src.arrangements.commons.dataclasses.ArrangementResponse.from_dict")
-    @patch("src.arrangements.crud.get_arrangements_by_staff_ids")
+    @patch("src.arrangements.crud.get_arrangements")
     @patch("src.employees.services.get_subordinates_by_manager_id")
     @patch("src.employees.services.get_peers_by_staff_id")
     def test_success(
@@ -586,23 +586,6 @@ class TestCreateArrangementsFromRequest:
             )
         assert mock_delete_file.call_count == len(successful_uploads)
 
-    # @pytest.mark.asyncio
-    # @patch("src.arrangements.crud.create_recurring_request", side_effect=SQLAlchemyError)
-    # @patch("src.employees.services.get_manager_by_subordinate_id")
-    # async def test_sqlalchemy_error(self, mock_get_manager, mock_create_recurring, mock_db_session):
-    #     mock_wfh_request = MagicMock(spec=ArrangementCreateWithFile)
-    #     mock_wfh_request.configure_mock(
-    #         staff_id=1,
-    #         is_recurring=True,
-    #         update_datetime=datetime.now(),
-    #     )
-    #     with pytest.raises(SQLAlchemyError):
-    #         await create_arrangements_from_request(
-    #             mock_db_session,
-    #             mock_wfh_request,
-    #             [],
-    #         )
-
 
 class TestUpdateArrangementApprovalStatus:
     @pytest.mark.asyncio
@@ -719,188 +702,3 @@ class TestUpdateArrangementApprovalStatus:
             await update_arrangement_approval_status(
                 db=mock_db_session, wfh_update=mock_wfh_update, supporting_docs=[]
             )
-
-    # def test_default_reason(self, mock_db_session):
-    #     mock_arrangement = MagicMock(spec=arrangement_models.LatestArrangement)
-    #     mock_arrangement.arrangement_id = 1
-
-    #     wfh_update = ArrangementUpdate(
-    #         arrangement_id=1,
-    #         STATUS="approve",
-    #         approving_officer=2,
-    #         reason_description=None,
-    #     )
-
-    #     with patch("src.arrangements.crud.get_arrangement_by_id", return_value=mock_arrangement):
-    #         with patch(
-    #             "src.arrangements.crud.update_arrangement_approval_status",
-    #             return_value=mock_arrangement,
-    #         ):
-    #             result = update_arrangement_approval_status(mock_db_session, wfh_update)
-
-    #             assert result.reason_description == "[DEFAULT] Approved by Manager"
-
-
-# ======================== DEPRECATED TESTS ========================
-# REVIEW: This should be moved to employee tests
-# def test_returns_delegate_approving_officer_info():
-#     # Arrange: Mock an arrangement with a delegate approving officer
-#     arrangement = MagicMock()
-#     arrangement.delegate_approving_officer = True
-#     arrangement.delegate_approving_officer_info = "Delegate Officer Info"
-#     arrangement.approving_officer_info = "Original Officer Info"
-
-#     # Act: Call the function with the mocked arrangement
-#     result = get_approving_officer(arrangement)
-
-#     # Assert: Check if the delegate approving officer info is returned
-#     assert result == "Delegate Officer Info"
-
-
-# def test_returns_original_approving_officer_info():
-#     # Arrange: Mock an arrangement without a delegate approving officer
-#     arrangement = MagicMock()
-#     arrangement.delegate_approving_officer = False  # No delegate
-#     arrangement.delegate_approving_officer_info = None
-#     arrangement.approving_officer_info = "Original Officer Info"
-
-#     # Act: Call the function with the mocked arrangement
-#     result = get_approving_officer(arrangement)
-
-#     # Assert: Check if the original approving officer info is returned
-#     assert result == "Original Officer Info"
-
-
-# class TestCreateArrangementsFromRequest:
-# @pytest.mark.asyncio
-# async def test_recurring(self, mock_db_session, mock_employee):
-#     wfh_request = create_mock_arrangement_create_with_file(
-#         is_recurring=True,
-#         recurring_frequency_unit="week",
-#         recurring_frequency_number=1,
-#         recurring_occurrences=3,
-#     )
-
-#     mock_batch = MagicMock(spec=arrangement_models.RecurringRequest)
-#     mock_batch.batch_id = 1
-
-#     with patch("src.arrangements.crud.create_recurring_request", return_value=mock_batch):
-#         with patch(
-#             "src.arrangements.services.expand_recurring_arrangement",
-#             return_value=[wfh_request, wfh_request, wfh_request],
-#         ):
-#             with patch(
-#                 "src.arrangements.crud.create_arrangements",
-#                 return_value=[MagicMock(spec=arrangement_models.LatestArrangement)],
-#             ):
-#                 with patch(
-#                     "src.utils.convert_model_to_pydantic_schema",
-#                     return_value=["arrangement_schema"],
-#                 ):
-#                     with patch(
-#                         "src.employees.crud.get_employee_by_staff_id",
-#                         return_value=mock_employee,
-#                     ):
-#                         with patch(
-#                             "src.arrangements.services.fetch_manager_info",
-#                             return_value={"manager_id": 2},
-#                         ):
-#                             with patch("src.arrangements.services.boto3.client"):
-#                                 with patch(
-#                                     "src.arrangements.utils.upload_file",
-#                                     return_value={"file_url": "https://example.com/file.pdf"},
-#                                 ):
-#                                     result = await create_arrangements_from_request(
-#                                         mock_db_session, wfh_request, []
-#                                     )
-#                                     assert len(result) == 1
-#                                     assert result[0] == "arrangement_schema"
-#
-# @pytest.mark.asyncio
-# @patch("src.arrangements.crud.create_arrangements", side_effect=Exception("Failed"))
-# async def test_failure(self, mock_db_session):
-#     with pytest.raises(Exception):
-#         await create_arrangements_from_request(mock_db_session, MagicMock(), [])
-
-# TODO: Move to routes or schema validation
-# @pytest.mark.asyncio
-# async def test_file_upload_unsupported_format(self, mock_db_session, mock_employee):
-#     wfh_request = create_mock_arrangement_create_with_file()
-#     mock_file = MagicMock()
-
-#     with patch("src.employees.crud.get_employee_by_staff_id", return_value=mock_employee):
-#         with patch(
-#             "src.arrangements.services.fetch_manager_info", return_value={"manager_id": 2}
-#         ):
-#             with patch("src.arrangements.services.boto3.client"):
-#                 with patch(
-#                     "src.arrangements.utils.upload_file",
-#                     side_effect=Exception(
-#                         "Error uploading files: 400: Invalid file type. Supported file types are JPEG, PNG, and PDF"
-#                     ),
-#                 ):
-#                     with pytest.raises(HTTPException) as exc_info:
-#                         await create_arrangements_from_request(
-#                             mock_db_session, wfh_request, [mock_file]
-#                         )
-#                     assert exc_info.value.status_code == 500
-#                     assert (
-#                         "Invalid file type. Supported file types are JPEG, PNG, and PDF"
-#                         in str(exc_info.value.detail)
-#                     )
-#
-# @pytest.mark.asyncio
-# async def test_missing_required_fields(self, mock_db_session, mock_employee):
-#     with pytest.raises(ValueError, match="Input should be 'full', 'am' or 'pm'"):
-#         create_mock_arrangement_create_with_file(wfh_type=None)
-
-# @pytest.mark.asyncio
-# async def test_file_deletion_on_error(self, mock_db_session, mock_employee):
-#     wfh_request = create_mock_arrangement_create_with_file()
-#     mock_file = MagicMock()
-
-#     with patch("src.employees.crud.get_employee_by_staff_id", return_value=mock_employee):
-#         with patch(
-#             "src.arrangements.services.fetch_manager_info", return_value={"manager_id": 2}
-#         ):
-#             with patch("src.arrangements.services.boto3.client"):
-#                 with patch(
-#                     "src.arrangements.utils.upload_file", return_value={"file_url": "test_url"}
-#                 ):
-#                     with patch(
-#                         "src.arrangements.crud.create_arrangements",
-#                         side_effect=Exception("DB Error"),
-#                     ):
-#                         with patch("src.arrangements.utils.delete_file"):
-#                             with pytest.raises(HTTPException) as exc_info:
-#                                 await create_arrangements_from_request(
-#                                     mock_db_session, wfh_request, [mock_file]
-#                                 )
-#                             assert exc_info.value.status_code == 500
-#                             assert (
-#                                 "Invalid file type. Supported file types are JPEG, PNG, and PDF"
-#                                 in str(exc_info.value.detail)
-#                             )
-
-# REVIEW: These should be tested by the schema validation
-# class TestExpandRecurringArrangement:
-#     def test_zero_occurrences(self):
-#         with pytest.raises(
-#             ValueError,
-#             match="When 'is_recurring' is True, 'recurring_occurrences' must have a non-zero value",
-#         ):
-#             create_mock_arrangement_create_with_file(
-#                 is_recurring=True,
-#                 recurring_frequency_unit="week",
-#                 recurring_frequency_number=1,
-#                 recurring_occurrences=0,
-#             )
-
-#     def test_invalid_frequency_unit(self):
-#         with pytest.raises(ValueError, match="Input should be 'week' or 'month'"):
-#             create_mock_arrangement_create_with_file(
-#                 is_recurring=True,
-#                 recurring_frequency_unit="invalid_unit",
-#                 recurring_frequency_number=1,
-#                 recurring_occurrences=3,
-#             )
