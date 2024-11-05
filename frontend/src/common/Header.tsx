@@ -30,8 +30,8 @@ export const Header = ({ window }: Props) => {
   };
 
   const handleLogout = () => {
-    logout(); 
-    navigate("/login"); 
+    logout();
+    navigate("/login");
   };
 
   const container = window !== undefined ? () => window().document.body : undefined;
@@ -67,7 +67,7 @@ export const Header = ({ window }: Props) => {
             </Typography>
           </Link>
           <Box sx={{ flexGrow: 1 }} />
-          <Button onClick={handleLogout} color="inherit">
+          <Button data-cy="logout" onClick={handleLogout} color="inherit">
             Log Out
           </Button>
         </Toolbar>

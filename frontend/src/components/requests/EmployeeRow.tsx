@@ -52,14 +52,15 @@ const EmployeeRow: React.FC<EmployeeRowProps> = ({
         ) : (
           "None"
         )}
+
       </TableCell>
       <TableCell>
         {current_approval_status === ApprovalStatus.PendingApproval && handleRequestAction && (
           <ButtonGroup>
-            <Button onClick={() => handleRequestAction("approve", arrangement_id, reason_description)}>
+            <Button data-cy={`approve-button-${request.arrangement_id}`} onClick={() => handleRequestAction("approve", arrangement_id, reason_description)}>
               <CheckIcon /> Approve
             </Button>
-            <Button onClick={() => handleRequestAction("reject", arrangement_id, reason_description)}>
+            <Button data-cy={`reject-button-${request.arrangement_id}`} onClick={() => handleRequestAction("reject", arrangement_id, reason_description)}>
               <CloseIcon /> Reject
             </Button>
           </ButtonGroup>

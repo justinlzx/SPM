@@ -90,7 +90,7 @@ export const PendingRequests = () => {
         .filter((request: TWFHRequest) =>
           [ApprovalStatus.PendingApproval, ApprovalStatus.PendingWithdrawal].includes(request.current_approval_status)
         );
-        console.log(requests);
+      console.log(requests);
 
       const requestsWithNames = await Promise.all(
         requests.map(async (request: TWFHRequest) => {
@@ -135,12 +135,12 @@ export const PendingRequests = () => {
       action === Action.Reject
         ? ApprovalStatus.Rejected
         : STATUS_ACTION_MAPPING[current_approval_status]?.[action];
-  
+
     if (!nextStatus) {
       console.warn(`Action '${action}' is not allowed for status '${current_approval_status}'`);
       return;
     }
-  
+
     setLoading(true);
     try {
       const formData = new FormData();
@@ -148,15 +148,15 @@ export const PendingRequests = () => {
       formData.append("reason_description", reason_description);
       formData.append("approving_officer", userId?.toString() || "");
       formData.append("current_approval_status", nextStatus);
-  
+
       await axios.put(`${BACKEND_URL}/arrangements/${arrangement_id}/status`, formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
-  
+
       setAlertStatus(AlertStatus.Success);
       setSnackbarMessage(`Request '${action}' successfully updated to status '${nextStatus}'`);
       setShowSnackbar(true);
-      refreshData(); 
+      refreshData();
     } catch (error) {
       console.error(`Error performing action '${action}':`, error);
       setAlertStatus(AlertStatus.Error);
@@ -167,7 +167,7 @@ export const PendingRequests = () => {
       setRejectModalOpen(false);
     }
   };
-  
+
 
   const handleRejectClick = (arrangementId: number) => {
     setSelectedArrangementId(arrangementId);
@@ -177,9 +177,9 @@ export const PendingRequests = () => {
   const handleConfirmReject = () => {
     if (selectedArrangementId && rejectionReason.trim()) {
       handleRequestAction(
-        Action.Reject, 
-        selectedArrangementId, 
-        rejectionReason, 
+        Action.Reject,
+        selectedArrangementId,
+        rejectionReason,
         ApprovalStatus.PendingApproval);
       setRejectionReason("");
     }
@@ -294,17 +294,18 @@ export const PendingRequests = () => {
         <DialogTitle>Reject Request</DialogTitle>
         <DialogContent>
           <TextField
+            data-cy="rejection-modal"
             label="Input a reason for rejection"
             fullWidth
             multiline
             rows={2}
             value={rejectionReason}
             onChange={(e) => setRejectionReason(e.target.value)}
-            sx={{ mt:2}}
+            sx={{ mt: 2 }}
           />
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleCloseRejectModal} variant="outlined">
+          <Button data-cy='cancel-modal-button' onClick={handleCloseRejectModal} variant="outlined">
             Cancel
           </Button>
           <Button
@@ -312,7 +313,8 @@ export const PendingRequests = () => {
             color="error"
             disabled={!rejectionReason.trim()}
             variant="outlined"
-            sx={{ m:2 }}
+            sx={{ m: 2 }}
+            data-cy='reject-modal-button'
           >
             Reject Request
           </Button>
@@ -385,6 +387,7 @@ const ArrangementRow = ({
               <Button
                 color="success"
                 startIcon={<CheckIcon />}
+                data-cy={`approve-button-${arrangement.arrangement_id}`}
                 onClick={() => handleRequestAction(Action.Approve, arrangement_id, reason_description, current_approval_status)}
               >
                 Approve
@@ -392,6 +395,7 @@ const ArrangementRow = ({
               <Button
                 color="error"
                 startIcon={<CloseIcon />}
+                data-cy={`reject-button-${arrangement.arrangement_id}`}
                 onClick={() => handleRejectClick(arrangement_id)}
               >
                 Reject
