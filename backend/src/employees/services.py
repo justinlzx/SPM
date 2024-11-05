@@ -3,8 +3,8 @@ from typing import List, Tuple, Union
 
 from sqlalchemy.orm import Session
 
-from ..email.routes import send_email
-from ..notifications.email_notifications import craft_email_content_for_delegation
+from ..notifications.commons.dataclasses import DelegateNotificationConfig
+from ..notifications.email_notifications import craft_and_send_email
 from ..utils import convert_model_to_pydantic_schema
 from . import crud, exceptions, models, schemas
 
@@ -198,15 +198,10 @@ async def delegate_manager(staff_id: int, delegate_manager_id: int, db: Session)
         delegatee_employee = get_employee_by_id(db, delegate_manager_id)
 
         # Step 4: Craft and send email notifications
-        manager_subject, manager_content = craft_email_content_for_delegation(
-            manager_employee, delegatee_employee, "delegate"
+        notification_config = DelegateNotificationConfig(
+            delegator=manager_employee, delegatee=delegatee_employee, action="delegate"
         )
-        await send_email(manager_employee.email, manager_subject, manager_content)
-
-        delegatee_subject, delegatee_content = craft_email_content_for_delegation(
-            delegatee_employee, manager_employee, "delegated_to"
-        )
-        await send_email(delegatee_employee.email, delegatee_subject, delegatee_content)
+        await craft_and_send_email(notification_config)
 
         return new_delegation  # Return the created delegation log
 
@@ -262,15 +257,10 @@ async def process_delegation_status(
         )
 
         # Send approval emails
-        manager_subject, manager_content = craft_email_content_for_delegation(
-            manager_employee, delegatee_employee, "approved"
+        notification_config = DelegateNotificationConfig(
+            delegator=manager_employee, delegatee=delegatee_employee, action="approved"
         )
-        await send_email(manager_employee.email, manager_subject, manager_content)
-
-        delegate_subject, delegate_content = craft_email_content_for_delegation(
-            delegatee_employee, manager_employee, "approved_for_delegate"
-        )
-        await send_email(delegatee_employee.email, delegate_subject, delegate_content)
+        await craft_and_send_email(notification_config)
 
     elif status == DelegationApprovalStatus.reject:
         # Reject delegation and save the required description
@@ -279,15 +269,10 @@ async def process_delegation_status(
         )
 
         # Send rejection emails
-        manager_subject, manager_content = craft_email_content_for_delegation(
-            manager_employee, delegatee_employee, "rejected"
+        notification_config = DelegateNotificationConfig(
+            delegator=manager_employee, delegatee=delegatee_employee, action="rejected"
         )
-        await send_email(manager_employee.email, manager_subject, manager_content)
-
-        delegate_subject, delegate_content = craft_email_content_for_delegation(
-            delegatee_employee, manager_employee, "rejected_for_delegate"
-        )
-        await send_email(delegatee_employee.email, delegate_subject, delegate_content)
+        await craft_and_send_email(notification_config)
 
     return delegation_log
 
@@ -329,15 +314,10 @@ async def undelegate_manager(staff_id: int, db: Session):
     delegatee_employee = get_employee_by_id(db, delegation_log.delegate_manager_id)
 
     # Send notification emails
-    manager_subject, manager_content = craft_email_content_for_delegation(
-        manager_employee, delegatee_employee, "withdrawn"
+    notification_config = DelegateNotificationConfig(
+        delegator=manager_employee, delegatee=delegatee_employee, action="undelegate"
     )
-    await send_email(manager_employee.email, manager_subject, manager_content)
-
-    delegate_subject, delegate_content = craft_email_content_for_delegation(
-        delegatee_employee, manager_employee, "withdrawn_for_delegate"
-    )
-    await send_email(delegatee_employee.email, delegate_subject, delegate_content)
+    await craft_and_send_email(notification_config)
 
     return delegation_log
 

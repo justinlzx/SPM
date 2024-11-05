@@ -1,9 +1,9 @@
 import pytest
 from src.employees.exceptions import (
+    EmployeeGenericNotFoundException,
     EmployeeNotFoundException,
     ManagerNotFoundException,
     ManagerWithIDNotFoundException,
-    EmployeeGenericNotFoundException
 )
 
 
@@ -26,6 +26,7 @@ def test_manager_not_found_exception():
     with pytest.raises(ManagerNotFoundException) as excinfo:
         raise ManagerNotFoundException()
     assert str(excinfo.value) == "Manager not found"
+
 
 def test_employee_generic_not_found_exception():
     with pytest.raises(EmployeeGenericNotFoundException) as excinfo:

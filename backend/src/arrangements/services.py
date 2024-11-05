@@ -8,6 +8,7 @@ import botocore.exceptions
 from fastapi import File
 from sqlalchemy.orm import Session
 
+from ..database import get_db
 from ..employees import crud as employee_crud
 from ..employees import models as employee_models
 from ..employees import services as employee_services
@@ -16,6 +17,7 @@ from ..employees.exceptions import (
     ManagerWithIDNotFoundException,
 )
 from ..logger import logger
+from ..notifications.commons.dataclasses import ArrangementNotificationConfig
 from ..notifications.email_notifications import craft_and_send_email
 from . import crud
 from .commons import exceptions
@@ -257,14 +259,17 @@ async def create_arrangements_from_request(
         created_arrangements = crud.create_arrangements(db=db, arrangements=arrangements)
         logger.info(f"Service: Created {len(created_arrangements)} arrangements")
 
-        # Send notification emails
-        await craft_and_send_email(
+        # Create config object for email notifications
+        notification_config = ArrangementNotificationConfig(
             employee=employee,
             arrangements=created_arrangements,
             action=Action.CREATE,
             current_approval_status=wfh_request.current_approval_status,
             manager=approving_officer,
         )
+
+        # Send notification emails
+        await craft_and_send_email(notification_config)
 
         return created_arrangements
 
@@ -326,16 +331,68 @@ async def update_arrangement_approval_status(
     employee = employee_crud.get_employee_by_staff_id(db, updated_arrangement.requester_staff_id)
     approving_officer = employee_crud.get_employee_by_staff_id(db, wfh_update.approving_officer)
 
-    # Send email notifications
-    await craft_and_send_email(
+    # Create config object for email notifications
+    notification_config = ArrangementNotificationConfig(
         employee=employee,
         arrangements=[updated_arrangement],
         action=wfh_update.action,
         current_approval_status=updated_arrangement.current_approval_status,
         manager=approving_officer,
+        auto_reject=wfh_update.auto_reject,
     )
 
+    # Send email notifications
+    await craft_and_send_email(notification_config)
+
     return updated_arrangement
+
+
+async def auto_reject_old_requests():
+    db = next(get_db())
+    wfh_requests = crud.get_expiring_requests(db)
+    total_count = len(wfh_requests)
+    failure_ids = []
+
+    for arrangement in wfh_requests:
+        if (
+            "delegate_approving_officer" in arrangement
+            and arrangement["delegate_approving_officer"]
+        ):
+            approving_officer = arrangement["delegate_approving_officer"]
+        else:
+            approving_officer = arrangement["approving_officer"]
+
+        wfh_update = UpdateArrangementRequest(
+            arrangement_id=arrangement["arrangement_id"],
+            update_datetime=datetime.now(),
+            action=Action.REJECT,
+            approving_officer=approving_officer,
+            status_reason="AUTO-REJECTED due to pending status one day before WFH date",
+            auto_reject=True,
+        )
+
+        try:
+            await update_arrangement_approval_status(
+                db=db,
+                wfh_update=wfh_update,
+                supporting_docs=[],
+            )
+
+            logger.info(
+                f"Auto-rejected arrangement {arrangement['arrangement_id']} for date {arrangement['wfh_date']}"
+            )
+        except Exception as e:
+            logger.error(
+                f"Error processing arrangement {arrangement['arrangement_id']}: {str(e)}",
+                exc_info=True,
+            )
+            failure_ids.append(arrangement["arrangement_id"])
+
+    if failure_ids:
+        logger.info(f"Auto-rejection for {len(failure_ids)} of {total_count} requests failed")
+    else:
+        logger.info(f"Auto-rejection for {total_count} requests completed successfully")
+    logger.info(f"The following arrangement IDs failed: {failure_ids}")
 
 
 # ============================ DEPRECATED FUNCTIONS ============================

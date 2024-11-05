@@ -13,7 +13,9 @@ from src.arrangements.commons import dataclasses as dc
 from src.arrangements.commons import exceptions as arrangement_exceptions
 from src.arrangements.commons.enums import Action, ApprovalStatus
 from src.arrangements.services import (
+    auto_reject_old_requests,
     create_arrangements_from_request,
+    get_all_arrangements,
     get_arrangement_by_id,
     get_arrangement_logs,
     get_personal_arrangements,
@@ -176,6 +178,21 @@ class TestGetArrangementById:
             get_arrangement_by_id(mock_db_session, arrangement_id=1)
 
 
+class TestGetAllArrangements:
+    @patch("src.arrangements.commons.dataclasses.ArrangementResponse.from_dict")
+    @patch("src.arrangements.crud.get_arrangements")
+    def test_success(self, mock_get_arrangements, mock_convert, mock_db_session):
+        # Arrange
+        mock_get_arrangements.return_value = [MagicMock(spec=dc.ArrangementResponse)]
+
+        # Act
+        get_all_arrangements(mock_db_session, filters=dc.ArrangementFilters())
+
+        # Assert
+        mock_get_arrangements.assert_called_once()
+        mock_convert.assert_called()
+
+
 class TestGetPersonalArrangements:
     @pytest.mark.parametrize(
         ("current_approval_status", "num_arrangements"),
@@ -188,6 +205,7 @@ class TestGetPersonalArrangements:
         ],
     )
     @patch("src.arrangements.commons.dataclasses.ArrangementResponse.from_dict")
+    @patch("src.arrangements.crud.get_arrangements")
     def test_success(
         self,
         mock_get_arrangements,
@@ -217,6 +235,7 @@ class TestGetSubordinatesArrangements:
     @patch("src.arrangements.services.group_arrangements_by_date")
     @patch("src.arrangements.services.create_presigned_url")
     @patch("src.arrangements.commons.dataclasses.ArrangementResponse.from_dict")
+    @patch("src.arrangements.crud.get_arrangements")
     @patch("src.employees.services.get_subordinates_by_manager_id")
     @pytest.mark.parametrize(
         ("supporting_docs", "group_by_date"),
@@ -311,6 +330,7 @@ class TestGetTeamArrangements:
     )
     @patch("src.arrangements.services.group_arrangements_by_date")
     @patch("src.arrangements.commons.dataclasses.ArrangementResponse.from_dict")
+    @patch("src.arrangements.crud.get_arrangements")
     @patch("src.employees.services.get_subordinates_by_manager_id")
     @patch("src.employees.services.get_peers_by_staff_id")
     def test_success(
@@ -583,6 +603,19 @@ class TestCreateArrangementsFromRequest:
             )
         assert mock_delete_file.call_count == len(successful_uploads)
 
+    @pytest.mark.asyncio
+    @patch("src.employees.crud.get_employee_by_staff_id", return_value=None)
+    async def test_failure_employee_not_found(self, mock_get_employee, mock_db_session):
+        mock_request = MagicMock(spec=dc.CreateArrangementRequest)
+        mock_request.configure_mock(requester_staff_id=1)
+
+        with pytest.raises(employee_exceptions.EmployeeNotFoundException):
+            await create_arrangements_from_request(
+                db=mock_db_session,
+                wfh_request=mock_request,
+                supporting_docs=[],
+            )
+
 
 class TestUpdateArrangementApprovalStatus:
     @pytest.mark.asyncio
@@ -699,3 +732,67 @@ class TestUpdateArrangementApprovalStatus:
             await update_arrangement_approval_status(
                 db=mock_db_session, wfh_update=mock_wfh_update, supporting_docs=[]
             )
+
+
+@pytest.mark.asyncio
+@patch("src.arrangements.services.update_arrangement_approval_status")
+@patch("src.arrangements.crud.get_expiring_requests")
+@patch("src.arrangements.services.get_db")
+class TestAutoRejectOldRequests:
+    async def test_success_approving_officer(
+        self, mock_get_db, mock_get_expiring_requests, mock_update
+    ):
+        # Arrange
+        mock_get_expiring_requests.return_value = [{"arrangement_id": 1, "approving_officer": 2}]
+
+        # Act
+        await auto_reject_old_requests()
+
+        # Assert
+        mock_get_db.assert_called_once()
+        mock_get_expiring_requests.assert_called_once()
+        mock_update.assert_called()
+        assert mock_update.call_count == 1
+
+    async def test_success_delegate_approving_officer(
+        self, mock_get_db, mock_get_expiring_requests, mock_update
+    ):
+        # Arrange
+        mock_get_expiring_requests.return_value = [
+            {"arrangement_id": 1, "delegate_approving_officer": 2}
+        ]
+
+        # Act
+        await auto_reject_old_requests()
+
+        # Assert
+        mock_get_db.assert_called_once()
+        mock_get_expiring_requests.assert_called_once()
+        mock_update.assert_called()
+        assert mock_update.call_count == 1
+
+    async def test_success_no_requests(self, mock_get_db, mock_get_expiring_requests, mock_update):
+        # Arrange
+        mock_get_expiring_requests.return_value = []
+
+        # Act
+        await auto_reject_old_requests()
+
+        # Assert
+        mock_get_expiring_requests.assert_called_once()
+        mock_update.assert_not_called()
+
+    async def test_failure_unknown(self, mock_get_db, mock_get_expiring_requests, mock_update):
+        # Arrange
+        mock_get_expiring_requests.return_value = [
+            {"arrangement_id": 1, "approving_officer": 1},
+            {"arrangement_id": 2, "approving_officer": 1},
+        ]
+        mock_update.side_effect = [Exception, None]
+
+        # Act
+        await auto_reject_old_requests()
+
+        # Assert
+        mock_update.assert_called()
+        assert mock_update.call_count == 2

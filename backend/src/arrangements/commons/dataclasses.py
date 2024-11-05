@@ -95,6 +95,7 @@ class UpdateArrangementRequest(BaseClass):
     supporting_doc_1: Optional[File] = None
     supporting_doc_2: Optional[File] = None
     supporting_doc_3: Optional[File] = None
+    auto_reject: Optional[bool] = False
 
 
 @dataclass

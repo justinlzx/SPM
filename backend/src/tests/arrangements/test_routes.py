@@ -46,7 +46,7 @@ def mock_pagination_params():
 def mock_create_request_body():
     return {
         "requester_staff_id": 1,
-        "wfh_date": "2021-01-01",
+        "wfh_date": "2099-12-31",
         "wfh_type": "full",
         "is_recurring": True,
         "reason_description": "Test reason",
