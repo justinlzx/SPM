@@ -1,5 +1,6 @@
 import os
 from copy import deepcopy
+from datetime import date, datetime, timedelta
 from math import ceil
 from typing import List, Union
 
@@ -184,3 +185,8 @@ def format_arrangements_response(
 
 def format_arrangement_response(arrangement: ArrangementResponse) -> schemas.ArrangementResponse:
     return schemas.ArrangementResponse.model_validate(arrangement)
+
+
+def get_tomorrow_date() -> date:
+    """Get tomorrow's date at midnight."""
+    return datetime.now().date() + timedelta(days=1)

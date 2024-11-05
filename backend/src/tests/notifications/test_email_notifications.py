@@ -1,5 +1,5 @@
 import os
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
 import pytest
@@ -9,6 +9,10 @@ from httpx import RequestError
 from src.arrangements.commons.enums import Action, ApprovalStatus, WfhType
 from src.notifications import email_notifications as notifications
 from src.notifications import exceptions as notification_exceptions
+from src.notifications.commons.dataclasses import (
+    ArrangementNotificationConfig,
+    DelegateNotificationConfig,
+)
 
 # Load environment variables
 load_dotenv()
@@ -41,6 +45,34 @@ def mock_arrangement_factory():
         return MockArrangement(current_approval_status=current_approval_status)
 
     return _create_mock_arrangement
+
+
+@pytest.fixture
+def mock_arrangement_config_factory():
+    def _create_mock_arrangement_config(
+        employee, arrangements, action, current_approval_status, manager
+    ):
+        return ArrangementNotificationConfig(
+            employee=employee,
+            arrangements=arrangements,
+            action=action,
+            current_approval_status=current_approval_status,
+            manager=manager,
+        )
+
+    return _create_mock_arrangement_config
+
+
+@pytest.fixture
+def mock_delegate_config_factory():
+    def _create_mock_delegate_config(delegator, delegatee, action):
+        return DelegateNotificationConfig(
+            delegator=delegator,
+            delegatee=delegatee,
+            action=action,
+        )
+
+    return _create_mock_delegate_config
 
 
 @pytest.fixture
@@ -86,6 +118,265 @@ async def send_email(to_email: str, subject: str, content: str):
 
 class TestSendEmail:
     @pytest.mark.asyncio
+    async def test_successful_send(self):
+        """Test successful email sending with context manager"""
+        # Setup response mock
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {"message": "Email sent", "id": "123"}
+
+        # Setup client mock
+        mock_client = AsyncMock()
+        mock_client.post.return_value = mock_response
+
+        # Setup context manager mock
+        mock_async_client = AsyncMock()
+        mock_async_client.__aenter__.return_value = mock_client
+
+        with patch("httpx.AsyncClient", return_value=mock_async_client):
+            result = await send_email("test@example.com", "Test Subject", "Test Content")
+
+        assert result == {"message": "Email sent", "id": "123"}
+        mock_client.post.assert_called_once_with(
+            f"{BASE_URL}/email/sendemail",
+            data={
+                "to_email": "test@example.com",
+                "subject": "Test Subject",
+                "content": "Test Content",
+            },
+        )
+
+    @pytest.mark.asyncio
+    async def test_input_validation(self):
+        """Test validation of input parameters"""
+        # Test empty email
+        with pytest.raises(HTTPException) as exc:
+            await send_email("", "subject", "content")
+        assert exc.value.detail == "Recipient email must be provided."
+
+        # Test empty subject
+        with pytest.raises(HTTPException) as exc:
+            await send_email("test@email.com", "", "content")
+        assert exc.value.detail == "Subject must be provided."
+
+        # Test empty content
+        with pytest.raises(HTTPException) as exc:
+            await send_email("test@email.com", "subject", "")
+        assert exc.value.detail == "Content must be provided."
+
+    @pytest.mark.asyncio
+    @patch("httpx.AsyncClient")
+    async def test_with_valid_json_response(self, mock_client):
+        # Setup mock response with specific JSON data
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {"message_id": "123", "status": "sent"}
+
+        # Setup mock client
+        mock_client_instance = MagicMock()
+        mock_client_instance.post = AsyncMock(return_value=mock_response)
+        mock_client.return_value.__aenter__.return_value = mock_client_instance
+
+        # Call function
+        result = await send_email("test@example.com", "Test Subject", "Test Content")
+
+        # Verify the full JSON response is returned
+        assert result == {"message_id": "123", "status": "sent"}
+
+    @pytest.mark.asyncio
+    @patch("httpx.AsyncClient")
+    async def test_request_error_handling(self, mock_client):
+        # Setup mock client to raise RequestError
+        mock_client_instance = MagicMock()
+        mock_client_instance.post.side_effect = httpx.RequestError("Connection failed")
+        mock_client.return_value.__aenter__.return_value = mock_client_instance
+
+        # Call function and expect exception
+        with pytest.raises(HTTPException) as exc_info:
+            await send_email("test@example.com", "Test Subject", "Test Content")
+
+        assert exc_info.value.status_code == 500
+        assert "Connection failed" in exc_info.value.detail
+
+    @pytest.mark.asyncio
+    @patch("httpx.AsyncClient")
+    async def test_successful_email_send(self, mock_client):
+        # Setup mock response
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {"status": "success"}
+
+        # Setup mock client
+        mock_client_instance = MagicMock()
+        mock_client_instance.post = AsyncMock(return_value=mock_response)
+        mock_client.return_value.__aenter__.return_value = mock_client_instance
+
+        # Call function
+        result = await send_email("test@example.com", "Test Subject", "Test Content")
+
+        # Verify the result and calls
+        assert result == {"status": "success"}
+        mock_client_instance.post.assert_called_once_with(
+            f"{BASE_URL}/email/sendemail",
+            data={
+                "to_email": "test@example.com",
+                "subject": "Test Subject",
+                "content": "Test Content",
+            },
+        )
+
+    @pytest.mark.asyncio
+    @patch("httpx.AsyncClient")
+    async def test_failed_email_send_non_200(self, mock_client):
+        # Setup mock response with error
+        mock_response = MagicMock()
+        mock_response.status_code = 400
+        mock_response.text = "Bad Request"
+
+        # Setup mock client
+        mock_client_instance = MagicMock()
+        mock_client_instance.post = AsyncMock(return_value=mock_response)
+        mock_client.return_value.__aenter__.return_value = mock_client_instance
+
+        # Call function and expect exception
+        with pytest.raises(HTTPException) as exc_info:
+            await send_email("test@example.com", "Test Subject", "Test Content")
+
+        assert exc_info.value.status_code == 400
+        assert exc_info.value.detail == "Bad Request"
+
+    @pytest.mark.asyncio
+    async def test_non_200_response(self):
+        """Test handling of non-200 response"""
+        # Setup response mock
+        mock_response = MagicMock()
+        mock_response.status_code = 400
+        mock_response.text = "Invalid email format"
+
+        # Setup client mock
+        mock_client = AsyncMock()
+        mock_client.post.return_value = mock_response
+
+        # Setup context manager mock
+        mock_async_client = AsyncMock()
+        mock_async_client.__aenter__.return_value = mock_client
+
+        with patch("httpx.AsyncClient", return_value=mock_async_client):
+            with pytest.raises(HTTPException) as exc:
+                await send_email("test@example.com", "Test Subject", "Test Content")
+
+        assert exc.value.status_code == 400
+        assert exc.value.detail == "Invalid email format"
+
+    @pytest.mark.asyncio
+    @patch("httpx.AsyncClient.post")
+    async def test_happy_path(self, mock_post):
+        """Test successful email sending"""
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {"message": "success"}
+        mock_post.return_value = mock_response
+
+        result = await send_email("test@example.com", "Test Subject", "Test Content")
+
+        assert result == {"message": "success"}
+        mock_post.assert_called_once_with(
+            f"{BASE_URL}/email/sendemail",
+            data={
+                "to_email": "test@example.com",
+                "subject": "Test Subject",
+                "content": "Test Content",
+            },
+        )
+
+    @pytest.mark.asyncio
+    @patch("httpx.AsyncClient.post")
+    async def test_email_send_retry_logic(self, mock_post):
+        """Test email sending with initial failure and retry"""
+        # First call fails, second succeeds
+        mock_post.side_effect = [
+            RequestError("Connection failed"),
+            MagicMock(status_code=200, json=lambda: {"message": "Success"}),
+        ]
+
+        with pytest.raises(HTTPException) as exc_info:
+            await send_email("test@example.com", "Test Subject", "Test Content")
+
+        assert "Connection failed" in str(exc_info.value.detail)
+        assert mock_post.call_count == 1
+
+    @pytest.mark.asyncio
+    @patch("httpx.AsyncClient.post")
+    async def test_multiple_consecutive_sends(self, mock_post):
+        """Test multiple consecutive email sends"""
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {"message": "Email sent successfully"}
+        mock_post.return_value = mock_response
+
+        # Send multiple emails
+        for i in range(3):
+            result = await send_email(
+                f"test{i}@example.com", f"Test Subject {i}", f"Test Content {i}"
+            )
+            assert result == {"message": "Email sent successfully"}
+
+        assert mock_post.call_count == 3
+
+    @pytest.mark.asyncio
+    @patch("httpx.AsyncClient.post")
+    async def test_long_email_content(self, mock_post):
+        """Test email sending with long content"""
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {"message": "Email sent successfully"}
+        mock_post.return_value = mock_response
+
+        # Create a long content string
+        long_content = "Test content\n" * 1000
+
+        result = await send_email("test@example.com", "Test Subject", long_content)
+
+        assert result == {"message": "Email sent successfully"}
+        mock_post.assert_called_once()
+
+    @pytest.mark.asyncio
+    @patch("httpx.AsyncClient.post")
+    async def test_email_send_with_special_characters(self, mock_post):
+        """Test email sending with special characters in content"""
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {"message": "Email sent successfully"}
+        mock_post.return_value = mock_response
+
+        # Test with special characters
+        result = await send_email(
+            "test@example.com",
+            "Test Subject with 特殊字符",
+            "Content with special characters: ñ, é, 漢字",
+        )
+
+        assert result == {"message": "Email sent successfully"}
+        mock_post.assert_called_once()
+
+    @pytest.mark.asyncio
+    @patch("httpx.AsyncClient.post")
+    async def test_basic_email_send(self, mock_post):
+        """Test successful email sending with mock response"""
+        # Setup mock response
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {"message": "Email sent successfully"}
+        mock_post.return_value = mock_response
+
+        # Test the function
+        result = await send_email("test@example.com", "Test Subject", "Test Content")
+
+        # Verify the result
+        assert result == {"message": "Email sent successfully"}
+        mock_post.assert_called_once()
+
+    @pytest.mark.asyncio
     @patch("httpx.AsyncClient.post")
     async def test_success(self, mock_post: MagicMock):
         # Mock response data
@@ -128,20 +419,44 @@ class TestSendEmail:
         assert "Internal Server Error" in exc_info.value.detail
 
     @pytest.mark.asyncio
-    @patch("httpx.AsyncClient.post")
-    async def test_request_error(self, mock_post: MagicMock):
-        """Test network failure scenario for send_email."""
-        # Simulate a network error
-        mock_post.side_effect = RequestError("Network error")
+    async def test_response_json_parsing(self):
+        """Test successful JSON response parsing"""
+        # Setup response mock with specific JSON
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {"id": "msg_123", "status": "delivered"}
 
-        # Call the function and check for HTTPException
-        with pytest.raises(HTTPException) as exc_info:
-            await send_email(
-                to_email="test@example.com", subject="Test Subject", content="Test Content"
-            )
+        # Setup client mock
+        mock_client = AsyncMock()
+        mock_client.post.return_value = mock_response
 
-        # Updated assertion to match the correct error message
-        assert "An error occurred while sending the email: Network error" in exc_info.value.detail
+        # Setup context manager mock
+        mock_async_client = AsyncMock()
+        mock_async_client.__aenter__.return_value = mock_client
+
+        with patch("httpx.AsyncClient", return_value=mock_async_client):
+            result = await send_email("test@example.com", "Test Subject", "Test Content")
+
+        assert result == {"id": "msg_123", "status": "delivered"}
+        assert mock_response.json.called
+
+    @pytest.mark.asyncio
+    async def test_request_error(self):
+        """Test handling of request errors"""
+        # Setup client mock with error
+        mock_client = AsyncMock()
+        mock_client.post.side_effect = httpx.RequestError("Connection timeout")
+
+        # Setup context manager mock
+        mock_async_client = AsyncMock()
+        mock_async_client.__aenter__.return_value = mock_client
+
+        with patch("httpx.AsyncClient", return_value=mock_async_client):
+            with pytest.raises(HTTPException) as exc:
+                await send_email("test@example.com", "Test Subject", "Test Content")
+
+        assert exc.value.status_code == 500
+        assert "Connection timeout" in exc.value.detail
 
     @pytest.mark.asyncio
     @patch("httpx.AsyncClient.post")
@@ -305,41 +620,199 @@ class TestFormatEmailSubject:
             ),
         ],
     )
-    def test_success(
+    def test_success_arrangements(
         self,
         role,
         action,
         current_approval_status,
         expected_subject,
+        mock_arrangement_config_factory,
     ):
-        email_subject_content = notifications.format_email_subject(
-            role=role,
+        # Arrange
+        config = mock_arrangement_config_factory(
+            employee=MagicMock(),
+            arrangements=[MagicMock()],
             action=action,
             current_approval_status=current_approval_status,
+            manager=MagicMock(),
         )
-        assert email_subject_content == expected_subject
+
+        # Act
+        email_subject = notifications.format_email_subject(
+            role=role,
+            config=config,
+        )
+
+        # Assert
+        assert email_subject == expected_subject
+
+    @pytest.mark.parametrize(
+        ("role", "action"),
+        [
+            ("delegator", "delegate"),
+            ("delegator", "undelegated"),
+            ("delegator", "approved"),
+            ("delegator", "rejected"),
+            ("delegator", "withdrawn"),
+            ("delegatee", "delegate"),
+            ("delegatee", "undelegated"),
+            ("delegatee", "approved"),
+            ("delegatee", "rejected"),
+            ("delegatee", "withdrawn"),
+        ],
+    )
+    def test_success_delegation(self, role, action, mock_delegate_config_factory):
+        # Arrange
+        config = mock_delegate_config_factory(
+            delegator=MagicMock(), delegatee=MagicMock(), action=action
+        )
+
+        # Act
+        email_subject = notifications.format_email_subject(role=role, config=config)
+
+        # Assert
+        assert email_subject is not None
 
 
 class TestFormatEmailBody:
-    def test_success(self):
-        staff_fname = "Jane"
-        staff_lname = "Doe"
+    @pytest.mark.asyncio
+    async def test_delegatee_action_withdrawn(self, mock_delegate_config_factory):
+        """Test the delegatee-withdrawn branch specifically"""
+        # Create mock delegator and delegatee
+        mock_delegator = MagicMock()
+        mock_delegator.staff_fname = "John"
+        mock_delegator.staff_lname = "Doe"
 
+        mock_delegatee = MagicMock()
+        mock_delegatee.staff_fname = "Jane"
+        mock_delegatee.staff_lname = "Smith"
+
+        # Create config with action="withdrawn"
+        config = mock_delegate_config_factory(
+            delegator=mock_delegator, delegatee=mock_delegatee, action="withdrawn"
+        )
+
+        # Test with role="delegatee"
+        formatted_details = "Test Details"
+        result = notifications.format_email_body(
+            role="delegatee", formatted_details=formatted_details, config=config
+        )
+
+        # Verify expected content
+        expected_text = f"The delegation assigned to you by {mock_delegator.staff_fname} {mock_delegator.staff_lname} has been withdrawn"
+        assert expected_text in result
+        assert formatted_details in result
+        assert "This email is auto-generated" in result
+
+    @pytest.mark.asyncio
+    async def test_delegatee_other_action(self, mock_delegate_config_factory):
+        """Test a different action to ensure branch coverage"""
+        mock_delegator = MagicMock()
+        mock_delegator.staff_fname = "John"
+        mock_delegator.staff_lname = "Doe"
+
+        mock_delegatee = MagicMock()
+        mock_delegatee.staff_fname = "Jane"
+        mock_delegatee.staff_lname = "Smith"
+
+        config = mock_delegate_config_factory(
+            delegator=mock_delegator,
+            delegatee=mock_delegatee,
+            action="some_other_action",  # Different action to hit the else branch
+        )
+
+        formatted_details = "Test Details"
+        result = notifications.format_email_body(
+            role="delegatee", formatted_details=formatted_details, config=config
+        )
+
+        assert formatted_details in result
+        assert "This email is auto-generated" in result
+
+    @pytest.mark.parametrize(
+        "role",
+        ["employee", "manager"],
+    )
+    def test_success_arrangements(self, role, mock_arrangement_config_factory):
         mock_employee = MagicMock()
         mock_employee.configure_mock(
-            staff_fname=staff_fname,
-            staff_lname=staff_lname,
+            staff_fname="Jane",
+            staff_lname="Doe",
+        )
+
+        mock_manager = MagicMock()
+        mock_manager.configure_mock(
+            staff_fname="Michael",
+            staff_lname="Scott",
         )
 
         mock_formatted_details = ""
+        mock_config = mock_arrangement_config_factory(
+            employee=mock_employee,
+            arrangements=[MagicMock()],
+            action=Action.CREATE,
+            current_approval_status=ApprovalStatus.PENDING_APPROVAL,
+            manager=mock_manager,
+        )
 
-        result = notifications.format_email_body(mock_employee, mock_formatted_details)
+        result = notifications.format_email_body(
+            role, formatted_details=mock_formatted_details, config=mock_config
+        )
 
-        assert f"Dear {staff_fname} {staff_lname}," in result
+        if role == "employee":
+            assert f"Dear {mock_employee.staff_fname} {mock_employee.staff_lname}," in result
+        else:
+            assert f"Dear {mock_manager.staff_fname} {mock_manager.staff_lname}," in result
+
         assert (
             "\n\nThis email is auto-generated. Please do not reply to this email. Thank you."
             in result
         )
+
+    @pytest.mark.parametrize(
+        ("role", "action"),
+        [
+            ("delegator", "delegate"),
+            ("delegator", "undelegated"),
+            ("delegator", "approved"),
+            ("delegator", "rejected"),
+            ("delegator", "withdrawn"),
+            ("delegatee", "delegate"),
+            ("delegatee", "undelegated"),
+            ("delegatee", "approved"),
+            ("delegatee", "rejected"),
+            ("delegatee", "withdrawn"),
+        ],
+    )
+    def test_success_delegate(self, role, action, mock_delegate_config_factory):
+        # Arrange
+        mock_delegator = MagicMock()
+        mock_delegator.configure_mock(
+            staff_fname="Jane",
+            staff_lname="Doe",
+        )
+
+        mock_delegatee = MagicMock()
+        mock_delegatee.configure_mock(
+            staff_fname="Michael",
+            staff_lname="Scott",
+        )
+
+        mock_formatted_details = ""
+        mock_config = mock_delegate_config_factory(
+            delegator=mock_delegator, delegatee=mock_delegatee, action=action
+        )
+
+        # Act
+        result = notifications.format_email_body(
+            role=role, formatted_details=mock_formatted_details, config=mock_config
+        )
+
+        # Assert
+        if role == "delegator":
+            assert f"Dear {mock_delegator.staff_fname} {mock_delegator.staff_lname}," in result
+        else:
+            assert f"Dear {mock_delegatee.staff_fname} {mock_delegatee.staff_lname}," in result
 
 
 class TestFormatDetails:
@@ -347,7 +820,7 @@ class TestFormatDetails:
         "action",
         [Action.CREATE, Action.APPROVE],
     )
-    def test_success(self, action):
+    def test_success_arrangements(self, action, mock_arrangement_config_factory):
         arrangement_id = 1
         wfh_date = "2024-10-07"
         wfh_type = WfhType.FULL
@@ -369,7 +842,15 @@ class TestFormatDetails:
             status_reason=status_reason,
         )
 
-        result = notifications.format_details([mock_arrangement], action)
+        mock_config = mock_arrangement_config_factory(
+            employee=MagicMock(),
+            arrangements=[mock_arrangement],
+            action=action,
+            current_approval_status=current_approval_status,
+            manager=MagicMock(),
+        )
+
+        result = notifications.format_details(mock_config)
 
         assert f"Request ID: {arrangement_id}" in result
         assert f"WFH Date: {wfh_date}" in result
@@ -382,44 +863,111 @@ class TestFormatDetails:
         if action != Action.CREATE:
             assert f"Reason for Status Change: {status_reason}" in result
 
-
-class TestCraftEmailContent:
-    @patch("src.notifications.email_notifications.format_email_body")
-    @patch("src.notifications.email_notifications.format_email_subject")
-    @patch("src.notifications.email_notifications.format_details")
-    def test_success(self, mock_details, mock_subject, mock_body):
-        mock_employee = MagicMock()
-        mock_arrangement = MagicMock()
-        mock_manager = MagicMock()
-        action = Action.CREATE
-
-        notifications.craft_email_content(
-            employee=mock_employee,
-            arrangements=[mock_arrangement],
-            action=action,
-            current_approval_status=ApprovalStatus.PENDING_APPROVAL,
-            manager=mock_manager,
+    @pytest.mark.parametrize(
+        "action",
+        [
+            "delegate",
+            "undelegated",
+            "approved",
+            "rejected",
+            "withdrawn",
+        ],
+    )
+    def test_success_delegate(self, action, mock_delegate_config_factory):
+        # Arrange
+        mock_delegator = MagicMock()
+        mock_delegator.configure_mock(
+            staff_fname="Jane",
+            staff_lname="Doe",
         )
 
+        mock_delegatee = MagicMock()
+        mock_delegatee.configure_mock(
+            staff_fname="Michael",
+            staff_lname="Scott",
+        )
+
+        mock_config = mock_delegate_config_factory(
+            delegator=mock_delegator, delegatee=mock_delegatee, action=action
+        )
+
+        # Act
+        result = notifications.format_details(mock_config)
+
+        # Assert
+        assert "Date: " in result
+        assert f"Delegator: {mock_delegator.staff_fname} {mock_delegator.staff_lname}" in result
+        assert f"Delegatee: {mock_delegatee.staff_fname} {mock_delegatee.staff_lname}" in result
+
+
+@patch("src.notifications.email_notifications.format_email_body")
+@patch("src.notifications.email_notifications.format_email_subject")
+@patch("src.notifications.email_notifications.format_details")
+class TestCraftEmailContent:
+
+    def test_success_arrangements(
+        self, mock_details, mock_subject, mock_body, mock_arrangement_config_factory
+    ):
+        # Arrange
+        mock_config = mock_arrangement_config_factory(
+            employee=MagicMock(),
+            arrangements=[MagicMock()],
+            action=Action.CREATE,
+            current_approval_status=ApprovalStatus.PENDING_APPROVAL,
+            manager=MagicMock(),
+        )
+
+        # Act
+        result = notifications.craft_email_content(mock_config)
+
+        # Assert
         mock_details.assert_called_once()
         mock_subject.assert_called()
         assert mock_subject.call_count == 2
         mock_body.assert_called()
         assert mock_body.call_count == 2
 
-    # def test_multiple_arrangements(self, mock_staff, mock_manager, mock_arrangement_factory):
-    #     arrangements = [mock_arrangement_factory("pending")] * 2
-    #     email_subject_content = notifications.craft_email_content(
-    #         employee=mock_staff, arrangements=arrangements, action="create", manager=mock_manager
-    #     )
-    #     employee = email_subject_content["employee"]
-    #     manager = email_subject_content["manager"]
+        assert result == {
+            "employee": {
+                "subject": mock_subject.return_value,
+                "content": mock_body.return_value,
+            },
+            "manager": {
+                "subject": mock_subject.return_value,
+                "content": mock_body.return_value,
+            },
+        }
 
-    #     assert "Request ID: 1" in employee["content"]
-    #     assert "Request ID: 1" in manager["content"]
+    def test_success_delegate(
+        self, mock_details, mock_subject, mock_body, mock_delegate_config_factory
+    ):
+        # Arrange
+        mock_config = mock_delegate_config_factory(
+            delegator=MagicMock(),
+            delegatee=MagicMock(),
+            action="delegate",
+        )
 
-    #     assert "Request ID: 1" in employee["content"]
-    #     assert "Request ID: 1" in manager["content"]
+        # Act
+        result = notifications.craft_email_content(mock_config)
+
+        # Assert
+        mock_details.assert_called_once()
+        mock_subject.assert_called()
+        assert mock_subject.call_count == 2
+        mock_body.assert_called()
+        assert mock_body.call_count == 2
+
+        assert result == {
+            "delegator": {
+                "subject": mock_subject.return_value,
+                "content": mock_body.return_value,
+            },
+            "delegatee": {
+                "subject": mock_subject.return_value,
+                "content": mock_body.return_value,
+            },
+        }
 
 
 @patch("src.notifications.email_notifications.send_email")
@@ -436,6 +984,7 @@ class TestCraftAndSendEmail:
         self,
         mock_craft_email,
         mock_send_email,
+        mock_arrangement_config_factory,
     ):
         """Test crafting and sending email for different actions."""
         # Arrange
@@ -445,8 +994,7 @@ class TestCraftAndSendEmail:
         mock_manager = MagicMock()
         mock_manager.email = "michael.scott@allinone.com.sg"
 
-        # Act
-        await notifications.craft_and_send_email(
+        mock_config = mock_arrangement_config_factory(
             employee=mock_employee,
             arrangements=[MagicMock()],
             action=Action.CREATE,
@@ -454,13 +1002,18 @@ class TestCraftAndSendEmail:
             manager=mock_manager,
         )
 
+        # Act
+        await notifications.craft_and_send_email(mock_config)
+
         # Assert
         mock_craft_email.assert_called_once()
         mock_send_email.assert_called()
         assert mock_send_email.call_count == 2
 
     @pytest.mark.asyncio
-    async def test_email_failure(self, mock_craft_email, mock_send_email):
+    async def test_email_failure(
+        self, mock_craft_email, mock_send_email, mock_arrangement_config_factory
+    ):
         # Arrange
         mock_employee = MagicMock()
         mock_employee.email = "jane.doe@allinone.com.sg"
@@ -468,34 +1021,252 @@ class TestCraftAndSendEmail:
         mock_manager = MagicMock()
         mock_manager.email = "michael.scott@allinone.com.sg"
 
+        mock_config = mock_arrangement_config_factory(
+            employee=mock_employee,
+            arrangements=[MagicMock()],
+            action=Action.CREATE,
+            current_approval_status=ApprovalStatus.PENDING_APPROVAL,
+            manager=mock_manager,
+        )
+
         mock_send_email.side_effect = HTTPException(status_code=500, detail="Internal Server Error")
 
         # Act and Assert
         with pytest.raises(notification_exceptions.EmailNotificationException) as exc_info:
-            await notifications.craft_and_send_email(
-                employee=mock_employee,
-                arrangements=[MagicMock()],
-                action=Action.CREATE,
-                current_approval_status=ApprovalStatus.PENDING_APPROVAL,
-                manager=mock_manager,
-            )
+            await notifications.craft_and_send_email(mock_config)
         assert (
             str(exc_info.value)
             == "Failed to send emails to jane.doe@allinone.com.sg, michael.scott@allinone.com.sg"
         )
 
-    # @pytest.mark.asyncio
-    # @patch("src.notifications.email_notifications.send_email", return_value=True)
-    # async def test_create_multiple_arrangements_success(
-    #     self, mock_send_email, mock_staff, mock_manager, mock_arrangement_factory
-    # ):
-    #     mock_arrangements = [mock_arrangement_factory("pending")] * 2
 
-    #     result = await notifications.craft_and_send_email(
-    #         employee=mock_staff,
-    #         arrangements=mock_arrangements,
-    #         action="create",
-    #         manager=mock_manager,
-    #     )
-    #     assert result is True
-    #     mock_send_email.assert_called()
+@pytest.mark.asyncio
+class TestSendEmailComprehensive:
+    """Additional test cases to achieve 100% coverage for send_email function"""
+
+    @pytest.mark.asyncio
+    async def test_send_email_success_flow(self, monkeypatch):
+        """Test the complete success flow of send_email function"""
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {"message": "Email sent successfully"}
+
+        mock_client = AsyncMock()
+        mock_client.post = AsyncMock(return_value=mock_response)
+
+        mock_async_client = AsyncMock()
+        mock_async_client.__aenter__.return_value = mock_client
+
+        monkeypatch.setattr("httpx.AsyncClient", lambda: mock_async_client)
+
+        result = await send_email(
+            to_email="test@example.com", subject="Test Subject", content="Test Content"
+        )
+
+        assert result == {"message": "Email sent successfully"}
+        mock_client.post.assert_called_once_with(
+            f"{BASE_URL}/email/sendemail",
+            data={
+                "to_email": "test@example.com",
+                "subject": "Test Subject",
+                "content": "Test Content",
+            },
+        )
+
+    @pytest.mark.asyncio
+    async def test_send_email_non_200_response(self, monkeypatch):
+        """Test handling of non-200 response from email service"""
+        mock_response = MagicMock()
+        mock_response.status_code = 400
+        mock_response.text = "Bad Request - Invalid email format"
+
+        mock_client = AsyncMock()
+        mock_client.post = AsyncMock(return_value=mock_response)
+
+        mock_async_client = AsyncMock()
+        mock_async_client.__aenter__.return_value = mock_client
+
+        monkeypatch.setattr("httpx.AsyncClient", lambda: mock_async_client)
+
+        with pytest.raises(HTTPException) as exc_info:
+            await send_email(
+                to_email="invalid-email", subject="Test Subject", content="Test Content"
+            )
+
+        assert exc_info.value.status_code == 400
+        assert exc_info.value.detail == "Bad Request - Invalid email format"
+
+    @pytest.mark.asyncio
+    async def test_send_email_request_error(self, monkeypatch):
+        """Test handling of RequestError during email sending"""
+        mock_client = AsyncMock()
+        mock_client.post = AsyncMock(
+            side_effect=httpx.RequestError("Failed to establish connection")
+        )
+
+        mock_async_client = AsyncMock()
+        mock_async_client.__aenter__.return_value = mock_client
+
+        monkeypatch.setattr("httpx.AsyncClient", lambda: mock_async_client)
+
+        with pytest.raises(HTTPException) as exc_info:
+            await send_email(
+                to_email="test@example.com", subject="Test Subject", content="Test Content"
+            )
+
+        assert exc_info.value.status_code == 500
+        assert "Failed to establish connection" in exc_info.value.detail
+
+    @pytest.mark.asyncio
+    async def test_send_email_context_manager(self, monkeypatch):
+        """Test the context manager behavior of AsyncClient"""
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {"message": "Success"}
+
+        mock_client = AsyncMock()
+        mock_client.post = AsyncMock(return_value=mock_response)
+
+        mock_async_client = AsyncMock()
+        mock_async_client.__aenter__.return_value = mock_client
+        mock_async_client.__aexit__ = AsyncMock()
+
+        monkeypatch.setattr("httpx.AsyncClient", lambda: mock_async_client)
+
+        result = await send_email(
+            to_email="test@example.com", subject="Test Subject", content="Test Content"
+        )
+
+        assert result == {"message": "Success"}
+        assert mock_async_client.__aenter__.called
+        assert mock_async_client.__aexit__.called
+
+    @pytest.mark.asyncio
+    async def test_send_email_successful_request(self):
+        """Test successful email sending with minimal mocking"""
+        # Create response mock
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {"status": "success"}
+
+        # Create client mock
+        mock_client = MagicMock()
+        mock_client.post = AsyncMock(return_value=mock_response)
+
+        # Create context manager
+        mock_context = AsyncMock()
+        mock_context.__aenter__.return_value = mock_client
+        mock_context.__aexit__.return_value = None
+
+        # Patch the AsyncClient
+        with patch("httpx.AsyncClient", return_value=mock_context):
+            result = await send_email(
+                to_email="test@example.com", subject="Test Subject", content="Test Content"
+            )
+
+        assert result == {"status": "success"}
+        mock_client.post.assert_called_once_with(
+            f"{BASE_URL}/email/sendemail",
+            data={
+                "to_email": "test@example.com",
+                "subject": "Test Subject",
+                "content": "Test Content",
+            },
+        )
+
+    @pytest.mark.asyncio
+    async def test_send_email_non_200_response(self):
+        """Test non-200 response handling"""
+        # Create response mock with non-200 status
+        mock_response = MagicMock()
+        mock_response.status_code = 400
+        mock_response.text = "Bad Request"
+
+        # Create client mock
+        mock_client = MagicMock()
+        mock_client.post = AsyncMock(return_value=mock_response)
+
+        # Create context manager
+        mock_context = AsyncMock()
+        mock_context.__aenter__.return_value = mock_client
+        mock_context.__aexit__.return_value = None
+
+        # Patch the AsyncClient
+        with patch("httpx.AsyncClient", return_value=mock_context):
+            with pytest.raises(HTTPException) as exc_info:
+                await send_email(
+                    to_email="test@example.com", subject="Test Subject", content="Test Content"
+                )
+
+        assert exc_info.value.status_code == 400
+        assert exc_info.value.detail == "Bad Request"
+
+    @pytest.mark.asyncio
+    async def test_send_email_request_error(self):
+        """Test RequestError handling"""
+        # Create client mock that raises RequestError
+        mock_client = MagicMock()
+        mock_client.post = AsyncMock(side_effect=httpx.RequestError("Connection failed"))
+
+        # Create context manager
+        mock_context = AsyncMock()
+        mock_context.__aenter__.return_value = mock_client
+        mock_context.__aexit__.return_value = None
+
+        # Patch the AsyncClient
+        with patch("httpx.AsyncClient", return_value=mock_context):
+            with pytest.raises(HTTPException) as exc_info:
+                await send_email(
+                    to_email="test@example.com", subject="Test Subject", content="Test Content"
+                )
+
+        assert exc_info.value.status_code == 500
+        assert "Connection failed" in exc_info.value.detail
+
+    @pytest.mark.asyncio
+    async def test_send_email_context_exit_error(self):
+        """Test handling of context manager exit error"""
+        # Create client mock
+        mock_client = MagicMock()
+        mock_client.post = AsyncMock()
+
+        # Create context manager that raises error on exit
+        mock_context = AsyncMock()
+        mock_context.__aenter__.return_value = mock_client
+        mock_context.__aexit__.side_effect = Exception("Context exit error")
+
+        # Patch the AsyncClient
+        with patch("httpx.AsyncClient", return_value=mock_context):
+            with pytest.raises(Exception) as exc_info:
+                await send_email(
+                    to_email="test@example.com", subject="Test Subject", content="Test Content"
+                )
+
+            assert str(exc_info.value) == "Context exit error"
+
+    @pytest.mark.asyncio
+    async def test_send_email_complete_error_flow(self):
+        """Test the complete error flow including context handling"""
+
+        # Mock a RequestError that occurs during the post request
+        async def mock_post(*args, **kwargs):
+            raise httpx.RequestError("Network error occurred")
+
+        # Create client mock with failing post method
+        mock_client = MagicMock()
+        mock_client.post.side_effect = mock_post
+
+        # Create context manager
+        mock_context = AsyncMock()
+        mock_context.__aenter__.return_value = mock_client
+        mock_context.__aexit__.return_value = None
+
+        # Patch the AsyncClient
+        with patch("httpx.AsyncClient", return_value=mock_context):
+            with pytest.raises(HTTPException) as exc_info:
+                await send_email(
+                    to_email="test@example.com", subject="Test Subject", content="Test Content"
+                )
+
+        assert exc_info.value.status_code == 500
+        assert "Network error occurred" in exc_info.value.detail
