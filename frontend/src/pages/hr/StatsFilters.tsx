@@ -7,11 +7,8 @@ import {
   Select,
   OutlinedInput,
   MenuItem,
-  Checkbox,
-  ListItemText,
   Box,
 } from "@mui/material";
-import { ApprovalStatus } from "../../types/status";
 
 export type TFilters = {
   status: string;
@@ -23,6 +20,9 @@ export type TFilters = {
 };
 
 type PropType = {
+  userInfo: {
+    department?: string;
+  };
   action: (filters: TFilters) => void;
 };
 
@@ -38,9 +38,9 @@ const formatDate = (date: Date) => {
   return `${year}-${monthStr}-${dayStr}`;
 };
 
-export const StatsFilters = ({ action }: PropType) => {
-  const [department, setDepartment] = useState("");
-  const [status, setStatus] = useState("");
+export const StatsFilters = ({ userInfo, action }: PropType) => {
+  const [department, setDepartment] = useState(userInfo.department || "");
+  const [status, setStatus] = useState("approved");
   const [dates, setDates] = useState({
     start: new Date(),
     end: new Date(),
@@ -73,8 +73,8 @@ export const StatsFilters = ({ action }: PropType) => {
   };
 
   const handleClearFilters = () => {
-    setDepartment("");
-    setStatus("");
+    setDepartment(userInfo.department || "");
+    setStatus("approved");
     setDates({
       start: new Date(),
       end: new Date(),
@@ -105,14 +105,11 @@ export const StatsFilters = ({ action }: PropType) => {
             >
               <MenuItem value="Sales">Sales</MenuItem>
               <MenuItem value="Consultancy">Consultancy</MenuItem>
-              <MenuItem value="Systems Solutioning">
-                Systems Solutioning
-              </MenuItem>
-              <MenuItem value="Engineering Operation">
-                Engineering Operation
-              </MenuItem>
-              <MenuItem value="HR and Admin">HR and Admin</MenuItem>
-              <MenuItem value="Finance and IT">Finance and IT</MenuItem>
+              <MenuItem value="Systems Solutioning">Solutioning</MenuItem>
+              <MenuItem value="Engineering">Engineering</MenuItem>
+              <MenuItem value="HR">HR</MenuItem>
+              <MenuItem value="Finance">Finance</MenuItem>
+              <MenuItem value="T">IT</MenuItem>
             </Select>
           </FormControl>
 
@@ -120,9 +117,9 @@ export const StatsFilters = ({ action }: PropType) => {
           <FormControl size="small" sx={{ minWidth: 150 }}>
             <InputLabel>Status</InputLabel>
             <Select
-              value={department}
+              value={status}
               onChange={(e) => setStatus(e.target.value)}
-              input={<OutlinedInput label="Department" />}
+              input={<OutlinedInput label="Status" />}
             >
               <MenuItem value="approved">Approved</MenuItem>
               <MenuItem value="pending">Pending</MenuItem>
@@ -152,7 +149,7 @@ export const StatsFilters = ({ action }: PropType) => {
         </div>
         <div className="flex justify-center">
           <div className="flex flex-col gap-2 p-4">
-            <label className="mx-1 font-leagueSpartan-400">From</label>
+            <label className="mx-1 font-leagueSpartan-400">Start:</label>
             <input
               type="date"
               className="w-[180px] border border-neutral-300 font-leagueSpartan-400 rounded-lg"
@@ -163,7 +160,7 @@ export const StatsFilters = ({ action }: PropType) => {
             />
           </div>
           <div className="flex flex-col gap-2 p-4">
-            <label className="mx-1 font-leagueSpartan-400">To</label>
+            <label className="mx-1 font-leagueSpartan-400">End:</label>
             <input
               type="date"
               className="w-[180px] border border-neutral-300 font-leagueSpartan-400 rounded-lg"

@@ -1,5 +1,5 @@
 import axios from "axios";
-import { useEffect, useState } from "react";
+import { useContext, useEffect, useState } from "react";
 import { TWFHRequest } from "../../types/requests";
 import {
   Box,
@@ -9,6 +9,7 @@ import {
   Typography,
 } from "@mui/material";
 import { StatsFilters, TFilters } from "./StatsFilters";
+import { UserContext } from "../../context/UserContextProvider";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 
@@ -25,6 +26,8 @@ export const Statistics = () => {
     getWFHRequests();
     setIsLoading(false);
   }, []);
+
+  const { user } = useContext(UserContext);
 
   const [isLoading, setIsLoading] = useState(true);
   const [data, setData] = useState<TWFHRequest[]>([]);
@@ -52,6 +55,7 @@ export const Statistics = () => {
   }
 
   console.log(filters);
+  console.log(user);
 
   return (
     <Container>
@@ -61,6 +65,7 @@ export const Statistics = () => {
       <Divider sx={{ mb: 2 }} />
 
       <StatsFilters
+        userInfo={{ department: user?.dept }}
         action={(filterValues) => handleFilterChange(filterValues)}
       />
     </Container>
