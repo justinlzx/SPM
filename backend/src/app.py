@@ -59,7 +59,7 @@ async def lifespan(app: FastAPI):
     scheduler = BackgroundScheduler()
     scheduler.add_job(
         lambda: asyncio.run(auto_reject_old_requests()),
-        CronTrigger(hour=0, minute=0),  # Run at midnight
+        CronTrigger(hour=0, minute=0),  # Run every day at midnight
         id="auto_reject_job",
         replace_existing=True,
         misfire_grace_time=300,  # 5 minutes grace time

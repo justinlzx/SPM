@@ -1,6 +1,6 @@
 from datetime import datetime
 from os import getenv
-from typing import Optional, Union
+from typing import Union
 
 import httpx
 from dotenv import load_dotenv
@@ -42,7 +42,6 @@ async def send_email(to_email: str, subject: str, content: str):
 
 async def craft_and_send_email(
     config: Union[ArrangementNotificationConfig, DelegateNotificationConfig],
-    auto_reject: Optional[bool] = False,
 ):
     logger.info("Crafting and sending email notifications...")
 
@@ -89,7 +88,6 @@ async def craft_and_send_email(
 
 def craft_email_content(
     config: Union[ArrangementNotificationConfig, DelegateNotificationConfig],
-    auto_reject: bool = False,
 ):
     formatted_details = format_details(config)
 
@@ -102,11 +100,11 @@ def craft_email_content(
     result = {
         role_1: {
             "subject": format_email_subject(role_1, config),
-            "content": format_email_body(role_1, formatted_details, config, auto_reject),
+            "content": format_email_body(role_1, formatted_details, config),
         },
         role_2: {
             "subject": format_email_subject(role_2, config),
-            "content": format_email_body(role_2, formatted_details, config, auto_reject),
+            "content": format_email_body(role_2, formatted_details, config),
         },
     }
 
@@ -164,7 +162,6 @@ def format_email_body(
     role: str,
     formatted_details: str,
     config: Union[ArrangementNotificationConfig, DelegateNotificationConfig],
-    auto_reject: bool = False,
 ):
     # Add common header
     body = f"Dear {getattr(config, role).staff_fname} {getattr(config, role).staff_lname},\n\n"
@@ -172,11 +169,16 @@ def format_email_body(
     if isinstance(config, ArrangementNotificationConfig):
         body += (
             "A WFH request has been automatically rejected as it was submitted less than 24 hours before the requested WFH date.\n\n"
-            if auto_reject
+            if config.auto_reject
             else ""
         )
         body += "Please refer to the following details for the above action:\n\n"
         body += formatted_details
+        body += (
+            "Please ensure future WFH requests are submitted at least 24 hours in advance.\n\n"
+            if config.auto_reject and role == "employee"
+            else ""
+        )
     else:
         if role == "delegator" and config.action == "delegate":
             body += "You have delegated your approval responsibilities to "
@@ -229,10 +231,5 @@ def format_email_body(
         body += formatted_details
 
     # Add common footer
-    body += (
-        "Please ensure future WFH requests are submitted at least 24 hours in advance.\n\n"
-        if auto_reject and role == "employee"
-        else ""
-    )
     body += "\n\nThis email is auto-generated. Please do not reply to this email. Thank you."
     return body
