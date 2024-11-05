@@ -360,21 +360,41 @@ class TestFormatEmailSubject:
 
 
 class TestFormatEmailBody:
-    def test_success(self):
-        staff_fname = "Jane"
-        staff_lname = "Doe"
-
+    @pytest.mark.parametrize(
+        "role",
+        ["employee", "manager"],
+    )
+    def test_success(self, role, mock_arrangement_config_factory):
         mock_employee = MagicMock()
         mock_employee.configure_mock(
-            staff_fname=staff_fname,
-            staff_lname=staff_lname,
+            staff_fname="Jane",
+            staff_lname="Doe",
+        )
+
+        mock_manager = MagicMock()
+        mock_manager.configure_mock(
+            staff_fname="Michael",
+            staff_lname="Scott",
         )
 
         mock_formatted_details = ""
+        mock_config = mock_arrangement_config_factory(
+            employee=mock_employee,
+            arrangements=[MagicMock()],
+            action=Action.CREATE,
+            current_approval_status=ApprovalStatus.PENDING_APPROVAL,
+            manager=mock_manager,
+        )
 
-        result = notifications.format_email_body(mock_employee, mock_formatted_details)
+        result = notifications.format_email_body(
+            role, formatted_details=mock_formatted_details, config=mock_config
+        )
 
-        assert f"Dear {staff_fname} {staff_lname}," in result
+        if role == "employee":
+            assert f"Dear {mock_employee.staff_fname} {mock_employee.staff_lname}," in result
+        else:
+            assert f"Dear {mock_manager.staff_fname} {mock_manager.staff_lname}," in result
+
         assert (
             "\n\nThis email is auto-generated. Please do not reply to this email. Thank you."
             in result
