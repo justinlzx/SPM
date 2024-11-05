@@ -211,34 +211,6 @@ async def test_upload_file_s3_failure(mock_boto_client):
         )
 
 
-# def test_fit_schema_to_model_with_field_mapping():
-#     schema = MockSchema(id=1, name="Test")
-#     field_mapping = {"name": "name"}
-#     model = fit_schema_to_model(schema, MockModel, field_mapping)
-
-#     assert model.id == 1
-#     assert model.name == "Test"
-
-
-# def test_fit_model_to_schema_with_field_mapping():
-#     model = {"id": 1, "name": "Test"}
-#     field_mapping = {"name": "name"}
-#     schema = fit_model_to_schema(model, MockSchema, field_mapping)
-
-#     assert schema.id == 1
-#     assert schema.name == "Test"
-
-
-# def test_fit_model_to_model_with_field_mapping():
-#     model_data = MockModel(id=1, name="OldName")
-#     field_mapping = {"name": "name"}
-#     new_model = fit_model_to_model(model_data, MockModel, field_mapping)
-
-
-#     assert new_model.id == 1
-#     assert new_model.name == "OldName"
-
-
 def create_mock_arrangement_response(
     arrangement_id: int = 1,
     update_datetime: datetime = datetime.now(),
@@ -382,3 +354,35 @@ def test_get_tomorrow_date():
 async def test_create_presigned_url_empty_string():
     result = create_presigned_url("")
     assert result is None
+
+
+def test_format_arrangements_response_with_arrangement_list():
+    # Create a mock arrangement with all required fields
+    arrangement = ArrangementResponse(
+        arrangement_id=1,
+        update_datetime=datetime.now(),
+        requester_staff_id=1001,
+        wfh_date=date(2024, 1, 1),
+        wfh_type=WfhType.FULL,
+        current_approval_status=ApprovalStatus.PENDING_APPROVAL,
+        approving_officer=2001,
+        latest_log_id=1,  # Set this to avoid validation error
+        delegate_approving_officer=None,
+        reason_description=None,
+        batch_id=None,
+        supporting_doc_1=None,
+        supporting_doc_2=None,
+        supporting_doc_3=None,
+        status_reason=None,
+        requester_info=None,
+    )
+
+    # Test with a list of ArrangementResponse instead of CreatedArrangementGroupByDate
+    result = format_arrangements_response([arrangement])
+
+    assert isinstance(result, list)
+    assert len(result) == 1
+    assert isinstance(result[0], schemas.ArrangementResponse)
+    assert result[0].arrangement_id == 1
+    assert result[0].requester_staff_id == 1001
+    assert result[0].current_approval_status == ApprovalStatus.PENDING_APPROVAL
