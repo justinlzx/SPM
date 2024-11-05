@@ -96,8 +96,10 @@ def get_personal_arrangements(
         )
         logger.info(f"Route: Found {len(data)} arrangements for staff ID {staff_id}")
 
+        response_data = data
         # Convert to Pydantic model
-        response_data = format_arrangements_response(data)
+        if len(data):
+            response_data = format_arrangements_response(data)
 
         return JSendResponse(
             status="success",
