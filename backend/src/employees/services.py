@@ -7,6 +7,13 @@ from ..notifications.commons.dataclasses import DelegateNotificationConfig
 from ..notifications.email_notifications import craft_and_send_email
 from ..utils import convert_model_to_pydantic_schema
 from . import crud, exceptions, models, schemas
+from .dataclasses import EmployeeFilters
+
+
+def get_employees(db: Session, filters: EmployeeFilters):
+    employees = crud.get_employees(db, filters)
+    employees_pydantic = convert_model_to_pydantic_schema(employees, schemas.EmployeeBase)
+    return employees_pydantic
 
 
 def get_reporting_manager_and_peer_employees(db: Session, staff_id: int):
