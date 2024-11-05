@@ -10,7 +10,6 @@ from src.init_db.load_data import (
 )
 
 from ...auth.utils import hash_password
-from src.tests.test_utils import mock_db_session
 
 # -------------------------------- Employee Data Tests --------------------------------
 

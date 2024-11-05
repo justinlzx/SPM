@@ -188,6 +188,7 @@ class TestGetPersonalArrangements:
         ],
     )
     @patch("src.arrangements.commons.dataclasses.ArrangementResponse.from_dict")
+    @patch("src.arrangements.crud.get_arrangements")
     def test_success(
         self,
         mock_get_arrangements,
@@ -217,6 +218,7 @@ class TestGetSubordinatesArrangements:
     @patch("src.arrangements.services.group_arrangements_by_date")
     @patch("src.arrangements.services.create_presigned_url")
     @patch("src.arrangements.commons.dataclasses.ArrangementResponse.from_dict")
+    @patch("src.arrangements.crud.get_arrangements")
     @patch("src.employees.services.get_subordinates_by_manager_id")
     @pytest.mark.parametrize(
         ("supporting_docs", "group_by_date"),
@@ -311,6 +313,7 @@ class TestGetTeamArrangements:
     )
     @patch("src.arrangements.services.group_arrangements_by_date")
     @patch("src.arrangements.commons.dataclasses.ArrangementResponse.from_dict")
+    @patch("src.arrangements.crud.get_arrangements")
     @patch("src.employees.services.get_subordinates_by_manager_id")
     @patch("src.employees.services.get_peers_by_staff_id")
     def test_success(
