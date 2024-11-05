@@ -8,22 +8,16 @@ import {
   Divider,
   Typography,
 } from "@mui/material";
-import { set } from "react-datepicker/dist/date_utils";
+import { StatsFilters, TFilters } from "./StatsFilters";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
-
-type TFilter = {
-  status: string;
-  department: string;
-  date: string;
-};
 
 export const Statistics = () => {
   useEffect(() => {
     const getWFHRequests = async () => {
       try {
         const response = await axios.get(`${BACKEND_URL}/arrangements`);
-        console.log(response.data);
+        // console.log(response.data);
       } catch (error) {
         console.error(error);
       }
@@ -34,11 +28,18 @@ export const Statistics = () => {
 
   const [isLoading, setIsLoading] = useState(true);
   const [data, setData] = useState<TWFHRequest[]>([]);
-  const [filters, setFilters] = useState<TFilter>({
+  const [filters, setFilters] = useState<TFilters>({
     status: "approved",
     department: "",
-    date: "",
+    dates: {
+      start: new Date(),
+      end: new Date(),
+    },
   });
+
+  const handleFilterChange = (filters: TFilters) => {
+    setFilters(filters);
+  };
 
   if (isLoading) {
     return (
@@ -50,12 +51,18 @@ export const Statistics = () => {
     );
   }
 
+  console.log(filters);
+
   return (
     <Container>
       <Typography variant="h4" gutterBottom align="left" sx={{ marginTop: 4 }}>
         View Organisation Statistics
       </Typography>
       <Divider sx={{ mb: 2 }} />
+
+      <StatsFilters
+        action={(filterValues) => handleFilterChange(filterValues)}
+      />
     </Container>
   );
 };
