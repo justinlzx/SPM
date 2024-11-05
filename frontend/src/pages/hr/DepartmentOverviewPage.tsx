@@ -1,21 +1,11 @@
-import React, { useEffect, useState, useContext } from "react";
+import { useEffect, useContext } from "react";
 import { useNavigate } from "react-router-dom";
-import axios from "axios";
 import { UserContext } from "../../context/UserContextProvider";
+import { Box, Divider, Typography } from "@mui/material";
+import RequestHistory from "./RequestHistory";
+import { Statistics } from "./Statistics";
 
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
-
-type TWFHRequest = {
-  // Define the properties of TWFHRequest based on your requirements
-};
-
-type TFilter = {
-  status: string;
-  department: string;
-  date: string;
-};
-
-const DepartmentOverviewPage = () => {
+export const DepartmentOverviewPage = () => {
   const navigate = useNavigate();
   const { user } = useContext(UserContext);
 
@@ -25,26 +15,20 @@ const DepartmentOverviewPage = () => {
     }
   }, [user, navigate]);
 
-  useEffect(() => {
-    const getWFHRequests = async () => {
-      try {
-        const response = await axios.get(`${BACKEND_URL}/arrangements`);
-        console.log(response.data);
-      } catch (error) {
-        console.error(error);
-      }
-    };
-    getWFHRequests();
-  }, []);
+  return (
+    <Box>
+      <Typography
+        variant="h3"
+        gutterBottom
+        align="center"
+        sx={{ marginTop: 4 }}
+      >
+        Department Overview
+      </Typography>
 
-  const [data, setData] = useState<TWFHRequest[]>([]);
-  const [filters, setFilters] = useState<TFilter>({
-    status: "approved",
-    department: "",
-    date: "",
-  });
+      <Statistics />
 
-  return <div>{/* Your component JSX goes here */}</div>;
+      <RequestHistory />
+    </Box>
+  );
 };
-
-export default DepartmentOverviewPage;
