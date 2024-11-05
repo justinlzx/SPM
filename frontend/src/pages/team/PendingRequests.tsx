@@ -408,6 +408,7 @@ const ArrangementRow = ({
               <Button
                 color="warning" // orange color for "Withdraw"
                 startIcon={<CheckIcon />}
+                data-cy={`withdraw-button-${arrangement.arrangement_id}`}
                 onClick={() => handleRequestAction(Action.Approve, arrangement_id, reason_description, current_approval_status)}
               >
                 Withdraw
@@ -416,6 +417,7 @@ const ArrangementRow = ({
                 color="error"
                 startIcon={<CloseIcon />}
                 onClick={() => handleRejectClick(arrangement_id)}
+                data-cy={`reject-button-${arrangement.arrangement_id}`}
               >
                 Reject
               </Button>

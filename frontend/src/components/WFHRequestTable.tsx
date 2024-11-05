@@ -103,6 +103,7 @@ const ConfirmationModal: React.FC<{
         </Typography>
         {action === "withdraw" && (
           <TextField
+            data-cy='withdrawal-reason'
             label="Reason for withdrawal (Optional)"
             fullWidth
             value={reason}
@@ -110,8 +111,8 @@ const ConfirmationModal: React.FC<{
             margin="normal"
           />
         )}
-        <Box mt={2} display="flex" justifyContent="flex-end" data-cy="no-button">
-          <Button onClick={handleClose} variant="outlined" color="secondary" sx={{ mr: 2 }}>
+        <Box mt={2} display="flex" justifyContent="flex-end">
+          <Button onClick={handleClose} variant="outlined" color="secondary" sx={{ mr: 2 }} data-cy="no-button">
             No
           </Button>
           <Button onClick={handleConfirm} variant="contained" color="primary" disabled={loading} data-cy="yes-button">
@@ -341,6 +342,7 @@ export const WFHRequestTable: React.FC<TWFHRequestTableProps & { refreshData: ()
                           size="small"
                           variant="outlined"
                           color="secondary"
+                          data-cy={`withdraw-button-${request.arrangement_id}`}
                           onClick={() => handleOpen(request.arrangement_id, "withdraw")}
                         >
                           Withdraw
