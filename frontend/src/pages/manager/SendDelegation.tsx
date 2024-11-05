@@ -81,7 +81,7 @@ export const SendDelegation: React.FC = () => {
         } catch (error) {
           console.error('Error fetching peers:', error);
           handleSnackbar(AlertStatus.Error, 'Failed to load peers.');
-        } finally { 
+        } finally {
           setLoading(false);
         }
       }
@@ -127,7 +127,7 @@ export const SendDelegation: React.FC = () => {
         log.delegate_manager_id === parseInt(selectedPeer) &&
         (log.status_of_delegation === DelegationStatus.Pending || log.status_of_delegation === DelegationStatus.Accepted)
     );
-  
+
     if (existingDelegation) {
       // If an existing delegation is found, show an error message and return early
       handleSnackbar(
@@ -136,7 +136,7 @@ export const SendDelegation: React.FC = () => {
       );
       return;
     }
-  
+
     // Proceed with sending delegation if validation passes
     setLoading(true);
     try {
@@ -145,7 +145,7 @@ export const SendDelegation: React.FC = () => {
           delegate_manager_id: selectedPeer,
         },
       });
-  
+
       setDelegationLogs((prevLogs) => [
         ...prevLogs,
         {
@@ -156,7 +156,7 @@ export const SendDelegation: React.FC = () => {
           status_of_delegation: response.data.status_of_delegation,
         },
       ]);
-  
+
       handleSnackbar(AlertStatus.Success, 'Request to delegate peer manager sent');
     } catch (error) {
       console.error('Error delegating peer:', error);
@@ -166,7 +166,7 @@ export const SendDelegation: React.FC = () => {
       setOpenModal(false);
     }
   };
-  
+
 
   const handleCancelDelegation = async (delegateManagerId: number) => {
     setLoading(true);
@@ -209,146 +209,149 @@ export const SendDelegation: React.FC = () => {
 
   return (
     <Container>
-       {loading ? (
+      {loading ? (
         <Box display="flex" justifyContent="center" alignItems="center" minHeight="50vh">
           <LoadingSpinner open={loading} />
         </Box>
       ) : (
         <>
-      <Box 
-        display="flex" 
-        alignItems="center" 
-        justifyContent="space-between" 
-        sx={{ my: 4, gap: 2, p: 2, borderRadius: 1, bgcolor: '#EDEDED' }}
-      >
-      <Box display="flex" alignItems="center" gap={2}>
-        <NotificationsNoneIcon />
-        <Box display="flex" flexDirection="column">
-          <Typography variant="body2" style={{ color: 'black' }}>
-            You can only delegate to one person at a single time.
-          </Typography>
-          <Typography variant="caption" style={{ color: 'grey' }}>
-            To withdraw a delegation, click 'Cancel'.
-          </Typography>
-        </Box>
-      </Box>
-
-      <Tooltip
-        title={
-          hasPendingOrActiveDelegation
-            ? "You have a pending delegation in progress."
-            : ""
-        }
-      >
-        <span> 
-          <Button
-            variant="outlined"
-            color="primary"
-            onClick={handleOpenModal}
-            disabled={hasPendingOrActiveDelegation}
+          <Box
+            display="flex"
+            alignItems="center"
+            justifyContent="space-between"
+            sx={{ my: 4, gap: 2, p: 2, borderRadius: 1, bgcolor: '#EDEDED' }}
           >
-            Delegate a Manager
-          </Button>
-        </span>
-      </Tooltip>
-    </Box>
+            <Box display="flex" alignItems="center" gap={2}>
+              <NotificationsNoneIcon />
+              <Box display="flex" flexDirection="column">
+                <Typography variant="body2" style={{ color: 'black' }}>
+                  You can only delegate to one person at a single time.
+                </Typography>
+                <Typography variant="caption" style={{ color: 'grey' }}>
+                  To withdraw a delegation, click 'Cancel'.
+                </Typography>
+              </Box>
+            </Box>
 
-
-      <Typography variant="h6">Sent Delegations</Typography>
-      <Dialog open={openModal} onClose={handleCloseModal}>
-        <DialogTitle>Delegate a Peer for Manager Responsibilities</DialogTitle>
-        <DialogContent>
-          <FormControl fullWidth sx={{ my: 2 }}>
-            <InputLabel id="select-peer-label">Select Manager</InputLabel>
-            <Select
-              labelId="select-peer-label"
-              label="Select Manager"
-              value={selectedPeer}
-              onChange={handlePeerSelect}
+            <Tooltip
+              title={
+                hasPendingOrActiveDelegation
+                  ? "You have a pending delegation in progress."
+                  : ""
+              }
             >
-              {peers.map((peer) => (
-                <MenuItem key={peer.staff_id} value={peer.staff_id}>
-                  {peer.name}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-        </DialogContent>
-        <DialogActions sx={{ m: 2 }}>
-          <Button onClick={handleCloseModal} color="secondary">Cancel</Button>
-          <Button
-            variant="contained"
-            color="primary"
-            onClick={handleDelegate}
-          >
-            Delegate Manager
-          </Button>
-        </DialogActions>
-      </Dialog>
+              <span>
+                <Button
+                  variant="outlined"
+                  color="primary"
+                  data-cy="Delegate-A-Manager"
+                  onClick={handleOpenModal}
+                  disabled={hasPendingOrActiveDelegation}
+                >
+                  Delegate a Manager
+                </Button>
+              </span>
+            </Tooltip>
+          </Box>
 
-      <SnackBarComponent
-        showSnackbar={snackbar.showSnackbar}
-        handleCloseSnackBar={handleCloseSnackBar}
-        alertStatus={snackbar.alertStatus}
-        snackbarMessage={snackbar.snackbarMessage}
-      />
 
-      {/* Sent Delegations Table */}
-      <TableContainer component={Paper} sx={{ marginTop: 3, textAlign: "center" }}>
-        <Table>
-          <TableHead>
-            <TableRow>
-              <TableCell sx={{ fontWeight: "bold" }}>Delegated Manager ID</TableCell>
-              <TableCell sx={{ fontWeight: "bold" }}>Delegated Manager Name</TableCell>
-              <TableCell sx={{ fontWeight: "bold" }}>Date of Delegation</TableCell>
-              <TableCell sx={{ fontWeight: "bold" }}>Delegation Status</TableCell>
-              <TableCell sx={{ fontWeight: "bold" }}>Actions</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {delegationLogs.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={5} align="center">
-                  No delegation requests found
-                </TableCell>
-              </TableRow>
-            ) : (
-              delegationLogs.map((log) => (
-                <TableRow key={log.delegate_manager_id}>
-                  <TableCell>{log.delegate_manager_id}</TableCell>
-                  <TableCell>{log.delegate_manager_name}</TableCell>
-                  <TableCell>{new Date(log.date_of_delegation).toLocaleDateString()}</TableCell>
-                  <TableCell>
-                    <Chip
-                      label={capitalize(log.status_of_delegation)}
-                      color={
-                        log.status_of_delegation === DelegationStatus.Accepted
-                          ? "success"
-                          : log.status_of_delegation === DelegationStatus.Rejected
-                          ? "error"
-                          : log.status_of_delegation === DelegationStatus.Pending
-                          ? "warning"
-                          : "default"
-                      }
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <Button
-                      variant="outlined"
-                      color="secondary"
-                      onClick={() => handleCancelDelegation(log.delegate_manager_id)}
-                      disabled={log.status_of_delegation !== DelegationStatus.Accepted}
-                    >
-                      Cancel
-                    </Button>
-                  </TableCell>
+          <Typography variant="h6">Sent Delegations</Typography>
+          <Dialog open={openModal} onClose={handleCloseModal}>
+            <DialogTitle>Delegate a Peer for Manager Responsibilities</DialogTitle>
+            <DialogContent>
+              <FormControl fullWidth sx={{ my: 2 }}>
+                <InputLabel id="select-peer-label">Select Manager</InputLabel>
+                <Select
+                  data-cy="select-peer-dropdown"
+                  labelId="select-peer-label"
+                  label="Select Manager"
+                  value={selectedPeer}
+                  onChange={handlePeerSelect}
+                >
+                  {peers.map((peer) => (
+                    <MenuItem key={peer.staff_id} value={peer.staff_id}>
+                      {peer.name}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </DialogContent>
+            <DialogActions sx={{ m: 2 }}>
+              <Button onClick={handleCloseModal} color="secondary">Cancel</Button>
+              <Button
+                variant="contained"
+                color="primary"
+                onClick={handleDelegate}
+                data-cy="delegate-manager-button"
+              >
+                Delegate Manager
+              </Button>
+            </DialogActions>
+          </Dialog>
+
+          <SnackBarComponent
+            showSnackbar={snackbar.showSnackbar}
+            handleCloseSnackBar={handleCloseSnackBar}
+            alertStatus={snackbar.alertStatus}
+            snackbarMessage={snackbar.snackbarMessage}
+          />
+
+          {/* Sent Delegations Table */}
+          <TableContainer component={Paper} sx={{ marginTop: 3, textAlign: "center" }}>
+            <Table>
+              <TableHead>
+                <TableRow>
+                  <TableCell sx={{ fontWeight: "bold" }}>Delegated Manager ID</TableCell>
+                  <TableCell sx={{ fontWeight: "bold" }}>Delegated Manager Name</TableCell>
+                  <TableCell sx={{ fontWeight: "bold" }}>Date of Delegation</TableCell>
+                  <TableCell sx={{ fontWeight: "bold" }}>Delegation Status</TableCell>
+                  <TableCell sx={{ fontWeight: "bold" }}>Actions</TableCell>
                 </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </TableContainer>
-      </>
+              </TableHead>
+              <TableBody>
+                {delegationLogs.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={5} align="center">
+                      No delegation requests found
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  delegationLogs.map((log) => (
+                    <TableRow key={log.delegate_manager_id}>
+                      <TableCell>{log.delegate_manager_id}</TableCell>
+                      <TableCell>{log.delegate_manager_name}</TableCell>
+                      <TableCell>{new Date(log.date_of_delegation).toLocaleDateString()}</TableCell>
+                      <TableCell>
+                        <Chip
+                          label={capitalize(log.status_of_delegation)}
+                          color={
+                            log.status_of_delegation === DelegationStatus.Accepted
+                              ? "success"
+                              : log.status_of_delegation === DelegationStatus.Rejected
+                                ? "error"
+                                : log.status_of_delegation === DelegationStatus.Pending
+                                  ? "warning"
+                                  : "default"
+                          }
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <Button
+                          variant="outlined"
+                          color="secondary"
+                          onClick={() => handleCancelDelegation(log.delegate_manager_id)}
+                          disabled={log.status_of_delegation !== DelegationStatus.Accepted}
+                        >
+                          Cancel
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </>
       )}
     </Container>
   );

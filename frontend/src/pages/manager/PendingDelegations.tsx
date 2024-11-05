@@ -191,6 +191,7 @@ export const PendingDelegations = () => {
                               size="small"
                               color="success"
                               startIcon={<CheckIcon />}
+                              data-cy="accept-delegation"
                               onClick={() => handleDelegationAction("accepted", staff_id)}
                             >
                               Accept
@@ -201,6 +202,7 @@ export const PendingDelegations = () => {
                               size="small"
                               color="error"
                               startIcon={<CloseIcon />}
+                              data-cy="reject-delegation"
                               onClick={() => handleOpenRejectModal(staff_id)}
                             >
                               Reject
