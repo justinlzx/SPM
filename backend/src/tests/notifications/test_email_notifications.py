@@ -1140,3 +1140,133 @@ class TestSendEmailComprehensive:
         assert result == {"message": "Success"}
         assert mock_async_client.__aenter__.called
         assert mock_async_client.__aexit__.called
+
+    @pytest.mark.asyncio
+    async def test_send_email_successful_request(self):
+        """Test successful email sending with minimal mocking"""
+        # Create response mock
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {"status": "success"}
+
+        # Create client mock
+        mock_client = MagicMock()
+        mock_client.post = AsyncMock(return_value=mock_response)
+
+        # Create context manager
+        mock_context = AsyncMock()
+        mock_context.__aenter__.return_value = mock_client
+        mock_context.__aexit__.return_value = None
+
+        # Patch the AsyncClient
+        with patch("httpx.AsyncClient", return_value=mock_context):
+            result = await send_email(
+                to_email="test@example.com", subject="Test Subject", content="Test Content"
+            )
+
+        assert result == {"status": "success"}
+        mock_client.post.assert_called_once_with(
+            f"{BASE_URL}/email/sendemail",
+            data={
+                "to_email": "test@example.com",
+                "subject": "Test Subject",
+                "content": "Test Content",
+            },
+        )
+
+    @pytest.mark.asyncio
+    async def test_send_email_non_200_response(self):
+        """Test non-200 response handling"""
+        # Create response mock with non-200 status
+        mock_response = MagicMock()
+        mock_response.status_code = 400
+        mock_response.text = "Bad Request"
+
+        # Create client mock
+        mock_client = MagicMock()
+        mock_client.post = AsyncMock(return_value=mock_response)
+
+        # Create context manager
+        mock_context = AsyncMock()
+        mock_context.__aenter__.return_value = mock_client
+        mock_context.__aexit__.return_value = None
+
+        # Patch the AsyncClient
+        with patch("httpx.AsyncClient", return_value=mock_context):
+            with pytest.raises(HTTPException) as exc_info:
+                await send_email(
+                    to_email="test@example.com", subject="Test Subject", content="Test Content"
+                )
+
+        assert exc_info.value.status_code == 400
+        assert exc_info.value.detail == "Bad Request"
+
+    @pytest.mark.asyncio
+    async def test_send_email_request_error(self):
+        """Test RequestError handling"""
+        # Create client mock that raises RequestError
+        mock_client = MagicMock()
+        mock_client.post = AsyncMock(side_effect=httpx.RequestError("Connection failed"))
+
+        # Create context manager
+        mock_context = AsyncMock()
+        mock_context.__aenter__.return_value = mock_client
+        mock_context.__aexit__.return_value = None
+
+        # Patch the AsyncClient
+        with patch("httpx.AsyncClient", return_value=mock_context):
+            with pytest.raises(HTTPException) as exc_info:
+                await send_email(
+                    to_email="test@example.com", subject="Test Subject", content="Test Content"
+                )
+
+        assert exc_info.value.status_code == 500
+        assert "Connection failed" in exc_info.value.detail
+
+    @pytest.mark.asyncio
+    async def test_send_email_context_exit_error(self):
+        """Test handling of context manager exit error"""
+        # Create client mock
+        mock_client = MagicMock()
+        mock_client.post = AsyncMock()
+
+        # Create context manager that raises error on exit
+        mock_context = AsyncMock()
+        mock_context.__aenter__.return_value = mock_client
+        mock_context.__aexit__.side_effect = Exception("Context exit error")
+
+        # Patch the AsyncClient
+        with patch("httpx.AsyncClient", return_value=mock_context):
+            with pytest.raises(Exception) as exc_info:
+                await send_email(
+                    to_email="test@example.com", subject="Test Subject", content="Test Content"
+                )
+
+            assert str(exc_info.value) == "Context exit error"
+
+    @pytest.mark.asyncio
+    async def test_send_email_complete_error_flow(self):
+        """Test the complete error flow including context handling"""
+
+        # Mock a RequestError that occurs during the post request
+        async def mock_post(*args, **kwargs):
+            raise httpx.RequestError("Network error occurred")
+
+        # Create client mock with failing post method
+        mock_client = MagicMock()
+        mock_client.post.side_effect = mock_post
+
+        # Create context manager
+        mock_context = AsyncMock()
+        mock_context.__aenter__.return_value = mock_client
+        mock_context.__aexit__.return_value = None
+
+        # Patch the AsyncClient
+        with patch("httpx.AsyncClient", return_value=mock_context):
+            with pytest.raises(HTTPException) as exc_info:
+                await send_email(
+                    to_email="test@example.com", subject="Test Subject", content="Test Content"
+                )
+
+        assert exc_info.value.status_code == 500
+        assert "Network error occurred" in exc_info.value.detail
