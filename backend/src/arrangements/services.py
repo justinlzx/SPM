@@ -16,6 +16,7 @@ from ..employees.exceptions import (
     ManagerWithIDNotFoundException,
 )
 from ..logger import logger
+from ..notifications.commons.dataclasses import ArrangementNotificationConfig
 from ..notifications.email_notifications import craft_and_send_email
 from . import crud
 from .commons import exceptions
@@ -257,14 +258,17 @@ async def create_arrangements_from_request(
         created_arrangements = crud.create_arrangements(db=db, arrangements=arrangements)
         logger.info(f"Service: Created {len(created_arrangements)} arrangements")
 
-        # Send notification emails
-        await craft_and_send_email(
+        # Create config object for email notifications
+        notification_config = ArrangementNotificationConfig(
             employee=employee,
             arrangements=created_arrangements,
             action=Action.CREATE,
             current_approval_status=wfh_request.current_approval_status,
             manager=approving_officer,
         )
+
+        # Send notification emails
+        await craft_and_send_email(notification_config)
 
         return created_arrangements
 
@@ -326,14 +330,17 @@ async def update_arrangement_approval_status(
     employee = employee_crud.get_employee_by_staff_id(db, updated_arrangement.requester_staff_id)
     approving_officer = employee_crud.get_employee_by_staff_id(db, wfh_update.approving_officer)
 
-    # Send email notifications
-    await craft_and_send_email(
+    # Create config object for email notifications
+    notification_config = ArrangementNotificationConfig(
         employee=employee,
         arrangements=[updated_arrangement],
         action=wfh_update.action,
         current_approval_status=updated_arrangement.current_approval_status,
         manager=approving_officer,
     )
+
+    # Send email notifications
+    await craft_and_send_email(notification_config)
 
     return updated_arrangement
 

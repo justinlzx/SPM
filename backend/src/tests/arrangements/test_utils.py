@@ -3,6 +3,7 @@ from io import BytesIO
 from unittest.mock import MagicMock, patch
 
 import pytest
+from botocore.exceptions import ClientError
 from fastapi import HTTPException, UploadFile
 from pydantic import BaseModel
 from sqlalchemy import Column, Integer, String
@@ -185,15 +186,17 @@ async def test_upload_file_s3_failure(mock_boto_client):
 
     # Mock the s3 client and simulate the upload failure
     mock_s3_client = mock_boto_client.return_value
-    mock_s3_client.upload_fileobj.side_effect = Exception("S3 upload failed")
 
-    with pytest.raises(HTTPException) as exc_info:
+    error_response = {
+        "Error": {"Code": "NoSuchBucket", "Message": "The specified bucket does not exist"}
+    }
+    operation_name = "PutObject"
+    mock_s3_client.upload_fileobj.side_effect = ClientError(error_response, operation_name)
+
+    with pytest.raises(ClientError):
         await upload_file(
             staff_id=1, update_datetime="2024-01-01", file_obj=file, s3_client=mock_s3_client
         )
-
-    assert exc_info.value.status_code == 500
-    assert exc_info.value.detail == "S3 upload failed"
 
 
 # def test_fit_schema_to_model_with_field_mapping():

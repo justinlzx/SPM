@@ -9,6 +9,10 @@ from httpx import RequestError
 from src.arrangements.commons.enums import Action, ApprovalStatus, WfhType
 from src.notifications import email_notifications as notifications
 from src.notifications import exceptions as notification_exceptions
+from src.notifications.commons.dataclasses import (
+    ArrangementNotificationConfig,
+    DelegateNotificationConfig,
+)
 
 # Load environment variables
 load_dotenv()
@@ -41,6 +45,34 @@ def mock_arrangement_factory():
         return MockArrangement(current_approval_status=current_approval_status)
 
     return _create_mock_arrangement
+
+
+@pytest.fixture
+def mock_arrangement_config_factory():
+    def _create_mock_arrangement_config(
+        employee, arrangements, action, current_approval_status, manager
+    ):
+        return ArrangementNotificationConfig(
+            employee=employee,
+            arrangements=arrangements,
+            action=action,
+            current_approval_status=current_approval_status,
+            manager=manager,
+        )
+
+    return _create_mock_arrangement_config
+
+
+@pytest.fixture
+def mock_delegate_config_factory():
+    def _create_mock_delegate_config(delegator, delegatee, action):
+        return DelegateNotificationConfig(
+            delegator=delegator,
+            delegatee=delegatee,
+            action=action,
+        )
+
+    return _create_mock_delegate_config
 
 
 @pytest.fixture
@@ -305,41 +337,145 @@ class TestFormatEmailSubject:
             ),
         ],
     )
-    def test_success(
+    def test_success_arrangements(
         self,
         role,
         action,
         current_approval_status,
         expected_subject,
+        mock_arrangement_config_factory,
     ):
-        email_subject_content = notifications.format_email_subject(
-            role=role,
+        # Arrange
+        config = mock_arrangement_config_factory(
+            employee=MagicMock(),
+            arrangements=[MagicMock()],
             action=action,
             current_approval_status=current_approval_status,
+            manager=MagicMock(),
         )
-        assert email_subject_content == expected_subject
+
+        # Act
+        email_subject = notifications.format_email_subject(
+            role=role,
+            config=config,
+        )
+
+        # Assert
+        assert email_subject == expected_subject
+
+    @pytest.mark.parametrize(
+        ("role", "action"),
+        [
+            ("delegator", "delegate"),
+            ("delegator", "undelegated"),
+            ("delegator", "approved"),
+            ("delegator", "rejected"),
+            ("delegator", "withdrawn"),
+            ("delegatee", "delegate"),
+            ("delegatee", "undelegated"),
+            ("delegatee", "approved"),
+            ("delegatee", "rejected"),
+            ("delegatee", "withdrawn"),
+        ],
+    )
+    def test_success_delegation(self, role, action, mock_delegate_config_factory):
+        # Arrange
+        config = mock_delegate_config_factory(
+            delegator=MagicMock(), delegatee=MagicMock(), action=action
+        )
+
+        # Act
+        email_subject = notifications.format_email_subject(role=role, config=config)
+
+        # Assert
+        assert email_subject is not None
 
 
 class TestFormatEmailBody:
-    def test_success(self):
-        staff_fname = "Jane"
-        staff_lname = "Doe"
-
+    @pytest.mark.parametrize(
+        "role",
+        ["employee", "manager"],
+    )
+    def test_success_arrangements(self, role, mock_arrangement_config_factory):
         mock_employee = MagicMock()
         mock_employee.configure_mock(
-            staff_fname=staff_fname,
-            staff_lname=staff_lname,
+            staff_fname="Jane",
+            staff_lname="Doe",
+        )
+
+        mock_manager = MagicMock()
+        mock_manager.configure_mock(
+            staff_fname="Michael",
+            staff_lname="Scott",
         )
 
         mock_formatted_details = ""
+        mock_config = mock_arrangement_config_factory(
+            employee=mock_employee,
+            arrangements=[MagicMock()],
+            action=Action.CREATE,
+            current_approval_status=ApprovalStatus.PENDING_APPROVAL,
+            manager=mock_manager,
+        )
 
-        result = notifications.format_email_body(mock_employee, mock_formatted_details)
+        result = notifications.format_email_body(
+            role, formatted_details=mock_formatted_details, config=mock_config
+        )
 
-        assert f"Dear {staff_fname} {staff_lname}," in result
+        if role == "employee":
+            assert f"Dear {mock_employee.staff_fname} {mock_employee.staff_lname}," in result
+        else:
+            assert f"Dear {mock_manager.staff_fname} {mock_manager.staff_lname}," in result
+
         assert (
             "\n\nThis email is auto-generated. Please do not reply to this email. Thank you."
             in result
         )
+
+    @pytest.mark.parametrize(
+        ("role", "action"),
+        [
+            ("delegator", "delegate"),
+            ("delegator", "undelegated"),
+            ("delegator", "approved"),
+            ("delegator", "rejected"),
+            ("delegator", "withdrawn"),
+            ("delegatee", "delegate"),
+            ("delegatee", "undelegated"),
+            ("delegatee", "approved"),
+            ("delegatee", "rejected"),
+            ("delegatee", "withdrawn"),
+        ],
+    )
+    def test_success_delegate(self, role, action, mock_delegate_config_factory):
+        # Arrange
+        mock_delegator = MagicMock()
+        mock_delegator.configure_mock(
+            staff_fname="Jane",
+            staff_lname="Doe",
+        )
+
+        mock_delegatee = MagicMock()
+        mock_delegatee.configure_mock(
+            staff_fname="Michael",
+            staff_lname="Scott",
+        )
+
+        mock_formatted_details = ""
+        mock_config = mock_delegate_config_factory(
+            delegator=mock_delegator, delegatee=mock_delegatee, action=action
+        )
+
+        # Act
+        result = notifications.format_email_body(
+            role=role, formatted_details=mock_formatted_details, config=mock_config
+        )
+
+        # Assert
+        if role == "delegator":
+            assert f"Dear {mock_delegator.staff_fname} {mock_delegator.staff_lname}," in result
+        else:
+            assert f"Dear {mock_delegatee.staff_fname} {mock_delegatee.staff_lname}," in result
 
 
 class TestFormatDetails:
@@ -347,7 +483,7 @@ class TestFormatDetails:
         "action",
         [Action.CREATE, Action.APPROVE],
     )
-    def test_success(self, action):
+    def test_success_arrangements(self, action, mock_arrangement_config_factory):
         arrangement_id = 1
         wfh_date = "2024-10-07"
         wfh_type = WfhType.FULL
@@ -369,7 +505,15 @@ class TestFormatDetails:
             status_reason=status_reason,
         )
 
-        result = notifications.format_details([mock_arrangement], action)
+        mock_config = mock_arrangement_config_factory(
+            employee=MagicMock(),
+            arrangements=[mock_arrangement],
+            action=action,
+            current_approval_status=current_approval_status,
+            manager=MagicMock(),
+        )
+
+        result = notifications.format_details(mock_config)
 
         assert f"Request ID: {arrangement_id}" in result
         assert f"WFH Date: {wfh_date}" in result
@@ -382,44 +526,111 @@ class TestFormatDetails:
         if action != Action.CREATE:
             assert f"Reason for Status Change: {status_reason}" in result
 
-
-class TestCraftEmailContent:
-    @patch("src.notifications.email_notifications.format_email_body")
-    @patch("src.notifications.email_notifications.format_email_subject")
-    @patch("src.notifications.email_notifications.format_details")
-    def test_success(self, mock_details, mock_subject, mock_body):
-        mock_employee = MagicMock()
-        mock_arrangement = MagicMock()
-        mock_manager = MagicMock()
-        action = Action.CREATE
-
-        notifications.craft_email_content(
-            employee=mock_employee,
-            arrangements=[mock_arrangement],
-            action=action,
-            current_approval_status=ApprovalStatus.PENDING_APPROVAL,
-            manager=mock_manager,
+    @pytest.mark.parametrize(
+        "action",
+        [
+            "delegate",
+            "undelegated",
+            "approved",
+            "rejected",
+            "withdrawn",
+        ],
+    )
+    def test_success_delegate(self, action, mock_delegate_config_factory):
+        # Arrange
+        mock_delegator = MagicMock()
+        mock_delegator.configure_mock(
+            staff_fname="Jane",
+            staff_lname="Doe",
         )
 
+        mock_delegatee = MagicMock()
+        mock_delegatee.configure_mock(
+            staff_fname="Michael",
+            staff_lname="Scott",
+        )
+
+        mock_config = mock_delegate_config_factory(
+            delegator=mock_delegator, delegatee=mock_delegatee, action=action
+        )
+
+        # Act
+        result = notifications.format_details(mock_config)
+
+        # Assert
+        assert "Date: " in result
+        assert f"Delegator: {mock_delegator.staff_fname} {mock_delegator.staff_lname}" in result
+        assert f"Delegatee: {mock_delegatee.staff_fname} {mock_delegatee.staff_lname}" in result
+
+
+@patch("src.notifications.email_notifications.format_email_body")
+@patch("src.notifications.email_notifications.format_email_subject")
+@patch("src.notifications.email_notifications.format_details")
+class TestCraftEmailContent:
+
+    def test_success_arrangements(
+        self, mock_details, mock_subject, mock_body, mock_arrangement_config_factory
+    ):
+        # Arrange
+        mock_config = mock_arrangement_config_factory(
+            employee=MagicMock(),
+            arrangements=[MagicMock()],
+            action=Action.CREATE,
+            current_approval_status=ApprovalStatus.PENDING_APPROVAL,
+            manager=MagicMock(),
+        )
+
+        # Act
+        result = notifications.craft_email_content(mock_config)
+
+        # Assert
         mock_details.assert_called_once()
         mock_subject.assert_called()
         assert mock_subject.call_count == 2
         mock_body.assert_called()
         assert mock_body.call_count == 2
 
-    # def test_multiple_arrangements(self, mock_staff, mock_manager, mock_arrangement_factory):
-    #     arrangements = [mock_arrangement_factory("pending")] * 2
-    #     email_subject_content = notifications.craft_email_content(
-    #         employee=mock_staff, arrangements=arrangements, action="create", manager=mock_manager
-    #     )
-    #     employee = email_subject_content["employee"]
-    #     manager = email_subject_content["manager"]
+        assert result == {
+            "employee": {
+                "subject": mock_subject.return_value,
+                "content": mock_body.return_value,
+            },
+            "manager": {
+                "subject": mock_subject.return_value,
+                "content": mock_body.return_value,
+            },
+        }
 
-    #     assert "Request ID: 1" in employee["content"]
-    #     assert "Request ID: 1" in manager["content"]
+    def test_success_delegate(
+        self, mock_details, mock_subject, mock_body, mock_delegate_config_factory
+    ):
+        # Arrange
+        mock_config = mock_delegate_config_factory(
+            delegator=MagicMock(),
+            delegatee=MagicMock(),
+            action="delegate",
+        )
 
-    #     assert "Request ID: 1" in employee["content"]
-    #     assert "Request ID: 1" in manager["content"]
+        # Act
+        result = notifications.craft_email_content(mock_config)
+
+        # Assert
+        mock_details.assert_called_once()
+        mock_subject.assert_called()
+        assert mock_subject.call_count == 2
+        mock_body.assert_called()
+        assert mock_body.call_count == 2
+
+        assert result == {
+            "delegator": {
+                "subject": mock_subject.return_value,
+                "content": mock_body.return_value,
+            },
+            "delegatee": {
+                "subject": mock_subject.return_value,
+                "content": mock_body.return_value,
+            },
+        }
 
 
 @patch("src.notifications.email_notifications.send_email")
@@ -436,6 +647,7 @@ class TestCraftAndSendEmail:
         self,
         mock_craft_email,
         mock_send_email,
+        mock_arrangement_config_factory,
     ):
         """Test crafting and sending email for different actions."""
         # Arrange
@@ -445,8 +657,7 @@ class TestCraftAndSendEmail:
         mock_manager = MagicMock()
         mock_manager.email = "michael.scott@allinone.com.sg"
 
-        # Act
-        await notifications.craft_and_send_email(
+        mock_config = mock_arrangement_config_factory(
             employee=mock_employee,
             arrangements=[MagicMock()],
             action=Action.CREATE,
@@ -454,13 +665,18 @@ class TestCraftAndSendEmail:
             manager=mock_manager,
         )
 
+        # Act
+        await notifications.craft_and_send_email(mock_config)
+
         # Assert
         mock_craft_email.assert_called_once()
         mock_send_email.assert_called()
         assert mock_send_email.call_count == 2
 
     @pytest.mark.asyncio
-    async def test_email_failure(self, mock_craft_email, mock_send_email):
+    async def test_email_failure(
+        self, mock_craft_email, mock_send_email, mock_arrangement_config_factory
+    ):
         # Arrange
         mock_employee = MagicMock()
         mock_employee.email = "jane.doe@allinone.com.sg"
@@ -468,34 +684,20 @@ class TestCraftAndSendEmail:
         mock_manager = MagicMock()
         mock_manager.email = "michael.scott@allinone.com.sg"
 
+        mock_config = mock_arrangement_config_factory(
+            employee=mock_employee,
+            arrangements=[MagicMock()],
+            action=Action.CREATE,
+            current_approval_status=ApprovalStatus.PENDING_APPROVAL,
+            manager=mock_manager,
+        )
+
         mock_send_email.side_effect = HTTPException(status_code=500, detail="Internal Server Error")
 
         # Act and Assert
         with pytest.raises(notification_exceptions.EmailNotificationException) as exc_info:
-            await notifications.craft_and_send_email(
-                employee=mock_employee,
-                arrangements=[MagicMock()],
-                action=Action.CREATE,
-                current_approval_status=ApprovalStatus.PENDING_APPROVAL,
-                manager=mock_manager,
-            )
+            await notifications.craft_and_send_email(mock_config)
         assert (
             str(exc_info.value)
             == "Failed to send emails to jane.doe@allinone.com.sg, michael.scott@allinone.com.sg"
         )
-
-    # @pytest.mark.asyncio
-    # @patch("src.notifications.email_notifications.send_email", return_value=True)
-    # async def test_create_multiple_arrangements_success(
-    #     self, mock_send_email, mock_staff, mock_manager, mock_arrangement_factory
-    # ):
-    #     mock_arrangements = [mock_arrangement_factory("pending")] * 2
-
-    #     result = await notifications.craft_and_send_email(
-    #         employee=mock_staff,
-    #         arrangements=mock_arrangements,
-    #         action="create",
-    #         manager=mock_manager,
-    #     )
-    #     assert result is True
-    #     mock_send_email.assert_called()
