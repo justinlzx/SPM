@@ -94,7 +94,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       route: "/review-requests",
       name: "review-requests",
       display:
-        user?.role === 3 || (user?.role === 1 && user?.position === "Director"), // role 2 == manager, and role == 1 HR and directors, but only directors should be able to view
+        user?.role === 2 || (user?.role === 1 && user?.position === "Director"), // role 2 == manager, and role == 1 HR and directors, but only directors should be able to view
     },
     {
       text: "Delegation",
@@ -102,7 +102,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       route: "/delegate",
       name: "delegate",
       display:
-        user?.role === 3 || (user?.role === 1 && user?.position === "Director"), // role 2 == manager, and role == 1 HR and directors, but only directors should be able to view
+        user?.role === 2 || (user?.role === 1 && user?.position === "Director"), // role 2 == manager, and role == 1 HR and directors, but only directors should be able to view
     },
     {
       text: "Department Overview",
