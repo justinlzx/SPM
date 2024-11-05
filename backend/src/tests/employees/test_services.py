@@ -234,9 +234,7 @@ async def test_delegate_manager_new_delegation(test_db, seed_data):
     test_db.add_all([employee1, employee2])
     test_db.commit()
 
-    with patch(
-        "src.employees.services.craft_email_content_for_delegation"
-    ) as mock_craft_email, patch("src.employees.services.send_email") as mock_send_email:
+    with patch("src.employees.services.craft_and_send_email") as mock_craft_email:
         mock_craft_email.return_value = ("Subject", "Content")
 
         # Use the new employee IDs
@@ -244,7 +242,7 @@ async def test_delegate_manager_new_delegation(test_db, seed_data):
 
         assert result is not None
         assert isinstance(result, DelegateLog)
-        mock_send_email.assert_called()
+        mock_craft_email.assert_called()
 
 
 @pytest.mark.asyncio
@@ -294,16 +292,14 @@ async def test_process_delegation_status_accept(test_db, seed_data):
     test_db.add(delegate_log)
     test_db.commit()
 
-    with patch(
-        "src.employees.services.craft_email_content_for_delegation"
-    ) as mock_craft_email, patch("src.employees.services.send_email") as mock_send_email:
+    with patch("src.employees.services.craft_and_send_email") as mock_craft_email:
         mock_craft_email.return_value = ("Subject", "Content")
 
         result = await process_delegation_status(2, DelegationApprovalStatus.accept, test_db)
 
         assert isinstance(result, DelegateLog)
         assert result.status_of_delegation == DelegationStatus.accepted
-        mock_send_email.assert_called()
+        mock_craft_email.assert_called()
 
 
 @pytest.mark.asyncio
@@ -317,9 +313,7 @@ async def test_process_delegation_status_reject(test_db, seed_data):
     test_db.add(delegate_log)
     test_db.commit()
 
-    with patch(
-        "src.employees.services.craft_email_content_for_delegation"
-    ) as mock_craft_email, patch("src.employees.services.send_email") as mock_send_email:
+    with patch("src.employees.services.craft_and_send_email") as mock_craft_email:
         mock_craft_email.return_value = ("Subject", "Content")
 
         # Process delegation status for staff_id 2 (the delegate)
@@ -327,7 +321,7 @@ async def test_process_delegation_status_reject(test_db, seed_data):
 
         assert isinstance(result, DelegateLog)
         assert result.status_of_delegation == DelegationStatus.rejected
-        mock_send_email.assert_called()
+        mock_craft_email.assert_called()
 
 
 @pytest.mark.asyncio
@@ -527,15 +521,13 @@ async def test_undelegate_manager_success(test_db):
     test_db.add_all([manager, delegate, delegation])
     test_db.commit()
 
-    with patch("src.employees.services.send_email") as mock_send_email, patch(
-        "src.employees.services.craft_email_content_for_delegation"
-    ) as mock_craft_email:
+    with patch("src.employees.services.craft_and_send_email") as mock_craft_email:
         mock_craft_email.return_value = ("Subject", "Content")
 
         result = await undelegate_manager(40, test_db)
         assert isinstance(result, DelegateLog)
         assert result.status_of_delegation == DelegationStatus.undelegated
-        mock_send_email.assert_called()
+        mock_craft_email.assert_called()
 
 
 @pytest.mark.asyncio
@@ -649,9 +641,7 @@ async def test_process_delegation_status_missing_description(test_db, seed_data)
     test_db.add(delegate_log)
     test_db.commit()
 
-    with patch(
-        "src.employees.services.craft_email_content_for_delegation"
-    ) as mock_craft_email, patch("src.employees.services.send_email") as mock_send_email:
+    with patch("src.employees.services.craft_and_send_email") as mock_craft_email:
         mock_craft_email.return_value = ("Subject", "Content")
 
         result = await process_delegation_status(
@@ -660,7 +650,7 @@ async def test_process_delegation_status_missing_description(test_db, seed_data)
 
         assert isinstance(result, DelegateLog)
         assert result.status_of_delegation == DelegationStatus.rejected
-        mock_send_email.assert_called()
+        mock_craft_email.assert_called()
 
 
 def test_view_delegations_with_no_employee_info(test_db):
