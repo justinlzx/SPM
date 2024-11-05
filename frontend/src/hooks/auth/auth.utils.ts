@@ -49,13 +49,11 @@ export const login = async (credentials: {
       }
     );
 
-    console.log(response.data.data)
-
     const { access_token: accessToken, employee_info: {
       staff_id: id,
       role,
       position,
-      dept
+      department: dept
     } } = response.data.data;
 
     localStorage.setItem(AUTH_LOCAL_STORAGE_KEYS.JWT, accessToken);
@@ -82,5 +80,7 @@ export const logout = () => {
   localStorage.removeItem(AUTH_LOCAL_STORAGE_KEYS.JWT);
   localStorage.removeItem(AUTH_LOCAL_STORAGE_KEYS.EMAIL);
   localStorage.removeItem(AUTH_LOCAL_STORAGE_KEYS.ROLE)
+  localStorage.removeItem(AUTH_LOCAL_STORAGE_KEYS.ID)
+  localStorage.removeItem(AUTH_LOCAL_STORAGE_KEYS.POSITION)
   delete axios.defaults.headers.common.Authorization;
 };
