@@ -1,18 +1,18 @@
 from datetime import datetime
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
+
 from fastapi.testclient import TestClient
+from src.app import app
 from src.employees.exceptions import EmployeeNotFoundException, ManagerNotFoundException
 from src.employees.models import DelegationStatus
-from src.app import app
 from src.employees.schemas import DelegateLogCreate
 from src.employees.services import DelegationApprovalStatus
-
 
 client = TestClient(app)
 
 
 def create_mock_employee():
-    """Helper function to create a mock employee with all required fields"""
+    """Helper function to create a mock employee with all required fields."""
     return {
         "staff_id": 12345,
         "staff_fname": "John",
@@ -77,14 +77,14 @@ class TestGetReportingManagerAndPeerEmployees:
     def test_employee_not_found(self, mock_get_manager):
         # Arrange
         staff_id = 12345
-        mock_get_manager.side_effect = EmployeeNotFoundException()
+        mock_get_manager.side_effect = EmployeeNotFoundException(staff_id)
 
         # Act
         response = client.get(f"/employees/manager/peermanager/{staff_id}")
 
         # Assert
         assert response.status_code == 404
-        assert response.json()["detail"] == "Employee not found"
+        assert response.json()["detail"] == f"Employee with ID {staff_id} not found"
 
     @patch("src.employees.services.get_manager_by_subordinate_id")
     def test_manager_not_found(self, mock_get_manager):
@@ -119,14 +119,14 @@ class TestGetEmployeeByStaffId:
     def test_employee_not_found(self, mock_get_employee):
         # Arrange
         staff_id = 12345
-        mock_get_employee.side_effect = EmployeeNotFoundException()
+        mock_get_employee.side_effect = EmployeeNotFoundException(staff_id)
 
         # Act
         response = client.get(f"/employees/{staff_id}")
 
         # Assert
         assert response.status_code == 404
-        assert response.json()["detail"] == "Employee not found"
+        assert response.json()["detail"] == f"Employee with ID {staff_id} not found"
 
 
 class TestGetEmployeeByEmail:
@@ -148,14 +148,15 @@ class TestGetEmployeeByEmail:
     def test_employee_not_found(self, mock_get_employee):
         # Arrange
         email = "john@example.com"
-        mock_get_employee.side_effect = EmployeeNotFoundException()
+        staff_id = None
+        mock_get_employee.side_effect = EmployeeNotFoundException(staff_id)
 
         # Act
         response = client.get(f"/employees/email/{email}")
 
         # Assert
         assert response.status_code == 404
-        assert response.json()["detail"] == "Employee not found"
+        assert response.json()["detail"] == f"Employee with ID {staff_id} not found"
 
 
 class TestGetSubordinatesByManagerId:
@@ -271,7 +272,7 @@ class TestUpdateDelegationStatusRoute:
     async def test_update_delegation_status_reject_without_comment(self, mock_process_status):
         # Act
         response = client.put(
-            f"/employees/manager/delegate/1/status",
+            "/employees/manager/delegate/1/status",
             params={"status": DelegationApprovalStatus.reject.value},
         )
 

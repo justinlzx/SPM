@@ -372,3 +372,13 @@ class TestArrangementLogResponse:
                 ),
                 approving_officer=2 if field != "approving_officer" else None,
             )  # type: ignore
+
+    def test_model_dump(self, arrangement_log_response):
+        response = arrangement_log_response
+        json_data = response.model_dump()
+        assert json_data["wfh_date"].isoformat() == "2024-10-12"
+        assert json_data["update_datetime"].isoformat() == "2024-09-10T00:00:00"
+        assert json_data["action"].value == "approve"
+        assert json_data["previous_approval_status"].value == "pending approval"
+        assert json_data["updated_approval_status"].value == "approved"
+        assert json_data["wfh_type"].value == "full"
