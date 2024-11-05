@@ -18,27 +18,38 @@ import Toolbar from "@mui/material/Toolbar";
 import SpaceDashboardIcon from "@mui/icons-material/SpaceDashboard";
 import TeamIcon from "@mui/icons-material/Group";
 import WfhScheduleIcon from "@mui/icons-material/CalendarMonth";
-import AssignmentIndIcon from '@mui/icons-material/AssignmentInd';
+import AssignmentIndIcon from "@mui/icons-material/AssignmentInd";
+import BusinessIcon from "@mui/icons-material/Business";
 
 import axios from "axios";
 
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL
+const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 
 const drawerWidth = 240;
 
-const defaultSideBarItems = [
-  { text: "Home", icon: <SpaceDashboardIcon />, route: "/home" },
-  { text: "My Team", icon: <TeamIcon />, route: "/team" },
-  { text: "My WFH Schedule", icon: <WfhScheduleIcon />, route: "/wfh-schedule" },
-  { text: "Create Request", icon: <PostAddIcon />, route: "/create-request" },
-];
+const SidebarNames = {
+  HOME: "home",
+  TEAM: "team",
+  WFH_SCHEDULE: "wfh-schedule",
+  CREATE_REQUEST: "create-request",
+  REVIEW_REQUESTS: "review-requests",
+  DELEGATE: "delegate",
+  DEPARTMENT_OVERVIEW: "department-overview",
+};
+
+type TSidebarItem = {
+  text: string;
+  icon: React.ReactNode;
+  route: string;
+  name: string;
+  display?: boolean;
+};
 
 interface SidebarProps {
   mobileOpen: boolean;
   handleDrawerToggle: () => void;
   container?: Element | (() => Element | null) | null;
 }
-
 
 export const Sidebar: React.FC<SidebarProps> = ({
   mobileOpen,
@@ -47,74 +58,104 @@ export const Sidebar: React.FC<SidebarProps> = ({
 }) => {
   const { user } = useContext(UserContext);
   const navigate = useNavigate();
-  const location = useLocation(); // Use the useLocation hook to get the current route
 
-  interface SidebarItem {
-    text: string;
-    icon: React.ReactNode;
-    route: string;
-  }
-
-  type SidebarItems = SidebarItem[];
-
-  const [basicSideBar, setBasicSideBar] = useState<SidebarItems>(defaultSideBarItems);
-
-  useEffect(() => {
-    const fetchSubordinateData = async () => {
-      try {
-        const response = await axios.get(`${BACKEND_URL}/arrangements/subordinates/${user?.id}`);
-
-        if (user?.role === 2 || (user?.role === 1 && user?.position === "Director")) {
-          setBasicSideBar((prevSidebar: SidebarItem[]) => [
-            ...prevSidebar,
-            { text: "Review Team Requests", icon: <InboxIcon />, route: "/review-requests" },
-            { text: "Delegation", icon: <AssignmentIndIcon />, route: "/delegate" },
-          ]);
-        }
-        
-      } catch (error) {
-        const err = error as { response?: { data: string } };
-        if (err.response?.data !== "manager ID not found") {
-        }
-      }
-    };
-
-    fetchSubordinateData();
-  }, [user]);
+  const sideBarItems: TSidebarItem[] = [
+    {
+      text: "Home",
+      icon: <SpaceDashboardIcon />,
+      route: "/home",
+      name: "home",
+      display: true,
+    },
+    {
+      text: "My Team",
+      icon: <TeamIcon />,
+      route: "/team",
+      name: "team",
+      display: true,
+    },
+    {
+      text: "My WFH Schedule",
+      icon: <WfhScheduleIcon />,
+      route: "/wfh-schedule",
+      name: "wfh-schedule",
+      display: true,
+    },
+    {
+      text: "Create Request",
+      icon: <PostAddIcon />,
+      route: "/create-request",
+      name: "create-request",
+      display: true,
+    },
+    {
+      text: "Review Team Requests",
+      icon: <InboxIcon />,
+      route: "/review-requests",
+      name: "review-requests",
+      display:
+        user?.role === 2 || (user?.role === 1 && user?.position === "Director"), // role 2 == manager, and role == 1 HR and directors, but only directors should be able to view
+    },
+    {
+      text: "Delegation",
+      icon: <AssignmentIndIcon />,
+      route: "/delegate",
+      name: "delegate",
+      display:
+        user?.role === 2 || (user?.role === 1 && user?.position === "Director"), // role 2 == manager, and role == 1 HR and directors, but only directors should be able to view
+    },
+    {
+      text: "Department Overview",
+      icon: <BusinessIcon />,
+      route: "/department-overview",
+      name: "department-overview",
+      display: user?.role === 1,
+    },
+  ];
 
   const handleButtonClick = (route: string) => {
     navigate(route);
   };
 
+  const [currentTab, setCurrentTab] = useState<string>(SidebarNames.HOME);
+
   const drawer = (
     <Box sx={{ bgcolor: "#f5f5f5", height: "100%" }}>
       <Toolbar />
       <List>
-        {basicSideBar.map((item, index) => (
-          <ListItem key={index} disablePadding>
-            <ListItemButton
-              sx={{
-                textAlign: "left",
-                backgroundColor: location.pathname === item.route ? "navy" : "#f5f5f5",
-                color: location.pathname === item.route ? "white" : "inherit",
-                "&:hover": {
-                  backgroundColor: location.pathname === item.route ? "navy" : "#e0e0e0",
-                },
-              }}
-              data-cy={item.text.toLowerCase().replace(/\s+/g, "-")}
-              onClick={() => handleButtonClick(item.route)}
-            >
-              <ListItemIcon
-                sx={{
-                  color: location.pathname === item.route ? "white" : "inherit",
-                }}
-              >
-                {item.icon}
-              </ListItemIcon>
-              <ListItemText primary={item.text} />
-            </ListItemButton>
-          </ListItem>
-        ))}
+        {sideBarItems.map(
+          (item, index) =>
+            item.display && (
+              <ListItem key={index} disablePadding>
+                <ListItemButton
+                  sx={{
+                    textAlign: "left",
+                    backgroundColor:
+                      currentTab === item.name ? "navy" : "#f5f5f5",
+                    color: currentTab === item.name ? "white" : "inherit",
+                    "&:hover": {
+                      backgroundColor:
+                        currentTab === item.name ? "navy" : "#e0e0e0",
+                    },
+                  }}
+                  data-cy={item.text.toLowerCase().replace(/\s+/g, "-")}
+                  onClick={() => {
+                    handleButtonClick(item.route);
+                    setCurrentTab(item.name);
+                  }}
+                >
+                  <ListItemIcon
+                    sx={{
+                      color: currentTab === item.name ? "white" : "inherit",
+                    }}
+                  >
+                    {item.icon}
+                  </ListItemIcon>
+                  <ListItemText primary={item.text} />
+                </ListItemButton>
+              </ListItem>
+            )
+        )}
       </List>
       <Divider />
     </Box>
