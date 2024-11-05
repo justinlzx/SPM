@@ -9,6 +9,10 @@ from httpx import RequestError
 from src.arrangements.commons.enums import Action, ApprovalStatus, WfhType
 from src.notifications import email_notifications as notifications
 from src.notifications import exceptions as notification_exceptions
+from src.notifications.commons.dataclasses import (
+    ArrangementNotificationConfig,
+    DelegateNotificationConfig,
+)
 
 # Load environment variables
 load_dotenv()
@@ -41,6 +45,34 @@ def mock_arrangement_factory():
         return MockArrangement(current_approval_status=current_approval_status)
 
     return _create_mock_arrangement
+
+
+@pytest.fixture
+def mock_arrangement_config_factory():
+    def _create_mock_arrangement_config(
+        employee, arrangements, action, current_approval_status, manager
+    ):
+        return ArrangementNotificationConfig(
+            employee=employee,
+            arrangements=arrangements,
+            action=action,
+            current_approval_status=current_approval_status,
+            manager=manager,
+        )
+
+    return _create_mock_arrangement_config
+
+
+@pytest.fixture
+def mock_delegate_config_factory():
+    def _create_mock_delegate_config(delegator, delegatee, action):
+        return DelegateNotificationConfig(
+            delegator=delegator,
+            delegatee=delegatee,
+            action=action,
+        )
+
+    return _create_mock_delegate_config
 
 
 @pytest.fixture
@@ -311,13 +343,20 @@ class TestFormatEmailSubject:
         action,
         current_approval_status,
         expected_subject,
+        mock_arrangement_config_factory,
     ):
-        email_subject_content = notifications.format_email_subject(
-            role=role,
+        config = mock_arrangement_config_factory(
+            employee=MagicMock(),
+            arrangements=[MagicMock()],
             action=action,
             current_approval_status=current_approval_status,
+            manager=MagicMock(),
         )
-        assert email_subject_content == expected_subject
+        email_subject = notifications.format_email_subject(
+            role=role,
+            config=config,
+        )
+        assert email_subject == expected_subject
 
 
 class TestFormatEmailBody:
@@ -483,19 +522,3 @@ class TestCraftAndSendEmail:
             str(exc_info.value)
             == "Failed to send emails to jane.doe@allinone.com.sg, michael.scott@allinone.com.sg"
         )
-
-    # @pytest.mark.asyncio
-    # @patch("src.notifications.email_notifications.send_email", return_value=True)
-    # async def test_create_multiple_arrangements_success(
-    #     self, mock_send_email, mock_staff, mock_manager, mock_arrangement_factory
-    # ):
-    #     mock_arrangements = [mock_arrangement_factory("pending")] * 2
-
-    #     result = await notifications.craft_and_send_email(
-    #         employee=mock_staff,
-    #         arrangements=mock_arrangements,
-    #         action="create",
-    #         manager=mock_manager,
-    #     )
-    #     assert result is True
-    #     mock_send_email.assert_called()
