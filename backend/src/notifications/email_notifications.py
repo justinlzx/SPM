@@ -1,6 +1,3 @@
-# import smtplib
-# from email.mime.multipart import MIMEMultipart
-# from email.mime.text import MIMEText
 from datetime import datetime
 from os import getenv
 from typing import Union
