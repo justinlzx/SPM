@@ -36,6 +36,7 @@ import {
 import { UserContext } from "../../context/UserContextProvider";
 import { SnackBarComponent, AlertStatus } from "../../common/SnackBar";
 import { LoadingSpinner } from "../../common/LoadingSpinner";
+import { DelegationStatus } from "../../types/delegation";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 
@@ -51,6 +52,7 @@ type TWFHRequest = {
   supporting_doc_1?: string | null;
   supporting_doc_2?: string | null;
   supporting_doc_3?: string | null;
+  delegate_approving_officer?: number;
 };
 
 export const PendingRequests = () => {
@@ -67,31 +69,48 @@ export const PendingRequests = () => {
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState({});
 
-  // Rejection modal state
   const [rejectModalOpen, setRejectModalOpen] = useState(false);
   const [selectedArrangementId, setSelectedArrangementId] = useState<number | null>(null);
   const [rejectionReason, setRejectionReason] = useState("");
 
-  // Document dialog state
   const [documentDialogOpen, setDocumentDialogOpen] = useState(false);
   const [documents, setDocuments] = useState<string[]>([]);
 
   const fetchPendingRequests = async () => {
     if (!user || !userId) return;
     setLoading(true);
+  
     try {
-      const response = await axios.get(
-        `${BACKEND_URL}/arrangements/subordinates/${userId}`,
-        { params: { current_approval_status: ["pending approval", "pending withdrawal"] } }
+      // Fetch pending requests for the current manager
+      const response = await axios.get(`${BACKEND_URL}/arrangements/subordinates/${userId}`, {
+        params: { current_approval_status: ["pending approval", "pending withdrawal"] },
+      });
+      console.log(response.data.data)
+      // Determine if the current user is acting as a delegate manager
+      const isDelegateManager = response.data.data.some(
+        (entry: { pending_arrangements: TWFHRequest[] }) => entry.pending_arrangements.some(
+          (request: TWFHRequest) => request.delegate_approving_officer === userId
+        )
       );
-
-      const requests = response.data.data
-        .flatMap((dateEntry: any) => dateEntry.pending_arrangements)
-        .filter((request: TWFHRequest) =>
-          [ApprovalStatus.PendingApproval, ApprovalStatus.PendingWithdrawal].includes(request.current_approval_status)
-        );
-        console.log(requests);
-
+      console.log(isDelegateManager)
+  
+      // Filter the requests based on `delegate_approving_officer` and `current_approval_status`
+      const requests = response.data.data.flatMap((dateEntry: { pending_arrangements: TWFHRequest[] }) => dateEntry.pending_arrangements)
+        .filter((request: TWFHRequest) => {
+          const isPendingStatus =
+            request.current_approval_status === ApprovalStatus.PendingApproval ||
+            request.current_approval_status === ApprovalStatus.PendingWithdrawal;
+  
+          // If the current user is the delegate manager, display requests assigned to them only
+          if (isDelegateManager) {
+            return isPendingStatus && request.delegate_approving_officer === userId;
+          } else {
+            // If not a delegate manager, display requests for which the user is the approving officer
+            return isPendingStatus && request.approving_officer === userId && !request.delegate_approving_officer;
+          }
+        });
+  
+      // Fetch and attach requester names to each request
       const requestsWithNames = await Promise.all(
         requests.map(async (request: TWFHRequest) => {
           const employee = await fetchEmployeeByStaffId(request.requester_staff_id);
@@ -101,7 +120,7 @@ export const PendingRequests = () => {
           };
         })
       );
-
+  
       setActionRequests(requestsWithNames);
       setFilteredRequests(requestsWithNames);
     } catch (error) {
@@ -113,7 +132,7 @@ export const PendingRequests = () => {
       setLoading(false);
     }
   };
-
+  
   // Initialize data on component mount
   useEffect(() => {
     fetchPendingRequests();

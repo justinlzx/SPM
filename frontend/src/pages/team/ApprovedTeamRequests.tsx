@@ -29,6 +29,7 @@ import { UserContext } from "../../context/UserContextProvider";
 import CloseIcon from "@mui/icons-material/Close";
 import { fetchEmployeeByStaffId } from "../../hooks/employee/employee.utils";
 import { capitalize } from "../../utils/utils";
+import { DelegationStatus } from "../../types/delegation";
 import Filters from "../../common/Filters"; // Import the Filters component
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
@@ -79,19 +80,35 @@ export const ApprovedRequests = () => {
   useEffect(() => {
     const fetchApprovedRequestsFromSubordinates = async () => {
       if (!user || !userId) return;
+  
       try {
+        // Step 1: Fetch the delegation status to determine the manager to fetch data for
+        const delegationResponse = await axios.get(`${BACKEND_URL}/employees/manager/viewdelegations/${userId}`);
+        const delegationStatus = delegationResponse.data.status_of_delegation;
+        const delegateManagerId = delegationResponse.data.delegate_manager_id;
+  
+        // Step 2: Determine the manager ID to fetch requests for
+        const managerIdToFetch = 
+          delegationStatus === DelegationStatus.Accepted && delegateManagerId 
+          ? delegateManagerId 
+          : userId;
+  
+        // Step 3: Fetch approved requests for the determined manager ID
         const response = await axios.get(
-          `${BACKEND_URL}/arrangements/subordinates/${userId}`,
+          `${BACKEND_URL}/arrangements/subordinates/${managerIdToFetch}`,
           {
             params: {
               current_approval_status: "approved",
             },
           }
         );
+  
+        // Step 4: Process and filter the fetched requests
         const approvedData: TWFHRequest[] = response.data.data
           .flatMap((entry: any) => entry.pending_arrangements)
-          .filter((arrangement: TWFHRequest) => arrangement.current_approval_status === "approved");
+          .filter((arrangement: TWFHRequest) => arrangement.current_approval_status === ApprovalStatus.Approved);
         
+        // Step 5: Attach requester names to each request
         const requestsWithNames = await Promise.all(
           approvedData.map(async (request) => {
             const employee = await fetchEmployeeByStaffId(request.requester_staff_id);
@@ -101,15 +118,17 @@ export const ApprovedRequests = () => {
             };
           })
         );
-
+  
         setApprovedRequests(requestsWithNames);
         setFilteredRequests(requestsWithNames); // Initialize filtered requests
       } catch (error) {
         console.error("Failed to fetch approved requests:", error);
       }
     };
+  
     fetchApprovedRequestsFromSubordinates();
   }, [user, userId]);
+  
 
   // Handle filter application
   const onApplyFilters = (filters: {

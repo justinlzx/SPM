@@ -1,4 +1,3 @@
-// types.ts
 export enum DelegationStatus {
     Accepted = "accepted",
     Pending = "pending",
