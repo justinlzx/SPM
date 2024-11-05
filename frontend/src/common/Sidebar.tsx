@@ -1,4 +1,3 @@
-// src/common/Sidebar.tsx
 import * as React from "react";
 import { useContext, useEffect, useState } from "react";
 import { UserContext } from "../context/UserContextProvider";
@@ -22,11 +21,17 @@ import AssignmentIndIcon from '@mui/icons-material/AssignmentInd';
 
 import axios from "axios";
 
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL
+const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 
 const drawerWidth = 240;
 
-const defaultSideBarItems = [
+interface SidebarItem {
+  text: string;
+  icon: React.ReactNode;
+  route: string;
+}
+
+const defaultSideBarItems: SidebarItem[] = [
   { text: "Home", icon: <SpaceDashboardIcon />, route: "/home" },
   { text: "My Team", icon: <TeamIcon />, route: "/team" },
   { text: "My WFH Schedule", icon: <WfhScheduleIcon />, route: "/wfh-schedule" },
@@ -39,7 +44,6 @@ interface SidebarProps {
   container?: Element | (() => Element | null) | null;
 }
 
-
 export const Sidebar: React.FC<SidebarProps> = ({
   mobileOpen,
   handleDrawerToggle,
@@ -47,34 +51,69 @@ export const Sidebar: React.FC<SidebarProps> = ({
 }) => {
   const { user } = useContext(UserContext);
   const navigate = useNavigate();
-  const location = useLocation(); // Use the useLocation hook to get the current route
-
-  interface SidebarItem {
-    text: string;
-    icon: React.ReactNode;
-    route: string;
-  }
-
-  type SidebarItems = SidebarItem[];
-
-  const [basicSideBar, setBasicSideBar] = useState<SidebarItems>(defaultSideBarItems);
+  const location = useLocation();
+  const [basicSideBar, setBasicSideBar] = useState<SidebarItem[]>(defaultSideBarItems);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchSubordinateData = async () => {
-      try {
-        const response = await axios.get(`${BACKEND_URL}/arrangements/subordinates/${user?.id}`);
+      if (!user?.id) {
+        setIsLoading(false);
+        return;
+      }
 
+      setIsLoading(true);
+      setError(null);
+
+      let updatedSidebar = [...defaultSideBarItems];
+
+      try {
+        // First check if user is manager or director
         if (user?.role === 2 || (user?.role === 1 && user?.position === "Director")) {
-          setBasicSideBar((prevSidebar: SidebarItem[]) => [
-            ...prevSidebar,
-            { text: "Review Team Requests", icon: <InboxIcon />, route: "/review-requests" },
-            { text: "Delegation", icon: <AssignmentIndIcon />, route: "/delegate" },
-          ]);
+          const subordinatesResponse = await axios.get(
+            `${BACKEND_URL}/arrangements/subordinates/${user.id}`
+          );
+
+          if (subordinatesResponse.data) {
+            updatedSidebar.push(
+              { text: "Review Team Requests", icon: <InboxIcon />, route: "/review-requests" },
+              { text: "Delegation", icon: <AssignmentIndIcon />, route: "/delegate" },
+            );
+          }
         }
+
+        // Fetch employee department data
+        const employeeResponse = await axios.get(`${BACKEND_URL}/employees/${user.id}`);
+
+        if (employeeResponse.data && employeeResponse.data.dept === "HR") {
+          // Check if "Department Overview" already exists
+          const departmentOverviewExists = updatedSidebar.some(item => item.text === "Department Overview");
+
+          // To avoid Multiple instances of department overview
+          if (!departmentOverviewExists) {
+            updatedSidebar.push({
+              text: "Department Overview",
+              icon: <SpaceDashboardIcon />,
+              route: "/department-overview"
+            });
+          }
+        }
+
+        // Update the sidebar state only once
+        setBasicSideBar(updatedSidebar);
+
       } catch (error) {
-        const err = error as { response?: { data: string } };
-        if (err.response?.data !== "manager ID not found") {
+        console.error("Error fetching data:", error);
+        const err = error as { response?: { data?: string; status?: number } };
+
+        if (err.response?.status === 404) {
+          setError("Employee data not found");
+        } else if (err.response?.data !== "manager ID not found") {
+          setError("Error loading sidebar data");
         }
+      } finally {
+        setIsLoading(false);
       }
     };
 
@@ -84,6 +123,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const handleButtonClick = (route: string) => {
     navigate(route);
   };
+
+  if (isLoading) {
+    return <Box sx={{ p: 2 }}>Loading...</Box>;
+  }
+
+  if (error) {
+    console.error("Sidebar Error:", error);
+  }
 
   const drawer = (
     <Box sx={{ bgcolor: "#f5f5f5", height: "100%" }}>

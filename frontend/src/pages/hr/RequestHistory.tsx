@@ -82,7 +82,7 @@ export const RequestHistoryPage: React.FC = () => {
     const fetchLogs = async () => {
         try {
             const response = await axios.get(`${BACKEND_URL}/arrangements/logs/all`);
-            const fetchedLogs = response.data.data; // Adjust the path as necessary
+            const fetchedLogs = response.data.data;
             setLogs(fetchedLogs);
         } catch (error) {
             console.error("Error fetching arrangement logs:", error);
