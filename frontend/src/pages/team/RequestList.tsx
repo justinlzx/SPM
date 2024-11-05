@@ -196,7 +196,7 @@ export const RequestList = () => {
                     <TableCell>{arrangement.arrangement_id}</TableCell>
                     <TableCell>{arrangement.approving_officer || "N/A"}</TableCell>
                     <TableCell>{arrangement.wfh_type?.toUpperCase() || "N/A"}</TableCell>
-                    <TableCell>{arrangement.wfh_date || "N/A"}</TableCell>
+                    <TableCell style={{ whiteSpace: 'nowrap', width: '10%' }}>{arrangement.wfh_date || "N/A"}</TableCell>
                     <TableCell>
                       <Chip
                         label={arrangement.current_approval_status}
