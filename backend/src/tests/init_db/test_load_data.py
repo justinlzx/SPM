@@ -8,6 +8,7 @@ from src.init_db.load_data import (
     load_employee_data_from_csv,
     load_latest_arrangement_data_from_csv,
 )
+from src.tests.test_utils import mock_db_session  # noqa: F401
 
 from ...auth.utils import hash_password
 
