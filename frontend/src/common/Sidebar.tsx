@@ -89,7 +89,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     <Box sx={{ bgcolor: "#f5f5f5", height: "100%" }}>
       <Toolbar />
       <List>
-        {basicSideBar.map((item: SidebarItem, index: number) => (
+        {basicSideBar.map((item, index) => (
           <ListItem key={index} disablePadding>
             <ListItemButton
               sx={{
@@ -120,22 +120,40 @@ export const Sidebar: React.FC<SidebarProps> = ({
   );
 
   return (
-    <Drawer
-      variant="permanent" // Set Drawer to permanent variant only
-      sx={{
-        width: drawerWidth,
-        flexShrink: 0,
-        "& .MuiDrawer-paper": {
-          width: drawerWidth,
-          boxSizing: "border-box",
-          bgcolor: "#f5f5f5",
-        },
-      }}
-      open
-      container={container}
-    >
-      {drawer}
-    </Drawer>
+    <>
+      <Drawer
+        container={container}
+        variant="temporary"
+        open={mobileOpen}
+        onClose={handleDrawerToggle}
+        ModalProps={{ keepMounted: true }}
+        sx={{
+          display: { xs: "block", sm: "block", md: "none" },
+          "& .MuiDrawer-paper": {
+            boxSizing: "border-box",
+            width: drawerWidth,
+            bgcolor: "#f5f5f5",
+          },
+        }}
+      >
+        {drawer}
+      </Drawer>
+
+      <Drawer
+        variant="permanent"
+        sx={{
+          display: { xs: "none", sm: "none", md: "block" },
+          "& .MuiDrawer-paper": {
+            boxSizing: "border-box",
+            width: drawerWidth,
+            bgcolor: "#f5f5f5",
+          },
+        }}
+        open
+      >
+        {drawer}
+      </Drawer>
+    </>
   );
 };
 
