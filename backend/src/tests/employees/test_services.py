@@ -6,6 +6,7 @@ from sqlalchemy import Enum, create_engine
 from sqlalchemy.orm import Session, sessionmaker
 from src.auth.models import Auth
 from src.employees import schemas
+from src.employees.dataclasses import EmployeeFilters
 from src.employees.exceptions import (
     EmployeeGenericNotFoundException,
     EmployeeNotFoundException,
@@ -17,6 +18,7 @@ from src.employees.services import (
     delegate_manager,
     get_employee_by_email,
     get_employee_by_id,
+    get_employees,
     get_manager_by_subordinate_id,
     get_peers_by_staff_id,
     get_reporting_manager_and_peer_employees,
@@ -114,6 +116,16 @@ def mock_manager():
     return MagicMock(
         staff_id=2, staff_fname="Jane", staff_lname="Smith", email="jane.smith@example.com"
     )
+
+
+@patch("src.employees.services.convert_model_to_pydantic_schema")
+@patch("src.employees.crud.get_employees")
+def test_get_employees(mock_get_employees, mock_convert, test_db, mock_employee):
+    mock_filters = MagicMock(spec=EmployeeFilters)
+    mock_convert.return_value = [mock_employee, mock_employee]
+
+    employees = get_employees(test_db, mock_filters)
+    assert len(employees) == len(mock_convert.return_value)
 
 
 def test_get_manager_by_subordinate_id_auto_approve(test_db):

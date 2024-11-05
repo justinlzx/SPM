@@ -25,6 +25,17 @@ def create_mock_employee():
     }
 
 
+class TestGetEmployees:
+    @patch("src.employees.services.get_employees", return_value=[MagicMock()])
+    def test_success(self, mock_get_employees):
+        # Act
+        response = client.get("/employees")
+
+        # Assert
+        assert response.status_code == 200
+        assert response.json() == [{}]
+
+
 class TestGetReportingManagerAndPeerEmployees:
     @patch("src.employees.services.get_manager_by_subordinate_id")
     def test_ceo_staff_id(self, mock_get_manager):
