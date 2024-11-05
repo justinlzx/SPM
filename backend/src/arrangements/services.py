@@ -354,16 +354,20 @@ async def auto_reject_old_requests():
     failure_ids = []
 
     for arrangement in wfh_requests:
+        if (
+            "delegate_approving_officer" in arrangement
+            and arrangement["delegate_approving_officer"]
+        ):
+            approving_officer = arrangement["delegate_approving_officer"]
+        else:
+            approving_officer = arrangement["approving_officer"]
+
         wfh_update = UpdateArrangementRequest(
             arrangement_id=arrangement["arrangement_id"],
             update_datetime=datetime.now(),
             action=Action.REJECT,
-            approving_officer=(
-                arrangement["delegate_approving_officer"]
-                if arrangement["delegate_approving_officer"]
-                else arrangement["approving_officer"]
-            ),
-            status_reason="Auto-rejected due to pending status one day before WFH date",
+            approving_officer=approving_officer,
+            status_reason="AUTO-REJECTED due to pending status one day before WFH date",
             auto_reject=True,
         )
 

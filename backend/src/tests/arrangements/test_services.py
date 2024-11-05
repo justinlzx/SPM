@@ -739,12 +739,27 @@ class TestUpdateArrangementApprovalStatus:
 @patch("src.arrangements.crud.get_expiring_requests")
 @patch("src.arrangements.services.get_db")
 class TestAutoRejectOldRequests:
-    async def test_success(self, mock_get_db, mock_get_expiring_requests, mock_update):
+    async def test_success_approving_officer(
+        self, mock_get_db, mock_get_expiring_requests, mock_update
+    ):
+        # Arrange
+        mock_get_expiring_requests.return_value = [{"arrangement_id": 1, "approving_officer": 2}]
+
+        # Act
+        await auto_reject_old_requests()
+
+        # Assert
+        mock_get_db.assert_called_once()
+        mock_get_expiring_requests.assert_called_once()
+        mock_update.assert_called()
+        assert mock_update.call_count == 1
+
+    async def test_success_delegate_approving_officer(
+        self, mock_get_db, mock_get_expiring_requests, mock_update
+    ):
         # Arrange
         mock_get_expiring_requests.return_value = [
-            {
-                "arrangement_id": 1,
-            }
+            {"arrangement_id": 1, "delegate_approving_officer": 2}
         ]
 
         # Act
@@ -769,7 +784,10 @@ class TestAutoRejectOldRequests:
 
     async def test_failure_unknown(self, mock_get_db, mock_get_expiring_requests, mock_update):
         # Arrange
-        mock_get_expiring_requests.return_value = [{"arrangement_id": 1}, {"arrangement_id": 2}]
+        mock_get_expiring_requests.return_value = [
+            {"arrangement_id": 1, "approving_officer": 1},
+            {"arrangement_id": 2, "approving_officer": 1},
+        ]
         mock_update.side_effect = [Exception, None]
 
         # Act
