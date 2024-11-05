@@ -163,7 +163,7 @@ def compute_pagination_meta(arrangements, items_per_page: int, page_num: int) ->
 def format_arrangements_response(
     arrangements: List[Union[ArrangementResponse, CreatedArrangementGroupByDate]]
 ) -> List[schemas.ArrangementResponse]:
-    if isinstance(arrangements, CreatedArrangementGroupByDate):
+    if isinstance(arrangements[0], CreatedArrangementGroupByDate):
         response_data = [
             {
                 "date": arrangement_date.date,

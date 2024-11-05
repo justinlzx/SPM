@@ -150,9 +150,10 @@ const DocumentDialog: React.FC<{
   </Dialog>
 );
 
-export const WFHRequestTable: React.FC<TWFHRequestTableProps> = ({
+export const WFHRequestTable: React.FC<TWFHRequestTableProps & { refreshData: () => void}> = ({
   requests,
   handleSuccess,
+  refreshData, 
 }) => {
   const [open, setOpen] = useState(false);
   const [action, setAction] = useState<"cancel" | "withdraw">();
@@ -187,12 +188,73 @@ export const WFHRequestTable: React.FC<TWFHRequestTableProps> = ({
   };
 
   const handleWithdrawal = async () => {
-    // Same withdrawal logic as previously implemented
+    if (!selectedArrangementId) return;
+    setLoading(true);
+    try {
+      const approvingOfficer = localStorage.getItem("id");
+      const request = requests.find(req => req.arrangement_id === selectedArrangementId);
+  
+      if (!request) {
+        console.error("Request not found");
+        return;
+      }
+  
+      const formData = new FormData();
+      formData.append("action", "withdraw");  
+      formData.append("requester_staff_id", request.requester_staff_id.toString());  
+      formData.append("wfh_date", request.wfh_date);  
+      formData.append("wfh_type", request.wfh_type.toLowerCase());  
+      formData.append("reason_description", reason || "");  
+      formData.append("current_approval_status", "pending withdrawal"); 
+      formData.append("approving_officer", approvingOfficer || "");  
+  
+      await axios.put(`${BACKEND_URL}/arrangements/${selectedArrangementId}/status`, formData);
+  
+      handleSuccess(selectedArrangementId, "withdraw");
+      refreshData(); 
+    } catch (error) {
+      console.error("Failed to withdraw request:", error);
+    } finally {
+      setLoading(false);
+      handleClose();
+    }
   };
 
   const handleCancellation = async () => {
-    // Same cancellation logic as previously implemented
+    if (!selectedArrangementId) return;
+    setLoading(true);
+    try {
+      const approvingOfficer = localStorage.getItem("id");
+      const request = requests.find(req => req.arrangement_id === selectedArrangementId);
+  
+      if (!request) {
+        console.error("Request not found");
+        return;
+      }
+  
+      const formData = new FormData();
+      formData.append("action", "cancel");  
+      formData.append("requester_staff_id", request.requester_staff_id.toString());  
+      formData.append("wfh_date", request.wfh_date); 
+      formData.append("wfh_type", request.wfh_type.toLowerCase());  
+      formData.append("approval_status", "cancel");  
+      formData.append("approving_officer", approvingOfficer || "");  
+  
+      await axios.put(`${BACKEND_URL}/arrangements/${selectedArrangementId}/status`, formData);
+  
+      handleSuccess(selectedArrangementId, "cancel");
+      refreshData(); 
+    } catch (error) {
+      console.error("Failed to cancel request:", error);
+    } finally {
+      setLoading(false);
+      handleClose();
+    }
   };
+  
+
+
+  
 
   return (
     <>

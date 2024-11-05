@@ -1,6 +1,6 @@
 // src/common/Sidebar.tsx
 import * as React from "react";
-import { useContext } from "react";
+import { useContext, useEffect, useState } from "react";
 import { UserContext } from "../context/UserContextProvider";
 import { useNavigate, useLocation } from "react-router-dom";
 
@@ -20,17 +20,16 @@ import TeamIcon from "@mui/icons-material/Group";
 import WfhScheduleIcon from "@mui/icons-material/CalendarMonth";
 import AssignmentIndIcon from '@mui/icons-material/AssignmentInd';
 
+import axios from "axios";
+
+const BACKEND_URL = process.env.REACT_APP_BACKEND_URL
 
 const drawerWidth = 240;
 
-const sideBarItems = [
+const defaultSideBarItems = [
   { text: "Home", icon: <SpaceDashboardIcon />, route: "/home" },
   { text: "My Team", icon: <TeamIcon />, route: "/team" },
-  {
-    text: "My WFH Schedule",
-    icon: <WfhScheduleIcon />,
-    route: "/wfh-schedule",
-  },
+  { text: "My WFH Schedule", icon: <WfhScheduleIcon />, route: "/wfh-schedule" },
   { text: "Create Request", icon: <PostAddIcon />, route: "/create-request" },
 ];
 
@@ -39,6 +38,7 @@ interface SidebarProps {
   handleDrawerToggle: () => void;
   container?: Element | (() => Element | null) | null;
 }
+
 
 export const Sidebar: React.FC<SidebarProps> = ({
   mobileOpen,
@@ -49,59 +49,58 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const navigate = useNavigate();
   const location = useLocation(); // Use the useLocation hook to get the current route
 
+  interface SidebarItem {
+    text: string;
+    icon: React.ReactNode;
+    route: string;
+  }
+
+  type SidebarItems = SidebarItem[];
+
+  const [basicSideBar, setBasicSideBar] = useState<SidebarItems>(defaultSideBarItems);
+
+  useEffect(() => {
+    const fetchSubordinateData = async () => {
+      try {
+        const response = await axios.get(`${BACKEND_URL}/arrangements/subordinates/${user?.id}`);
+
+        if (user?.role === 2 || (user?.role === 1 && user?.position === "Director")) {
+          setBasicSideBar((prevSidebar: SidebarItem[]) => [
+            ...prevSidebar,
+            { text: "Review Team Requests", icon: <InboxIcon />, route: "/review-requests" },
+            { text: "Delegation", icon: <AssignmentIndIcon />, route: "/delegate" },
+          ]);
+        }
+      } catch (error) {
+        const err = error as { response?: { data: string } };
+        if (err.response?.data !== "manager ID not found") {
+        }
+      }
+    };
+
+    fetchSubordinateData();
+  }, [user]);
+
   const handleButtonClick = (route: string) => {
     navigate(route);
-  };
-
-  const getSidebarItems = () => {
-    let basicSideBar = sideBarItems;
-
-    if (
-      user?.role === 2 ||
-      (user?.role === 1 && user?.position === "Director")
-    ) {
-      basicSideBar = [
-        ...basicSideBar,
-        {
-          text: "Review Team Requests",
-          icon: <InboxIcon />,
-          route: "/review-requests",
-        },
-        { text: "Delegation", icon: <AssignmentIndIcon />, route: "/delegate" },
-      ];
-    }
-    if (user?.role === 1) {
-      basicSideBar = [
-        ...basicSideBar,
-        {
-          text: "Department Overview",
-          icon: <TeamIcon />,
-          route: "/department-overview",
-        },
-        { text: "Delegation", icon: <AssignmentIndIcon />, route: "/delegate" },
-      ];
-    }
-    return basicSideBar;
   };
 
   const drawer = (
     <Box sx={{ bgcolor: "#f5f5f5", height: "100%" }}>
       <Toolbar />
       <List>
-        {getSidebarItems().map((item, index) => (
+        {basicSideBar.map((item, index) => (
           <ListItem key={index} disablePadding>
             <ListItemButton
               sx={{
                 textAlign: "left",
-                backgroundColor:
-                  location.pathname === item.route ? "navy" : "#f5f5f5",
+                backgroundColor: location.pathname === item.route ? "navy" : "#f5f5f5",
                 color: location.pathname === item.route ? "white" : "inherit",
                 "&:hover": {
-                  backgroundColor:
-                    location.pathname === item.route ? "navy" : "#e0e0e0",
+                  backgroundColor: location.pathname === item.route ? "navy" : "#e0e0e0",
                 },
               }}
-              data-cy={item.text.toLowerCase().replace(/\s+/g, "-")} // This line adds the data-cy attribute
+              data-cy={item.text.toLowerCase().replace(/\s+/g, "-")}
               onClick={() => handleButtonClick(item.route)}
             >
               <ListItemIcon

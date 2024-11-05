@@ -123,27 +123,31 @@ def create_arrangement_log(
     action: Action,
     previous_approval_status: ApprovalStatus,
 ) -> models.ArrangementLog:
-    logger.info(f"Crud: Creating arrangement log for action {action}")
+    try:
+        logger.info(f"Crud: Creating arrangement log for action {action}")
 
-    arrangement_log = models.ArrangementLog(
-        arrangement_id=arrangement.arrangement_id,
-        update_datetime=arrangement.update_datetime,
-        requester_staff_id=arrangement.requester_staff_id,
-        wfh_date=arrangement.wfh_date,
-        wfh_type=arrangement.wfh_type,
-        action=action,
-        previous_approval_status=previous_approval_status,
-        updated_approval_status=arrangement.current_approval_status,
-        approving_officer=arrangement.approving_officer,
-        reason_description=arrangement.reason_description,
-        supporting_doc_1=arrangement.supporting_doc_1,
-        supporting_doc_2=arrangement.supporting_doc_2,
-        supporting_doc_3=arrangement.supporting_doc_3,
-    )
+        arrangement_log = models.ArrangementLog(
+            arrangement_id=arrangement.arrangement_id,
+            update_datetime=arrangement.update_datetime,
+            requester_staff_id=arrangement.requester_staff_id,
+            wfh_date=arrangement.wfh_date,
+            wfh_type=arrangement.wfh_type,
+            action=action,
+            previous_approval_status=previous_approval_status,
+            updated_approval_status=arrangement.current_approval_status,
+            approving_officer=arrangement.approving_officer,
+            reason_description=arrangement.reason_description,
+            supporting_doc_1=arrangement.supporting_doc_1,
+            supporting_doc_2=arrangement.supporting_doc_2,
+            supporting_doc_3=arrangement.supporting_doc_3,
+        )
 
-    db.add(arrangement_log)
-    db.flush()
-    return arrangement_log
+        db.add(arrangement_log)
+        db.flush()
+        return arrangement_log
+    except SQLAlchemyError as e:
+        db.rollback()
+        raise e
 
 
 def create_recurring_request(
@@ -210,7 +214,7 @@ def update_arrangement_approval_status(
     arrangement_data: ArrangementResponse,
     action: Action,
     previous_approval_status: ApprovalStatus,
-) -> Dict:
+) -> Optional[Dict]:
     try:
         db.query(models.LatestArrangement).filter(
             models.LatestArrangement.arrangement_id == arrangement_data.arrangement_id
@@ -234,8 +238,8 @@ def update_arrangement_approval_status(
 
             db.commit()
             db.refresh(updated_arrangement)
-
-        return updated_arrangement.__dict__
+            return updated_arrangement.__dict__
+        return None
     except SQLAlchemyError as e:
         db.rollback()
         raise e

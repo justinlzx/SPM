@@ -3,7 +3,7 @@ import { Container, Box, Typography } from "@mui/material";
 import { useContext, useEffect } from "react";
 import { UserContext } from "../../context/UserContextProvider";
 import { DelegateButton } from "../manager/DelegateButton"; // Ensure this is used if needed
-import ErrorIcon from '@mui/icons-material/Error';
+import ErrorOutlineOutlinedIcon from '@mui/icons-material/ErrorOutlineOutlined';
 import { RequestHistoryPage } from "./RequestHistory";
 
 export const DepartmentOverviewPage = () => {
@@ -33,7 +33,7 @@ export const DepartmentOverviewPage = () => {
                     }}
                 >
                     <Box display="flex" alignItems="center" gap={2}>
-                        <ErrorIcon />
+                        <ErrorOutlineOutlinedIcon />
                         <Typography variant="body2">For WFH/OOO Requests, an approver can be either a reporting manager or a delegated manager</Typography>
                     </Box>
                 </Box>

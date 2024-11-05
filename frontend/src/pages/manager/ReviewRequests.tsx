@@ -16,7 +16,7 @@ export const ReviewRequests: React.FC = () => {
   return (
     <Container>
       <PendingRequests />
-      <AllRequests/>
+      {/* <AllRequests/> */}
     </Container>
   );
 };

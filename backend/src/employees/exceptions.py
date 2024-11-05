@@ -1,6 +1,6 @@
 class EmployeeNotFoundException(Exception):
-    def __init__(self):
-        super().__init__("Employee not found")
+    def __init__(self, employee_id: int):
+        super().__init__(f"Employee with ID {employee_id} not found")
 
 
 class ManagerWithIDNotFoundException(Exception):
@@ -12,3 +12,8 @@ class ManagerWithIDNotFoundException(Exception):
 class ManagerNotFoundException(Exception):
     def __init__(self):
         super().__init__("Manager not found")
+
+
+class EmployeeGenericNotFoundException(Exception):
+    def __init__(self):
+        super().__init__("Employee not found")

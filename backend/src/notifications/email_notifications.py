@@ -153,6 +153,7 @@ def format_email_subject(role: str, action: Action, current_approval_status: App
                 ApprovalStatus.APPROVED: "Your WFH Request Withdrawal Has Been Rejected",
             },
             Action.WITHDRAW: "You Have Requested to Withdraw Your WFH",
+            Action.CANCEL: "Your WFH Request Has Been Cancelled",  # Added entry
         },
         "manager": {
             Action.CREATE: "Your Staff Created a WFH Request",
@@ -165,6 +166,7 @@ def format_email_subject(role: str, action: Action, current_approval_status: App
                 ApprovalStatus.APPROVED: "You Have Rejected a WFH Request Withdrawal",
             },
             Action.WITHDRAW: "Your Staff Has Requested to Withdraw Their WFH",
+            Action.CANCEL: "A Staff Member's WFH Request Has Been Cancelled",  # Added entry
         },
     }
 
