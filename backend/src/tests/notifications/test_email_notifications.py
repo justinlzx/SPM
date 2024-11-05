@@ -406,7 +406,7 @@ class TestFormatDetails:
         "action",
         [Action.CREATE, Action.APPROVE],
     )
-    def test_success(self, action):
+    def test_success(self, action, mock_arrangement_config_factory):
         arrangement_id = 1
         wfh_date = "2024-10-07"
         wfh_type = WfhType.FULL
@@ -428,7 +428,15 @@ class TestFormatDetails:
             status_reason=status_reason,
         )
 
-        result = notifications.format_details([mock_arrangement], action)
+        mock_config = mock_arrangement_config_factory(
+            employee=MagicMock(),
+            arrangements=[mock_arrangement],
+            action=action,
+            current_approval_status=current_approval_status,
+            manager=MagicMock(),
+        )
+
+        result = notifications.format_details(mock_config)
 
         assert f"Request ID: {arrangement_id}" in result
         assert f"WFH Date: {wfh_date}" in result
