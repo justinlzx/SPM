@@ -167,8 +167,18 @@ def format_email_body(
     body = f"Dear {getattr(config, role).staff_fname} {getattr(config, role).staff_lname},\n\n"
 
     if isinstance(config, ArrangementNotificationConfig):
+        body += (
+            "A WFH request has been automatically rejected as it was submitted less than 24 hours before the requested WFH date.\n\n"
+            if config.auto_reject
+            else ""
+        )
         body += "Please refer to the following details for the above action:\n\n"
         body += formatted_details
+        body += (
+            "Please ensure future WFH requests are submitted at least 24 hours in advance.\n\n"
+            if config.auto_reject and role == "employee"
+            else ""
+        )
     else:
         if role == "delegator" and config.action == "delegate":
             body += "You have delegated your approval responsibilities to "
@@ -236,6 +246,7 @@ async def craft_and_send_auto_rejection_email(
         .filter(LatestArrangement.arrangement_id == arrangement_id)
         .first()
     )
+
 
 #     if not arrangement:
 #         raise ValueError(f"Arrangement {arrangement_id} not found")
