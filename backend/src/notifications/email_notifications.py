@@ -131,7 +131,15 @@ def format_details(config: Union[ArrangementNotificationConfig, DelegateNotifica
             details += f"Updated At: {arrangement.update_datetime}\n"
             details += f"{status_change_reason}\n\n"
     else:
-        details += f"Delegation Date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} UTC\n"
+        verb_map = {
+            "delegate": "Delegation",
+            "undelegated": "Undelegation",
+            "approved": "Delegation Approval",
+            "rejected": "Delegation Rejection",
+            "withdrawn": "Delegation Withdrawal",
+        }
+
+        details += f"{verb_map.get(config.action)} Date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} UTC\n"
         details += f"Delegator: {config.delegator.staff_fname} {config.delegator.staff_lname}\n"
         details += f"Delegatee: {config.delegatee.staff_fname} {config.delegatee.staff_lname}\n"
 
@@ -212,137 +220,11 @@ def format_email_body(
         elif role == "delegatee" and config.action == "withdrawn":
             body += f"The delegation assigned to you by {config.delegator.staff_fname} {config.delegator.staff_lname} has been withdrawn.\n\n"
 
+        body += formatted_details
+
     # Add common footer
     body += "\n\nThis email is auto-generated. Please do not reply to this email. Thank you."
     return body
-
-
-# def craft_email_content_for_delegation(
-#     employee: employee_models.Employee, counterpart_employee: employee_models.Employee, event: str
-# ):
-#     """Helper function to craft email content for delegation events.
-
-#     :param employee: The employee receiving the email (could be staff or delegate).
-#     :param counterpart_employee: The counterpart involved in the delegation (staff or delegate).
-#     :param event: The event type ('delegate', 'delegated_to', 'undelegated', 'approved', 'rejected',
-#         'withdrawn').
-#     :return: Tuple of (subject, content).
-#     """
-#     if event == "delegate":
-#         subject = "[All-In-One] You have delegated approval responsibilities"
-#         content = (
-#             f"Dear {employee.staff_fname} {employee.staff_lname},\n\n"
-#             f"You have delegated your approval responsibilities to "
-#             f"{counterpart_employee.staff_fname} {counterpart_employee.staff_lname}.\n\n"
-#             f"This delegation will take effect immediately upon acceptance. Any pending approvals will "
-#             f"be handled by {counterpart_employee.staff_fname} once they accept the delegation.\n"
-#             f"Delegation Date: {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')} UTC\n"
-#             f"Delegated To: {counterpart_employee.staff_fname} {counterpart_employee.staff_lname}\n"
-#             f"Manager (You): {employee.staff_fname} {employee.staff_lname}\n\n"
-#             f"This email is auto-generated. Please do not reply to this email. Thank you."
-#         )
-
-#     elif event == "delegated_to":
-#         subject = "[All-In-One] Approval responsibilities delegated to you"
-#         content = (
-#             f"Dear {employee.staff_fname} {employee.staff_lname},\n\n"
-#             f"{counterpart_employee.staff_fname} {counterpart_employee.staff_lname} has delegated their "
-#             f"approval responsibilities to you.\n\n"
-#             f"Please log in to the portal to review and accept the delegation.\n"
-#             f"Once accepted, any pending approvals assigned to {counterpart_employee.staff_fname} will be routed to you.\n\n"
-#             f"Delegation Date: {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')} UTC\n"
-#             f"Delegated By: {counterpart_employee.staff_fname} {counterpart_employee.staff_lname}\n\n"
-#             f"This email is auto-generated. Please do not reply to this email. Thank you."
-#         )
-
-#     elif event == "undelegated":
-#         subject = "[All-In-One] Approval responsibilities undelegated"
-#         content = (
-#             f"Dear {employee.staff_fname} {employee.staff_lname},\n\n"
-#             f"The delegation of approval responsibilities between you and "
-#             f"{counterpart_employee.staff_fname} {counterpart_employee.staff_lname} has been revoked.\n\n"
-#             f"All pending approvals will be reassigned to the original manager, and you no longer have the responsibility "
-#             f"for approvals on behalf of {counterpart_employee.staff_fname}.\n"
-#             f"Undelegation Date: {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')} UTC\n"
-#             f"Manager: {counterpart_employee.staff_fname} {counterpart_employee.staff_lname}\n"
-#             f"Delegatee (You): {employee.staff_fname} {employee.staff_lname}\n\n"
-#             f"This email is auto-generated. Please do not reply to this email. Thank you."
-#         )
-
-#     elif event == "approved":
-#         # Email to the staff who made the request
-#         subject = "[All-In-One] Your delegation request has been approved"
-#         content = (
-#             f"Dear {employee.staff_fname} {employee.staff_lname},\n\n"
-#             f"Your delegation request to {counterpart_employee.staff_fname} "
-#             f"{counterpart_employee.staff_lname} has been approved.\n\n"
-#             f"Delegation Approval Date: {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')} UTC\n"
-#             f"Delegated To: {counterpart_employee.staff_fname} {counterpart_employee.staff_lname}\n\n"
-#             f"This email is auto-generated. Please do not reply to this email. Thank you."
-#         )
-
-#     elif event == "approved_for_delegate":
-#         # Email to the person who approved the request
-#         subject = "[All-In-One] You have approved a delegation request"
-#         content = (
-#             f"Dear {employee.staff_fname} {employee.staff_lname},\n\n"
-#             f"You have successfully approved the delegation request for {counterpart_employee.staff_fname} "
-#             f"{counterpart_employee.staff_lname}.\n\n"
-#             f"Delegation Approval Date: {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')} UTC\n"
-#             f"Approved By: {employee.staff_fname} {employee.staff_lname}\n\n"
-#             f"This email is auto-generated. Please do not reply to this email. Thank you."
-#         )
-
-#     elif event == "rejected":
-#         # Email to the staff who made the request
-#         subject = "[All-In-One] Your delegation request has been rejected"
-#         content = (
-#             f"Dear {employee.staff_fname} {employee.staff_lname},\n\n"
-#             f"Your delegation request to {counterpart_employee.staff_fname} "
-#             f"{counterpart_employee.staff_lname} has been rejected.\n\n"
-#             f"Delegation Rejection Date: {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')} UTC\n"
-#             f"Rejected By: {counterpart_employee.staff_fname} {counterpart_employee.staff_lname}\n\n"
-#             f"This email is auto-generated. Please do not reply to this email. Thank you."
-#         )
-
-#     elif event == "rejected_for_delegate":
-#         # Email to the person who rejected the request
-#         subject = "[All-In-One] You have rejected a delegation request"
-#         content = (
-#             f"Dear {employee.staff_fname} {employee.staff_lname},\n\n"
-#             f"You have successfully rejected the delegation request for {counterpart_employee.staff_fname} "
-#             f"{counterpart_employee.staff_lname}.\n\n"
-#             f"Delegation Rejection Date: {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')} UTC\n"
-#             f"Rejected By: {employee.staff_fname} {employee.staff_lname}\n\n"
-#             f"This email is auto-generated. Please do not reply to this email. Thank you."
-#         )
-
-#     elif event == "withdrawn":
-#         # Email to the staff member who withdrew the delegation
-#         subject = "[All-In-One] Your delegation has been withdrawn"
-#         content = (
-#             f"Dear {employee.staff_fname} {employee.staff_lname},\n\n"
-#             f"Your delegation to {counterpart_employee.staff_fname} "
-#             f"{counterpart_employee.staff_lname} has been withdrawn.\n\n"
-#             f"Withdrawal Date: {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')} UTC\n\n"
-#             f"This email is auto-generated. Please do not reply to this email. Thank you."
-#         )
-
-#     elif event == "withdrawn_for_delegate":
-#         # Email to the delegate who had their delegation withdrawn
-#         subject = "[All-In-One] Your delegation has been withdrawn"
-#         content = (
-#             f"Dear {employee.staff_fname} {employee.staff_lname},\n\n"
-#             f"The delegation assigned to you by {counterpart_employee.staff_fname} "
-#             f"{counterpart_employee.staff_lname} has been withdrawn.\n\n"
-#             f"Withdrawal Date: {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')} UTC\n\n"
-#             f"This email is auto-generated. Please do not reply to this email. Thank you."
-#         )
-
-#     else:
-#         raise ValueError("Invalid event type for delegation email.")
-
-#     return subject, content
 
 
 async def craft_and_send_auto_rejection_email(
