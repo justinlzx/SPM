@@ -454,25 +454,36 @@ class TestCraftEmailContent:
     @patch("src.notifications.email_notifications.format_email_body")
     @patch("src.notifications.email_notifications.format_email_subject")
     @patch("src.notifications.email_notifications.format_details")
-    def test_success(self, mock_details, mock_subject, mock_body):
-        mock_employee = MagicMock()
-        mock_arrangement = MagicMock()
-        mock_manager = MagicMock()
-        action = Action.CREATE
-
-        notifications.craft_email_content(
-            employee=mock_employee,
-            arrangements=[mock_arrangement],
-            action=action,
+    def test_success(self, mock_details, mock_subject, mock_body, mock_arrangement_config_factory):
+        # Arrange
+        mock_config = mock_arrangement_config_factory(
+            employee=MagicMock(),
+            arrangements=[MagicMock()],
+            action=Action.CREATE,
             current_approval_status=ApprovalStatus.PENDING_APPROVAL,
-            manager=mock_manager,
+            manager=MagicMock(),
         )
 
+        # Act
+        result = notifications.craft_email_content(mock_config)
+
+        # Assert
         mock_details.assert_called_once()
         mock_subject.assert_called()
         assert mock_subject.call_count == 2
         mock_body.assert_called()
         assert mock_body.call_count == 2
+
+        assert result == {
+            "employee": {
+                "subject": mock_subject.return_value,
+                "content": mock_body.return_value,
+            },
+            "manager": {
+                "subject": mock_subject.return_value,
+                "content": mock_body.return_value,
+            },
+        }
 
     # def test_multiple_arrangements(self, mock_staff, mock_manager, mock_arrangement_factory):
     #     arrangements = [mock_arrangement_factory("pending")] * 2
