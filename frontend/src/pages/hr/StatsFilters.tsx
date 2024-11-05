@@ -11,7 +11,6 @@ import {
 } from "@mui/material";
 
 export type TFilters = {
-  status: string;
   department: string;
   date: Date;
 };
@@ -37,7 +36,6 @@ const formatDate = (date: Date) => {
 
 export const StatsFilters = ({ userInfo, action }: PropType) => {
   const [department, setDepartment] = useState(userInfo.department || "");
-  const [status, setStatus] = useState("approved");
   const [date, setDate] = useState(new Date());
   const [error, setError] = useState("");
 
@@ -48,7 +46,6 @@ export const StatsFilters = ({ userInfo, action }: PropType) => {
 
   const handleClearFilters = () => {
     setDepartment(userInfo.department || "");
-    setStatus("approved");
     setDate(new Date());
   };
 
@@ -70,20 +67,8 @@ export const StatsFilters = ({ userInfo, action }: PropType) => {
               <MenuItem value="Engineering">Engineering</MenuItem>
               <MenuItem value="HR">HR</MenuItem>
               <MenuItem value="Finance">Finance</MenuItem>
-              <MenuItem value="T">IT</MenuItem>
-            </Select>
-          </FormControl>
-
-          {/* Status Filter */}
-          <FormControl size="small" sx={{ minWidth: 150 }}>
-            <InputLabel>Status</InputLabel>
-            <Select
-              value={status}
-              onChange={(e) => setStatus(e.target.value)}
-              input={<OutlinedInput label="Status" />}
-            >
-              <MenuItem value="approved">Approved</MenuItem>
-              <MenuItem value="pending">Pending</MenuItem>
+              <MenuItem value="IT">IT</MenuItem>
+              <MenuItem value="all">All</MenuItem>
             </Select>
           </FormControl>
         </Box>
@@ -110,7 +95,6 @@ export const StatsFilters = ({ userInfo, action }: PropType) => {
             }}
             onClick={() =>
               action({
-                status,
                 department,
                 date,
               })

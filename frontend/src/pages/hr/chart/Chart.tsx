@@ -1,31 +1,30 @@
 import { Pie } from "react-chartjs-2";
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from "chart.js";
 import { ChartOptions } from "chart.js";
+import Box from "@mui/material/Box/Box";
 
 // Register the necessary Chart.js components
 ChartJS.register(ArcElement, Tooltip, Legend);
 
-export const Chart = ({ data }: { data: number[] }) => {
+export const Chart = ({
+  data,
+  labels,
+  backgroundColor,
+  hoverBackgroundColor,
+}: {
+  data: number[];
+  labels: string[];
+  backgroundColor: string[];
+  hoverBackgroundColor: string[];
+}) => {
   const dataConfig = {
-    labels: ["On Leave", "In Office", "WFH(Full Day)", "WFH(AM)", "WFH(PM)"],
+    labels,
     datasets: [
       {
         label: "Organisation Chart",
         data: data,
-        backgroundColor: [
-          "#FF6384",
-          "#36A2EB",
-          "#FFCE56",
-          "#FF6384",
-          "#36A2EB",
-        ],
-        hoverBackgroundColor: [
-          "#FF6384",
-          "#36A2EB",
-          "#FFCE56",
-          "#FF6384",
-          "#36A2EB",
-        ],
+        backgroundColor,
+        hoverBackgroundColor,
       },
     ],
   };
@@ -42,5 +41,9 @@ export const Chart = ({ data }: { data: number[] }) => {
     },
   };
 
-  return <Pie data={dataConfig} options={options} />;
+  return (
+    <Box className="flex justify-center">
+      <Pie data={dataConfig} options={options} />
+    </Box>
+  );
 };

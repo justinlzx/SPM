@@ -14,14 +14,15 @@ import { Chart } from "./chart/Chart";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 
+const CHART_COLOURS = ["#aad6ec", "#151269", "#0f1056", "#DFEBF6", "#81b1ce"];
+
 export const Statistics = () => {
   const { user } = useContext(UserContext);
 
   const [isLoading, setIsLoading] = useState(true);
   const [data, setData] = useState<TWFHRequest[]>([]);
   const [filters, setFilters] = useState<TFilters>({
-    status: "approved",
-    department: "",
+    department: user?.dept || "all",
     date: new Date(),
   });
 
@@ -31,14 +32,17 @@ export const Statistics = () => {
 
   useEffect(() => {
     const getWFHRequests = async () => {
+      const params = {
+        department:
+          filters.department === "all" ? undefined : filters.department,
+        current_approval_status: ["APPROVED"],
+        start_date: new Date(filters.date.toISOString().split("T")[0]), // strip the time away and convert all to 0s
+        end_date: new Date(filters.date.toISOString().split("T")[0]),
+      };
+
       try {
         const response = await axios.get(`${BACKEND_URL}/arrangements`, {
-          params: {
-            department: filters.department,
-            status: filters.status,
-            start_date: filters.date.toISOString().split("T")[0], // convert to datestring to suit backend input
-            end_date: filters.date.toISOString().split("T")[0],
-          },
+          params,
         });
         console.log(response.data.data);
         setData(response.data.data);
@@ -60,7 +64,7 @@ export const Statistics = () => {
     );
   }
 
-  const TOTAL_EMPLOYEES = 500;
+  const TOTAL_EMPLOYEES = 50;
 
   const countArrangements = (arrangements: TWFHRequest[]) => {
     let counts = {
@@ -72,13 +76,13 @@ export const Statistics = () => {
 
     arrangements.forEach((arrangement) => {
       switch (arrangement.wfh_type) {
-        case "WFH (Full Day)":
+        case "full":
           counts.wfh_full++;
           break;
-        case "WFH (AM)":
+        case "am":
           counts.wfh_am++;
           break;
-        case "WFH (PM)":
+        case "pm":
           counts.wfh_pm++;
           break;
       }
@@ -87,6 +91,8 @@ export const Statistics = () => {
         counts.onLeave++;
       }
     });
+
+    console.log(counts);
 
     const inOffice =
       TOTAL_EMPLOYEES -
@@ -103,6 +109,8 @@ export const Statistics = () => {
 
   const arrangementData = countArrangements(data);
 
+  console.log(arrangementData);
+
   return (
     <Container>
       <Typography variant="h4" gutterBottom align="left" sx={{ marginTop: 4 }}>
@@ -116,7 +124,20 @@ export const Statistics = () => {
           action={(filterValues) => handleFilterChange(filterValues)}
         />
         <Box className="w-full border-grey border-[1px] rounded-lg p-8 flex justify-center">
-          <Chart data={arrangementData} />
+          <Box className="w-1/2">
+            <Chart
+              data={arrangementData}
+              labels={[
+                "On Leave",
+                "WFH (Full Day)",
+                "WFH (AM)",
+                "WFH(PM)",
+                "In Office",
+              ]}
+              backgroundColor={CHART_COLOURS}
+              hoverBackgroundColor={CHART_COLOURS}
+            />
+          </Box>
         </Box>
       </Box>
     </Container>
