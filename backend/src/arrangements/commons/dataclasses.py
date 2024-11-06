@@ -1,7 +1,7 @@
 import inspect
 from dataclasses import dataclass
 from datetime import date, datetime
-from typing import List, Optional
+from typing import List, Optional, Union
 
 from fastapi import File
 from src.employees.models import Employee
@@ -50,6 +50,8 @@ class ArrangementFilters(BaseClass):
     reason: Optional[str] = None
     group_by_date: Optional[bool] = True
     department: Optional[str] = None
+    staff_ids: Optional[Union[int, List[int]]] = None
+    manager_id: Optional[int] = None
 
 
 @dataclass
