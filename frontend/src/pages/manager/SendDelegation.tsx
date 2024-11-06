@@ -41,6 +41,7 @@ enum DelegationStatus {
   Accepted = "accepted",
   Pending = "pending",
   Rejected = "rejected",
+  Undelegated = "undelegated",
 }
 
 type TDelegationLog = {
@@ -138,7 +139,6 @@ export const SendDelegation: React.FC = () => {
       return;
     }
   
-    // Proceed with sending delegation if validation passes
     setLoading(true);
     try {
       const response = await axios.post(`${BACKEND_URL}/employees/manager/delegate/${userId}`, null, {
