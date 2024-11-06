@@ -2,7 +2,7 @@ from dataclasses import asdict
 from typing import Dict, List, Optional, Union
 
 # from pydantic import ValidationError
-from sqlalchemy import func, or_
+from sqlalchemy import and_, func, or_
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, class_mapper
 from src.employees.models import (
@@ -80,7 +80,10 @@ def get_arrangements(
         if filters.manager_id:
             query = query.filter(
                 or_(
-                    models.LatestArrangement.approving_officer == filters.manager_id,
+                    and_(
+                        models.LatestArrangement.approving_officer == filters.manager_id,
+                        models.LatestArrangement.delegate_approving_officer == None,  # noqa: E711
+                    ),
                     models.LatestArrangement.delegate_approving_officer == filters.manager_id,
                 )
             )
