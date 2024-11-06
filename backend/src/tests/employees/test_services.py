@@ -1534,3 +1534,52 @@ def test_view_all_delegations_with_full_data(test_db):
     assert "date_of_delegation" in received
     assert "updated_datetime" in received
     assert "status_of_delegation" in received
+
+
+def test_get_reporting_manager_and_peer_peers_filter(test_db):
+    """Test to cover the list comprehension that filters peers from manager in
+    get_reporting_manager_and_peer_employees."""
+    # Create manager
+    manager = Employee(
+        staff_id=800,
+        staff_fname="Filter",
+        staff_lname="Manager",
+        dept="IT",
+        position="Manager",
+        country="SG",
+        email="filter.manager@example.com",
+        role=1,
+        reporting_manager=800,  # Add this line for self-reference
+    )
+    test_db.add(manager)
+    test_db.commit()
+
+    # Create peers including the manager as a peer
+    peers = [
+        Employee(
+            staff_id=id,
+            staff_fname=f"Peer{i}",
+            staff_lname="Test",
+            dept="IT",
+            position="Staff",
+            country="SG",
+            email=f"peer{i}.test@example.com",
+            role=2,
+            reporting_manager=800,
+        )
+        for i, id in enumerate([801, 802], 1)
+    ]
+    test_db.add_all(peers)
+    test_db.commit()
+
+    # Mock get_manager_by_subordinate_id to return just the manager object
+    with patch("src.employees.services.get_manager_by_subordinate_id") as mock_get_manager:
+        mock_get_manager.return_value = manager  # Return manager object directly
+
+        # Get response and verify manager is filtered from peers
+        response = get_reporting_manager_and_peer_employees(test_db, 801)
+        assert response.manager_id == 800
+        assert len(response.peer_employees) == 2  # Should include both peers
+        peer_ids = {peer.staff_id for peer in response.peer_employees}
+        assert 801 in peer_ids
+        assert 802 in peer_ids
