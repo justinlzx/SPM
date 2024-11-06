@@ -70,7 +70,16 @@ def get_personal_arrangements(
     arrangements = crud.get_arrangements(db, staff_id, filters=filters)
     logger.info(f"Service: Found {len(arrangements)} arrangements for staff ID {staff_id}")
 
-    return [ArrangementResponse.from_dict(arrangement) for arrangement in arrangements]
+    arrangements = [ArrangementResponse.from_dict(arrangement) for arrangement in arrangements]
+    logger.info(f"Service: Found {len(arrangements)} arrangements")
+
+    # Get presigned URL for each supporting document in each arrangement
+    for record in arrangements:
+        record.supporting_doc_1 = create_presigned_url(record.supporting_doc_1)
+        record.supporting_doc_2 = create_presigned_url(record.supporting_doc_2)
+        record.supporting_doc_3 = create_presigned_url(record.supporting_doc_3)
+
+    return arrangements
 
 
 def get_subordinates_arrangements(
