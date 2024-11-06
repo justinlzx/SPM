@@ -52,6 +52,7 @@ export const RequestList = () => {
   const [filteredArrangements, setFilteredArrangements] = useState<
     Arrangement[]
   >([]);
+  const [baseArrangements, setBaseArrangements] = useState<Arrangement[]>([]);
   const [arrangements, setArrangements] = useState<Arrangement[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [page, setPage] = useState(0);
@@ -67,7 +68,6 @@ export const RequestList = () => {
 
   useEffect(() => {
     fetchAllRequests();
-    setFilteredArrangements(arrangements);
   }, [user]);
 
   const fetchAllRequests = async (
@@ -89,20 +89,23 @@ export const RequestList = () => {
           },
           paramsSerializer: (params: Record<string, any>): string => {
             const serializedParams: Record<string, any> = {};
-        
+
             Object.entries(params).forEach(([key, value]) => {
               // Only serialize non-null values
               if (value !== null && value !== undefined) {
-                if (Array.isArray(value) && (key === 'current_approval_status' || key === 'department')) {
+                if (
+                  Array.isArray(value) &&
+                  (key === "current_approval_status" || key === "department")
+                ) {
                   serializedParams[key] = value;
                 } else {
                   serializedParams[key] = value;
                 }
               }
             });
-        
-            return qs.stringify(serializedParams, { arrayFormat: 'repeat' });
-          }
+
+            return qs.stringify(serializedParams, { arrayFormat: "repeat" });
+          },
         });
 
         const arrangementsResponse = await instance.get(
@@ -118,8 +121,15 @@ export const RequestList = () => {
         );
 
         const responseData = arrangementsResponse.data.data;
-        setArrangements(responseData);
-        setFilteredArrangements(responseData);
+        console.log(responseData);
+        if (baseArrangements.length === 0) {
+          console.log("Setting base arrangements");
+          setBaseArrangements(responseData);
+          setArrangements(responseData);
+        } else {
+          setFilteredArrangements(responseData);
+          setArrangements(responseData);
+        }
       } catch (error) {
         console.error("Failed to fetch data:", error);
         setError("Failed to fetch team requests. Please try again later.");
@@ -208,7 +218,8 @@ export const RequestList = () => {
   };
 
   const onClearFilters = () => {
-    setFilteredArrangements(arrangements);
+    console.log("Clearing filters");
+    setArrangements(baseArrangements);
   };
 
   if (loading) {
@@ -273,14 +284,14 @@ export const RequestList = () => {
             </TableRow>
           </TableHead>
           <TableBody>
-            {filteredArrangements.length === 0 ? (
+            {arrangements.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={6} align="center">
                   No arrangement data available
                 </TableCell>
               </TableRow>
             ) : (
-              filteredArrangements
+              arrangements
                 .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
                 .map((arrangement) => (
                   <TableRow key={arrangement.arrangement_id}>
@@ -313,7 +324,7 @@ export const RequestList = () => {
       <TablePagination
         component="div"
         rowsPerPageOptions={[10, 20, 30]}
-        count={filteredArrangements.length}
+        count={arrangements.length}
         rowsPerPage={rowsPerPage}
         page={page}
         onPageChange={handleChangePage}
