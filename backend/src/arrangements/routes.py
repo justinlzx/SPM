@@ -126,7 +126,7 @@ def get_subordinates_arrangements(
 
         # Get arrangements
         logger.info(f"Fetching arrangements for employees under manager ID: {manager_id}")
-        data, pagination_meta = services.get_subordinates_arrangements(
+        response_data, pagination_meta = services.get_subordinates_arrangements(
             db=db, manager_id=manager_id, filters=filters, pagination=pagination
         )
         logger.info(
@@ -134,8 +134,8 @@ def get_subordinates_arrangements(
         )
 
         # Convert to Pydantic model
-        if len(data) > 0:
-            response_data = format_arrangements_response(data)
+        if len(response_data) > 0:
+            response_data = format_arrangements_response(response_data)
         response_pagination_meta = PaginationMeta.model_validate(pagination_meta)
 
         return JSendResponse(
