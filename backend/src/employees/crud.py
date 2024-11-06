@@ -1,10 +1,9 @@
 from datetime import datetime
-from typing import List
+from typing import List, Optional
 
 from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
 
-from ..arrangements.commons.enums import ApprovalStatus
 from ..arrangements.commons.models import LatestArrangement
 from . import models
 from .dataclasses import EmployeeFilters
@@ -464,3 +463,38 @@ def is_employee_locked_in_delegation(db: Session, employee_id: int) -> bool:
         .first()
         is not None
     )
+
+
+def get_delegated_manager(db: Session, approving_officer_id: int) -> Optional[models.Employee]:
+    """Check if the approving officer has delegated their approval authority to another officer. If
+    so, return the delegate approving officer as the manager.
+
+    Args:
+        db (Session): Database session
+        approving_officer_id (int): ID of the original approving officer
+
+    Returns:
+        Optional[models.Employee]: The delegate approving officer if delegation exists and is accepted,
+                                 None otherwise
+    """
+    # Query for active delegation where the original approving officer has delegated to someone
+    delegation = (
+        db.query(DelegateLog)
+        .filter(
+            DelegateLog.manager_id == approving_officer_id,
+            DelegateLog.status_of_delegation == DelegationStatus.accepted,
+        )
+        .order_by(DelegateLog.date_of_delegation.desc())  # Get the most recent delegation
+        .first()
+    )
+
+    if delegation:
+        # Get the delegate approving officer's details
+        delegate_manager = (
+            db.query(models.Employee)
+            .filter(models.Employee.staff_id == delegation.delegate_manager_id)
+            .first()
+        )
+        return delegate_manager
+
+    return None

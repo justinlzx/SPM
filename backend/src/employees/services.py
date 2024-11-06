@@ -54,25 +54,58 @@ class DelegationApprovalStatus(Enum):
     reject = "rejected"
 
 
+# def get_manager_by_subordinate_id(
+#     db: Session, staff_id: int
+# ) -> Union[Tuple[models.Employee, List[models.Employee]], Tuple[None, None]]:
+#     """
+#     The function `get_manager_by_subordinate_id` retrieves the manager for a given subordinate ID,
+#     ensuring that the manager's peer employees are not locked in an active delegation relationship and
+#     excluding a specific ID.
+
+#     :param db: The `db` parameter in the `get_manager_by_subordinate_id` function is of type `Session`,
+#     which is likely an instance of a database session that allows interaction with the database. This
+#     parameter is used to query the database for employee and manager information
+#     :type db: Session
+#     :param staff_id: The function `get_manager_by_subordinate_id` is designed to retrieve the manager
+#     for a given subordinate ID while ensuring that the manager's peer employees are not locked in an
+#     active delegation relationship and excluding the specific ID 130002
+#     :type staff_id: int
+#     :return: The function `get_manager_by_subordinate_id` is returning a tuple containing the manager of
+#     the employee and a list of unlocked peers reporting to the manager.
+#     """
+#     # Auto Approve for Jack Sim and bypass manager check
+#     if staff_id == 130002:
+#         return None, None  # Auto-approve for Jack Sim
+
+#     # Retrieve the employee
+#     emp = get_employee_by_id(db, staff_id)
+#     if not emp:
+#         raise exceptions.EmployeeNotFoundException(staff_id)
+
+#     # Get the manager of the employee
+#     manager = crud.get_manager_of_employee(db, emp)
+#     if not manager:
+#         return None, None  # Return None if there's no valid manager
+
+#     # Retrieve all peers reporting to the manager
+#     all_peers = crud.get_peer_employees(db, manager.staff_id)
+
+#     # Filter out peers who are either locked in a delegation relationship or have the ID 130002
+#     unlocked_peers = [
+#         peer
+#         for peer in all_peers
+#         if not crud.is_employee_locked_in_delegation(db, peer.staff_id) and peer.staff_id != 130002
+#     ]
+
+#     print(
+#         f"Unlocked peers for manager {manager.staff_id}: {[peer.staff_id for peer in unlocked_peers]}"
+#     )
+#     return manager, unlocked_peers
+
+
 def get_manager_by_subordinate_id(
     db: Session, staff_id: int
 ) -> Union[Tuple[models.Employee, List[models.Employee]], Tuple[None, None]]:
-    """
-    The function `get_manager_by_subordinate_id` retrieves the manager for a given subordinate ID,
-    ensuring that the manager's peer employees are not locked in an active delegation relationship and
-    excluding a specific ID.
-
-    :param db: The `db` parameter in the `get_manager_by_subordinate_id` function is of type `Session`,
-    which is likely an instance of a database session that allows interaction with the database. This
-    parameter is used to query the database for employee and manager information
-    :type db: Session
-    :param staff_id: The function `get_manager_by_subordinate_id` is designed to retrieve the manager
-    for a given subordinate ID while ensuring that the manager's peer employees are not locked in an
-    active delegation relationship and excluding the specific ID 130002
-    :type staff_id: int
-    :return: The function `get_manager_by_subordinate_id` is returning a tuple containing the manager of
-    the employee and a list of unlocked peers reporting to the manager.
-    """
     # Auto Approve for Jack Sim and bypass manager check
     if staff_id == 130002:
         return None, None  # Auto-approve for Jack Sim
@@ -86,6 +119,11 @@ def get_manager_by_subordinate_id(
     manager = crud.get_manager_of_employee(db, emp)
     if not manager:
         return None, None  # Return None if there's no valid manager
+
+    # Check if the manager has delegated their authority
+    delegated_manager = crud.get_delegated_manager(db, manager.staff_id)
+    if delegated_manager:
+        manager = delegated_manager
 
     # Retrieve all peers reporting to the manager
     all_peers = crud.get_peer_employees(db, manager.staff_id)
