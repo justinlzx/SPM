@@ -84,6 +84,15 @@ async def delete_file(staff_id, update_datetime, s3_client):
         )
 
 
+async def handle_multi_file_deletion(file_paths: List[str], s3_client):
+    for path in file_paths:
+        try:
+            await delete_file(path, datetime.now(), s3_client)
+        except ClientError as delete_error:
+            # Log deletion error, but do not raise to avoid overriding the main exception
+            logger.info(f"Error deleting file {path} from S3: {str(delete_error)}")
+
+
 def create_presigned_url(object_name):
     """Generate a presigned URL to share an S3 object.
 
@@ -162,7 +171,7 @@ def compute_pagination_meta(arrangements, items_per_page: int, page_num: int) ->
 
 
 def format_arrangements_response(
-    arrangements: List[Union[ArrangementResponse, CreatedArrangementGroupByDate]]
+    arrangements: Union[List[ArrangementResponse], List[CreatedArrangementGroupByDate]]
 ) -> List[schemas.ArrangementResponse]:
     if isinstance(arrangements[0], CreatedArrangementGroupByDate):
         response_data = [
