@@ -535,21 +535,18 @@ class TestCreateArrangementsFromRequest:
 
     @pytest.mark.asyncio
     @pytest.mark.parametrize(
-        ("successful_uploads", "delete_fail_index"),
+        "successful_uploads",
         [
-            ([{"file_url": "s3://bucket/test_file_1.pdf"}], -1),
-            ([{"file_url": "s3://bucket/test_file_1.pdf"}], -0),
-            (
-                [
-                    {"file_url": "s3://bucket/test_file_1.pdf"},
-                    {"file_url": "s3://bucket/test_file_2.pdf"},
-                ],
-                -1,
-            ),
-            ([], -1),
+            [{"file_url": "s3://bucket/test_file_1.pdf"}],
+            [{"file_url": "s3://bucket/test_file_1.pdf"}],
+            [
+                {"file_url": "s3://bucket/test_file_1.pdf"},
+                {"file_url": "s3://bucket/test_file_2.pdf"},
+            ],
+            [],
         ],
     )
-    @patch("src.arrangements.services.delete_file")
+    @patch("src.arrangements.services.handle_multi_file_deletion")
     @patch("src.arrangements.services.upload_file")
     @patch("src.employees.services.get_manager_by_subordinate_id")
     @patch("src.employees.crud.get_employee_by_staff_id")
@@ -560,7 +557,6 @@ class TestCreateArrangementsFromRequest:
         mock_upload_file,
         mock_delete_file,
         successful_uploads,
-        delete_fail_index,
         mock_db_session,
     ):
         # Arrange
@@ -585,13 +581,6 @@ class TestCreateArrangementsFromRequest:
         upload_side_effects.append(botocore.exceptions.ClientError(error_response, operation_name))
         mock_upload_file.side_effect = upload_side_effects
 
-        if delete_fail_index > -1:
-            delete_side_effects = [None] * len(successful_uploads)
-            delete_side_effects[delete_fail_index] = botocore.exceptions.ClientError(
-                error_response, operation_name
-            )
-            mock_delete_file.side_effect = delete_side_effects
-
         mock_supporting_documents = [MagicMock(spec=File)] * len(upload_side_effects)
 
         # Act and Assert
@@ -601,7 +590,7 @@ class TestCreateArrangementsFromRequest:
                 mock_wfh_request,
                 mock_supporting_documents,
             )
-        assert mock_delete_file.call_count == len(successful_uploads)
+        mock_delete_file.assert_called_once()
 
     @pytest.mark.asyncio
     @patch("src.employees.crud.get_employee_by_staff_id", return_value=None)

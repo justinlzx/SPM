@@ -36,9 +36,9 @@ from .commons.enums import STATUS_ACTION_MAPPING, Action, ApprovalStatus
 from .utils import (
     compute_pagination_meta,
     create_presigned_url,
-    delete_file,
     expand_recurring_arrangement,
     group_arrangements_by_date,
+    handle_multi_file_deletion,
     upload_file,
 )
 
@@ -63,7 +63,6 @@ def get_all_arrangements(db: Session, filters: ArrangementFilters) -> List[Arran
 def get_personal_arrangements(
     db: Session, staff_id: int, current_approval_status: Optional[List[ApprovalStatus]] = None
 ) -> List[ArrangementResponse]:
-
     filters = ArrangementFilters(current_approval_status=current_approval_status)
 
     logger.info(f"Service: Fetching personal arrangements for staff ID {staff_id}")
@@ -276,12 +275,7 @@ async def create_arrangements_from_request(
     except botocore.exceptions.ClientError as upload_error:
         # If any error occurs, delete uploaded files from S3
         logger.info(f"Deleting files due to error: {str(upload_error)}")
-        for path in file_paths:
-            try:
-                await delete_file(path, datetime.now(), s3_client)
-            except botocore.exceptions.ClientError as delete_error:
-                # Log deletion error, but do not raise to avoid overriding the main exception
-                logger.info(f"Error deleting file {path} from S3: {str(delete_error)}")
+        await handle_multi_file_deletion(file_paths, s3_client)
         raise exceptions.S3UploadFailedException(str(upload_error))
     # TODO: Email notification error
 
@@ -293,19 +287,17 @@ async def update_arrangement_approval_status(
 
     # Get the arrangement to be updated
     arrangement = crud.get_arrangement_by_id(db, wfh_update.arrangement_id)
-
     if not arrangement:
         raise exceptions.ArrangementNotFoundException(wfh_update.arrangement_id)
-
     arrangement = ArrangementResponse.from_dict(arrangement)
 
-    # Update arrangement fields
-
+    # Check if action is valid for the current status
     if wfh_update.action not in STATUS_ACTION_MAPPING[arrangement.current_approval_status]:
         raise exceptions.ArrangementActionNotAllowedException(
             arrangement.current_approval_status, wfh_update.action
         )
 
+    # Update arrangement fields
     previous_approval_status = arrangement.current_approval_status
     arrangement.current_approval_status = STATUS_ACTION_MAPPING[
         arrangement.current_approval_status

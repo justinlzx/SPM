@@ -1,7 +1,8 @@
-from datetime import datetime, date, timedelta
+from datetime import date, datetime
 from io import BytesIO
 from unittest.mock import MagicMock, patch
 
+import freezegun
 import pytest
 from botocore.exceptions import ClientError
 from fastapi import HTTPException, UploadFile
@@ -9,7 +10,17 @@ from pydantic import BaseModel
 from sqlalchemy import Column, Integer, String
 from sqlalchemy.ext.declarative import declarative_base
 from src.arrangements.commons import dataclasses as dc
-from src.arrangements.commons.enums import ApprovalStatus, RecurringFrequencyUnit, WfhType
+from src.arrangements.commons import schemas
+from src.arrangements.commons.dataclasses import (
+    ArrangementResponse,
+    CreatedArrangementGroupByDate,
+    PaginationMeta,
+)
+from src.arrangements.commons.enums import (
+    ApprovalStatus,
+    RecurringFrequencyUnit,
+    WfhType,
+)
 from src.arrangements.utils import (
     compute_pagination_meta,
     create_presigned_url,
@@ -19,15 +30,9 @@ from src.arrangements.utils import (
     format_arrangements_response,
     get_tomorrow_date,
     group_arrangements_by_date,
+    handle_multi_file_deletion,
     upload_file,
 )
-from src.arrangements.commons.dataclasses import (
-    ArrangementResponse,
-    CreatedArrangementGroupByDate,
-    PaginationMeta,
-)
-from src.arrangements.commons import schemas
-import freezegun
 
 Base = declarative_base()
 
@@ -113,14 +118,14 @@ class TestGroupArrangementsByDate:
     )
     def test_success(self, dates, expected_groups):
         mock_arrangements = [MagicMock(spec=dc.ArrangementResponse) for _ in range(len(dates))]
-        for i, date in enumerate(dates):
-            mock_arrangements[i].wfh_date = datetime.strptime(date, "%Y-%m-%d").date()
+        for i, wfh_date in enumerate(dates):
+            mock_arrangements[i].wfh_date = datetime.strptime(wfh_date, "%Y-%m-%d").date()
 
         result = group_arrangements_by_date(mock_arrangements)
 
         assert len(result) == len(expected_groups)
-        for i, (date, count) in enumerate(expected_groups):
-            assert result[i].date == date
+        for i, (wfh_date, count) in enumerate(expected_groups):
+            assert result[i].date == wfh_date
             assert len(result[i].arrangements) == count
 
 
@@ -211,12 +216,39 @@ async def test_upload_file_s3_failure(mock_boto_client):
         )
 
 
+@pytest.mark.asyncio
+@patch("src.arrangements.utils.delete_file")
+@patch("src.arrangements.utils.boto3.client")
+async def test_handle_multi_file_deletion_success(mock_s3_client, mock_delete_file):
+    mock_s3_client.delete_object.return_value = None
+
+    file_paths = ["1/2024-01-01", "2/2024-01-01", "3/2024-01-01"]
+    await handle_multi_file_deletion(file_paths, mock_s3_client)
+
+    assert mock_delete_file.call_count == 3
+
+
+@pytest.mark.asyncio
+@patch("src.arrangements.utils.delete_file")
+@patch("src.arrangements.utils.boto3.client")
+async def test_handle_multi_file_deletion_failure(mock_s3_client, mock_delete_file):
+    mock_delete_file.side_effect = ClientError(
+        {"Error": {"Code": "InvalidRequest", "Message": "Invalid request"}},
+        "delete_file",
+    )
+
+    file_paths = ["1/2024-01-01", "2/2024-01-01", "3/2024-01-01"]
+    await handle_multi_file_deletion(file_paths, mock_s3_client)
+
+    assert mock_delete_file.call_count == 3
+
+
 def create_mock_arrangement_response(
     arrangement_id: int = 1,
     update_datetime: datetime = datetime.now(),
     wfh_date: date = date(2024, 1, 1),
 ) -> ArrangementResponse:
-    """Helper function to create a mock ArrangementResponse with all required fields"""
+    """Helper function to create a mock ArrangementResponse with all required fields."""
     return ArrangementResponse(
         arrangement_id=arrangement_id,
         update_datetime=update_datetime,
