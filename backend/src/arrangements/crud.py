@@ -112,7 +112,7 @@ def get_expiring_requests(db: Session):
     query = db.query(models.LatestArrangement)
     query = query.filter(
         models.LatestArrangement.current_approval_status == ApprovalStatus.PENDING_APPROVAL,
-        models.LatestArrangement.wfh_date == tomorrow_date.strftime("%Y-%m-%d"),
+        models.LatestArrangement.wfh_date < tomorrow_date.strftime("%Y-%m-%d"),
     )
     arrangements = query.all()
 
