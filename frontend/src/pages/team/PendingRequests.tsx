@@ -129,6 +129,7 @@ const fetchPendingRequests = async () => {
           );
           allRequests = [...primaryRequests];
       }
+      console.log(allRequests)
 
       // If the user is a delegatee, fetch delegated requests
       if (isDelegateManager && delegatorManagerId && delegatorManagerId !== userId) {
@@ -138,8 +139,10 @@ const fetchPendingRequests = async () => {
           const delegatedRequests = delegatedResponse.data.data.flatMap(
               (dateEntry: { pending_arrangements: TWFHRequest[] }) => dateEntry.pending_arrangements
           );
+          //console.log(delegatedRequests);
           allRequests = [...allRequests, ...delegatedRequests];
       }
+      
 
       // Filter requests with pending status
       const requests = allRequests.filter((request: TWFHRequest) => {
@@ -148,6 +151,7 @@ const fetchPendingRequests = async () => {
               request.current_approval_status === ApprovalStatus.PendingWithdrawal
           );
       });
+      //console.log(requests);
 
       const requestsWithNames = await Promise.all(
           requests.map(async (request: TWFHRequest) => {
@@ -158,7 +162,7 @@ const fetchPendingRequests = async () => {
               };
           })
       );
-
+      console.log(filteredRequests);
       setActionRequests(requestsWithNames);
       setFilteredRequests(requestsWithNames);
   } catch (error) {
@@ -173,12 +177,16 @@ const fetchPendingRequests = async () => {
 
   useEffect(() => {
     const initializeData = async () => {
-      await fetchDelegationStatus(); 
-      console.log("Delegator Manager ID after fetchDelegationStatus:", delegatorManagerId); // Check if it's set
-      await fetchPendingRequests();
+      await fetchDelegationStatus();
     };
     initializeData();
   }, [user, userId]);
+
+  useEffect(() => {
+    if (delegatorManagerId !== null) {
+      fetchPendingRequests();
+    }
+  }, [delegatorManagerId]);
 
   const refreshData = () => {
     fetchPendingRequests();
@@ -311,25 +319,24 @@ const fetchPendingRequests = async () => {
             </TableRow>
           </TableHead>
           <TableBody>
-          {(filteredRequests.length === 0 || delegatorManagerId === userId) ? (
-          <TableRow>
-            <TableCell colSpan={7} align="center">
-              No pending requests
-            </TableCell>
-          </TableRow>
-        ) : (
-          filteredRequests.length > 0 && delegatorManagerId !== userId && 
-          filteredRequests.map((arrangement) => (
-            <ArrangementRow
-              key={arrangement.arrangement_id}
-              arrangement={arrangement}
-              handleRequestAction={handleRequestAction}
-              handleRejectClick={handleRejectClick}
-              handleViewDocuments={handleViewDocuments}
-            />
-          ))
-        )}
-          </TableBody>
+    {filteredRequests.length === 0 ? (
+      <TableRow>
+        <TableCell colSpan={7} align="center">
+          No pending requests
+        </TableCell>
+      </TableRow>
+    ) : (
+      filteredRequests.map((arrangement) => (
+        <ArrangementRow
+          key={arrangement.arrangement_id}
+          arrangement={arrangement}
+          handleRequestAction={handleRequestAction}
+          handleRejectClick={handleRejectClick}
+          handleViewDocuments={handleViewDocuments}
+        />
+      ))
+    )}
+  </TableBody>
         </Table>
       </TableContainer>
 
