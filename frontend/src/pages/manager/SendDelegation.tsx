@@ -99,6 +99,7 @@ export const SendDelegation: React.FC = () => {
           `${BACKEND_URL}/employees/manager/viewalldelegations/${userId}`
         );
         const sentDelegations: TDelegationLog[] = response.data.sent_delegations || [];
+  
         setDelegationLogs(sentDelegations);
       } catch (error) {
         console.error("Failed to fetch delegation logs:", error);
