@@ -1,4 +1,5 @@
 from dataclasses import asdict
+from datetime import datetime
 from typing import Dict, List, Optional, Union
 
 # from pydantic import ValidationError
@@ -122,7 +123,7 @@ def create_arrangement_log(
     db: Session,
     arrangement: models.LatestArrangement,
     action: Action,
-    previous_approval_status: ApprovalStatus,
+    previous_approval_status: Optional[ApprovalStatus],
 ) -> models.ArrangementLog:
     try:
         logger.info(f"Crud: Creating arrangement log for action {action}")
@@ -221,11 +222,12 @@ def update_arrangement_approval_status(
             models.LatestArrangement.arrangement_id == arrangement_data.arrangement_id
         ).update(
             {
-                "current_approval_status": arrangement_data.current_approval_status,
-                "supporting_doc_1": arrangement_data.supporting_doc_1,
-                "supporting_doc_2": arrangement_data.supporting_doc_2,
-                "supporting_doc_3": arrangement_data.supporting_doc_3,
-                "status_reason": arrangement_data.status_reason,
+                models.LatestArrangement.update_datetime: datetime.now(),
+                models.LatestArrangement.current_approval_status: arrangement_data.current_approval_status,
+                models.LatestArrangement.supporting_doc_1: arrangement_data.supporting_doc_1,
+                models.LatestArrangement.supporting_doc_2: arrangement_data.supporting_doc_2,
+                models.LatestArrangement.supporting_doc_3: arrangement_data.supporting_doc_3,
+                models.LatestArrangement.status_reason: arrangement_data.status_reason,
             }
         )
 
