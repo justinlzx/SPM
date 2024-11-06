@@ -165,6 +165,6 @@ jobs:
 
             📝 Workflow Results:
             Build: ${{ needs.build.result && 'Success ✅' || 'Failed ❌' }}
-            Deploy: ${{ needs.deploy.result == 'success' && 'Success ✅' || needs.deploy.result == 'skipped' && 'Skipped 🚫' || needs.deploy.result == 'failed' || 'Failed ❌' || needs.deploy.result }}
+            Deploy: ${{ needs.deploy.result == 'success' && 'Success ✅' || needs.deploy.result == 'skipped' && 'Skipped 🚫' || needs.deploy.result == 'failure' && 'Failed ❌' || needs.deploy.result }}
 
             View Details: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
