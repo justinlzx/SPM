@@ -241,6 +241,7 @@ class TestGetArrangements:
         mock_query = MagicMock()
         mock_join = MagicMock()
         mock_filter = MagicMock()
+        mock_filters.staff_ids = 100
 
         # Setup the chain
         mock_db_session.query.return_value = mock_query
@@ -249,7 +250,7 @@ class TestGetArrangements:
         mock_filter.filter.return_value = mock_filter
         mock_filter.all.return_value = [mock_latest_arrangement]
 
-        result = crud.get_arrangements(mock_db_session, staff_ids=100, filters=mock_filters)
+        result = crud.get_arrangements(mock_db_session, filters=mock_filters)
 
         assert len(result) == 1
         assert result[0] == mock_latest_arrangement.__dict__
@@ -261,6 +262,7 @@ class TestGetArrangements:
         mock_query = MagicMock()
         mock_join = MagicMock()
         mock_filter = MagicMock()
+        mock_filters.staff_ids = 100
 
         mock_db_session.query.return_value = mock_query
         mock_query.join.return_value = mock_join
@@ -273,7 +275,7 @@ class TestGetArrangements:
         mock_filters.start_date = date(2024, 1, 1)
         mock_filters.end_date = date(2024, 1, 31)
 
-        result = crud.get_arrangements(mock_db_session, staff_ids=[100], filters=mock_filters)
+        result = crud.get_arrangements(mock_db_session, filters=mock_filters)
 
         assert len(result) == 1
         assert result[0] == mock_latest_arrangement.__dict__
@@ -291,8 +293,8 @@ class TestGetArrangements:
         mock_filtered.filter.return_value = mock_filtered  # For additional filters
         mock_filtered.all.return_value = [mock_latest_arrangement]
 
-        filters = ArrangementFilters(reason="Test reason")
-        result = crud.get_arrangements(mock_db_session, staff_ids=[100], filters=filters)
+        filters = ArrangementFilters(reason="Test reason", staff_ids=100)
+        result = crud.get_arrangements(mock_db_session, filters=filters)
 
         assert len(result) == 1
         assert result[0] == mock_latest_arrangement.__dict__
@@ -313,8 +315,8 @@ class TestGetArrangements:
         mock_filtered.filter.return_value = mock_filtered  # For additional filters
         mock_filtered.all.return_value = [mock_latest_arrangement]
 
-        filters = ArrangementFilters(department="IT")
-        result = crud.get_arrangements(mock_db_session, staff_ids=[100], filters=filters)
+        filters = ArrangementFilters(department="IT", staff_ids=100)
+        result = crud.get_arrangements(mock_db_session, filters=filters)
 
         assert len(result) == 1
         assert result[0] == mock_latest_arrangement.__dict__
@@ -327,7 +329,8 @@ class TestGetArrangements:
 
     def test_get_arrangements_without_filters(self, mock_db_session, mock_latest_arrangement):
         # Test getting arrangements without any filters
-        result = crud.get_arrangements(mock_db_session, staff_ids=[100])
+        filters = ArrangementFilters(staff_ids=100)
+        result = crud.get_arrangements(mock_db_session, filters=filters)
         assert isinstance(result, list)
 
     def test_get_arrangements_with_single_staff_id(self, mock_db_session, mock_latest_arrangement):
@@ -335,13 +338,14 @@ class TestGetArrangements:
         mock_query = MagicMock()
         mock_join = MagicMock()
         mock_filter = MagicMock()
+        filter = ArrangementFilters(staff_ids=100)
 
         mock_db_session.query.return_value = mock_query
         mock_query.join.return_value = mock_join
         mock_join.filter.return_value = mock_filter
         mock_filter.all.return_value = [mock_latest_arrangement]
 
-        result = crud.get_arrangements(mock_db_session, staff_ids=100)
+        result = crud.get_arrangements(mock_db_session, filters=filter)
         assert len(result) == 1
         assert result[0] == mock_latest_arrangement.__dict__
 
@@ -356,8 +360,8 @@ class TestGetArrangements:
         mock_filter.filter.return_value = mock_filter
         mock_filter.all.return_value = [mock_latest_arrangement]
 
-        filters = ArrangementFilters(name="John")
-        result = crud.get_arrangements(mock_db_session, staff_ids=[100], filters=filters)
+        filters = ArrangementFilters(name="John", staff_ids=100)
+        result = crud.get_arrangements(mock_db_session, filters=filters)
         assert len(result) == 1
 
     def test_get_arrangements_with_approval_status_filter(
@@ -374,8 +378,10 @@ class TestGetArrangements:
         mock_filter.filter.return_value = mock_filter
         mock_filter.all.return_value = [mock_latest_arrangement]
 
-        filters = ArrangementFilters(current_approval_status=[ApprovalStatus.PENDING_APPROVAL])
-        result = crud.get_arrangements(mock_db_session, staff_ids=[100], filters=filters)
+        filters = ArrangementFilters(
+            current_approval_status=[ApprovalStatus.PENDING_APPROVAL], staff_ids=100
+        )
+        result = crud.get_arrangements(mock_db_session, filters=filters)
         assert len(result) == 1
         assert result[0] == mock_latest_arrangement.__dict__
 
@@ -391,18 +397,20 @@ class TestGetArrangements:
         mock_filter.filter.return_value = mock_filter
         mock_filter.all.return_value = [mock_latest_arrangement]
 
-        filters = ArrangementFilters(wfh_type=[WfhType.FULL])
+        filters = ArrangementFilters(wfh_type=[WfhType.FULL], staff_ids=100)
         # print("FILTERS ARE HERE", filters)
         # ArrangementFilters(current_approval_status=None, name=None, wfh_type=[<WfhType.FULL: 'full'>], start_date=None, end_date=None, reason=None, group_by_date=True, department=None)
         mock_db_session.query.return_value.filter.return_value.all.return_value = [
             mock_latest_arrangement
         ]
-        result = crud.get_arrangements(mock_db_session, staff_ids=[100], filters=filters)
+        result = crud.get_arrangements(mock_db_session, filters=filters)
         print("Result:", result)  # returns []
         assert len(result) == 1
 
     def test_get_arrangements_with_date_filters(self, mock_db_session, mock_latest_arrangement):
-        filters = ArrangementFilters(start_date=date(2024, 1, 1), end_date=date(2024, 1, 31))
+        filters = ArrangementFilters(
+            start_date=date(2024, 1, 1), end_date=date(2024, 1, 31), staff_ids=100
+        )
 
         # Set up a mock query chain that respects the date filters
         mock_query = mock_db_session.query.return_value
@@ -411,25 +419,11 @@ class TestGetArrangements:
         mock_query.all.return_value = [mock_latest_arrangement]  # Return the expected result
 
         # Execute the function
-        result = crud.get_arrangements(mock_db_session, staff_ids=[100], filters=filters)
+        result = crud.get_arrangements(mock_db_session, filters=filters)
 
         # Verify the result
         assert len(result) == 1
         assert result[0] == mock_latest_arrangement.__dict__
-
-
-class TestGetTeamArrangements:
-    def test_get_team_arrangements(self, mock_db_session, mock_employee):
-        # Mock team members query result
-        mock_db_session.query().filter().all.return_value = [(1,), (2,)]
-
-        filters = ArrangementFilters()
-        result = crud.get_team_arrangements(
-            mock_db_session, staff_id=mock_employee.staff_id, filters=filters
-        )
-
-        assert isinstance(result, list)
-        mock_db_session.query.assert_called()
 
 
 class TestGetArrangementLogs:

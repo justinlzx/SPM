@@ -204,24 +204,29 @@ class TestGetPersonalArrangements:
             ([], 1),
         ],
     )
+    @patch("src.arrangements.services.create_presigned_url")
     @patch("src.arrangements.commons.dataclasses.ArrangementResponse.from_dict")
     @patch("src.arrangements.crud.get_arrangements")
     def test_success(
         self,
         mock_get_arrangements,
         mock_convert,
+        mock_create_presigned_url,
         current_approval_status,
         num_arrangements,
         mock_db_session,
     ):
+        # Arrange
         mock_get_arrangements.return_value = [
             MagicMock(spec=dc.ArrangementResponse)
         ] * num_arrangements
 
+        # Act
         get_personal_arrangements(
             mock_db_session, staff_id=1, current_approval_status=current_approval_status
         )
 
+        # Assert
         mock_get_arrangements.assert_called_once()
 
         if num_arrangements == 0:
@@ -236,7 +241,6 @@ class TestGetSubordinatesArrangements:
     @patch("src.arrangements.services.create_presigned_url")
     @patch("src.arrangements.commons.dataclasses.ArrangementResponse.from_dict")
     @patch("src.arrangements.crud.get_arrangements")
-    @patch("src.employees.services.get_subordinates_by_manager_id")
     @pytest.mark.parametrize(
         ("supporting_docs", "group_by_date"),
         [
@@ -255,7 +259,6 @@ class TestGetSubordinatesArrangements:
     )
     def test_success(
         self,
-        mock_get_subordinates,
         mock_get_arrangements,
         mock_convert,
         mock_create_presigned_url,
@@ -267,7 +270,6 @@ class TestGetSubordinatesArrangements:
         mock_employee,
     ):
         # Arrange
-        mock_get_subordinates.return_value = [mock_employee]
         mock_get_arrangements.return_value = [MagicMock(spec=dc.ArrangementResponse)]
 
         mock_arrangement = MagicMock(spec=dc.ArrangementResponse)
@@ -294,7 +296,6 @@ class TestGetSubordinatesArrangements:
         )
 
         # Assert
-        mock_get_subordinates.assert_called_once()
         mock_get_arrangements.assert_called_once()
         mock_convert.assert_called()
         mock_create_presigned_url.assert_called()
@@ -321,45 +322,34 @@ class TestGetSubordinatesArrangements:
 
 class TestGetTeamArrangements:
     @pytest.mark.parametrize(
-        ("is_manager", "group_by_date"),
-        [
-            (True, True),
-            (True, False),
-            (False, True),
-        ],
+        "group_by_date",
+        [True, False],
     )
+    @patch("src.arrangements.services.compute_pagination_meta")
     @patch("src.arrangements.services.group_arrangements_by_date")
+    @patch("src.arrangements.services.create_presigned_url")
     @patch("src.arrangements.commons.dataclasses.ArrangementResponse.from_dict")
     @patch("src.arrangements.crud.get_arrangements")
-    @patch("src.employees.services.get_subordinates_by_manager_id")
     @patch("src.employees.services.get_peers_by_staff_id")
     def test_success(
         self,
         mock_get_peers,
-        mock_get_subordinates,
         mock_get_arrangements,
         mock_convert,
+        mock_create_presigned_url,
         mock_group_arrangements,
-        is_manager,
+        mock_compute_pagination_meta,
         group_by_date,
         mock_db_session,
         mock_arrangement_data,
         mock_employee,
-        mock_manager,
     ):
         # Arrange
-        mock_get_peers.return_value = [mock_manager if is_manager else mock_employee]
-
-        if is_manager:
-            mock_get_subordinates.return_value = [mock_employee]
-        else:
-            mock_get_subordinates.side_effect = employee_exceptions.ManagerWithIDNotFoundException(
-                1
-            )
-
+        mock_get_peers.return_value = [mock_employee]
         mock_get_arrangements.return_value = [mock_arrangement_data]
         mock_convert.return_value = MagicMock(spec=dc.ArrangementResponse)
         mock_group_arrangements.return_value = [MagicMock(spec=dc.CreatedArrangementGroupByDate)]
+        mock_compute_pagination_meta.return_value = MagicMock(spec=dc.PaginationMeta)
 
         # Act
         result = get_team_arrangements(
@@ -370,10 +360,9 @@ class TestGetTeamArrangements:
         )
 
         # Assert
-        # Assert
         mock_get_peers.assert_called_once()
-        mock_get_subordinates.assert_called_once()
-        mock_get_arrangements.assert_called_once()
+        mock_get_arrangements.assert_called()
+        assert mock_get_arrangements.call_count == 2
         mock_convert.assert_called()
 
         if group_by_date:

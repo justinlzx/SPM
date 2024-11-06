@@ -10,7 +10,6 @@ from sqlalchemy.orm import Session
 
 from ..database import get_db
 from ..employees import crud as employee_crud
-from ..employees import models as employee_models
 from ..employees import services as employee_services
 from ..employees.exceptions import EmployeeNotFoundException
 from ..logger import logger
@@ -133,8 +132,7 @@ def get_team_arrangements(
 ) -> Tuple[Union[List[ArrangementResponse], List[CreatedArrangementGroupByDate]], PaginationMeta]:
 
     # Get peer employees
-    employees: List[employee_models.Employee] = []
-    employees.extend(employee_services.get_peers_by_staff_id(db, staff_id))
+    employees = employee_services.get_peers_by_staff_id(db, staff_id)
 
     team_arrangements = []
 
@@ -172,39 +170,22 @@ def get_team_arrangements(
 
     # Group by date if required
     if filters.group_by_date:
-        arrangements = group_arrangements_by_date(team_arrangements)
+        team_arrangements = group_arrangements_by_date(team_arrangements)
 
-        logger.info(f"Grouped arrangements into {len(arrangements)} dates")
+        logger.info(f"Grouped arrangements into {len(team_arrangements)} dates")
 
         # slice the list based on page number and items per page
-        arrangements = arrangements[
+        team_arrangements = team_arrangements[
             (pagination.page_num - 1)
             * pagination.items_per_page : pagination.page_num
             * pagination.items_per_page
         ]
 
     pagination_meta = compute_pagination_meta(
-        arrangements, pagination.items_per_page, pagination.page_num
+        team_arrangements, pagination.items_per_page, pagination.page_num
     )
 
-    # Group by date if required
-    if filters.group_by_date:
-        arrangements = group_arrangements_by_date(team_arrangements)
-
-        logger.info(f"Grouped arrangements into {len(arrangements)} dates")
-
-        # slice the list based on page number and items per page
-        arrangements = arrangements[
-            (pagination.page_num - 1)
-            * pagination.items_per_page : pagination.page_num
-            * pagination.items_per_page
-        ]
-
-    pagination_meta = compute_pagination_meta(
-        arrangements, pagination.items_per_page, pagination.page_num
-    )
-
-    return arrangements, pagination_meta
+    return team_arrangements, pagination_meta
 
 
 def get_arrangement_logs(

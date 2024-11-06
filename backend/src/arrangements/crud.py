@@ -91,22 +91,6 @@ def get_arrangements(
     return [result.__dict__ for result in results]
 
 
-def get_team_arrangements(
-    db: Session,
-    staff_id: int,
-    filters: ArrangementFilters,
-) -> List[Dict]:
-    # Log the team lead's staff ID
-    logger.info(f"Crud: Fetching team arrangements for team lead {staff_id}")
-
-    # Fetch the team members' staff IDs
-    team_members = db.query(Employee.staff_id).filter(Employee.manager_staff_id == staff_id).all()
-    team_member_ids = [member[0] for member in team_members]
-
-    # Fetch the team members' arrangements
-    return get_arrangements(db, team_member_ids, filters)
-
-
 def get_arrangement_logs(
     db: Session,
 ) -> List[Dict]:
