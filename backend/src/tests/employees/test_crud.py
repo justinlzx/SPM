@@ -1,4 +1,7 @@
-from datetime import datetime
+from dataclasses import dataclass
+from datetime import UTC, datetime
+from typing import Optional
+from unittest.mock import MagicMock
 
 import pytest
 from sqlalchemy import create_engine
@@ -10,6 +13,7 @@ from src.employees.crud import (
     create_delegation,
     get_all_received_delegations,
     get_all_sent_delegations,
+    get_delegated_manager,
     get_delegation_log_by_delegate,
     get_delegation_log_by_manager,
     get_employee_by_email,
@@ -29,8 +33,6 @@ from src.employees.crud import (
     update_pending_arrangements_for_delegate,
 )
 from src.employees.models import Base, DelegateLog, DelegationStatus, Employee
-from dataclasses import dataclass
-from typing import Optional
 
 # Configure the in-memory SQLite database
 # The code is setting up a SQLite in-memory database engine using SQLAlchemy in Python. It
@@ -990,9 +992,7 @@ SessionLocal = sessionmaker(bind=engine)
 
 # Test cases for get_employees function
 def test_get_employees_no_filters(test_db, seed_data):
-    """
-    Test retrieving all employees when no filters are applied
-    """
+    """Test retrieving all employees when no filters are applied."""
     filters = EmployeeFilters()
     result = get_employees(test_db, filters)
 
@@ -1002,9 +1002,7 @@ def test_get_employees_no_filters(test_db, seed_data):
 
 
 def test_get_employees_filter_by_department(test_db, seed_data):
-    """
-    Test retrieving employees filtered by department
-    """
+    """Test retrieving employees filtered by department."""
     # Test with existing department
     filters = EmployeeFilters(department="IT")
     result = get_employees(test_db, filters)
@@ -1020,18 +1018,14 @@ def test_get_employees_filter_by_department(test_db, seed_data):
 
 
 def test_get_employees_empty_database(test_db):
-    """
-    Test retrieving employees from an empty database
-    """
+    """Test retrieving employees from an empty database."""
     filters = EmployeeFilters()
     result = get_employees(test_db, filters)
     assert len(result) == 0
 
 
 def test_get_employees_multiple_departments(test_db):
-    """
-    Test retrieving employees from multiple departments
-    """
+    """Test retrieving employees from multiple departments."""
     # Create test employees in different departments
     employees = [
         Employee(
@@ -1058,9 +1052,7 @@ def test_get_employees_multiple_departments(test_db):
 
 
 def test_get_employees_case_sensitive_department(test_db):
-    """
-    Test department filter case sensitivity
-    """
+    """Test department filter case sensitivity."""
     # Create test employee with specific case in department
     employee = Employee(
         staff_id=1,
@@ -1088,9 +1080,7 @@ def test_get_employees_case_sensitive_department(test_db):
 
 
 def test_get_employees_special_characters_department(test_db):
-    """
-    Test department filter with special characters
-    """
+    """Test department filter with special characters."""
     employee = Employee(
         staff_id=1,
         staff_fname="Test",
@@ -1112,10 +1102,10 @@ def test_get_employees_special_characters_department(test_db):
 
 
 def test_get_employees_empty_department(test_db):
-    """
-    Test handling of empty department filter.
-    This test verifies that the get_employees function correctly handles filtering
-    when department filter is None, which should return all employees regardless of department.
+    """Test handling of empty department filter.
+
+    This test verifies that the get_employees function correctly handles filtering when department
+    filter is None, which should return all employees regardless of department.
     """
     # Create test employees with different departments
     employees = [
@@ -1176,9 +1166,7 @@ def test_get_employees_empty_department(test_db):
 
 
 def test_get_employees_empty_string_department(test_db):
-    """
-    Test handling of empty string in department filter
-    """
+    """Test handling of empty string in department filter."""
     employee = Employee(
         staff_id=1,
         staff_fname="Test",
@@ -1199,9 +1187,7 @@ def test_get_employees_empty_string_department(test_db):
 
 
 def test_get_employees_large_dataset(test_db):
-    """
-    Test performance with a large number of employees
-    """
+    """Test performance with a large number of employees."""
     # Create a large number of test employees
     employees = [
         Employee(
@@ -1223,3 +1209,156 @@ def test_get_employees_large_dataset(test_db):
     filters = EmployeeFilters(department="IT")
     result = get_employees(test_db, filters)
     assert len(result) == 500  # Should return half of the employees (IT department)
+
+
+@pytest.fixture
+def db_session():
+    """Create a mock database session for testing."""
+    session = MagicMock()
+    return session
+
+
+def test_get_delegated_manager_with_active_delegation(db_session):
+    # Arrange
+    approving_officer_id = 1
+    delegate_id = 2
+
+    # Create mock employee for delegate
+    delegate_employee = Employee(
+        staff_id=delegate_id, staff_fname="John", staff_lname="Doe", email="john.doe@example.com"
+    )
+
+    # Create mock delegation log
+    mock_delegation = DelegateLog(
+        manager_id=approving_officer_id,
+        delegate_manager_id=delegate_id,
+        date_of_delegation=datetime.now(UTC),
+        status_of_delegation=DelegationStatus.accepted,
+    )
+
+    # Set up mock query chain for DelegateLog
+    mock_delegate_query = MagicMock()
+    mock_delegate_query.filter.return_value = mock_delegate_query
+    mock_delegate_query.order_by.return_value = mock_delegate_query
+    mock_delegate_query.first.return_value = mock_delegation
+
+    # Set up mock query chain for Employee
+    mock_employee_query = MagicMock()
+    mock_employee_query.filter.return_value = mock_employee_query
+    mock_employee_query.first.return_value = delegate_employee
+
+    # Configure session.query to return appropriate mock query
+    def mock_query(model):
+        if model == DelegateLog:
+            return mock_delegate_query
+        elif model == Employee:
+            return mock_employee_query
+
+    db_session.query.side_effect = mock_query
+
+    # Act
+    result = get_delegated_manager(db_session, approving_officer_id)
+
+    # Assert
+    assert result is not None
+    assert result.staff_id == delegate_id
+    assert result.staff_fname == "John"
+    assert result.staff_lname == "Doe"
+
+    # Verify the correct queries were made
+    mock_delegate_query.filter.assert_called()
+    mock_employee_query.filter.assert_called()
+
+
+def test_get_delegated_manager_with_pending_delegation(db_session):
+    # Arrange
+    approving_officer_id = 1
+
+    # Set up mock query chain
+    mock_query = MagicMock()
+    mock_query.filter.return_value = mock_query
+    mock_query.order_by.return_value = mock_query
+    mock_query.first.return_value = None
+
+    db_session.query.return_value = mock_query
+
+    # Act
+    result = get_delegated_manager(db_session, approving_officer_id)
+
+    # Assert
+    assert result is None
+
+
+def test_get_delegated_manager_with_no_delegation(db_session):
+    # Arrange
+    approving_officer_id = 1
+
+    # Set up mock query chain
+    mock_query = MagicMock()
+    mock_query.filter.return_value = mock_query
+    mock_query.order_by.return_value = mock_query
+    mock_query.first.return_value = None
+
+    db_session.query.return_value = mock_query
+
+    # Act
+    result = get_delegated_manager(db_session, approving_officer_id)
+
+    # Assert
+    assert result is None
+
+
+def test_get_delegated_manager_multiple_delegations(db_session):
+    # Arrange
+    approving_officer_id = 1
+    new_delegate_id = 3
+
+    # Create mock employee
+    new_delegate = Employee(
+        staff_id=new_delegate_id,
+        staff_fname="Jane",
+        staff_lname="Smith",
+        email="jane.smith@example.com",
+    )
+
+    # Create mock delegation log (newest)
+    mock_delegation = DelegateLog(
+        manager_id=approving_officer_id,
+        delegate_manager_id=new_delegate_id,
+        date_of_delegation=datetime(2023, 2, 1, tzinfo=UTC),
+        status_of_delegation=DelegationStatus.accepted,
+    )
+
+    # Set up mock query chain for DelegateLog
+    mock_delegate_query = MagicMock()
+    mock_delegate_query.filter.return_value = mock_delegate_query
+    mock_delegate_query.order_by.return_value = mock_delegate_query
+    mock_delegate_query.first.return_value = mock_delegation
+
+    # Set up mock query chain for Employee
+    mock_employee_query = MagicMock()
+    mock_employee_query.filter.return_value = mock_employee_query
+    mock_employee_query.first.return_value = new_delegate
+
+    # Configure session.query to return appropriate mock query
+    def mock_query(model):
+        if model == DelegateLog:
+            return mock_delegate_query
+        elif model == Employee:
+            return mock_employee_query
+
+    db_session.query.side_effect = mock_query
+
+    # Act
+    result = get_delegated_manager(db_session, approving_officer_id)
+
+    # Assert
+    assert result is not None
+    assert result.staff_id == new_delegate_id
+    assert result.staff_fname == "Jane"
+    assert result.staff_lname == "Smith"
+
+    # Verify queries were made in the correct order
+    mock_delegate_query.filter.assert_called()
+    mock_delegate_query.order_by.assert_called()
+    mock_employee_query.filter.assert_called()

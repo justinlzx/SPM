@@ -212,7 +212,7 @@ def format_email_body(
             body += f"{config.delegatee.staff_fname} {config.delegatee.staff_lname} has been approved.\n\n"
 
         elif role == "delegatee" and config.action == "approved":
-            body += f"{config.delegator.staff_fname} {config.delegator.staff_lname} has approved your delegation request.\n\n"
+            body += f"You have approved the delegation request from {config.delegator.staff_fname} {config.delegator.staff_lname}.\n\n"
 
         elif role == "delegator" and config.action == "rejected":
             body += "Your delegation request to "
