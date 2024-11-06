@@ -11,7 +11,7 @@ import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import { TArrangementsByDate, TAction } from "../../types/requests";
 import EmployeeRow from "../../components/requests/EmployeeRow";
-import DocumentDialog from "../../components/requests/DocumentDialog";
+import { DocumentDialog } from "../../components/requests/DocumentDialog";
 
 type DateRowProps = {
   date: TArrangementsByDate;
@@ -22,7 +22,10 @@ type DateRowProps = {
   ) => void;
 };
 
-export const DateRow: React.FC<DateRowProps> = ({ date, handleRequestAction }) => {
+export const DateRow: React.FC<DateRowProps> = ({
+  date,
+  handleRequestAction,
+}) => {
   const [isCollapsed, setIsCollapsed] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [documents, setDocuments] = useState<string[]>([]);
@@ -50,7 +53,10 @@ export const DateRow: React.FC<DateRowProps> = ({ date, handleRequestAction }) =
       </TableRow>
 
       <TableRow>
-        <TableCell colSpan={3} style={{ paddingBottom: 0, paddingTop: 0, paddingLeft: 40 }}>
+        <TableCell
+          colSpan={3}
+          style={{ paddingBottom: 0, paddingTop: 0, paddingLeft: 40 }}
+        >
           <Collapse in={!isCollapsed} timeout="auto" unmountOnExit>
             <Box>
               {date.pending_arrangements.map((arrangement) => (
