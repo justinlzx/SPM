@@ -222,20 +222,15 @@ def update_pending_arrangements_for_delegate(
     in the database for a specific manager by reassigning the approval authority to another manager
     :type delegate_manager_id: int
     """
-    pending_arrangements = (
-        db.query(LatestArrangement)
-        .filter(
-            LatestArrangement.approving_officer == manager_id,
-            LatestArrangement.current_approval_status.in_(
-                [ApprovalStatus.PENDING_APPROVAL, ApprovalStatus.PENDING_WITHDRAWAL]
-            ),
-        )
-        .all()
-    )
 
-    for arrangement in pending_arrangements:
-        arrangement.delegate_approving_officer = delegate_manager_id
-        db.add(arrangement)
+    db.query(LatestArrangement).filter(
+        LatestArrangement.approving_officer == manager_id,
+        LatestArrangement.current_approval_status.in_(
+            [ApprovalStatus.PENDING_APPROVAL, ApprovalStatus.PENDING_WITHDRAWAL]
+        ),
+    ).update(
+        {LatestArrangement.delegate_approving_officer: delegate_manager_id},
+    )
 
     db.commit()
 
