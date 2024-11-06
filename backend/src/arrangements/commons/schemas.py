@@ -18,7 +18,7 @@ class ArrangementFilters(BaseSchema):
         title="Filter by the name of the employee",
     )
     start_date: Optional[date] = Field(
-        None,
+        datetime.now().date(),
         title="Filter by the start date of the arrangement",
     )
     end_date: Optional[date] = Field(
@@ -38,7 +38,7 @@ class ArrangementFilters(BaseSchema):
         title="Filter by the department of the employee",
     )
     group_by_date: Optional[bool] = Field(
-        True,
+        False,
         title="Group by date",
     )
 
@@ -47,12 +47,12 @@ class ArrangementFilters(BaseSchema):
         cls,
         current_approval_status: Optional[List[ApprovalStatus]] = Query(None),
         name: Optional[str] = Query(None),
-        start_date: Optional[date] = Query(None),
+        start_date: Optional[date] = Query(datetime.now().date()),
         end_date: Optional[date] = Query(None),
         wfh_type: Optional[List[WfhType]] = Query(None),
         reason: Optional[str] = Query(None),
         department: Optional[str] = Query(None),
-        group_by_date: Optional[bool] = Query(True),
+        group_by_date: Optional[bool] = Query(False),
     ):
         return cls(
             current_approval_status=current_approval_status,

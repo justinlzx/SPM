@@ -33,6 +33,8 @@ export default [
       ...typescript.configs.recommended.rules,
       "@typescript-eslint/no-unused-vars": "off",
       "react/jsx-key": "off",
+      "@typescript-eslint/no-explicit-any": "off",
+      "no-undef": "off",
     },
   },
 ];

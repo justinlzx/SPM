@@ -54,7 +54,9 @@ export const RequestList = () => {
   const [error, setError] = useState<string | null>(null);
   const [showSnackbar, setShowSnackbar] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState("");
-  const [alertStatus, setAlertStatus] = useState<"success" | "error">("success");
+  const [alertStatus, setAlertStatus] = useState<"success" | "error">(
+    "success"
+  );
   const { user } = useContext(UserContext);
 
   useEffect(() => {
@@ -88,12 +90,14 @@ export const RequestList = () => {
                 Accept: "application/json",
                 "Content-Type": "application/json",
               },
+              params: {
+
+              }
             }
           );
 
-          const responseData = arrangementsResponse.data.data.flatMap(
-            (item: any) => item.pending_arrangements
-          );
+          const responseData = arrangementsResponse.data.data;
+          console.log(responseData);
           setArrangements(responseData);
         } catch (error) {
           console.error("Failed to fetch data:", error);
@@ -115,7 +119,9 @@ export const RequestList = () => {
     setPage(newPage);
   };
 
-  const handleChangeRowsPerPage = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleChangeRowsPerPage = (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
     setRowsPerPage(parseInt(event.target.value, 10));
     setPage(0);
   };
@@ -126,14 +132,20 @@ export const RequestList = () => {
 
   const filteredArrangements = arrangements.filter(
     (arrangement) =>
-      arrangement.reason_description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      arrangement.reason_description
+        ?.toLowerCase()
+        .includes(searchTerm.toLowerCase()) ||
       arrangement.wfh_type?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      arrangement.current_approval_status?.toLowerCase().includes(searchTerm.toLowerCase())
+      arrangement.current_approval_status
+        ?.toLowerCase()
+        .includes(searchTerm.toLowerCase())
   );
 
   if (loading) {
     return (
-      <div style={{ display: "flex", justifyContent: "center", padding: "2rem" }}>
+      <div
+        style={{ display: "flex", justifyContent: "center", padding: "2rem" }}
+      >
         <CircularProgress />
       </div>
     );
@@ -174,7 +186,9 @@ export const RequestList = () => {
           <TableHead>
             <TableRow>
               <TableCell sx={{ fontWeight: "bold" }}>Arrangement ID</TableCell>
-              <TableCell sx={{ fontWeight: "bold" }}>Approving Officer</TableCell>
+              <TableCell sx={{ fontWeight: "bold" }}>
+                Approving Officer
+              </TableCell>
               <TableCell sx={{ fontWeight: "bold" }}>WFH Type</TableCell>
               <TableCell sx={{ fontWeight: "bold" }}>WFH Date</TableCell>
               <TableCell sx={{ fontWeight: "bold" }}>Approval Status</TableCell>
@@ -194,16 +208,24 @@ export const RequestList = () => {
                 .map((arrangement) => (
                   <TableRow key={arrangement.arrangement_id}>
                     <TableCell>{arrangement.arrangement_id}</TableCell>
-                    <TableCell>{arrangement.approving_officer || "N/A"}</TableCell>
-                    <TableCell>{arrangement.wfh_type?.toUpperCase() || "N/A"}</TableCell>
+                    <TableCell>
+                      {arrangement.approving_officer || "N/A"}
+                    </TableCell>
+                    <TableCell>
+                      {arrangement.wfh_type?.toUpperCase() || "N/A"}
+                    </TableCell>
                     <TableCell>{arrangement.wfh_date || "N/A"}</TableCell>
                     <TableCell>
                       <Chip
                         label={arrangement.current_approval_status}
-                        color={getChipColor(arrangement.current_approval_status)}
+                        color={getChipColor(
+                          arrangement.current_approval_status
+                        )}
                       />
                     </TableCell>
-                    <TableCell>{arrangement.reason_description || "N/A"}</TableCell>
+                    <TableCell>
+                      {arrangement.reason_description || "N/A"}
+                    </TableCell>
                   </TableRow>
                 ))
             )}
