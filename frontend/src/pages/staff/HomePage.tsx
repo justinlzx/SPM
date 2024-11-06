@@ -83,7 +83,7 @@ export const HomePage = () => {
           approvedRequests={approvedCount}
           importantMessage="Remember to submit your WFH requests a day in advance."
         />
-        
+
         <Button
           variant="contained"
           color="primary"
@@ -94,8 +94,8 @@ export const HomePage = () => {
         </Button>
         {(user?.role === 2 ||
           (user?.role === 1 && user?.position === "Director")) && (
-          <DelegateButton />
-        )}
+            <DelegateButton />
+          )}
         <PersonalRequests />
       </Container>
     </Box>

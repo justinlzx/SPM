@@ -420,7 +420,7 @@ export const CreateWfhRequestPage: React.FC = () => {
         anchorOrigin={{ vertical: "top", horizontal: "center" }}
         autoHideDuration={
           alertStatus === AlertStatus.Success &&
-          snackbarMessage.includes("successfully submitted")
+            snackbarMessage.includes("successfully submitted")
             ? null
             : 6000
         }

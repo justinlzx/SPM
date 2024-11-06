@@ -3,10 +3,10 @@ import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import { Container, Typography, Snackbar, Alert } from "@mui/material";
 import { UserContext } from "../../context/UserContextProvider";
-import { WFHRequestTable } from "../../components/WFHRequestTable";
 import { ApprovalStatus } from "../../types/status";
 import { Filters } from "../../common/Filters";
 import { TWFHRequest } from "../../types/requests";
+import { WFHRequestTable } from "../../components/WFHRequestTable";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 
@@ -43,7 +43,7 @@ export const MyWfhSchedulePage: React.FC = () => {
         })
       );
       setRequests(allRequests);
-      setFilteredRequests(allRequests); 
+      setFilteredRequests(allRequests);
       console.log(allRequests);
     } catch (error) {
       console.error("Failed to fetch WFH requests:", error);
