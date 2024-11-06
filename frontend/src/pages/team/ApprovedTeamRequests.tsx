@@ -227,6 +227,17 @@ export const ApprovedRequests = () => {
     setWithdrawModalOpen(true);
   };
 
+  const handleChangePage = (_event: unknown, newPage: number) => {
+    setPage(newPage);
+  };
+
+  const handleChangeRowsPerPage = (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    setRowsPerPage(parseInt(event.target.value, 10));
+    setPage(0);
+  };
+
   return (
     <>
       <Typography variant="h4" gutterBottom align="left" sx={{ marginTop: 4 }}>
@@ -265,13 +276,15 @@ export const ApprovedRequests = () => {
                 </TableCell>
               </TableRow>
             ) : (
-              filteredRequests.map((arrangement) => (
-                <ArrangementRow
-                  key={arrangement.arrangement_id}
-                  arrangement={arrangement}
-                  openWithdrawModal={openWithdrawModal}
-                />
-              ))
+              filteredRequests
+                .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
+                .map((arrangement) => (
+                  <ArrangementRow
+                    key={arrangement.arrangement_id}
+                    arrangement={arrangement}
+                    openWithdrawModal={openWithdrawModal}
+                  />
+                ))
             )}
           </TableBody>
         </Table>
@@ -283,10 +296,8 @@ export const ApprovedRequests = () => {
         count={filteredRequests.length}
         rowsPerPage={rowsPerPage}
         page={page}
-        onPageChange={(event, newPage) => setPage(newPage)}
-        onRowsPerPageChange={(event) =>
-          setRowsPerPage(parseInt(event.target.value, 10))
-        }
+        onPageChange={handleChangePage}
+        onRowsPerPageChange={handleChangeRowsPerPage}
       />
 
       {/* Withdraw Approval Modal */}
