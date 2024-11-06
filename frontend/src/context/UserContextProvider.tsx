@@ -23,7 +23,7 @@ type TAuthenticationContext = { user?: TUser } & {
 export const UserContext = createContext<TAuthenticationContext>({
   login,
   logout: logoutUtil,
-  setUser: () => { },
+  setUser: () => {},
 });
 
 type Props = {

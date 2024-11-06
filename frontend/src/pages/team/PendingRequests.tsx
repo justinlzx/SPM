@@ -56,12 +56,14 @@ type TWFHRequest = {
 };
 
 export const PendingRequests = () => {
+  const { user } = useContext(UserContext);
+  const userId = user?.id;
+
   const [actionRequests, setActionRequests] = useState<TWFHRequest[]>([]);
   const [filteredRequests, setFilteredRequests] = useState<TWFHRequest[]>([]);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
-  const { user } = useContext(UserContext);
-  const userId = user?.id;
+  
 
   const [showSnackbar, setShowSnackbar] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState("");
@@ -85,6 +87,7 @@ export const PendingRequests = () => {
       const response = await axios.get(`${BACKEND_URL}/arrangements/subordinates/${userId}`, {
         params: { current_approval_status: ["pending approval", "pending withdrawal"] },
       });
+      console.log(userId)
       console.log(response.data.data)
       // Determine if the current user is acting as a delegate manager
       const isDelegateManager = response.data.data.some(
@@ -132,13 +135,11 @@ export const PendingRequests = () => {
       setLoading(false);
     }
   };
-  
-  // Initialize data on component mount
+
   useEffect(() => {
     fetchPendingRequests();
   }, [user, userId]);
 
-  // Refresh function to refetch data
   const refreshData = () => {
     fetchPendingRequests();
   };

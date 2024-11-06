@@ -26,7 +26,7 @@ from .utils import format_arrangement_response, format_arrangements_response
 router = APIRouter()
 
 
-@router.get("/", summary="Get all arrangements with optional filters")
+@router.get("", summary="Get all arrangements with optional filters")
 def get_arrangements(
     db: Session = Depends(get_db),
     request_filters: schemas.ArrangementFilters = Depends(schemas.ArrangementFilters.as_query),
@@ -40,8 +40,10 @@ def get_arrangements(
         data = services.get_all_arrangements(db, filters)
         logger.info(f"Route: Found {len(data)} arrangements")
 
+        response_data = data
         # Convert to Pydantic model
-        response_data = format_arrangements_response(data)
+        if len(data):
+            response_data = format_arrangements_response(data)
 
         return JSendResponse(
             status="success",
@@ -93,8 +95,10 @@ def get_personal_arrangements(
         )
         logger.info(f"Route: Found {len(data)} arrangements for staff ID {staff_id}")
 
+        response_data = data
         # Convert to Pydantic model
-        response_data = format_arrangements_response(data)
+        if len(data):
+            response_data = format_arrangements_response(data)
 
         return JSendResponse(
             status="success",

@@ -232,4 +232,5 @@ def format_email_body(
 
     # Add common footer
     body += "\n\nThis email is auto-generated. Please do not reply to this email. Thank you."
+
     return body
