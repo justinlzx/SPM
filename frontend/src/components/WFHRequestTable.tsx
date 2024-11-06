@@ -14,18 +14,12 @@ import {
   Typography,
   CircularProgress,
   TextField,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  List,
-  ListItem,
-  Link,
 } from "@mui/material";
 import axios from "axios";
 import { ChipProps } from "@mui/material/Chip";
 import { ApprovalStatus } from "../types/status";
 import { capitalize } from "../utils/utils";
+import { DocumentDialog } from "./requests/DocumentDialog";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 
@@ -47,7 +41,9 @@ type TWFHRequestTableProps = {
   handleSuccess: (id: number, action: "cancel" | "withdraw") => void;
 };
 
-const getChipColor = (status: ApprovalStatus | undefined): ChipProps["color"] => {
+const getChipColor = (
+  status: ApprovalStatus | undefined
+): ChipProps["color"] => {
   if (!status) return "default";
   switch (status) {
     case ApprovalStatus.Approved:
@@ -111,10 +107,20 @@ const ConfirmationModal: React.FC<{
         />
       )}
       <Box mt={2} display="flex" justifyContent="flex-end">
-        <Button onClick={handleClose} variant="outlined" color="secondary" sx={{ mr: 2 }}>
+        <Button
+          onClick={handleClose}
+          variant="outlined"
+          color="secondary"
+          sx={{ mr: 2 }}
+        >
           No
         </Button>
-        <Button onClick={handleConfirm} variant="contained" color="primary" disabled={loading}>
+        <Button
+          onClick={handleConfirm}
+          variant="contained"
+          color="primary"
+          disabled={loading}
+        >
           {loading ? <CircularProgress size={24} color="inherit" /> : "Yes"}
         </Button>
       </Box>
@@ -122,42 +128,14 @@ const ConfirmationModal: React.FC<{
   </Modal>
 );
 
-// DocumentDialog component for viewing supporting documents
-const DocumentDialog: React.FC<{
-  isOpen: boolean;
-  documents: string[];
-  onClose: () => void;
-}> = ({ isOpen, documents, onClose }) => (
-  <Dialog open={isOpen} onClose={onClose} fullWidth>
-    <DialogTitle>Supporting Documents</DialogTitle>
-    <DialogContent>
-      <List>
-        {documents.map((document, idx) => (
-          <ListItem key={document}>
-            {idx + 1}.{" "}
-            <Link href={document} target="_blank" rel="noopener noreferrer">
-              View Document
-            </Link>
-          </ListItem>
-        ))}
-      </List>
-    </DialogContent>
-    <DialogActions>
-      <Button onClick={onClose}>
-        Close
-      </Button>
-    </DialogActions>
-  </Dialog>
-);
-
-export const WFHRequestTable: React.FC<TWFHRequestTableProps & { refreshData: () => void}> = ({
-  requests,
-  handleSuccess,
-  refreshData, 
-}) => {
+export const WFHRequestTable: React.FC<
+  TWFHRequestTableProps & { refreshData: () => void }
+> = ({ requests, handleSuccess, refreshData }) => {
   const [open, setOpen] = useState(false);
   const [action, setAction] = useState<"cancel" | "withdraw">();
-  const [selectedArrangementId, setSelectedArrangementId] = useState<number | null>(null);
+  const [selectedArrangementId, setSelectedArrangementId] = useState<
+    number | null
+  >(null);
   const [loading, setLoading] = useState(false);
   const [reason, setReason] = useState<string>("");
 
@@ -192,26 +170,34 @@ export const WFHRequestTable: React.FC<TWFHRequestTableProps & { refreshData: ()
     setLoading(true);
     try {
       const approvingOfficer = localStorage.getItem("id");
-      const request = requests.find(req => req.arrangement_id === selectedArrangementId);
-  
+      const request = requests.find(
+        (req) => req.arrangement_id === selectedArrangementId
+      );
+
       if (!request) {
         console.error("Request not found");
         return;
       }
-  
+
       const formData = new FormData();
-      formData.append("action", "withdraw");  
-      formData.append("requester_staff_id", request.requester_staff_id.toString());  
-      formData.append("wfh_date", request.wfh_date);  
-      formData.append("wfh_type", request.wfh_type.toLowerCase());  
-      formData.append("reason_description", reason || "");  
-      formData.append("current_approval_status", "pending withdrawal"); 
-      formData.append("approving_officer", approvingOfficer || "");  
-  
-      await axios.put(`${BACKEND_URL}/arrangements/${selectedArrangementId}/status`, formData);
-  
+      formData.append("action", "withdraw");
+      formData.append(
+        "requester_staff_id",
+        request.requester_staff_id.toString()
+      );
+      formData.append("wfh_date", request.wfh_date);
+      formData.append("wfh_type", request.wfh_type.toLowerCase());
+      formData.append("reason_description", reason || "");
+      formData.append("current_approval_status", "pending withdrawal");
+      formData.append("approving_officer", approvingOfficer || "");
+
+      await axios.put(
+        `${BACKEND_URL}/arrangements/${selectedArrangementId}/status`,
+        formData
+      );
+
       handleSuccess(selectedArrangementId, "withdraw");
-      refreshData(); 
+      refreshData();
     } catch (error) {
       console.error("Failed to withdraw request:", error);
     } finally {
@@ -225,25 +211,33 @@ export const WFHRequestTable: React.FC<TWFHRequestTableProps & { refreshData: ()
     setLoading(true);
     try {
       const approvingOfficer = localStorage.getItem("id");
-      const request = requests.find(req => req.arrangement_id === selectedArrangementId);
-  
+      const request = requests.find(
+        (req) => req.arrangement_id === selectedArrangementId
+      );
+
       if (!request) {
         console.error("Request not found");
         return;
       }
-  
+
       const formData = new FormData();
-      formData.append("action", "cancel");  
-      formData.append("requester_staff_id", request.requester_staff_id.toString());  
-      formData.append("wfh_date", request.wfh_date); 
-      formData.append("wfh_type", request.wfh_type.toLowerCase());  
-      formData.append("approval_status", "cancel");  
-      formData.append("approving_officer", approvingOfficer || "");  
-  
-      await axios.put(`${BACKEND_URL}/arrangements/${selectedArrangementId}/status`, formData);
-  
+      formData.append("action", "cancel");
+      formData.append(
+        "requester_staff_id",
+        request.requester_staff_id.toString()
+      );
+      formData.append("wfh_date", request.wfh_date);
+      formData.append("wfh_type", request.wfh_type.toLowerCase());
+      formData.append("approval_status", "cancel");
+      formData.append("approving_officer", approvingOfficer || "");
+
+      await axios.put(
+        `${BACKEND_URL}/arrangements/${selectedArrangementId}/status`,
+        formData
+      );
+
       handleSuccess(selectedArrangementId, "cancel");
-      refreshData(); 
+      refreshData();
     } catch (error) {
       console.error("Failed to cancel request:", error);
     } finally {
@@ -251,10 +245,6 @@ export const WFHRequestTable: React.FC<TWFHRequestTableProps & { refreshData: ()
       handleClose();
     }
   };
-  
-
-
-  
 
   return (
     <>
@@ -290,7 +280,9 @@ export const WFHRequestTable: React.FC<TWFHRequestTableProps & { refreshData: ()
                   <TableRow key={request.arrangement_id}>
                     <TableCell>{request.requester_staff_id}</TableCell>
                     <TableCell>{request.wfh_date}</TableCell>
-                    <TableCell>{request.wfh_type?.toUpperCase() || "-"}</TableCell>
+                    <TableCell>
+                      {request.wfh_type?.toUpperCase() || "-"}
+                    </TableCell>
                     <TableCell
                       sx={{
                         maxWidth: "200px",
@@ -305,7 +297,10 @@ export const WFHRequestTable: React.FC<TWFHRequestTableProps & { refreshData: ()
                     </TableCell>
                     <TableCell>
                       {docs.length > 0 ? (
-                        <Button variant="text" onClick={() => handleDocumentDialogOpen(docs)}>
+                        <Button
+                          variant="text"
+                          onClick={() => handleDocumentDialogOpen(docs)}
+                        >
                           View Documents
                         </Button>
                       ) : (
@@ -325,22 +320,28 @@ export const WFHRequestTable: React.FC<TWFHRequestTableProps & { refreshData: ()
                       />
                     </TableCell>
                     <TableCell>
-                      {request.current_approval_status === ApprovalStatus.PendingApproval && (
+                      {request.current_approval_status ===
+                        ApprovalStatus.PendingApproval && (
                         <Button
                           size="small"
                           variant="outlined"
                           color="primary"
-                          onClick={() => handleOpen(request.arrangement_id, "cancel")}
+                          onClick={() =>
+                            handleOpen(request.arrangement_id, "cancel")
+                          }
                         >
                           Cancel
                         </Button>
                       )}
-                      {request.current_approval_status === ApprovalStatus.Approved && (
+                      {request.current_approval_status ===
+                        ApprovalStatus.Approved && (
                         <Button
                           size="small"
                           variant="outlined"
                           color="secondary"
-                          onClick={() => handleOpen(request.arrangement_id, "withdraw")}
+                          onClick={() =>
+                            handleOpen(request.arrangement_id, "withdraw")
+                          }
                         >
                           Withdraw
                         </Button>
@@ -358,7 +359,9 @@ export const WFHRequestTable: React.FC<TWFHRequestTableProps & { refreshData: ()
         open={open}
         action={action}
         handleClose={handleClose}
-        handleConfirm={action === "cancel" ? handleCancellation : handleWithdrawal}
+        handleConfirm={
+          action === "cancel" ? handleCancellation : handleWithdrawal
+        }
         loading={loading}
         reason={reason}
         setReason={setReason}
