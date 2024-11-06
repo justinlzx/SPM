@@ -1,35 +1,47 @@
-import React from "react";
-import { Dialog, DialogTitle, DialogContent, DialogActions, List, ListItem, Link, Button } from "@mui/material";
-import CloseIcon from "@mui/icons-material/Close";
+import {
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  List,
+  ListItem,
+  Link,
+  Button,
+} from "@mui/material";
 
-type DocumentDialogProps = {
+type TDocumentDialogProps = {
   isOpen: boolean;
   documents: string[];
   onClose: () => void;
 };
 
-const DocumentDialog: React.FC<DocumentDialogProps> = ({ isOpen, documents, onClose }) => (
+// DocumentDialog component for viewing supporting documents
+export const DocumentDialog = ({
+  isOpen,
+  documents,
+  onClose,
+}: TDocumentDialogProps) => (
   <Dialog open={isOpen} onClose={onClose} fullWidth>
-    <DialogTitle>
-      Supporting Documents
-      <DialogActions>
-        <Button onClick={onClose}>
-          <CloseIcon />
-        </Button>
-      </DialogActions>
-    </DialogTitle>
+    <DialogTitle>Supporting Documents</DialogTitle>
     <DialogContent>
       <List>
-        {documents.map((doc, idx) => (
-          <ListItem key={idx}>
-            <Link href={doc} target="_blank" rel="noopener noreferrer">
-              Document {idx + 1}
+        {documents.map((document, idx) => (
+          <ListItem key={document}>
+            {idx + 1}.
+            <Link
+              href={document}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="ps-2"
+            >
+              View Document
             </Link>
           </ListItem>
         ))}
       </List>
     </DialogContent>
+    <DialogActions>
+      <Button onClick={onClose}>Close</Button>
+    </DialogActions>
   </Dialog>
 );
-
-export default DocumentDialog;

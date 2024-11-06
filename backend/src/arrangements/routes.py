@@ -134,7 +134,8 @@ def get_subordinates_arrangements(
         )
 
         # Convert to Pydantic model
-        response_data = format_arrangements_response(data)
+        if len(data) > 0:
+            response_data = format_arrangements_response(data)
         response_pagination_meta = PaginationMeta.model_validate(pagination_meta)
 
         return JSendResponse(
