@@ -199,6 +199,104 @@ def get_arrangement_logs(
     return arrangement_logs
 
 
+# async def create_arrangements_from_request(
+#     db: Session,
+#     wfh_request: CreateArrangementRequest,
+#     supporting_docs: List[File],
+# ) -> List[ArrangementResponse]:
+#     try:
+#         # Get all required staff objects
+#         employee = employee_crud.get_employee_by_staff_id(db, wfh_request.requester_staff_id)
+
+#         if employee is None:
+#             raise EmployeeNotFoundException(wfh_request.requester_staff_id)
+
+#         approving_officer, _ = employee_services.get_manager_by_subordinate_id(
+#             db=db, staff_id=wfh_request.requester_staff_id
+#         )
+#         delegation = None
+
+#         # Assign approving officers
+#         if approving_officer:
+#             wfh_request.approving_officer = approving_officer.__dict__["staff_id"]
+#             delegation = employee_crud.get_existing_delegation(
+#                 db=db, staff_id=approving_officer.staff_id, delegate_manager_id=None
+#             )
+#         if delegation:
+#             wfh_request.delegate_approving_officer = delegation.__dict__["delegate_manager_id"]
+
+#         # Auto Approve Jack Sim's requests
+#         if wfh_request.requester_staff_id == 130002:
+#             wfh_request.current_approval_status = ApprovalStatus.APPROVED
+
+#         # Upload supporting documents to S3 bucket
+#         s3_client = boto3.client("s3")
+#         file_paths = []
+#         created_arrangements = []
+
+#         logger.info(f"Service: Uploading {len(supporting_docs)} supporting documents to S3")
+#         for file in supporting_docs:
+#             response = await upload_file(
+#                 wfh_request.requester_staff_id,
+#                 wfh_request.update_datetime.isoformat(),
+#                 file,
+#                 s3_client,
+#             )
+
+#             file_paths.append(response["file_url"])
+#         logger.info(f"Service: Successfully uploaded {len(file_paths)} supporting documents to S3")
+
+#         # Update request with the file paths to the documents in S3
+#         wfh_request.supporting_doc_1 = file_paths[0] if file_paths else None
+#         wfh_request.supporting_doc_2 = file_paths[1] if len(file_paths) > 1 else None
+#         wfh_request.supporting_doc_3 = file_paths[2] if len(file_paths) > 2 else None
+
+#         # Create and expand recurring arrangements
+#         arrangements = []
+
+#         if wfh_request.is_recurring:
+#             batch = crud.create_recurring_request(
+#                 db=db,
+#                 request=RecurringRequestDetails.from_dict(
+#                     {
+#                         "request_datetime": wfh_request.update_datetime,
+#                         "start_date": wfh_request.wfh_date,
+#                         **asdict(wfh_request),
+#                     }
+#                 ),
+#             )
+
+#             wfh_request.batch_id = batch.batch_id
+
+#             arrangements = expand_recurring_arrangement(request=wfh_request)
+#         else:
+#             arrangements.append(wfh_request)
+
+#         # Create arrangements in the database
+#         logger.info(f"Service: Creating {len(arrangements)} arrangements")
+#         created_arrangements = crud.create_arrangements(db=db, arrangements=arrangements)
+#         logger.info(f"Service: Created {len(created_arrangements)} arrangements")
+
+#         # Create config object for email notifications
+#         notification_config = ArrangementNotificationConfig(
+#             employee=employee,
+#             arrangements=created_arrangements,
+#             action=Action.CREATE,
+#             current_approval_status=wfh_request.current_approval_status,
+#             manager=approving_officer,
+#         )
+
+#         # Send notification emails
+#         await craft_and_send_email(notification_config)
+
+#         return created_arrangements
+
+
+#     except botocore.exceptions.ClientError as upload_error:
+#         # If any error occurs, delete uploaded files from S3
+#         logger.info(f"Deleting files due to error: {str(upload_error)}")
+#         await handle_multi_file_deletion(file_paths, s3_client)
+#         raise exceptions.S3UploadFailedException(str(upload_error))
 async def create_arrangements_from_request(
     db: Session,
     wfh_request: CreateArrangementRequest,
@@ -215,6 +313,7 @@ async def create_arrangements_from_request(
             db=db, staff_id=wfh_request.requester_staff_id
         )
         delegation = None
+        delegate_approving_officer = None  # Add this line to store delegate officer
 
         # Assign approving officers
         if approving_officer:
@@ -223,7 +322,10 @@ async def create_arrangements_from_request(
                 db=db, staff_id=approving_officer.staff_id, delegate_manager_id=None
             )
         if delegation:
-            wfh_request.delegate_approving_officer = delegation.__dict__["delegate_manager_id"]
+            delegate_id = delegation.__dict__["delegate_manager_id"]
+            wfh_request.delegate_approving_officer = delegate_id
+            # Get the delegate officer's details
+            delegate_approving_officer = employee_crud.get_employee_by_staff_id(db, delegate_id)
 
         # Auto Approve Jack Sim's requests
         if wfh_request.requester_staff_id == 130002:
@@ -278,12 +380,14 @@ async def create_arrangements_from_request(
         logger.info(f"Service: Created {len(created_arrangements)} arrangements")
 
         # Create config object for email notifications
+        # Modify this part to use delegate officer if available
         notification_config = ArrangementNotificationConfig(
             employee=employee,
             arrangements=created_arrangements,
             action=Action.CREATE,
             current_approval_status=wfh_request.current_approval_status,
-            manager=approving_officer,
+            # Use delegate officer if available, otherwise use approving officer
+            manager=delegate_approving_officer if delegate_approving_officer else approving_officer,
         )
 
         # Send notification emails
@@ -296,7 +400,6 @@ async def create_arrangements_from_request(
         logger.info(f"Deleting files due to error: {str(upload_error)}")
         await handle_multi_file_deletion(file_paths, s3_client)
         raise exceptions.S3UploadFailedException(str(upload_error))
-    # TODO: Email notification error
 
 
 async def update_arrangement_approval_status(
