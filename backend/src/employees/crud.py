@@ -224,11 +224,11 @@ def update_pending_arrangements_for_delegate(
 
     db.query(LatestArrangement).filter(
         LatestArrangement.approving_officer == manager_id,
-        # LatestArrangement.current_approval_status.in_(
-        #     [ApprovalStatus.PENDING_APPROVAL, ApprovalStatus.PENDING_WITHDRAWAL]
-        # ),
     ).update(
-        {LatestArrangement.delegate_approving_officer: delegate_manager_id},
+        {
+            LatestArrangement.delegate_approving_officer: delegate_manager_id,
+            LatestArrangement.update_datetime: datetime.now(),
+        },
     )
 
     db.commit()
@@ -266,10 +266,12 @@ def remove_delegate_from_arrangements(db: Session, delegate_manager_id: int):
 
     db.query(LatestArrangement).filter(
         LatestArrangement.delegate_approving_officer == delegate_manager_id,
-        # LatestArrangement.current_approval_status.in_(
-        #     [ApprovalStatus.PENDING_APPROVAL, ApprovalStatus.PENDING_WITHDRAWAL]
-        # ),
-    ).update({LatestArrangement.delegate_approving_officer: None}, synchronize_session=False)
+    ).update(
+        {
+            LatestArrangement.delegate_approving_officer: None,
+            LatestArrangement.update_datetime: datetime.now(),
+        }
+    )
 
     db.commit()
 
