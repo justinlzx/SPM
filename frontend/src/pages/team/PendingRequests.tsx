@@ -40,7 +40,7 @@ import { DelegationStatus } from "../../types/delegation";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 
-type TWFHRequest = {
+export type TWFHRequest = {
   arrangement_id: number;
   requester_staff_id: number;
   requester_name?: string;
@@ -97,10 +97,8 @@ export const PendingRequests = () => {
         if (hasAcceptedDelegations) {
             const delegatorId = delegationRequests[0].staff_id;
             setDelegatorManagerId(delegatorId);
-            console.log("Delegator Manager ID set to:", delegatorId);
         } else {
             setDelegatorManagerId(userId);
-            console.log("User is the delegator, setting their own ID:", userId);
         }
     } catch (error) {
         console.error("Failed to fetch delegation status:", error);
@@ -128,10 +126,9 @@ const fetchPendingRequests = async () => {
               (dateEntry: { pending_arrangements: TWFHRequest[] }) => dateEntry.pending_arrangements
           );
           allRequests = [...primaryRequests];
+          console.log(allRequests)
       }
-      console.log(allRequests)
 
-      // If the user is a delegatee, fetch delegated requests
       if (isDelegateManager && delegatorManagerId && delegatorManagerId !== userId) {
           const delegatedResponse = await axios.get(`${BACKEND_URL}/arrangements/subordinates/${delegatorManagerId}`, {
               params: { current_approval_status: ["pending approval", "pending withdrawal"] },
@@ -139,19 +136,16 @@ const fetchPendingRequests = async () => {
           const delegatedRequests = delegatedResponse.data.data.flatMap(
               (dateEntry: { pending_arrangements: TWFHRequest[] }) => dateEntry.pending_arrangements
           );
-          //console.log(delegatedRequests);
           allRequests = [...allRequests, ...delegatedRequests];
       }
-      
 
-      // Filter requests with pending status
       const requests = allRequests.filter((request: TWFHRequest) => {
           return (
               request.current_approval_status === ApprovalStatus.PendingApproval ||
               request.current_approval_status === ApprovalStatus.PendingWithdrawal
           );
       });
-      //console.log(requests);
+      console.log(requests)
 
       const requestsWithNames = await Promise.all(
           requests.map(async (request: TWFHRequest) => {
@@ -162,7 +156,7 @@ const fetchPendingRequests = async () => {
               };
           })
       );
-      console.log(filteredRequests);
+
       setActionRequests(requestsWithNames);
       setFilteredRequests(requestsWithNames);
   } catch (error) {
@@ -177,16 +171,11 @@ const fetchPendingRequests = async () => {
 
   useEffect(() => {
     const initializeData = async () => {
-      await fetchDelegationStatus();
+      await fetchDelegationStatus(); 
+      await fetchPendingRequests();
     };
     initializeData();
   }, [user, userId]);
-
-  useEffect(() => {
-    if (delegatorManagerId !== null) {
-      fetchPendingRequests();
-    }
-  }, [delegatorManagerId]);
 
   const refreshData = () => {
     fetchPendingRequests();
@@ -277,6 +266,7 @@ const fetchPendingRequests = async () => {
       return matchesDate && matchesStatus && matchesSearchQuery;
     });
     setFilteredRequests(filtered);
+    console.log("Filtered Requests:", filtered);
   };
 
   const handleViewDocuments = (docs: string[]) => {
@@ -319,24 +309,25 @@ const fetchPendingRequests = async () => {
             </TableRow>
           </TableHead>
           <TableBody>
-    {filteredRequests.length === 0 ? (
-      <TableRow>
-        <TableCell colSpan={7} align="center">
-          No pending requests
-        </TableCell>
-      </TableRow>
-    ) : (
-      filteredRequests.map((arrangement) => (
-        <ArrangementRow
-          key={arrangement.arrangement_id}
-          arrangement={arrangement}
-          handleRequestAction={handleRequestAction}
-          handleRejectClick={handleRejectClick}
-          handleViewDocuments={handleViewDocuments}
-        />
-      ))
-    )}
-  </TableBody>
+          {(filteredRequests.length === 0 
+          ) ? (
+            <TableRow>
+              <TableCell colSpan={7} align="center">
+                No pending requests
+              </TableCell>
+            </TableRow>
+          ) : ( 
+            filteredRequests.map((arrangement) => (
+              <ArrangementRow
+                key={arrangement.arrangement_id}
+                arrangement={arrangement}
+                handleRequestAction={handleRequestAction}
+                handleRejectClick={handleRejectClick}
+                handleViewDocuments={handleViewDocuments}
+              />
+            ))
+          )}
+          </TableBody>
         </Table>
       </TableContainer>
 
@@ -397,7 +388,7 @@ const fetchPendingRequests = async () => {
   );
 };
 
-// ArrangementRow Component
+
 const ArrangementRow = ({
   arrangement,
   handleRequestAction,

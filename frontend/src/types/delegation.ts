@@ -2,6 +2,7 @@ export enum DelegationStatus {
     Accepted = "accepted",
     Pending = "pending",
     Rejected = "rejected",
+    Undelegated = "undelegated",
   }
   
   export type TDelegationLog = {

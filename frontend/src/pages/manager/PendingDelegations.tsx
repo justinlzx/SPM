@@ -29,24 +29,12 @@ import { capitalize } from "../../utils/utils";
 import { SnackBarComponent, AlertStatus } from "../../common/SnackBar";
 import { LoadingSpinner } from "../../common/LoadingSpinner";
 
+// Import types and enums from delegation.ts
+import { DelegationStatus, TDelegationRequest } from "../../types/delegation";
+
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 
-type TAction = "accepted" | "rejected";
-
-enum DelegationStatus {
-  Accepted = "accepted",
-  Pending = "pending",
-  Rejected = "rejected",
-}
-
-type TDelegationRequest = {
-  date_of_delegation: string;
-  full_name: string;
-  staff_id: number;
-  delegate_manager_id: number;
-  status_of_delegation: DelegationStatus;
-  reason?: string;
-};
+type TAction = "accepted" | "rejected" | "undelegated";
 
 export const PendingDelegations = () => {
   const [requests, setRequests] = useState<TDelegationRequest[]>([]);
@@ -79,10 +67,11 @@ export const PendingDelegations = () => {
           }
         );
         const delegationRequests: TDelegationRequest[] = response.data.pending_approval_delegations || [];
-        //console.log(delegationRequests)
         setRequests(delegationRequests);
       } catch (error) {
         console.error("Failed to fetch delegation requests:", error);
+      } finally {
+        setLoading(false);
       }
     };
     fetchPendingDelegationRequests();
@@ -107,7 +96,7 @@ export const PendingDelegations = () => {
       setShowSnackbar(true);
 
       setRequests((prevRequests) =>
-        prevRequests.filter((req) => req.staff_id !== staff_id)
+        prevRequests.filter((req) => req.staff_id !== staff_id || action === "undelegated")
       );
 
       setOpenRejectModal(false);

@@ -22,6 +22,7 @@ import {
   Link,
   List,
   ListItem,
+  CircularProgress
 } from "@mui/material";
 import { ApprovalStatus } from "../../types/requests";
 import { ChipProps } from "@mui/material/Chip";
@@ -30,7 +31,8 @@ import CloseIcon from "@mui/icons-material/Close";
 import { fetchEmployeeByStaffId } from "../../hooks/employee/employee.utils";
 import { capitalize } from "../../utils/utils";
 import { DelegationStatus } from "../../types/delegation";
-import Filters from "../../common/Filters"; // Import the Filters component
+import Filters from "../../common/Filters";
+import { SnackBarComponent, AlertStatus } from "../../common/SnackBar";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 
@@ -77,23 +79,27 @@ export const ApprovedRequests = () => {
   const [selectedArrangementId, setSelectedArrangementId] = useState<number | null>(null);
   const [withdrawModalOpen, setWithdrawModalOpen] = useState(false);
 
+  const [showSnackbar, setShowSnackbar] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState("");
+  const [alertStatus, setAlertStatus] = useState(AlertStatus.Info);
+  const [withdrawLoading, setWithdrawLoading] = useState(false); // Initialize withdraw loading state
+
+  const handleCloseSnackBar = () => setShowSnackbar(false);
+
   useEffect(() => {
     const fetchApprovedRequestsFromSubordinates = async () => {
       if (!user || !userId) return;
-  
+
       try {
-        // Step 1: Fetch the delegation status to determine the manager to fetch data for
         const delegationResponse = await axios.get(`${BACKEND_URL}/employees/manager/viewdelegations/${userId}`);
         const delegationStatus = delegationResponse.data.status_of_delegation;
         const delegateManagerId = delegationResponse.data.delegate_manager_id;
-  
-        // Step 2: Determine the manager ID to fetch requests for
-        const managerIdToFetch = 
-          delegationStatus === DelegationStatus.Accepted && delegateManagerId 
-          ? delegateManagerId 
-          : userId;
-  
-        // Step 3: Fetch approved requests for the determined manager ID
+
+        const managerIdToFetch =
+          delegationStatus === DelegationStatus.Accepted && delegateManagerId
+            ? delegateManagerId
+            : userId;
+
         const response = await axios.get(
           `${BACKEND_URL}/arrangements/subordinates/${managerIdToFetch}`,
           {
@@ -102,13 +108,11 @@ export const ApprovedRequests = () => {
             },
           }
         );
-  
-        // Step 4: Process and filter the fetched requests
+
         const approvedData: TWFHRequest[] = response.data.data
           .flatMap((entry: any) => entry.pending_arrangements)
           .filter((arrangement: TWFHRequest) => arrangement.current_approval_status === ApprovalStatus.Approved);
-        
-        // Step 5: Attach requester names to each request
+
         const requestsWithNames = await Promise.all(
           approvedData.map(async (request) => {
             const employee = await fetchEmployeeByStaffId(request.requester_staff_id);
@@ -118,19 +122,17 @@ export const ApprovedRequests = () => {
             };
           })
         );
-  
+
         setApprovedRequests(requestsWithNames);
         setFilteredRequests(requestsWithNames); // Initialize filtered requests
       } catch (error) {
         console.error("Failed to fetch approved requests:", error);
       }
     };
-  
+
     fetchApprovedRequestsFromSubordinates();
   }, [user, userId]);
-  
 
-  // Handle filter application
   const onApplyFilters = (filters: {
     startDate: Date | null;
     endDate: Date | null;
@@ -143,7 +145,7 @@ export const ApprovedRequests = () => {
       const matchesDate =
         (!filters.startDate || new Date(request.wfh_date) >= filters.startDate) &&
         (!filters.endDate || new Date(request.wfh_date) <= filters.endDate);
-      
+
       const matchesStatus =
         filters.status.length === 0 || filters.status.includes(request.current_approval_status);
 
@@ -161,13 +163,13 @@ export const ApprovedRequests = () => {
     setFilteredRequests(filtered);
   };
 
-  // Handle filter clearing
   const onClearFilters = () => {
     setFilteredRequests(approvedRequests);
   };
 
   const handleWithdrawApproval = async () => {
     if (!selectedArrangementId) return;
+    setWithdrawLoading(true); // Set loading state to true
     try {
       const formData = new FormData();
       formData.append("action", "withdraw");
@@ -186,9 +188,19 @@ export const ApprovedRequests = () => {
       );
 
       setWithdrawModalOpen(false);
-      setWithdrawReason(""); // Clear the reason field after submission
+      setWithdrawReason("");
+      setFilteredRequests(filteredRequests.filter(request => request.arrangement_id !== selectedArrangementId));
+
+      setSnackbarMessage("Request withdrawn successfully.");
+      setAlertStatus(AlertStatus.Success);
+      setShowSnackbar(true); // Trigger snackbar
     } catch (error) {
       console.error("Error withdrawing approval:", error);
+      setSnackbarMessage("Failed to withdraw request.");
+      setAlertStatus(AlertStatus.Error);
+      setShowSnackbar(true); // Trigger snackbar
+    } finally {
+      setWithdrawLoading(false); // Set loading state to false
     }
   };
 
@@ -203,7 +215,6 @@ export const ApprovedRequests = () => {
         Approved Requests
       </Typography>
 
-      {/* Filters Component */}
       <Filters onApplyFilters={onApplyFilters} onClearFilters={onClearFilters} />
 
       <TableContainer component={Paper} sx={{ marginTop: 3, textAlign: "center" }}>
@@ -254,7 +265,7 @@ export const ApprovedRequests = () => {
       <Dialog
         open={withdrawModalOpen}
         onClose={() => setWithdrawModalOpen(false)}
-        sx={{ '& .MuiDialog-paper': { minWidth: '400px' } }} 
+        sx={{ '& .MuiDialog-paper': { minWidth: '400px' } }}
       >
         <DialogTitle>Withdraw Employee WFH Request</DialogTitle>
         <DialogContent>
@@ -279,15 +290,24 @@ export const ApprovedRequests = () => {
             onClick={handleWithdrawApproval}
             color="warning"
             variant="outlined"
-            disabled={!withdrawReason.trim()}
+            disabled={!withdrawReason.trim() || withdrawLoading}
           >
-            Withdraw Request
+            {withdrawLoading ? <CircularProgress size={24} color="inherit" /> : "Withdraw Request"}
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* Snackbar Component */}
+      <SnackBarComponent
+        showSnackbar={showSnackbar}
+        handleCloseSnackBar={handleCloseSnackBar}
+        alertStatus={alertStatus}
+        snackbarMessage={snackbarMessage}
+      />
     </>
   );
 };
+
 
 
 // ArrangementRow Component
