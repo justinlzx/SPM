@@ -8,8 +8,17 @@ from .. import utils
 from ..database import get_db
 from ..employees.models import Employee
 from ..employees.schemas import DelegateLogCreate, EmployeeBase, EmployeePeerResponse
-from . import exceptions, services, schemas
+from . import exceptions, schemas, services
+from .dataclasses import EmployeeFilters
+
 router = APIRouter()
+
+
+@router.get("/")
+def get_employees(department: str | None = None, db: Session = Depends(get_db)):
+    filters = EmployeeFilters(department=department)
+    employees = services.get_employees(db, filters)
+    return employees
 
 
 @router.get("/manager/peermanager/{staff_id}", response_model=EmployeePeerResponse)

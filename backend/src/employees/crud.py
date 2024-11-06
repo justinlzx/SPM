@@ -5,10 +5,30 @@ from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
 
 from ..arrangements.commons.enums import ApprovalStatus
-
 from ..arrangements.commons.models import LatestArrangement
 from . import models
+from .dataclasses import EmployeeFilters
 from .models import DelegateLog, DelegationStatus, Employee
+
+
+def get_employees(db: Session, filters: EmployeeFilters) -> List[models.Employee]:
+    """This function retrieves a list of employees from the database based on the provided filters.
+
+    :param db: The `db` parameter is of type `Session`, which is likely an instance of a database
+    session that allows you to interact with the database. It is used to query the database for
+    employees based on the specified filters
+    :type db: Session
+    :param filters: The `filters` parameter is an instance of the `EmployeeFilters` dataclass, which
+    contains the filter criteria for retrieving employees from the database. The filters include
+    department, position, and status
+    :type filters: EmployeeFilters
+    :return: The function `get_employees` returns a list of `Employee` objects from the database that
+    match the specified filter criteria.
+    """
+    query = db.query(models.Employee)
+    if filters.department:
+        query = query.filter(models.Employee.dept == filters.department)
+    return query.all()
 
 
 def get_employee_by_staff_id(db: Session, staff_id: int) -> models.Employee:
@@ -202,20 +222,15 @@ def update_pending_arrangements_for_delegate(
     in the database for a specific manager by reassigning the approval authority to another manager
     :type delegate_manager_id: int
     """
-    pending_arrangements = (
-        db.query(LatestArrangement)
-        .filter(
-            LatestArrangement.approving_officer == manager_id,
-            LatestArrangement.current_approval_status.in_(
-                [ApprovalStatus.PENDING_APPROVAL, ApprovalStatus.PENDING_WITHDRAWAL]
-            ),
-        )
-        .all()
-    )
 
-    for arrangement in pending_arrangements:
-        arrangement.delegate_approving_officer = delegate_manager_id
-        db.add(arrangement)
+    db.query(LatestArrangement).filter(
+        LatestArrangement.approving_officer == manager_id,
+        LatestArrangement.current_approval_status.in_(
+            [ApprovalStatus.PENDING_APPROVAL, ApprovalStatus.PENDING_WITHDRAWAL]
+        ),
+    ).update(
+        {LatestArrangement.delegate_approving_officer: delegate_manager_id},
+    )
 
     db.commit()
 
