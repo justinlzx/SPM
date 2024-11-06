@@ -14,13 +14,13 @@ import { Chart } from "./chart/Chart";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 
-const CHART_COLOURS = ["#aad6ec", "#151269", "#0f1056", "#DFEBF6", "#81b1ce"];
+const CHART_COLOURS = ["#aad6ec", "#0f1056", "#DFEBF6", "#81b1ce", "#000080"];
 
 export const Statistics = () => {
   const { user } = useContext(UserContext);
 
   const [isLoading, setIsLoading] = useState(true);
-  const [data, setData] = useState<TWFHRequest[]>([]);
+  const [data, setData] = useState<number[]>([]);
   const [filters, setFilters] = useState<TFilters>({
     department: user?.dept || "all",
     date: new Date(),
@@ -31,12 +31,52 @@ export const Statistics = () => {
   };
 
   useEffect(() => {
+    setIsLoading(true);
+
+    const countArrangements = async (arrangements: TWFHRequest[]) => {
+      let counts = {
+        onLeave: 0,
+        wfh_full: 0,
+        wfh_am: 0,
+        wfh_pm: 0,
+      };
+      arrangements.forEach((arrangement) => {
+        switch (arrangement.wfh_type) {
+          case "full":
+            counts.wfh_full++;
+            break;
+          case "am":
+            counts.wfh_am++;
+            break;
+          case "pm":
+            counts.wfh_pm++;
+            break;
+        }
+
+        if (arrangement.reason_description === "OOO") {
+          counts.onLeave++;
+        }
+      });
+
+      const totalEmployees = await getTotalEmployees();
+      const inOffice =
+        totalEmployees -
+        (counts.onLeave + counts.wfh_full + counts.wfh_am + counts.wfh_pm);
+
+      return [
+        counts.onLeave,
+        counts.wfh_full,
+        counts.wfh_am,
+        counts.wfh_pm,
+        inOffice,
+      ];
+    };
     const getWFHRequests = async () => {
       const params = {
         department:
           filters.department === "all" ? undefined : filters.department,
         current_approval_status: ["APPROVED"],
-        start_date: new Date(filters.date.toISOString().split("T")[0]), // strip the time away and convert all to 0s
+        start_date: new Date(filters.date.toISOString().split("T")[0]), // strip the time away and convert all to 0s then convert back to a date object
         end_date: new Date(filters.date.toISOString().split("T")[0]),
       };
 
@@ -44,72 +84,28 @@ export const Statistics = () => {
         const response = await axios.get(`${BACKEND_URL}/arrangements`, {
           params,
         });
-        console.log(response.data.data);
-        setData(response.data.data);
+        const arrangementData = await countArrangements(response.data.data);
+        setData(arrangementData);
       } catch (error) {
         console.error(error);
+      } finally {
+        setIsLoading(false);
       }
     };
+
+    const getTotalEmployees = async () => {
+      const response = await axios.get(`${BACKEND_URL}/employees`, {
+        params: {
+          department:
+            filters.department !== "all" ? filters.department : undefined,
+        },
+      });
+
+      return response.data.length;
+    };
+
     getWFHRequests();
-    setIsLoading(false);
   }, [filters, BACKEND_URL]);
-
-  if (isLoading) {
-    return (
-      <div
-        style={{ display: "flex", justifyContent: "center", padding: "2rem" }}
-      >
-        <CircularProgress />
-      </div>
-    );
-  }
-
-  const TOTAL_EMPLOYEES = 50;
-
-  const countArrangements = (arrangements: TWFHRequest[]) => {
-    let counts = {
-      onLeave: 0,
-      wfh_full: 0,
-      wfh_am: 0,
-      wfh_pm: 0,
-    };
-
-    arrangements.forEach((arrangement) => {
-      switch (arrangement.wfh_type) {
-        case "full":
-          counts.wfh_full++;
-          break;
-        case "am":
-          counts.wfh_am++;
-          break;
-        case "pm":
-          counts.wfh_pm++;
-          break;
-      }
-
-      if (arrangement.reason_description === "OOO") {
-        counts.onLeave++;
-      }
-    });
-
-    console.log(counts);
-
-    const inOffice =
-      TOTAL_EMPLOYEES -
-      (counts.onLeave + counts.wfh_full + counts.wfh_am + counts.wfh_pm);
-
-    return [
-      counts.onLeave,
-      counts.wfh_full,
-      counts.wfh_am,
-      counts.wfh_pm,
-      inOffice,
-    ];
-  };
-
-  const arrangementData = countArrangements(data);
-
-  console.log(arrangementData);
 
   return (
     <Container>
@@ -125,18 +121,37 @@ export const Statistics = () => {
         />
         <Box className="w-full border-grey border-[1px] rounded-lg p-8 flex justify-center">
           <Box className="w-1/2">
-            <Chart
-              data={arrangementData}
-              labels={[
-                "On Leave",
-                "WFH (Full Day)",
-                "WFH (AM)",
-                "WFH(PM)",
-                "In Office",
-              ]}
-              backgroundColor={CHART_COLOURS}
-              hoverBackgroundColor={CHART_COLOURS}
-            />
+            {isLoading ? (
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "center",
+                  padding: "2rem",
+                }}
+              >
+                <CircularProgress />
+              </div>
+            ) : data.slice(0, 3).reduce((count, val) => count + val, 0) ===
+              0 ? (
+              <Box className="h-full flex items-center">
+                <Typography variant="h6" align="center">
+                  No arrangements made for the selected date
+                </Typography>
+              </Box>
+            ) : (
+              <Chart
+                data={data}
+                labels={[
+                  "On Leave",
+                  "WFH (Full Day)",
+                  "WFH (AM)",
+                  "WFH(PM)",
+                  "In Office",
+                ]}
+                backgroundColor={CHART_COLOURS}
+                hoverBackgroundColor={CHART_COLOURS}
+              />
+            )}
           </Box>
         </Box>
       </Box>
