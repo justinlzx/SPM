@@ -31,6 +31,8 @@ export type TWFHRequest = {
   supporting_doc_2: string;
   supporting_doc_3: string;
 };
+
+
   
 // Type for grouping work-from-home requests by date
 export type TArrangementsByDate = {

@@ -40,7 +40,7 @@ import { DelegationStatus } from "../../types/delegation";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 
-type TWFHRequest = {
+export type TWFHRequest = {
   arrangement_id: number;
   requester_staff_id: number;
   requester_name?: string;
@@ -174,7 +174,7 @@ export const PendingRequests = () => {
           request.current_approval_status === ApprovalStatus.PendingWithdrawal
         );
       });
-      //console.log(requests);
+      console.log(requests)
 
       const requestsWithNames = await Promise.all(
         requests.map(async (request: TWFHRequest) => {
@@ -189,7 +189,7 @@ export const PendingRequests = () => {
           };
         })
       );
-      console.log(filteredRequests);
+
       setActionRequests(requestsWithNames);
       setFilteredRequests(requestsWithNames);
     } catch (error) {
@@ -204,16 +204,11 @@ export const PendingRequests = () => {
 
   useEffect(() => {
     const initializeData = async () => {
-      await fetchDelegationStatus();
+      await fetchDelegationStatus(); 
+      await fetchPendingRequests();
     };
     initializeData();
   }, [user, userId]);
-
-  useEffect(() => {
-    if (delegatorManagerId !== null) {
-      fetchPendingRequests();
-    }
-  }, [delegatorManagerId]);
 
   const refreshData = () => {
     fetchPendingRequests();
@@ -316,6 +311,7 @@ export const PendingRequests = () => {
       return matchesDate && matchesStatus && matchesSearchQuery;
     });
     setFilteredRequests(filtered);
+    console.log("Filtered Requests:", filtered);
   };
 
   const handleViewDocuments = (docs: string[]) => {
@@ -445,7 +441,7 @@ export const PendingRequests = () => {
   );
 };
 
-// ArrangementRow Component
+
 const ArrangementRow = ({
   arrangement,
   handleRequestAction,
