@@ -63,7 +63,8 @@ export const PendingRequests = () => {
   const [filteredRequests, setFilteredRequests] = useState<TWFHRequest[]>([]);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
-  
+  const [isDelegateManager, setIsDelegateManager] = useState(false);
+  const [delegatorManagerId, setDelegatorManagerId] = useState<number | null>(null);
 
   const [showSnackbar, setShowSnackbar] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState("");
@@ -78,66 +79,105 @@ export const PendingRequests = () => {
   const [documentDialogOpen, setDocumentDialogOpen] = useState(false);
   const [documents, setDocuments] = useState<string[]>([]);
 
-  const fetchPendingRequests = async () => {
+  const fetchDelegationStatus = async () => {
     if (!user || !userId) return;
-    setLoading(true);
-  
     try {
-      // Fetch pending requests for the current manager
-      const response = await axios.get(`${BACKEND_URL}/arrangements/subordinates/${userId}`, {
-        params: { current_approval_status: ["pending approval", "pending withdrawal"] },
-      });
-      console.log(userId)
-      console.log(response.data.data)
-      // Determine if the current user is acting as a delegate manager
-      const isDelegateManager = response.data.data.some(
-        (entry: { pending_arrangements: TWFHRequest[] }) => entry.pending_arrangements.some(
-          (request: TWFHRequest) => request.delegate_approving_officer === userId
-        )
-      );
-      console.log(isDelegateManager)
-  
-      // Filter the requests based on `delegate_approving_officer` and `current_approval_status`
-      const requests = response.data.data.flatMap((dateEntry: { pending_arrangements: TWFHRequest[] }) => dateEntry.pending_arrangements)
-        .filter((request: TWFHRequest) => {
-          const isPendingStatus =
-            request.current_approval_status === ApprovalStatus.PendingApproval ||
-            request.current_approval_status === ApprovalStatus.PendingWithdrawal;
-  
-          // If the current user is the delegate manager, display requests assigned to them only
-          if (isDelegateManager) {
-            return isPendingStatus && request.delegate_approving_officer === userId;
-          } else {
-            // If not a delegate manager, display requests for which the user is the approving officer
-            return isPendingStatus && request.approving_officer === userId && !request.delegate_approving_officer;
-          }
+        const response = await axios.get(`${BACKEND_URL}/employees/manager/viewdelegations/${userId}`, {
+            params: {
+                status: "accepted",
+            },
         });
-  
-      // Fetch and attach requester names to each request
+
+        const delegationRequests = response.data.pending_approval_delegations || [];
+        const hasAcceptedDelegations = delegationRequests.some(
+            (delegation: any) => delegation.status_of_delegation === "accepted"
+        );
+        setIsDelegateManager(hasAcceptedDelegations);
+
+        if (hasAcceptedDelegations) {
+            const delegatorId = delegationRequests[0].staff_id;
+            setDelegatorManagerId(delegatorId);
+            console.log("Delegator Manager ID set to:", delegatorId);
+        } else {
+            setDelegatorManagerId(userId);
+            console.log("User is the delegator, setting their own ID:", userId);
+        }
+    } catch (error) {
+        console.error("Failed to fetch delegation status:", error);
+    }
+};
+
+const fetchPendingRequests = async () => {
+  if (!user || !userId) return;
+  setLoading(true);
+
+  try {
+      if (delegatorManagerId === userId && isDelegateManager) {
+          setActionRequests([]);
+          setFilteredRequests([]);
+          setLoading(false);
+          return;
+      }
+
+      let allRequests: TWFHRequest[] = [];
+      if (!isDelegateManager || delegatorManagerId !== userId) {
+          const primaryResponse = await axios.get(`${BACKEND_URL}/arrangements/subordinates/${userId}`, {
+              params: { current_approval_status: ["pending approval", "pending withdrawal"] },
+          });
+          const primaryRequests = primaryResponse.data.data.flatMap(
+              (dateEntry: { pending_arrangements: TWFHRequest[] }) => dateEntry.pending_arrangements
+          );
+          allRequests = [...primaryRequests];
+      }
+
+      // If the user is a delegatee, fetch delegated requests
+      if (isDelegateManager && delegatorManagerId && delegatorManagerId !== userId) {
+          const delegatedResponse = await axios.get(`${BACKEND_URL}/arrangements/subordinates/${delegatorManagerId}`, {
+              params: { current_approval_status: ["pending approval", "pending withdrawal"] },
+          });
+          const delegatedRequests = delegatedResponse.data.data.flatMap(
+              (dateEntry: { pending_arrangements: TWFHRequest[] }) => dateEntry.pending_arrangements
+          );
+          allRequests = [...allRequests, ...delegatedRequests];
+      }
+
+      // Filter requests with pending status
+      const requests = allRequests.filter((request: TWFHRequest) => {
+          return (
+              request.current_approval_status === ApprovalStatus.PendingApproval ||
+              request.current_approval_status === ApprovalStatus.PendingWithdrawal
+          );
+      });
+
       const requestsWithNames = await Promise.all(
-        requests.map(async (request: TWFHRequest) => {
-          const employee = await fetchEmployeeByStaffId(request.requester_staff_id);
-          return {
-            ...request,
-            requester_name: employee ? `${employee.staff_fname} ${employee.staff_lname}` : "N/A",
-          };
-        })
+          requests.map(async (request: TWFHRequest) => {
+              const employee = await fetchEmployeeByStaffId(request.requester_staff_id);
+              return {
+                  ...request,
+                  requester_name: employee ? `${employee.staff_fname} ${employee.staff_lname}` : "N/A",
+              };
+          })
       );
-  
+
       setActionRequests(requestsWithNames);
       setFilteredRequests(requestsWithNames);
-    } catch (error) {
-      console.error("Failed to fetch subordinates' requests:", error);
+  } catch (error) {
+      console.error("Failed to fetch requests:", error);
       setAlertStatus(AlertStatus.Error);
       setSnackbarMessage("Failed to fetch requests.");
       setShowSnackbar(true);
-    } finally {
+  } finally {
       setLoading(false);
-    }
-  };
+  }
+};
 
   useEffect(() => {
-    fetchPendingRequests();
+    const initializeData = async () => {
+      await fetchDelegationStatus(); 
+      console.log("Delegator Manager ID after fetchDelegationStatus:", delegatorManagerId); // Check if it's set
+      await fetchPendingRequests();
+    };
+    initializeData();
   }, [user, userId]);
 
   const refreshData = () => {
@@ -271,23 +311,24 @@ export const PendingRequests = () => {
             </TableRow>
           </TableHead>
           <TableBody>
-            {filteredRequests.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={7} align="center">
-                  No pending requests
-                </TableCell>
-              </TableRow>
-            ) : (
-              filteredRequests.map((arrangement) => (
-                <ArrangementRow
-                  key={arrangement.arrangement_id}
-                  arrangement={arrangement}
-                  handleRequestAction={handleRequestAction}
-                  handleRejectClick={handleRejectClick}
-                  handleViewDocuments={handleViewDocuments}
-                />
-              ))
-            )}
+          {(filteredRequests.length === 0 || delegatorManagerId === userId) ? (
+          <TableRow>
+            <TableCell colSpan={7} align="center">
+              No pending requests
+            </TableCell>
+          </TableRow>
+        ) : (
+          filteredRequests.length > 0 && delegatorManagerId !== userId && 
+          filteredRequests.map((arrangement) => (
+            <ArrangementRow
+              key={arrangement.arrangement_id}
+              arrangement={arrangement}
+              handleRequestAction={handleRequestAction}
+              handleRejectClick={handleRejectClick}
+              handleViewDocuments={handleViewDocuments}
+            />
+          ))
+        )}
           </TableBody>
         </Table>
       </TableContainer>

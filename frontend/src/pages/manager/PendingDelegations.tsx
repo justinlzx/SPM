@@ -79,7 +79,7 @@ export const PendingDelegations = () => {
           }
         );
         const delegationRequests: TDelegationRequest[] = response.data.pending_approval_delegations || [];
-        console.log(delegationRequests)
+        //console.log(delegationRequests)
         setRequests(delegationRequests);
       } catch (error) {
         console.error("Failed to fetch delegation requests:", error);
