@@ -296,7 +296,6 @@ async def create_arrangements_from_request(
         logger.info(f"Deleting files due to error: {str(upload_error)}")
         await handle_multi_file_deletion(file_paths, s3_client)
         raise exceptions.S3UploadFailedException(str(upload_error))
-    # TODO: Email notification error
 
 
 async def update_arrangement_approval_status(
