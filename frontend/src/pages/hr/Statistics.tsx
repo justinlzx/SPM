@@ -121,22 +121,15 @@ export const Statistics = () => {
         />
         <Box className="w-full border-grey border-[1px] rounded-lg p-8 flex justify-center">
           <Box className="w-1/2">
-            {isLoading ? (
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "center",
-                  padding: "2rem",
-                }}
-              >
-                <CircularProgress />
-              </div>
-            ) : data.slice(0, 3).reduce((count, val) => count + val, 0) ===
-              0 ? (
-              <Box className="h-full flex items-center">
-                <Typography variant="h6" align="center">
-                  No arrangements made for the selected date
-                </Typography>
+            {data.slice(0, 3).reduce((count, val) => count + val, 0) === 0 ? (
+              <Box className="h-full flex justify-center items-center">
+                {isLoading ? (
+                  <CircularProgress />
+                ) : (
+                  <Typography variant="h6" align="center">
+                    No arrangements made for the selected date
+                  </Typography>
+                )}
               </Box>
             ) : (
               <Chart
