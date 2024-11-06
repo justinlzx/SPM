@@ -26,7 +26,7 @@ describe('Testing login page', () => {
   })
 
   // Test case 4
-  it('should change to the homepage if the fields are filled with correct user input', () => {
+  it('should change to the homepage if the fields are filled with correct user input, with caps email', () => {
     cy.visit('http://localhost:3000/login')
     cy.get('[data-cy="email"]').type('Rahim.Khalid@allinone.com.sg')
     cy.get('[data-cy="password"]').type('password')
@@ -42,5 +42,15 @@ describe('Testing login page', () => {
     cy.get('[data-cy="submit"]').click()
     cy.url().should('eq', 'http://localhost:3000/home');
   })
+
+  // Test case 6
+  it('should change to the homepage if the fields are filled with correct user input, with lowercased email', () => {
+    cy.visit('http://localhost:3000/login')
+    cy.get('[data-cy="email"]').type('derek.tan@allinone.com.sg')
+    cy.get('[data-cy="password"]').type('password')
+    cy.get('[data-cy="submit"]').click()
+    cy.url().should('eq', 'http://localhost:3000/home');
+  })
+
 
 })
