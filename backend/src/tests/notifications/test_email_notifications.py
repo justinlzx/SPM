@@ -119,7 +119,7 @@ async def send_email(to_email: str, subject: str, content: str):
 class TestSendEmail:
     @pytest.mark.asyncio
     async def test_successful_send(self):
-        """Test successful email sending with context manager"""
+        """Test successful email sending with context manager."""
         # Setup response mock
         mock_response = MagicMock()
         mock_response.status_code = 200
@@ -148,7 +148,7 @@ class TestSendEmail:
 
     @pytest.mark.asyncio
     async def test_input_validation(self):
-        """Test validation of input parameters"""
+        """Test validation of input parameters."""
         # Test empty email
         with pytest.raises(HTTPException) as exc:
             await send_email("", "subject", "content")
@@ -247,7 +247,7 @@ class TestSendEmail:
 
     @pytest.mark.asyncio
     async def test_non_200_response(self):
-        """Test handling of non-200 response"""
+        """Test handling of non-200 response."""
         # Setup response mock
         mock_response = MagicMock()
         mock_response.status_code = 400
@@ -271,7 +271,7 @@ class TestSendEmail:
     @pytest.mark.asyncio
     @patch("httpx.AsyncClient.post")
     async def test_happy_path(self, mock_post):
-        """Test successful email sending"""
+        """Test successful email sending."""
         mock_response = MagicMock()
         mock_response.status_code = 200
         mock_response.json.return_value = {"message": "success"}
@@ -292,7 +292,7 @@ class TestSendEmail:
     @pytest.mark.asyncio
     @patch("httpx.AsyncClient.post")
     async def test_email_send_retry_logic(self, mock_post):
-        """Test email sending with initial failure and retry"""
+        """Test email sending with initial failure and retry."""
         # First call fails, second succeeds
         mock_post.side_effect = [
             RequestError("Connection failed"),
@@ -308,7 +308,7 @@ class TestSendEmail:
     @pytest.mark.asyncio
     @patch("httpx.AsyncClient.post")
     async def test_multiple_consecutive_sends(self, mock_post):
-        """Test multiple consecutive email sends"""
+        """Test multiple consecutive email sends."""
         mock_response = MagicMock()
         mock_response.status_code = 200
         mock_response.json.return_value = {"message": "Email sent successfully"}
@@ -326,7 +326,7 @@ class TestSendEmail:
     @pytest.mark.asyncio
     @patch("httpx.AsyncClient.post")
     async def test_long_email_content(self, mock_post):
-        """Test email sending with long content"""
+        """Test email sending with long content."""
         mock_response = MagicMock()
         mock_response.status_code = 200
         mock_response.json.return_value = {"message": "Email sent successfully"}
@@ -343,7 +343,7 @@ class TestSendEmail:
     @pytest.mark.asyncio
     @patch("httpx.AsyncClient.post")
     async def test_email_send_with_special_characters(self, mock_post):
-        """Test email sending with special characters in content"""
+        """Test email sending with special characters in content."""
         mock_response = MagicMock()
         mock_response.status_code = 200
         mock_response.json.return_value = {"message": "Email sent successfully"}
@@ -362,7 +362,7 @@ class TestSendEmail:
     @pytest.mark.asyncio
     @patch("httpx.AsyncClient.post")
     async def test_basic_email_send(self, mock_post):
-        """Test successful email sending with mock response"""
+        """Test successful email sending with mock response."""
         # Setup mock response
         mock_response = MagicMock()
         mock_response.status_code = 200
@@ -420,7 +420,7 @@ class TestSendEmail:
 
     @pytest.mark.asyncio
     async def test_response_json_parsing(self):
-        """Test successful JSON response parsing"""
+        """Test successful JSON response parsing."""
         # Setup response mock with specific JSON
         mock_response = MagicMock()
         mock_response.status_code = 200
@@ -442,7 +442,7 @@ class TestSendEmail:
 
     @pytest.mark.asyncio
     async def test_request_error(self):
-        """Test handling of request errors"""
+        """Test handling of request errors."""
         # Setup client mock with error
         mock_client = AsyncMock()
         mock_client.post.side_effect = httpx.RequestError("Connection timeout")
@@ -650,12 +650,12 @@ class TestFormatEmailSubject:
         ("role", "action"),
         [
             ("delegator", "delegate"),
-            ("delegator", "undelegated"),
+            ("delegator", "undelegate"),
             ("delegator", "approved"),
             ("delegator", "rejected"),
             ("delegator", "withdrawn"),
             ("delegatee", "delegate"),
-            ("delegatee", "undelegated"),
+            ("delegatee", "undelegate"),
             ("delegatee", "approved"),
             ("delegatee", "rejected"),
             ("delegatee", "withdrawn"),
@@ -677,7 +677,7 @@ class TestFormatEmailSubject:
 class TestFormatEmailBody:
     @pytest.mark.asyncio
     async def test_delegatee_action_withdrawn(self, mock_delegate_config_factory):
-        """Test the delegatee-withdrawn branch specifically"""
+        """Test the delegatee-withdrawn branch specifically."""
         # Create mock delegator and delegatee
         mock_delegator = MagicMock()
         mock_delegator.staff_fname = "John"
@@ -706,7 +706,7 @@ class TestFormatEmailBody:
 
     @pytest.mark.asyncio
     async def test_delegatee_other_action(self, mock_delegate_config_factory):
-        """Test a different action to ensure branch coverage"""
+        """Test a different action to ensure branch coverage."""
         mock_delegator = MagicMock()
         mock_delegator.staff_fname = "John"
         mock_delegator.staff_lname = "Doe"
@@ -773,12 +773,12 @@ class TestFormatEmailBody:
         ("role", "action"),
         [
             ("delegator", "delegate"),
-            ("delegator", "undelegated"),
+            ("delegator", "undelegate"),
             ("delegator", "approved"),
             ("delegator", "rejected"),
             ("delegator", "withdrawn"),
             ("delegatee", "delegate"),
-            ("delegatee", "undelegated"),
+            ("delegatee", "undelegate"),
             ("delegatee", "approved"),
             ("delegatee", "rejected"),
             ("delegatee", "withdrawn"),
@@ -1042,11 +1042,11 @@ class TestCraftAndSendEmail:
 
 @pytest.mark.asyncio
 class TestSendEmailComprehensive:
-    """Additional test cases to achieve 100% coverage for send_email function"""
+    """Additional test cases to achieve 100% coverage for send_email function."""
 
     @pytest.mark.asyncio
     async def test_send_email_success_flow(self, monkeypatch):
-        """Test the complete success flow of send_email function"""
+        """Test the complete success flow of send_email function."""
         mock_response = MagicMock()
         mock_response.status_code = 200
         mock_response.json.return_value = {"message": "Email sent successfully"}
@@ -1075,7 +1075,7 @@ class TestSendEmailComprehensive:
 
     @pytest.mark.asyncio
     async def test_send_email_non_200_response(self, monkeypatch):
-        """Test handling of non-200 response from email service"""
+        """Test handling of non-200 response from email service."""
         mock_response = MagicMock()
         mock_response.status_code = 400
         mock_response.text = "Bad Request - Invalid email format"
@@ -1098,7 +1098,7 @@ class TestSendEmailComprehensive:
 
     @pytest.mark.asyncio
     async def test_send_email_request_error(self, monkeypatch):
-        """Test handling of RequestError during email sending"""
+        """Test handling of RequestError during email sending."""
         mock_client = AsyncMock()
         mock_client.post = AsyncMock(
             side_effect=httpx.RequestError("Failed to establish connection")
@@ -1119,7 +1119,7 @@ class TestSendEmailComprehensive:
 
     @pytest.mark.asyncio
     async def test_send_email_context_manager(self, monkeypatch):
-        """Test the context manager behavior of AsyncClient"""
+        """Test the context manager behavior of AsyncClient."""
         mock_response = MagicMock()
         mock_response.status_code = 200
         mock_response.json.return_value = {"message": "Success"}
@@ -1143,7 +1143,7 @@ class TestSendEmailComprehensive:
 
     @pytest.mark.asyncio
     async def test_send_email_successful_request(self):
-        """Test successful email sending with minimal mocking"""
+        """Test successful email sending with minimal mocking."""
         # Create response mock
         mock_response = MagicMock()
         mock_response.status_code = 200
@@ -1176,7 +1176,7 @@ class TestSendEmailComprehensive:
 
     @pytest.mark.asyncio
     async def test_send_email_non_200_response(self):
-        """Test non-200 response handling"""
+        """Test non-200 response handling."""
         # Create response mock with non-200 status
         mock_response = MagicMock()
         mock_response.status_code = 400
@@ -1203,7 +1203,7 @@ class TestSendEmailComprehensive:
 
     @pytest.mark.asyncio
     async def test_send_email_request_error(self):
-        """Test RequestError handling"""
+        """Test RequestError handling."""
         # Create client mock that raises RequestError
         mock_client = MagicMock()
         mock_client.post = AsyncMock(side_effect=httpx.RequestError("Connection failed"))
@@ -1225,7 +1225,7 @@ class TestSendEmailComprehensive:
 
     @pytest.mark.asyncio
     async def test_send_email_context_exit_error(self):
-        """Test handling of context manager exit error"""
+        """Test handling of context manager exit error."""
         # Create client mock
         mock_client = MagicMock()
         mock_client.post = AsyncMock()
@@ -1246,7 +1246,7 @@ class TestSendEmailComprehensive:
 
     @pytest.mark.asyncio
     async def test_send_email_complete_error_flow(self):
-        """Test the complete error flow including context handling"""
+        """Test the complete error flow including context handling."""
 
         # Mock a RequestError that occurs during the post request
         async def mock_post(*args, **kwargs):

@@ -33,14 +33,14 @@ ARRANGEMENT_SUBJECT = {
 DELEGATION_SUBJECT = {
     "delegator": {
         "delegate": "You have delegated approval responsibilities",
-        "undelegated": "Approval responsibilities have been returned to you",
+        "undelegate": "Approval responsibilities have been returned to you",
         "approved": "Your delegation request has been approved",
         "rejected": "Your delegation request has been rejected",
         "withdrawn": "Your delegation request has been withdrawn",
     },
     "delegatee": {
         "delegate": "Approval responsibilities delegated to you",
-        "undelegated": "Approval responsibilities have been returned",
+        "undelegate": "Approval responsibilities have been returned",
         "approved": "You have approved a delegation request",
         "rejected": "You have rejected a delegation request",
         "withdrawn": "Your delegation has been withdrawn",

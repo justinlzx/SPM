@@ -36,6 +36,7 @@ import {
 import { UserContext } from "../../context/UserContextProvider";
 import { SnackBarComponent, AlertStatus } from "../../common/SnackBar";
 import { LoadingSpinner } from "../../common/LoadingSpinner";
+import { DelegationStatus } from "../../types/delegation";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 
@@ -51,15 +52,19 @@ type TWFHRequest = {
   supporting_doc_1?: string | null;
   supporting_doc_2?: string | null;
   supporting_doc_3?: string | null;
+  delegate_approving_officer?: number;
 };
 
 export const PendingRequests = () => {
+  const { user } = useContext(UserContext);
+  const userId = user?.id;
+
   const [actionRequests, setActionRequests] = useState<TWFHRequest[]>([]);
   const [filteredRequests, setFilteredRequests] = useState<TWFHRequest[]>([]);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
-  const { user } = useContext(UserContext);
-  const userId = user?.id;
+  const [isDelegateManager, setIsDelegateManager] = useState(false);
+  const [delegatorManagerId, setDelegatorManagerId] = useState<number | null>(null);
 
   const [showSnackbar, setShowSnackbar] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState("");
@@ -67,59 +72,122 @@ export const PendingRequests = () => {
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState({});
 
-  // Rejection modal state
   const [rejectModalOpen, setRejectModalOpen] = useState(false);
   const [selectedArrangementId, setSelectedArrangementId] = useState<number | null>(null);
   const [rejectionReason, setRejectionReason] = useState("");
 
-  // Document dialog state
   const [documentDialogOpen, setDocumentDialogOpen] = useState(false);
   const [documents, setDocuments] = useState<string[]>([]);
 
-  const fetchPendingRequests = async () => {
+  const fetchDelegationStatus = async () => {
     if (!user || !userId) return;
-    setLoading(true);
     try {
-      const response = await axios.get(
-        `${BACKEND_URL}/arrangements/subordinates/${userId}`,
-        { params: { current_approval_status: ["pending approval", "pending withdrawal"] } }
-      );
+        const response = await axios.get(`${BACKEND_URL}/employees/manager/viewdelegations/${userId}`, {
+            params: {
+                status: "accepted",
+            },
+        });
 
-      const requests = response.data.data
-        .flatMap((dateEntry: any) => dateEntry.pending_arrangements)
-        .filter((request: TWFHRequest) =>
-          [ApprovalStatus.PendingApproval, ApprovalStatus.PendingWithdrawal].includes(request.current_approval_status)
+        const delegationRequests = response.data.pending_approval_delegations || [];
+        const hasAcceptedDelegations = delegationRequests.some(
+            (delegation: any) => delegation.status_of_delegation === "accepted"
         );
-        console.log(requests);
+        setIsDelegateManager(hasAcceptedDelegations);
+
+        if (hasAcceptedDelegations) {
+            const delegatorId = delegationRequests[0].staff_id;
+            setDelegatorManagerId(delegatorId);
+            console.log("Delegator Manager ID set to:", delegatorId);
+        } else {
+            setDelegatorManagerId(userId);
+            console.log("User is the delegator, setting their own ID:", userId);
+        }
+    } catch (error) {
+        console.error("Failed to fetch delegation status:", error);
+    }
+};
+
+const fetchPendingRequests = async () => {
+  if (!user || !userId) return;
+  setLoading(true);
+
+  try {
+      if (delegatorManagerId === userId && isDelegateManager) {
+          setActionRequests([]);
+          setFilteredRequests([]);
+          setLoading(false);
+          return;
+      }
+
+      let allRequests: TWFHRequest[] = [];
+      if (!isDelegateManager || delegatorManagerId !== userId) {
+          const primaryResponse = await axios.get(`${BACKEND_URL}/arrangements/subordinates/${userId}`, {
+              params: { current_approval_status: ["pending approval", "pending withdrawal"] },
+          });
+          const primaryRequests = primaryResponse.data.data.flatMap(
+              (dateEntry: { pending_arrangements: TWFHRequest[] }) => dateEntry.pending_arrangements
+          );
+          allRequests = [...primaryRequests];
+      }
+      console.log(allRequests)
+
+      // If the user is a delegatee, fetch delegated requests
+      if (isDelegateManager && delegatorManagerId && delegatorManagerId !== userId) {
+          const delegatedResponse = await axios.get(`${BACKEND_URL}/arrangements/subordinates/${delegatorManagerId}`, {
+              params: { current_approval_status: ["pending approval", "pending withdrawal"] },
+          });
+          const delegatedRequests = delegatedResponse.data.data.flatMap(
+              (dateEntry: { pending_arrangements: TWFHRequest[] }) => dateEntry.pending_arrangements
+          );
+          //console.log(delegatedRequests);
+          allRequests = [...allRequests, ...delegatedRequests];
+      }
+      
+
+      // Filter requests with pending status
+      const requests = allRequests.filter((request: TWFHRequest) => {
+          return (
+              request.current_approval_status === ApprovalStatus.PendingApproval ||
+              request.current_approval_status === ApprovalStatus.PendingWithdrawal
+          );
+      });
+      //console.log(requests);
 
       const requestsWithNames = await Promise.all(
-        requests.map(async (request: TWFHRequest) => {
-          const employee = await fetchEmployeeByStaffId(request.requester_staff_id);
-          return {
-            ...request,
-            requester_name: employee ? `${employee.staff_fname} ${employee.staff_lname}` : "N/A",
-          };
-        })
+          requests.map(async (request: TWFHRequest) => {
+              const employee = await fetchEmployeeByStaffId(request.requester_staff_id);
+              return {
+                  ...request,
+                  requester_name: employee ? `${employee.staff_fname} ${employee.staff_lname}` : "N/A",
+              };
+          })
       );
-
+      console.log(filteredRequests);
       setActionRequests(requestsWithNames);
       setFilteredRequests(requestsWithNames);
-    } catch (error) {
-      console.error("Failed to fetch subordinates' requests:", error);
+  } catch (error) {
+      console.error("Failed to fetch requests:", error);
       setAlertStatus(AlertStatus.Error);
       setSnackbarMessage("Failed to fetch requests.");
       setShowSnackbar(true);
-    } finally {
+  } finally {
       setLoading(false);
-    }
-  };
+  }
+};
 
-  // Initialize data on component mount
   useEffect(() => {
-    fetchPendingRequests();
+    const initializeData = async () => {
+      await fetchDelegationStatus();
+    };
+    initializeData();
   }, [user, userId]);
 
-  // Refresh function to refetch data
+  useEffect(() => {
+    if (delegatorManagerId !== null) {
+      fetchPendingRequests();
+    }
+  }, [delegatorManagerId]);
+
   const refreshData = () => {
     fetchPendingRequests();
   };
@@ -251,24 +319,24 @@ export const PendingRequests = () => {
             </TableRow>
           </TableHead>
           <TableBody>
-            {filteredRequests.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={7} align="center">
-                  No pending requests
-                </TableCell>
-              </TableRow>
-            ) : (
-              filteredRequests.map((arrangement) => (
-                <ArrangementRow
-                  key={arrangement.arrangement_id}
-                  arrangement={arrangement}
-                  handleRequestAction={handleRequestAction}
-                  handleRejectClick={handleRejectClick}
-                  handleViewDocuments={handleViewDocuments}
-                />
-              ))
-            )}
-          </TableBody>
+    {filteredRequests.length === 0 ? (
+      <TableRow>
+        <TableCell colSpan={7} align="center">
+          No pending requests
+        </TableCell>
+      </TableRow>
+    ) : (
+      filteredRequests.map((arrangement) => (
+        <ArrangementRow
+          key={arrangement.arrangement_id}
+          arrangement={arrangement}
+          handleRequestAction={handleRequestAction}
+          handleRejectClick={handleRejectClick}
+          handleViewDocuments={handleViewDocuments}
+        />
+      ))
+    )}
+  </TableBody>
         </Table>
       </TableContainer>
 
