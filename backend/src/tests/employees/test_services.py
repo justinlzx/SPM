@@ -1068,7 +1068,7 @@ def test_get_reporting_manager_and_peer_employees_print_statement(
 @pytest.mark.asyncio
 @patch("src.employees.services.get_manager_by_subordinate_id")  # Add this patch
 async def test_get_reporting_manager_and_peer_employees_with_peers(mock_get_manager, test_db):
-    """Test to cover list comprehension in get_reporting_manager_and_peer_employees"""
+    """Test to cover list comprehension in get_reporting_manager_and_peer_employees."""
     # Create manager
     manager = Employee(
         staff_id=200,
@@ -1129,7 +1129,7 @@ async def test_get_reporting_manager_and_peer_employees_with_peers(mock_get_mana
 
 
 def test_get_manager_by_subordinate_id_with_unlocked_peers(test_db):
-    """Test to cover the list comprehension and print statement in get_manager_by_subordinate_id"""
+    """Test to cover the list comprehension and print statement in get_manager_by_subordinate_id."""
     # Create manager
     manager = Employee(
         staff_id=300,
@@ -1177,7 +1177,7 @@ def test_get_manager_by_subordinate_id_with_unlocked_peers(test_db):
 
 
 def test_view_delegations_with_data(test_db):
-    """Test to cover list comprehensions in view_delegations"""
+    """Test to cover list comprehensions in view_delegations."""
     # Create manager and delegate
     manager = Employee(
         staff_id=400,
@@ -1226,7 +1226,7 @@ def test_view_delegations_with_data(test_db):
 
 
 def test_view_all_delegations_with_data(test_db):
-    """Test to cover list comprehensions in view_all_delegations"""
+    """Test to cover list comprehensions in view_all_delegations."""
     # Create manager and delegate
     manager = Employee(
         staff_id=500,
@@ -1277,7 +1277,7 @@ def test_view_all_delegations_with_data(test_db):
 
 
 def test_edge_cases_full_coverage(test_db):
-    """Test edge cases for full coverage"""
+    """Test edge cases for full coverage."""
     # Test Jack Sim special case
     jack_sim_response = get_reporting_manager_and_peer_employees(test_db, 130002)
     assert jack_sim_response.manager_id is None
@@ -1295,7 +1295,7 @@ def test_edge_cases_full_coverage(test_db):
 
 @pytest.mark.asyncio
 async def test_delegation_process_coverage(test_db):
-    """Test to cover delegation process cases"""
+    """Test to cover delegation process cases."""
     # Create test data
     manager = Employee(
         staff_id=700,
@@ -1341,3 +1341,196 @@ async def test_delegation_process_coverage(test_db):
         )
         assert result.status_of_delegation == DelegationStatus.accepted
         mock_email.assert_called()
+
+
+def test_get_manager_with_delegation(test_db):
+    """Test to cover the delegated manager branch."""
+    # Create original manager
+    manager = Employee(
+        staff_id=900,
+        staff_fname="Original",
+        staff_lname="Manager",
+        dept="IT",
+        position="Manager",
+        country="SG",
+        email="original.manager@example.com",
+        role=1,
+    )
+    test_db.add(manager)
+
+    # Create delegated manager
+    delegated_manager = Employee(
+        staff_id=901,
+        staff_fname="Delegated",
+        staff_lname="Manager",
+        dept="IT",
+        position="Manager",
+        country="SG",
+        email="delegated.manager@example.com",
+        role=1,
+    )
+    test_db.add(delegated_manager)
+
+    # Create subordinate
+    subordinate = Employee(
+        staff_id=902,
+        staff_fname="Sub",
+        staff_lname="Employee",
+        dept="IT",
+        position="Staff",
+        country="SG",
+        email="sub.employee@example.com",
+        role=2,
+        reporting_manager=900,
+    )
+    test_db.add(subordinate)
+
+    # Create delegation
+    delegation = DelegateLog(
+        manager_id=900,
+        delegate_manager_id=901,
+        status_of_delegation=DelegationStatus.accepted,
+        date_of_delegation=datetime.now(),
+    )
+    test_db.add(delegation)
+    test_db.commit()
+
+    # Test the manager lookup with delegation
+    result = get_manager_by_subordinate_id(test_db, 902)
+    assert result is not None
+    manager_obj, peers = result
+    assert manager_obj.staff_id == 901  # Should return delegated manager
+
+
+def test_view_delegations_with_full_data(test_db):
+    """Test to cover all list comprehensions in view_delegations."""
+    # Create employees
+    manager = Employee(
+        staff_id=1000,
+        staff_fname="View",
+        staff_lname="Manager",
+        dept="IT",
+        position="Manager",
+        country="SG",
+        email="view.full.manager@example.com",
+        role=1,
+    )
+    delegate1 = Employee(
+        staff_id=1001,
+        staff_fname="View",
+        staff_lname="Delegate1",
+        dept="IT",
+        position="Staff",
+        country="SG",
+        email="view.delegate1@example.com",
+        role=2,
+    )
+    delegate2 = Employee(
+        staff_id=1002,
+        staff_fname="View",
+        staff_lname="Delegate2",
+        dept="IT",
+        position="Staff",
+        country="SG",
+        email="view.delegate2@example.com",
+        role=2,
+    )
+    test_db.add_all([manager, delegate1, delegate2])
+    test_db.commit()
+
+    # Create sent and pending delegations
+    sent_delegation = DelegateLog(
+        manager_id=1000,
+        delegate_manager_id=1001,
+        status_of_delegation=DelegationStatus.accepted,
+        date_of_delegation=datetime.now(),
+    )
+    pending_delegation = DelegateLog(
+        manager_id=1002,
+        delegate_manager_id=1000,
+        status_of_delegation=DelegationStatus.pending,
+        date_of_delegation=datetime.now(),
+    )
+    test_db.add_all([sent_delegation, pending_delegation])
+    test_db.commit()
+
+    result = view_delegations(1000, test_db)
+
+    # Verify sent delegations list comprehension
+    assert len(result["sent_delegations"]) == 1
+    sent = result["sent_delegations"][0]
+    assert sent["staff_id"] == 1001
+    assert "date_of_delegation" in sent
+    assert "status_of_delegation" in sent
+
+    # Verify pending approval delegations list comprehension
+    assert len(result["pending_approval_delegations"]) == 1
+    pending = result["pending_approval_delegations"][0]
+    assert pending["staff_id"] == 1002
+    assert "date_of_delegation" in pending
+    assert "status_of_delegation" in pending
+
+
+def test_view_all_delegations_with_full_data(test_db):
+    """Test to cover all list comprehensions in view_all_delegations."""
+    # Create employees
+    manager = Employee(
+        staff_id=1100,
+        staff_fname="Full",
+        staff_lname="Manager",
+        dept="IT",
+        position="Manager",
+        country="SG",
+        email="full.view.manager@example.com",
+        role=1,
+    )
+    delegate = Employee(
+        staff_id=1101,
+        staff_fname="Full",
+        staff_lname="Delegate",
+        dept="IT",
+        position="Staff",
+        country="SG",
+        email="full.view.delegate@example.com",
+        role=2,
+    )
+    test_db.add_all([manager, delegate])
+    test_db.commit()
+
+    # Create both sent and received delegations
+    sent_delegation = DelegateLog(
+        manager_id=1100,
+        delegate_manager_id=1101,
+        status_of_delegation=DelegationStatus.pending,
+        date_of_delegation=datetime.now(),
+        update_datetime=datetime.now(),
+    )
+    received_delegation = DelegateLog(
+        manager_id=1101,
+        delegate_manager_id=1100,
+        status_of_delegation=DelegationStatus.accepted,
+        date_of_delegation=datetime.now(),
+        update_datetime=datetime.now(),
+    )
+    test_db.add_all([sent_delegation, received_delegation])
+    test_db.commit()
+
+    result = view_all_delegations(1100, test_db)
+
+    # Verify sent delegations list comprehension
+    assert len(result["sent_delegations"]) == 1
+    sent = result["sent_delegations"][0]
+    assert sent["manager_id"] == 1100
+    assert sent["delegate_manager_id"] == 1101
+    assert "date_of_delegation" in sent
+    assert "updated_datetime" in sent
+    assert "status_of_delegation" in sent
+
+    # Verify received delegations list comprehension
+    assert len(result["received_delegations"]) == 1
+    received = result["received_delegations"][0]
+    assert received["manager_id"] == 1101
+    assert received["delegate_manager_id"] == 1100
+    assert "date_of_delegation" in received
+    assert "updated_datetime" in received
+    assert "status_of_delegation" in received
