@@ -164,7 +164,7 @@ def get_team_arrangements(
         # Convert to dataclasses
         filters = dc.ArrangementFilters.from_dict(request_filters.model_dump())
         pagination = dc.PaginationConfig.from_dict(request_pagination.model_dump())
-
+        logger.info(filters)
         # Get arrangements
         logger.info(f"Route: Fetching arrangements for team of staff ID: {staff_id}")
         response_data, pagination_meta = services.get_team_arrangements(

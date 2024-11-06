@@ -15,8 +15,11 @@ import {
   Snackbar,
   Alert,
 } from "@mui/material";
+import { ApprovalStatus } from "../../types/requests";
+import Filters from "../../common/Filters";
 import { UserContext } from "../../context/UserContextProvider";
 import axios from "axios";
+import qs from "qs";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 
@@ -26,7 +29,7 @@ type Arrangement = {
   requester_staff_id: number;
   wfh_date: string;
   wfh_type: string;
-  current_approval_status: string;
+  current_approval_status: ApprovalStatus;
   approving_officer: number;
   reason_description: string;
 };
@@ -46,6 +49,9 @@ const getChipColor = (status: string | undefined) => {
 };
 
 export const RequestList = () => {
+  const [filteredArrangements, setFilteredArrangements] = useState<
+    Arrangement[]
+  >([]);
   const [arrangements, setArrangements] = useState<Arrangement[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [page, setPage] = useState(0);
@@ -60,39 +66,75 @@ export const RequestList = () => {
   const { user } = useContext(UserContext);
 
   useEffect(() => {
-    const fetchAllRequests = async () => {
-      if (user?.id) {
-        try {
-          setLoading(true);
-          setError(null);
-
-          const arrangementsResponse = await axios.get(
-            `${BACKEND_URL}/arrangements/team/${user.id}`,
-            {
-              withCredentials: true,
-              headers: {
-                Accept: "application/json",
-                "Content-Type": "application/json",
-              },
-            }
-          );
-
-          const responseData = arrangementsResponse.data.data;
-          setArrangements(responseData);
-        } catch (error) {
-          console.error("Failed to fetch data:", error);
-          setError("Failed to fetch team requests. Please try again later.");
-        } finally {
-          setLoading(false);
-        }
-      }
-    };
-
     fetchAllRequests();
+    setFilteredArrangements(arrangements);
   }, [user]);
+
+  const fetchAllRequests = async (
+    startDate: Date | null = null,
+    endDate: Date | null = null,
+    status: ApprovalStatus[] = [],
+    department: string[] = []
+  ) => {
+    if (user?.id) {
+      try {
+        setLoading(true);
+        setError(null);
+
+        const instance = axios.create({
+          withCredentials: true,
+          headers: {
+            Accept: "application/json",
+            "Content-Type": "application/json",
+          },
+          paramsSerializer: (params: Record<string, any>): string => {
+            const serializedParams: Record<string, any> = {};
+        
+            Object.entries(params).forEach(([key, value]) => {
+              // Only serialize non-null values
+              if (value !== null && value !== undefined) {
+                if (Array.isArray(value) && (key === 'current_approval_status' || key === 'department')) {
+                  serializedParams[key] = value;
+                } else {
+                  serializedParams[key] = value;
+                }
+              }
+            });
+        
+            return qs.stringify(serializedParams, { arrayFormat: 'repeat' });
+          }
+        });
+
+        const arrangementsResponse = await instance.get(
+          `${BACKEND_URL}/arrangements/team/${user.id}`,
+          {
+            params: {
+              start_date: startDate,
+              end_date: endDate,
+              current_approval_status: status,
+              department: department,
+            },
+          }
+        );
+
+        const responseData = arrangementsResponse.data.data;
+        setArrangements(responseData);
+        setFilteredArrangements(responseData);
+      } catch (error) {
+        console.error("Failed to fetch data:", error);
+        setError("Failed to fetch team requests. Please try again later.");
+      } finally {
+        setLoading(false);
+      }
+    }
+  };
 
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchTerm(e.target.value);
+  };
+
+  const handleSearchChange = (searchQuery: string) => {
+    setSearchTerm(searchQuery);
   };
 
   const handleChangePage = (_event: unknown, newPage: number) => {
@@ -109,16 +151,65 @@ export const RequestList = () => {
   const handleCloseSnackBar = () => {
     setShowSnackbar(false);
   };
-  const filteredArrangements = arrangements.filter(
-    (arrangement) =>
-      arrangement.reason_description
-        ?.toLowerCase()
-        .includes(searchTerm.toLowerCase()) ||
-      arrangement.wfh_type?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      arrangement.current_approval_status
-        ?.toLowerCase()
-        .includes(searchTerm.toLowerCase())
-  );
+  // const filteredArrangements = arrangements.filter(
+  //   (arrangement) =>
+  //     arrangement.reason_description
+  //       ?.toLowerCase()
+  //       .includes(searchTerm.toLowerCase()) ||
+  //     arrangement.wfh_type?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+  //     arrangement.current_approval_status
+  //       ?.toLowerCase()
+  //       .includes(searchTerm.toLowerCase())
+  // );
+
+  const onApplyFilters = (filters: {
+    startDate: Date | null;
+    endDate: Date | null;
+    department: string[];
+    status: ApprovalStatus[];
+    searchQuery: string;
+    workStatus: string[];
+  }) => {
+    if (
+      !filters.startDate ||
+      !filters.endDate ||
+      !filters.department ||
+      !filters.status
+    ) {
+      fetchAllRequests(
+        filters.startDate,
+        filters.endDate,
+        filters.status,
+        filters.department
+      );
+    }
+
+    const filtered = arrangements.filter((request) => {
+      // const matchesDate =
+      //   (!filters.startDate ||
+      //     new Date(request.wfh_date) >= filters.startDate) &&
+      //   (!filters.endDate || new Date(request.wfh_date) <= filters.endDate);
+
+      // const matchesStatus =
+      //   filters.status.length === 0 ||
+      //   filters.status.includes(request.current_approval_status);
+
+      const searchQuery = filters.searchQuery.toLowerCase();
+      const matchesSearchQuery =
+        !searchQuery ||
+        request.reason_description.toLowerCase().includes(searchQuery) ||
+        request.wfh_type.toLowerCase().includes(searchQuery) ||
+        request.wfh_date.includes(searchQuery) ||
+        request.requester_staff_id.toString().includes(searchQuery);
+
+      return matchesSearchQuery;
+    });
+    setFilteredArrangements(filtered);
+  };
+
+  const onClearFilters = () => {
+    setFilteredArrangements(arrangements);
+  };
 
   if (loading) {
     return (
@@ -144,13 +235,20 @@ export const RequestList = () => {
         My Team's WFH/OOO Requests
       </Typography>
 
-      <TextField
+      {/* <TextField
         label="Search by reason, type or status"
         variant="outlined"
         fullWidth
         margin="normal"
         value={searchTerm}
         onChange={handleSearch}
+      /> */}
+
+      <Filters
+        onApplyFilters={onApplyFilters}
+        onClearFilters={onClearFilters}
+        experimentalFlag={true}
+        onSearchChange={handleSearchChange}
       />
 
       <TableContainer

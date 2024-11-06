@@ -28,9 +28,16 @@ interface FiltersProps {
     workStatus: string[];
   }) => void;
   onClearFilters: () => void;
+  onSearchChange?: (searchQuery: string) => void;
+  experimentalFlag?: boolean;
 }
 
-export const Filters: React.FC<FiltersProps> = ({ onApplyFilters, onClearFilters }) => {
+export const Filters: React.FC<FiltersProps> = ({
+  onApplyFilters,
+  onClearFilters,
+  onSearchChange,
+  experimentalFlag = false,
+}) => {
   const [startDate, setStartDate] = useState<Date | null>(null);
   const [endDate, setEndDate] = useState<Date | null>(null);
   const [department, setDepartment] = useState<string[]>([]);
@@ -38,17 +45,23 @@ export const Filters: React.FC<FiltersProps> = ({ onApplyFilters, onClearFilters
   const [searchQuery, setSearchQuery] = useState("");
   const [workStatus, setWorkStatus] = useState<string[]>([]);
 
-  // Update filters dynamically on search query change
-  useEffect(() => {
-    onApplyFilters({
-      startDate,
-      endDate,
-      department,
-      status,
-      searchQuery,
-      workStatus,
-    });
-  }, [searchQuery]); // Trigger filtering when searchQuery changes
+  if (experimentalFlag) {
+    useEffect(() => {
+      onSearchChange?.(searchQuery);
+    }, [searchQuery]);
+  } else {
+    // Update filters dynamically on search query change
+    useEffect(() => {
+      onApplyFilters({
+        startDate,
+        endDate,
+        department,
+        status,
+        searchQuery,
+        workStatus,
+      });
+    }, [searchQuery]); // Trigger filtering when searchQuery changes
+  }
 
   const handleApplyFilters = () => {
     onApplyFilters({
@@ -84,9 +97,26 @@ export const Filters: React.FC<FiltersProps> = ({ onApplyFilters, onClearFilters
         sx={{ marginBottom: 2 }}
       />
 
-      <Box display="flex" flexWrap="wrap" gap={2} alignItems="center" padding={2} border={1} borderRadius={1} borderColor="grey.300">
+      <Box
+        display="flex"
+        flexWrap="wrap"
+        gap={2}
+        alignItems="center"
+        padding={2}
+        border={1}
+        borderRadius={1}
+        borderColor="grey.300"
+      >
         {/* Date Range Filter */}
-        <Box display="flex" gap={2} alignItems="center" border={1} borderColor="grey.300" padding={1} borderRadius={1}>
+        <Box
+          display="flex"
+          gap={2}
+          alignItems="center"
+          border={1}
+          borderColor="grey.300"
+          padding={1}
+          borderRadius={1}
+        >
           <DatePicker
             selected={startDate}
             onChange={(date) => setStartDate(date)}
@@ -140,7 +170,9 @@ export const Filters: React.FC<FiltersProps> = ({ onApplyFilters, onClearFilters
             <MenuItem value="Sales">Sales</MenuItem>
             <MenuItem value="Consultancy">Consultancy</MenuItem>
             <MenuItem value="Systems Solutioning">Systems Solutioning</MenuItem>
-            <MenuItem value="Engineering Operation">Engineering Operation</MenuItem>
+            <MenuItem value="Engineering Operation">
+              Engineering Operation
+            </MenuItem>
             <MenuItem value="HR and Admin">HR and Admin</MenuItem>
             <MenuItem value="Finance and IT">Finance and IT</MenuItem>
           </Select>
@@ -159,7 +191,9 @@ export const Filters: React.FC<FiltersProps> = ({ onApplyFilters, onClearFilters
             {Object.values(ApprovalStatus).map((statusKey) => (
               <MenuItem key={statusKey} value={statusKey}>
                 <Checkbox checked={status.includes(statusKey)} />
-                <ListItemText primary={statusKey.replace(/^\w/, (c) => c.toUpperCase())} />
+                <ListItemText
+                  primary={statusKey.replace(/^\w/, (c) => c.toUpperCase())}
+                />
               </MenuItem>
             ))}
           </Select>
@@ -167,10 +201,18 @@ export const Filters: React.FC<FiltersProps> = ({ onApplyFilters, onClearFilters
 
         {/* Apply and Clear Filters Buttons */}
         <Box display="flex" gap={1}>
-          <Button variant="contained" color="primary" onClick={handleApplyFilters}>
+          <Button
+            variant="contained"
+            color="primary"
+            onClick={handleApplyFilters}
+          >
             Apply Filters
           </Button>
-          <Button variant="outlined" color="secondary" onClick={handleClearFilters}>
+          <Button
+            variant="outlined"
+            color="secondary"
+            onClick={handleClearFilters}
+          >
             Clear Filters
           </Button>
         </Box>
