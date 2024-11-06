@@ -63,7 +63,7 @@ export const StatsFilters = ({ userInfo, action }: PropType) => {
             >
               <MenuItem value="Sales">Sales</MenuItem>
               <MenuItem value="Consultancy">Consultancy</MenuItem>
-              <MenuItem value="Systems Solutioning">Solutioning</MenuItem>
+              <MenuItem value="Solutioning">Solutioning</MenuItem>
               <MenuItem value="Engineering">Engineering</MenuItem>
               <MenuItem value="HR">HR</MenuItem>
               <MenuItem value="Finance">Finance</MenuItem>
