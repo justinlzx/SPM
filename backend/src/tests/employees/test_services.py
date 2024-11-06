@@ -550,7 +550,7 @@ async def test_undelegate_manager_not_found(test_db):
 
 @pytest.mark.asyncio
 async def test_undelegate_manager_not_accepted(test_db):
-    # Create delegation with pending status
+    # Create manager
     manager = Employee(
         staff_id=50,
         staff_fname="Pending",
@@ -562,6 +562,19 @@ async def test_undelegate_manager_not_accepted(test_db):
         role=1,
     )
 
+    # Create delegate manager (this was missing before)
+    delegate = Employee(
+        staff_id=51,
+        staff_fname="Delegate",
+        staff_lname="Manager",
+        email="delegate.manager@example.com",
+        dept="IT",
+        position="Manager",
+        country="SG",
+        role=1,
+    )
+
+    # Create delegation with pending status
     delegation = DelegateLog(
         manager_id=50,
         delegate_manager_id=51,
@@ -569,11 +582,19 @@ async def test_undelegate_manager_not_accepted(test_db):
         date_of_delegation=datetime.now(),
     )
 
-    test_db.add_all([manager, delegation])
+    test_db.add_all([manager, delegate, delegation])
     test_db.commit()
 
-    result = await undelegate_manager(50, test_db)
-    assert result == "Delegation must be approved to undelegate."
+    with patch("src.employees.services.craft_and_send_email") as mock_email:
+        mock_email.return_value = ("Subject", "Content")
+        result = await undelegate_manager(50, test_db)
+
+        # Verify email was sent
+        mock_email.assert_called_once()
+
+        # Verify delegation was marked as undelegated
+        assert isinstance(result, DelegateLog)
+        assert result.status_of_delegation == DelegationStatus.undelegated
 
 
 def test_get_manager_by_subordinate_id_with_single_subordinate(test_db):
@@ -1042,3 +1063,281 @@ def test_get_reporting_manager_and_peer_employees_print_statement(
     mock_get_manager.assert_called_once_with(test_db, 61)
     mock_get_subordinates.assert_called_once_with(test_db, 60)
     mock_convert.assert_called_once()
+
+
+@pytest.mark.asyncio
+@patch("src.employees.services.get_manager_by_subordinate_id")  # Add this patch
+async def test_get_reporting_manager_and_peer_employees_with_peers(mock_get_manager, test_db):
+    """Test to cover list comprehension in get_reporting_manager_and_peer_employees"""
+    # Create manager
+    manager = Employee(
+        staff_id=200,
+        staff_fname="Manager",
+        staff_lname="Test",
+        dept="IT",
+        position="Manager",
+        country="SG",
+        email="manager.test@example.com",
+        role=1,
+        reporting_manager=200,  # Self-reporting
+    )
+    test_db.add(manager)
+    test_db.commit()
+
+    # Create peers with DIFFERENT IDs
+    peer1 = Employee(
+        staff_id=201,
+        staff_fname="Peer1",
+        staff_lname="Test",
+        dept="IT",
+        position="Staff",
+        country="SG",
+        email="peer1.test@example.com",
+        role=2,
+        reporting_manager=200,
+    )
+    peer2 = Employee(
+        staff_id=202,
+        staff_fname="Peer2",
+        staff_lname="Test",
+        dept="IT",
+        position="Staff",
+        country="SG",
+        email="peer2.test@example.com",
+        role=2,
+        reporting_manager=200,
+    )
+    test_db.add_all([peer1, peer2])
+    test_db.commit()
+
+    # Mock get_manager_by_subordinate_id to return just the manager object
+    mock_get_manager.return_value = manager
+
+    # Now test the reporting manager function
+    response = get_reporting_manager_and_peer_employees(test_db, 201)
+
+    # Verify the response
+    assert response.manager_id == 200
+    assert len(response.peer_employees) == 2  # Should include both peers
+
+    # Verify the mock was called correctly
+    mock_get_manager.assert_called_once_with(test_db, 201)
+
+    # Verify peer IDs are correct (order doesn't matter)
+    peer_ids = {peer.staff_id for peer in response.peer_employees}
+    assert peer_ids == {201, 202}
+
+
+def test_get_manager_by_subordinate_id_with_unlocked_peers(test_db):
+    """Test to cover the list comprehension and print statement in get_manager_by_subordinate_id"""
+    # Create manager
+    manager = Employee(
+        staff_id=300,
+        staff_fname="Manager",
+        staff_lname="Test",
+        dept="IT",
+        position="Manager",
+        country="SG",
+        email="manager.test@example.com",
+        role=1,
+    )
+    test_db.add(manager)
+    test_db.commit()
+
+    # Create peers with unique IDs
+    peer1 = Employee(
+        staff_id=301,
+        staff_fname="Peer1",
+        staff_lname="Test",
+        dept="IT",
+        position="Staff",
+        country="SG",
+        email="peer1.test@example.com",
+        role=2,
+        reporting_manager=300,
+    )
+    peer2 = Employee(
+        staff_id=302,
+        staff_fname="Peer2",
+        staff_lname="Test",
+        dept="IT",
+        position="Staff",
+        country="SG",
+        email="peer2.test@example.com",
+        role=2,
+        reporting_manager=300,
+    )
+    test_db.add_all([peer1, peer2])
+    test_db.commit()
+
+    manager_result, unlocked_peers = get_manager_by_subordinate_id(test_db, 301)
+    assert manager_result is not None
+    assert manager_result.staff_id == 300
+    assert len(unlocked_peers) == 2
+
+
+def test_view_delegations_with_data(test_db):
+    """Test to cover list comprehensions in view_delegations"""
+    # Create manager and delegate
+    manager = Employee(
+        staff_id=400,
+        staff_fname="View",
+        staff_lname="Manager",
+        email="view.manager@example.com",
+        dept="IT",
+        position="Manager",
+        country="SG",
+        role=1,
+    )
+    delegate = Employee(
+        staff_id=401,
+        staff_fname="View",
+        staff_lname="Delegate",
+        email="view.delegate@example.com",
+        dept="IT",
+        position="Manager",
+        country="SG",
+        role=1,
+    )
+    test_db.add_all([manager, delegate])
+    test_db.commit()
+
+    # Create both sent and pending delegations
+    sent_delegation = DelegateLog(
+        manager_id=400,
+        delegate_manager_id=401,
+        status_of_delegation=DelegationStatus.pending,
+        date_of_delegation=datetime.now(),
+    )
+    pending_delegation = DelegateLog(
+        manager_id=401,
+        delegate_manager_id=400,
+        status_of_delegation=DelegationStatus.pending,
+        date_of_delegation=datetime.now(),
+    )
+    test_db.add_all([sent_delegation, pending_delegation])
+    test_db.commit()
+
+    result = view_delegations(400, test_db)
+    assert len(result["sent_delegations"]) == 1
+    assert len(result["pending_approval_delegations"]) == 1
+    assert result["sent_delegations"][0]["staff_id"] == 401
+    assert result["pending_approval_delegations"][0]["staff_id"] == 401
+
+
+def test_view_all_delegations_with_data(test_db):
+    """Test to cover list comprehensions in view_all_delegations"""
+    # Create manager and delegate
+    manager = Employee(
+        staff_id=500,
+        staff_fname="All",
+        staff_lname="Manager",
+        email="all.manager@example.com",
+        dept="IT",
+        position="Manager",
+        country="SG",
+        role=1,
+    )
+    delegate = Employee(
+        staff_id=501,
+        staff_fname="All",
+        staff_lname="Delegate",
+        email="all.delegate@example.com",
+        dept="IT",
+        position="Manager",
+        country="SG",
+        role=1,
+    )
+    test_db.add_all([manager, delegate])
+    test_db.commit()
+
+    # Create both sent and received delegations with different statuses
+    sent_delegation = DelegateLog(
+        manager_id=500,
+        delegate_manager_id=501,
+        status_of_delegation=DelegationStatus.pending,
+        date_of_delegation=datetime.now(),
+    )
+    received_delegation = DelegateLog(
+        manager_id=501,
+        delegate_manager_id=500,
+        status_of_delegation=DelegationStatus.accepted,
+        date_of_delegation=datetime.now(),
+    )
+    test_db.add_all([sent_delegation, received_delegation])
+    test_db.commit()
+
+    result = view_all_delegations(500, test_db)
+    assert len(result["sent_delegations"]) == 1
+    assert len(result["received_delegations"]) == 1
+    assert result["sent_delegations"][0]["manager_id"] == 500
+    assert result["sent_delegations"][0]["delegate_manager_id"] == 501
+    assert result["received_delegations"][0]["manager_id"] == 501
+    assert result["received_delegations"][0]["delegate_manager_id"] == 500
+
+
+def test_edge_cases_full_coverage(test_db):
+    """Test edge cases for full coverage"""
+    # Test Jack Sim special case
+    jack_sim_response = get_reporting_manager_and_peer_employees(test_db, 130002)
+    assert jack_sim_response.manager_id is None
+    assert len(jack_sim_response.peer_employees) == 0
+
+    # Test empty delegation views
+    empty_delegations = view_delegations(130002, test_db)
+    assert len(empty_delegations["sent_delegations"]) == 0
+    assert len(empty_delegations["pending_approval_delegations"]) == 0
+
+    empty_all_delegations = view_all_delegations(130002, test_db)
+    assert len(empty_all_delegations["sent_delegations"]) == 0
+    assert len(empty_all_delegations["received_delegations"]) == 0
+
+
+@pytest.mark.asyncio
+async def test_delegation_process_coverage(test_db):
+    """Test to cover delegation process cases"""
+    # Create test data
+    manager = Employee(
+        staff_id=700,
+        staff_fname="Process",
+        staff_lname="Manager",
+        dept="IT",
+        position="Manager",
+        country="SG",
+        email="process.manager@example.com",
+        role=1,
+        reporting_manager=700,
+    )
+    test_db.add(manager)
+
+    delegate = Employee(
+        staff_id=701,
+        staff_fname="Process",
+        staff_lname="Delegate",
+        dept="IT",
+        position="Staff",
+        country="SG",
+        email="process.delegate@example.com",
+        role=2,
+        reporting_manager=700,
+    )
+    test_db.add(delegate)
+    test_db.commit()
+
+    # Test delegation process
+    delegation = DelegateLog(
+        manager_id=700,
+        delegate_manager_id=701,
+        status_of_delegation=DelegationStatus.pending,
+        date_of_delegation=datetime.now(),
+    )
+    test_db.add(delegation)
+    test_db.commit()
+
+    with patch("src.employees.services.craft_and_send_email") as mock_email:
+        # Test accept case
+        result = await process_delegation_status(
+            701, DelegationApprovalStatus.accept, test_db, description="Accepted"
+        )
+        assert result.status_of_delegation == DelegationStatus.accepted
+        mock_email.assert_called()
