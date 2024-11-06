@@ -21,10 +21,6 @@ import WfhScheduleIcon from "@mui/icons-material/CalendarMonth";
 import AssignmentIndIcon from "@mui/icons-material/AssignmentInd";
 import BusinessIcon from "@mui/icons-material/Business";
 
-import axios from "axios";
-
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
-
 const drawerWidth = 240;
 
 const SidebarNames = {
@@ -112,6 +108,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       display: user?.role === 1,
     },
   ];
+
 
   const handleButtonClick = (route: string) => {
     navigate(route);
