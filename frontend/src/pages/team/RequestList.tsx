@@ -66,38 +66,18 @@ export const RequestList = () => {
           setLoading(true);
           setError(null);
 
-          const managerResponse = await axios.get(
-            `${BACKEND_URL}/employees/manager/peermanager/${user.id}`,
-            {
-              withCredentials: true,
-              headers: {
-                Accept: "application/json",
-                "Content-Type": "application/json",
-              },
-            }
-          );
-
-          const managerId = managerResponse.data.manager_id;
-          if (!managerId) {
-            throw new Error("Manager ID not found");
-          }
-
           const arrangementsResponse = await axios.get(
-            `${BACKEND_URL}/arrangements/team/${managerId}`,
+            `${BACKEND_URL}/arrangements/team/${user.id}`,
             {
               withCredentials: true,
               headers: {
                 Accept: "application/json",
                 "Content-Type": "application/json",
               },
-              params: {
-
-              }
             }
           );
 
           const responseData = arrangementsResponse.data.data;
-          console.log(responseData);
           setArrangements(responseData);
         } catch (error) {
           console.error("Failed to fetch data:", error);
@@ -129,7 +109,6 @@ export const RequestList = () => {
   const handleCloseSnackBar = () => {
     setShowSnackbar(false);
   };
-
   const filteredArrangements = arrangements.filter(
     (arrangement) =>
       arrangement.reason_description

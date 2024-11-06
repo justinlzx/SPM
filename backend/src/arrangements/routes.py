@@ -167,13 +167,16 @@ def get_team_arrangements(
 
         # Get arrangements
         logger.info(f"Route: Fetching arrangements for team of staff ID: {staff_id}")
-        data, pagination_meta = services.get_team_arrangements(db, staff_id, filters, pagination)
+        response_data, pagination_meta = services.get_team_arrangements(
+            db, staff_id, filters, pagination
+        )
         logger.info(
             f"Route: Found {pagination_meta.total_count} {'dates' if filters.group_by_date else 'arrangements'}"
         )
 
         # Convert to Pydantic model
-        response_data = format_arrangements_response(data)
+        if len(response_data) > 0:
+            response_data = format_arrangements_response(response_data)
         response_pagination_meta = PaginationMeta.model_validate(pagination_meta)
 
         return JSendResponse(
