@@ -1274,3 +1274,70 @@ def test_view_all_delegations_with_data(test_db):
     assert result["sent_delegations"][0]["delegate_manager_id"] == 501
     assert result["received_delegations"][0]["manager_id"] == 501
     assert result["received_delegations"][0]["delegate_manager_id"] == 500
+
+
+def test_edge_cases_full_coverage(test_db):
+    """Test edge cases for full coverage"""
+    # Test Jack Sim special case
+    jack_sim_response = get_reporting_manager_and_peer_employees(test_db, 130002)
+    assert jack_sim_response.manager_id is None
+    assert len(jack_sim_response.peer_employees) == 0
+
+    # Test empty delegation views
+    empty_delegations = view_delegations(130002, test_db)
+    assert len(empty_delegations["sent_delegations"]) == 0
+    assert len(empty_delegations["pending_approval_delegations"]) == 0
+
+    empty_all_delegations = view_all_delegations(130002, test_db)
+    assert len(empty_all_delegations["sent_delegations"]) == 0
+    assert len(empty_all_delegations["received_delegations"]) == 0
+
+
+@pytest.mark.asyncio
+async def test_delegation_process_coverage(test_db):
+    """Test to cover delegation process cases"""
+    # Create test data
+    manager = Employee(
+        staff_id=700,
+        staff_fname="Process",
+        staff_lname="Manager",
+        dept="IT",
+        position="Manager",
+        country="SG",
+        email="process.manager@example.com",
+        role=1,
+        reporting_manager=700,
+    )
+    test_db.add(manager)
+
+    delegate = Employee(
+        staff_id=701,
+        staff_fname="Process",
+        staff_lname="Delegate",
+        dept="IT",
+        position="Staff",
+        country="SG",
+        email="process.delegate@example.com",
+        role=2,
+        reporting_manager=700,
+    )
+    test_db.add(delegate)
+    test_db.commit()
+
+    # Test delegation process
+    delegation = DelegateLog(
+        manager_id=700,
+        delegate_manager_id=701,
+        status_of_delegation=DelegationStatus.pending,
+        date_of_delegation=datetime.now(),
+    )
+    test_db.add(delegation)
+    test_db.commit()
+
+    with patch("src.employees.services.craft_and_send_email") as mock_email:
+        # Test accept case
+        result = await process_delegation_status(
+            701, DelegationApprovalStatus.accept, test_db, description="Accepted"
+        )
+        assert result.status_of_delegation == DelegationStatus.accepted
+        mock_email.assert_called()
