@@ -46,6 +46,7 @@ export const Filters: React.FC<FiltersProps> = ({
   const [workStatus, setWorkStatus] = useState<string[]>([]);
 
   if (experimentalFlag) {
+    console.log("Experimental flag is enabled");
     useEffect(() => {
       onSearchChange?.(searchQuery);
     }, [searchQuery]);

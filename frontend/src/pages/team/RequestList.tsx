@@ -93,7 +93,9 @@ export const RequestList = () => {
             Object.entries(params).forEach(([key, value]) => {
               // Only serialize non-null values
               if (value !== null && value !== undefined) {
-                if (
+                if (value instanceof Date) {
+                  serializedParams[key] = value.toISOString().split("T")[0]; // Format date as YYYY-MM-DD
+                } else if (
                   Array.isArray(value) &&
                   (key === "current_approval_status" || key === "department")
                 ) {
