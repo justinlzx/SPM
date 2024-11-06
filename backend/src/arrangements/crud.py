@@ -29,32 +29,25 @@ def get_arrangement_by_id(db: Session, arrangement_id: int) -> Optional[Dict]:
 
 def get_arrangements(
     db: Session,
-    staff_ids: Union[None, int, List[int]] = None,
     filters: Union[None, ArrangementFilters] = None,
 ) -> List[Dict]:
     query = db.query(models.LatestArrangement)
     query = query.join(Employee, Employee.staff_id == models.LatestArrangement.requester_staff_id)
 
-    if staff_ids:
-        staff_ids = list(set(staff_ids)) if isinstance(staff_ids, list) else staff_ids
-
-        # Log the number of staff IDs being fetched
-        logger.info(
-            f"Crud: Fetching arrangements for {len(staff_ids) if isinstance(staff_ids, list) else 1} staff IDs with filters"
-        )
-
-        # TODO
-        # Log all non-null filters
-        # non_null_filters = {key: value for key, value in filters.items() if value}
-        # logger.info(f"Crud: Applying filters: {non_null_filters}")
-
-        if isinstance(staff_ids, int):
-            query = query.filter(models.LatestArrangement.requester_staff_id == staff_ids)
-        else:
-            query = query.filter(models.LatestArrangement.requester_staff_id.in_(staff_ids))
-
     if filters:
         # Apply optional filters
+        if filters.staff_ids:
+            staff_ids = (
+                list(set(filters.staff_ids))
+                if isinstance(filters.staff_ids, list)
+                else filters.staff_ids
+            )
+
+            if isinstance(staff_ids, int):
+                query = query.filter(models.LatestArrangement.requester_staff_id == staff_ids)
+            else:
+                query = query.filter(models.LatestArrangement.requester_staff_id.in_(staff_ids))
+
         if filters.name:
             query = query.filter(
                 or_(
@@ -83,6 +76,14 @@ def get_arrangements(
 
         if filters.department:
             query = query.filter(Employee.dept == filters.department)
+
+        if filters.manager_id:
+            query = query.filter(
+                or_(
+                    models.LatestArrangement.approving_officer == filters.manager_id,
+                    models.LatestArrangement.delegate_approving_officer == filters.manager_id,
+                )
+            )
 
     results = query.all()
     logger.info(f"Crud: Found {len(results)} arrangements")

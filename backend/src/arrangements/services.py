@@ -88,18 +88,11 @@ def get_subordinates_arrangements(
     pagination: PaginationConfig,
 ) -> Tuple[Union[List[ArrangementResponse], List[CreatedArrangementGroupByDate]], PaginationMeta]:
 
-    # Get subordinates of the manager
-    employees_under_manager = employee_services.get_subordinates_by_manager_id(db, manager_id)
-    employees_under_manager = [
-        employees_under_manager.__dict__ for employees_under_manager in employees_under_manager
-    ]
-    employees_under_manager_ids = [employee["staff_id"] for employee in employees_under_manager]
-
     # Get arrangements for the subordinates
     logger.info(f"Service: Fetching arrangements for employees under manager ID: {manager_id}")
+    filters.manager_id = manager_id
     arrangements = crud.get_arrangements(
         db=db,
-        staff_ids=employees_under_manager_ids,
         filters=filters,
     )
     arrangements = [ArrangementResponse.from_dict(arrangement) for arrangement in arrangements]
