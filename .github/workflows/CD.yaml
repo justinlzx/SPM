@@ -130,6 +130,9 @@ jobs:
       - name: Pull Docker images
         run: docker compose pull
 
+      - name: Clean old images
+        run: docker image prune -f
+
       - name: Deploy to production
         run: docker compose -f docker-compose.yaml up -d
 
