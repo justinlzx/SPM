@@ -126,6 +126,7 @@ const fetchPendingRequests = async () => {
               (dateEntry: { pending_arrangements: TWFHRequest[] }) => dateEntry.pending_arrangements
           );
           allRequests = [...primaryRequests];
+          console.log(allRequests)
       }
 
       if (isDelegateManager && delegatorManagerId && delegatorManagerId !== userId) {
