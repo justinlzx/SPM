@@ -173,7 +173,7 @@ def get_team_arrangements(
         logger.info(
             f"Route: Found {pagination_meta.total_count} {'dates' if filters.group_by_date else 'arrangements'}"
         )
-
+        
         # Convert to Pydantic model
         response_data = format_arrangements_response(data)
         response_pagination_meta = PaginationMeta.model_validate(pagination_meta)

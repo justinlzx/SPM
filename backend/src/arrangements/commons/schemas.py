@@ -1,6 +1,7 @@
 from datetime import date, datetime
 from typing import Annotated, List, Optional
 
+from src.employees.schemas import EmployeeBase
 from fastapi import Form, Query
 from pydantic import Field, ValidationInfo, field_serializer, field_validator
 
@@ -269,6 +270,10 @@ class ArrangementResponse(BaseSchema):
     status_reason: Optional[str] = Field(
         None,
         title="Reason for the status",
+    )
+    requester_info: Optional[EmployeeBase] = Field(
+        None,
+        title="Information of the requester",
     )
 
 

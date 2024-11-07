@@ -28,10 +28,8 @@ import { ApprovalStatus } from "../../types/requests";
 import { ChipProps } from "@mui/material/Chip";
 import { UserContext } from "../../context/UserContextProvider";
 import CloseIcon from "@mui/icons-material/Close";
-import { fetchEmployeeByStaffId } from "../../hooks/employee/employee.utils";
 import { capitalize } from "../../utils/utils";
 import { DelegationStatus } from "../../types/delegation";
-import Filters from "../../common/Filters";
 import { SnackBarComponent, AlertStatus } from "../../common/SnackBar";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
@@ -48,6 +46,10 @@ type TWFHRequest = {
   supporting_doc_1?: string | null;
   supporting_doc_2?: string | null;
   supporting_doc_3?: string | null;
+  requester_info: {
+    staff_fname: string;
+    staff_lname: string;
+  };
 };
 
 const getChipColor = (
@@ -187,12 +189,6 @@ export const ApprovedRequests = () => {
 
       setWithdrawModalOpen(false);
       setWithdrawReason("");
-      // setFilteredRequests(
-      //   filteredRequests.filter(
-      //     (request) => request.arrangement_id !== selectedArrangementId
-      //   )
-      // );
-
       setSnackbarMessage("Request withdrawn successfully.");
       setAlertStatus(AlertStatus.Success);
       setShowSnackbar(true); // Trigger snackbar
@@ -269,7 +265,7 @@ export const ApprovedRequests = () => {
         count={totalItems}
         rowsPerPage={rowsPerPage}
         page={page}
-        onPageChange={(event, newPage) => setPage(newPage)}
+        onPageChange={(_, newPage) => setPage(newPage)}
         onRowsPerPageChange={(event) =>
           setRowsPerPage(parseInt(event.target.value, 10))
         }
@@ -341,7 +337,6 @@ const ArrangementRow = ({
   const {
     arrangement_id,
     requester_staff_id,
-    requester_name,
     wfh_date,
     wfh_type,
     current_approval_status,
@@ -349,12 +344,11 @@ const ArrangementRow = ({
     supporting_doc_1,
     supporting_doc_2,
     supporting_doc_3,
+    requester_info: { staff_fname: firstName, staff_lname: lastName },
   } = arrangement;
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [documents, setDocuments] = useState<string[]>([]);
-
-  const formattedDate = new Date(wfh_date).toLocaleDateString("en-GB");
 
   const handleDialogOpen = () => {
     setDialogOpen(true);
@@ -369,7 +363,9 @@ const ArrangementRow = ({
     <>
       <TableRow key={arrangement_id}>
         <TableCell>{requester_staff_id}</TableCell>
-        <TableCell>{requester_name}</TableCell>
+        <TableCell>
+          {firstName} {lastName}
+        </TableCell>
         <TableCell>{wfh_date}</TableCell>
         <TableCell>{wfh_type?.toUpperCase()}</TableCell>
         <TableCell sx={{ maxWidth: 200 }}>

@@ -98,6 +98,7 @@ def get_subordinates_arrangements(
     arrangements = [ArrangementResponse.from_dict(arrangement) for arrangement in arrangements]
     logger.info(f"Service: Found {len(arrangements)} arrangements")
 
+    print(arrangements)
     # Get presigned URL for each supporting document in each arrangement
     for record in arrangements:
         record.supporting_doc_1 = create_presigned_url(record.supporting_doc_1)
@@ -120,6 +121,8 @@ def get_subordinates_arrangements(
         * pagination.items_per_page : pagination.page_num
         * pagination.items_per_page
     ]
+
+    print("dog", arrangements)
 
     return arrangements, pagination_meta
 
