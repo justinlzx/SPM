@@ -33,7 +33,6 @@ export default [
     },
     rules: {
       ...js.configs.recommended.rules,
-      // ...react.configs.recommended.rules,
       ...typescript.configs.recommended.rules,
       "@typescript-eslint/no-explicit-any": "off",
     },
