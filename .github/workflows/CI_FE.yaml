@@ -38,6 +38,13 @@ jobs:
           echo "REACT_APP_BACKEND_URL=${{ vars.REACT_APP_BACKEND_URL }}" >> frontend/.env
         fi
 
+    - name: Create frontend env files
+      run: |
+        echo "Creating backend .env..."
+        cat > frontend/.env << EOF
+        REACT_APP_BACKEND_URL=${{ vars.REACT_APP_BACKEND_URL }}
+        EOF
+
     - name: Install backend dependencies
       run: |
         pip install --upgrade pip
@@ -60,6 +67,8 @@ jobs:
         SMTP_PORT=${{ vars.SMTP_PORT }}
         SMTP_SERVER=${{ vars.SMTP_SERVER }}
         EOF
+
+        
 
     # Optional: Uncomment to run ESLint
     # - name: Run ESLint

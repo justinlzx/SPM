@@ -1,6 +1,6 @@
 from dataclasses import asdict
 from datetime import datetime
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Dict, List, Tuple, Union
 
 import boto3
 import botocore

@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Annotated, List, Optional
 
-from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from sqlalchemy.orm import Session
 
 from ..database import get_db

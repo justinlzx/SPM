@@ -1,9 +1,9 @@
 from datetime import date, datetime
 from typing import Annotated, List, Optional
 
-from src.employees.schemas import EmployeeBase
 from fastapi import Form, Query
 from pydantic import Field, ValidationInfo, field_serializer, field_validator
+from src.employees.schemas import EmployeeBase
 
 from ...base import BaseSchema
 from .enums import Action, ApprovalStatus, RecurringFrequencyUnit, WfhType

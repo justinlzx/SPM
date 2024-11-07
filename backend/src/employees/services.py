@@ -4,7 +4,6 @@ from typing import List, Tuple, Union
 from sqlalchemy.orm import Session
 
 from ..logger import logger
-
 from ..notifications.commons.dataclasses import DelegateNotificationConfig
 from ..notifications.email_notifications import craft_and_send_email
 from ..utils import convert_model_to_pydantic_schema
