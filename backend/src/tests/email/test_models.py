@@ -31,6 +31,8 @@ def mock_environ():
         "SMTP_PORT": "587",
         "SMTP_USERNAME": "zarapetproject@gmail.com",
         "SMTP_PASSWORD": "htexgclmmbqbuwia",
+        # "SMTP_USERNAME": "zarapetproject2@gmail.com",
+        # "SMTP_PASSWORD": "ladfaogrebelnmkh",
     }
     with patch.dict("os.environ", env_vars):
         yield
@@ -70,6 +72,7 @@ async def test_send_email_success(email_data, mock_smtp, mock_environ):
     mock_smtp.assert_called_once_with("smtp.gmail.com", "587")
     mock_server.starttls.assert_called_once()
     mock_server.login.assert_called_with("zarapetproject@gmail.com", "htexgclmmbqbuwia")
+    # mock_server.login.assert_called_with("zarapetproject2@gmail.com", "ladfaogrebelnmkh")
     mock_server.sendmail.assert_called_once()
 
 
