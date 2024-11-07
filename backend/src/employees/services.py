@@ -10,6 +10,8 @@ from ..utils import convert_model_to_pydantic_schema
 from . import crud, exceptions, models, schemas
 from .dataclasses import EmployeeFilters
 
+JACK_SIM_STAFF_ID = 130002
+
 
 def get_employees(db: Session, filters: EmployeeFilters):
     employees = crud.get_employees(db, filters)
@@ -19,7 +21,7 @@ def get_employees(db: Session, filters: EmployeeFilters):
 
 def get_reporting_manager_and_peer_employees(db: Session, staff_id: int):
     # Auto Approve for Jack Sim and Skip manager check
-    if staff_id == 130002:
+    if staff_id == JACK_SIM_STAFF_ID:
         return schemas.EmployeePeerResponse(manager_id=None, peer_employees=[])
 
     manager: models.Employee = get_manager_by_subordinate_id(db, staff_id)
@@ -108,7 +110,7 @@ def get_manager_by_subordinate_id(
     db: Session, staff_id: int
 ) -> Union[Tuple[models.Employee, List[models.Employee]], Tuple[None, None]]:
     # Auto Approve for Jack Sim and bypass manager check
-    if staff_id == 130002:
+    if staff_id == JACK_SIM_STAFF_ID:
         return None, None  # Auto-approve for Jack Sim
 
     # Retrieve the employee
@@ -133,7 +135,8 @@ def get_manager_by_subordinate_id(
     unlocked_peers = [
         peer
         for peer in all_peers
-        if not crud.is_employee_locked_in_delegation(db, peer.staff_id) and peer.staff_id != 130002
+        if not crud.is_employee_locked_in_delegation(db, peer.staff_id)
+        and peer.staff_id != JACK_SIM_STAFF_ID
     ]
 
     logger.info(

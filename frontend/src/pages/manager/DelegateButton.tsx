@@ -14,7 +14,7 @@ export const DelegateButton = () => {
   return (
     <>
       {((user?.role === 1 && user.position === "Director") ||
-        user?.role === 2) && (
+        user?.role === 3) && (
         <Button
           variant="outlined"
           color="primary"
