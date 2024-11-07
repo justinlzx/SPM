@@ -22,7 +22,7 @@ import {
   Link,
   List,
   ListItem,
-  CircularProgress
+  CircularProgress,
 } from "@mui/material";
 import { ApprovalStatus } from "../../types/requests";
 import { ChipProps } from "@mui/material/Chip";
@@ -69,14 +69,16 @@ const getChipColor = (
 
 export const ApprovedRequests = () => {
   const [approvedRequests, setApprovedRequests] = useState<TWFHRequest[]>([]);
-  const [filteredRequests, setFilteredRequests] = useState<TWFHRequest[]>([]);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [totalItems, setTotalItems] = useState(0);
   const { user } = useContext(UserContext);
   const userId = user?.id;
 
   const [withdrawReason, setWithdrawReason] = useState("");
-  const [selectedArrangementId, setSelectedArrangementId] = useState<number | null>(null);
+  const [selectedArrangementId, setSelectedArrangementId] = useState<
+    number | null
+  >(null);
   const [withdrawModalOpen, setWithdrawModalOpen] = useState(false);
 
   const [showSnackbar, setShowSnackbar] = useState(false);
@@ -91,7 +93,10 @@ export const ApprovedRequests = () => {
       if (!user || !userId) return;
 
       try {
-        const delegationResponse = await axios.get(`${BACKEND_URL}/employees/manager/viewdelegations/${userId}`);
+        const delegationResponse = await axios.get(
+          `${BACKEND_URL}/employees/manager/viewdelegations/${userId}`
+        );
+
         const delegationStatus = delegationResponse.data.status_of_delegation;
         const delegateManagerId = delegationResponse.data.delegate_manager_id;
 
@@ -105,67 +110,60 @@ export const ApprovedRequests = () => {
           {
             params: {
               current_approval_status: "approved",
+              items_per_page: rowsPerPage,
+              page_num: page + 1,
             },
           }
         );
 
-        const approvedData: TWFHRequest[] = response.data.data
-          .flatMap((entry: any) => entry.pending_arrangements)
-          .filter((arrangement: TWFHRequest) => arrangement.current_approval_status === ApprovalStatus.Approved);
+        const data: TWFHRequest[] = response.data.data;
 
-        const requestsWithNames = await Promise.all(
-          approvedData.map(async (request) => {
-            const employee = await fetchEmployeeByStaffId(request.requester_staff_id);
-            return {
-              ...request,
-              requester_name: employee ? `${employee.staff_fname} ${employee.staff_lname}` : "N/A",
-            };
-          })
-        );
-
-        setApprovedRequests(requestsWithNames);
-        setFilteredRequests(requestsWithNames); // Initialize filtered requests
+        setApprovedRequests(data);
+        setTotalItems(response.data.pagination_meta.total_count);
       } catch (error) {
         console.error("Failed to fetch approved requests:", error);
       }
     };
 
     fetchApprovedRequestsFromSubordinates();
-  }, [user, userId]);
+  }, [user, userId, page, rowsPerPage]);
 
-  const onApplyFilters = (filters: {
-    startDate: Date | null;
-    endDate: Date | null;
-    department: string[];
-    status: ApprovalStatus[];
-    searchQuery: string;
-    workStatus: string[];
-  }) => {
-    const filtered = approvedRequests.filter((request) => {
-      const matchesDate =
-        (!filters.startDate || new Date(request.wfh_date) >= filters.startDate) &&
-        (!filters.endDate || new Date(request.wfh_date) <= filters.endDate);
+  // const onApplyFilters = (filters: {
+  //   startDate: Date | null;
+  //   endDate: Date | null;
+  //   department: string[];
+  //   status: ApprovalStatus[];
+  //   searchQuery: string;
+  //   workStatus: string[];
+  // }) => {
+  //   const filtered = approvedRequests.filter((request) => {
+  //     const matchesDate =
+  //       (!filters.startDate ||
+  //         new Date(request.wfh_date) >= filters.startDate) &&
+  //       (!filters.endDate || new Date(request.wfh_date) <= filters.endDate);
 
-      const matchesStatus =
-        filters.status.length === 0 || filters.status.includes(request.current_approval_status);
+  //     const matchesStatus =
+  //       filters.status.length === 0 ||
+  //       filters.status.includes(request.current_approval_status);
 
-      const searchQuery = filters.searchQuery.toLowerCase();
-      const matchesSearchQuery =
-        !searchQuery ||
-        request.reason_description.toLowerCase().includes(searchQuery) ||
-        request.wfh_type.toLowerCase().includes(searchQuery) ||
-        request.wfh_date.includes(searchQuery) ||
-        request.requester_staff_id.toString().includes(searchQuery) ||
-        (request.requester_name && request.requester_name.toLowerCase().includes(searchQuery));
+  //     const searchQuery = filters.searchQuery.toLowerCase();
+  //     const matchesSearchQuery =
+  //       !searchQuery ||
+  //       request.reason_description.toLowerCase().includes(searchQuery) ||
+  //       request.wfh_type.toLowerCase().includes(searchQuery) ||
+  //       request.wfh_date.includes(searchQuery) ||
+  //       request.requester_staff_id.toString().includes(searchQuery) ||
+  //       (request.requester_name &&
+  //         request.requester_name.toLowerCase().includes(searchQuery));
 
-      return matchesDate && matchesStatus && matchesSearchQuery;
-    });
-    setFilteredRequests(filtered);
-  };
+  //     return matchesDate && matchesStatus && matchesSearchQuery;
+  //   });
+  //   setFilteredRequests(filtered);
+  // };
 
-  const onClearFilters = () => {
-    setFilteredRequests(approvedRequests);
-  };
+  // const onClearFilters = () => {
+  //   setFilteredRequests(approvedRequests);
+  // };
 
   const handleWithdrawApproval = async () => {
     if (!selectedArrangementId) return;
@@ -189,7 +187,11 @@ export const ApprovedRequests = () => {
 
       setWithdrawModalOpen(false);
       setWithdrawReason("");
-      setFilteredRequests(filteredRequests.filter(request => request.arrangement_id !== selectedArrangementId));
+      // setFilteredRequests(
+      //   filteredRequests.filter(
+      //     (request) => request.arrangement_id !== selectedArrangementId
+      //   )
+      // );
 
       setSnackbarMessage("Request withdrawn successfully.");
       setAlertStatus(AlertStatus.Success);
@@ -209,15 +211,23 @@ export const ApprovedRequests = () => {
     setWithdrawModalOpen(true);
   };
 
+  console.log("approved req", approvedRequests);
+
   return (
     <>
       <Typography variant="h4" gutterBottom align="left" sx={{ marginTop: 4 }}>
         Approved Requests
       </Typography>
 
-      <Filters onApplyFilters={onApplyFilters} onClearFilters={onClearFilters} />
+      {/* <Filters
+        onApplyFilters={onApplyFilters}
+        onClearFilters={onClearFilters}
+      /> */}
 
-      <TableContainer component={Paper} sx={{ marginTop: 3, textAlign: "center" }}>
+      <TableContainer
+        component={Paper}
+        sx={{ marginTop: 3, textAlign: "center" }}
+      >
         <Table>
           <TableHead>
             <TableRow>
@@ -226,20 +236,22 @@ export const ApprovedRequests = () => {
               <TableCell sx={{ fontWeight: "bold" }}>WFH Date</TableCell>
               <TableCell sx={{ fontWeight: "bold" }}>WFH Type</TableCell>
               <TableCell sx={{ fontWeight: "bold" }}>Reason</TableCell>
-              <TableCell sx={{ fontWeight: "bold" }}>Supporting Documents</TableCell>
+              <TableCell sx={{ fontWeight: "bold" }}>
+                Supporting Documents
+              </TableCell>
               <TableCell sx={{ fontWeight: "bold" }}>Status</TableCell>
               <TableCell sx={{ fontWeight: "bold" }}>Action</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
-            {filteredRequests.length === 0 ? (
+            {approvedRequests.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={8} align="center">
                   No approved requests
                 </TableCell>
               </TableRow>
             ) : (
-              filteredRequests.map((arrangement) => (
+              approvedRequests.map((arrangement) => (
                 <ArrangementRow
                   key={arrangement.arrangement_id}
                   arrangement={arrangement}
@@ -254,18 +266,20 @@ export const ApprovedRequests = () => {
       <TablePagination
         component="div"
         rowsPerPageOptions={[10, 20, 30]}
-        count={filteredRequests.length}
+        count={totalItems}
         rowsPerPage={rowsPerPage}
         page={page}
         onPageChange={(event, newPage) => setPage(newPage)}
-        onRowsPerPageChange={(event) => setRowsPerPage(parseInt(event.target.value, 10))}
+        onRowsPerPageChange={(event) =>
+          setRowsPerPage(parseInt(event.target.value, 10))
+        }
       />
 
       {/* Withdraw Approval Modal */}
       <Dialog
         open={withdrawModalOpen}
         onClose={() => setWithdrawModalOpen(false)}
-        sx={{ '& .MuiDialog-paper': { minWidth: '400px' } }}
+        sx={{ "& .MuiDialog-paper": { minWidth: "400px" } }}
       >
         <DialogTitle>Withdraw Employee WFH Request</DialogTitle>
         <DialogContent>
@@ -283,7 +297,11 @@ export const ApprovedRequests = () => {
           />
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setWithdrawModalOpen(false)} color="secondary" variant="outlined">
+          <Button
+            onClick={() => setWithdrawModalOpen(false)}
+            color="secondary"
+            variant="outlined"
+          >
             Cancel
           </Button>
           <Button
@@ -292,7 +310,11 @@ export const ApprovedRequests = () => {
             variant="outlined"
             disabled={!withdrawReason.trim() || withdrawLoading}
           >
-            {withdrawLoading ? <CircularProgress size={24} color="inherit" /> : "Withdraw Request"}
+            {withdrawLoading ? (
+              <CircularProgress size={24} color="inherit" />
+            ) : (
+              "Withdraw Request"
+            )}
           </Button>
         </DialogActions>
       </Dialog>
@@ -307,8 +329,6 @@ export const ApprovedRequests = () => {
     </>
   );
 };
-
-
 
 // ArrangementRow Component
 const ArrangementRow = ({
@@ -338,7 +358,11 @@ const ArrangementRow = ({
 
   const handleDialogOpen = () => {
     setDialogOpen(true);
-    setDocuments([supporting_doc_1, supporting_doc_2, supporting_doc_3].filter(Boolean) as string[]);
+    setDocuments(
+      [supporting_doc_1, supporting_doc_2, supporting_doc_3].filter(
+        Boolean
+      ) as string[]
+    );
   };
 
   return (
@@ -350,10 +374,12 @@ const ArrangementRow = ({
         <TableCell>{wfh_type?.toUpperCase()}</TableCell>
         <TableCell sx={{ maxWidth: 200 }}>
           <Tooltip title="Scroll to view more">
-          <Box sx={{ overflowX: "scroll", maxWidth: 200, whiteSpace: "nowrap" }}>
-            {reason_description}
-          </Box>
-        </Tooltip>
+            <Box
+              sx={{ overflowX: "scroll", maxWidth: 200, whiteSpace: "nowrap" }}
+            >
+              {reason_description}
+            </Box>
+          </Tooltip>
         </TableCell>
         <TableCell>
           {documents.length > 0 ? (
@@ -365,10 +391,10 @@ const ArrangementRow = ({
           )}
         </TableCell>
         <TableCell>
-            <Chip
-              color={getChipColor(current_approval_status)}
-              label={capitalize(current_approval_status)}
-            />
+          <Chip
+            color={getChipColor(current_approval_status)}
+            label={capitalize(current_approval_status)}
+          />
         </TableCell>
         <TableCell>
           <Button
@@ -406,7 +432,10 @@ const DocumentDialog = ({
       <List>
         {documents.map((document, idx) => (
           <ListItem key={document}>
-            {idx + 1}. <Link href={document} target="_blank" rel="noopener noreferrer">View Document</Link>
+            {idx + 1}.{" "}
+            <Link href={document} target="_blank" rel="noopener noreferrer">
+              View Document
+            </Link>
           </ListItem>
         ))}
       </List>

@@ -84,7 +84,6 @@ export const RequestList = () => {
               },
             }
           );
-          console.log("dog", arrangementsResponse.data);
           setTotalItems(arrangementsResponse.data.pagination_meta.total_count);
           const responseData = arrangementsResponse.data.data;
           setArrangements(responseData);
