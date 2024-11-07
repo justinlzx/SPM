@@ -231,7 +231,7 @@ export const PendingRequests = () => {
 
       setAlertStatus(AlertStatus.Success);
       setSnackbarMessage(
-        `Request '${action}' successfully updated to status '${nextStatus}'`
+        `WFH Request successfully updated to '${nextStatus}'`
       );
       setShowSnackbar(true);
       refreshData();

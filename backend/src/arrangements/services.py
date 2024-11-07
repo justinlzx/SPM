@@ -38,6 +38,8 @@ from .utils import (
     upload_file,
 )
 
+JACK_SIM_STAFF_ID = 130002
+
 
 def get_arrangement_by_id(db: Session, arrangement_id: int) -> ArrangementResponse:
     arrangement = crud.get_arrangement_by_id(db, arrangement_id)
@@ -226,7 +228,7 @@ async def create_arrangements_from_request(
             wfh_request.delegate_approving_officer = delegation.__dict__["delegate_manager_id"]
 
         # Auto Approve Jack Sim's requests
-        if wfh_request.requester_staff_id == 130002:
+        if wfh_request.requester_staff_id == JACK_SIM_STAFF_ID:
             wfh_request.current_approval_status = ApprovalStatus.APPROVED
 
         # Upload supporting documents to S3 bucket
@@ -309,17 +311,20 @@ async def update_arrangement_approval_status(
         raise exceptions.ArrangementNotFoundException(wfh_update.arrangement_id)
     arrangement = ArrangementResponse.from_dict(arrangement)
 
-    # Check if action is valid for the current status
-    if wfh_update.action not in STATUS_ACTION_MAPPING[arrangement.current_approval_status]:
-        raise exceptions.ArrangementActionNotAllowedException(
-            arrangement.current_approval_status, wfh_update.action
-        )
+    # Auto Withdraw Jack Sim's requests
+    if arrangement.requester_staff_id == JACK_SIM_STAFF_ID and wfh_update.action == Action.WITHDRAW:
+        previous_approval_status = arrangement.current_approval_status
+        arrangement.current_approval_status = ApprovalStatus.WITHDRAWN
+    else:
+        if wfh_update.action not in STATUS_ACTION_MAPPING[arrangement.current_approval_status]:
+            raise exceptions.ArrangementActionNotAllowedException(
+                arrangement.current_approval_status, wfh_update.action
+            )
 
-    # Update arrangement fields
-    previous_approval_status = arrangement.current_approval_status
-    arrangement.current_approval_status = STATUS_ACTION_MAPPING[
-        arrangement.current_approval_status
-    ][wfh_update.action]
+        previous_approval_status = arrangement.current_approval_status
+        arrangement.current_approval_status = STATUS_ACTION_MAPPING[
+            arrangement.current_approval_status
+        ][wfh_update.action]
 
     arrangement.approving_officer = wfh_update.approving_officer
     arrangement.status_reason = wfh_update.status_reason
