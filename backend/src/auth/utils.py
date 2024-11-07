@@ -2,12 +2,14 @@ import hashlib
 import os
 from datetime import datetime, timedelta
 from typing import Optional
+from zoneinfo import ZoneInfo
 
 import jwt
 from dotenv import load_dotenv
 
 load_dotenv()
 
+singapore_timezone = ZoneInfo("Asia/Singapore")
 TOKEN_SECRET = os.environ.get("TOKEN_SECRET")
 
 
@@ -26,9 +28,9 @@ def generate_JWT(data: dict, expires_delta: Optional[timedelta] = None) -> str:
 
     to_encode = data.copy()
     if expires_delta:
-        expire = datetime.now() + expires_delta
+        expire = datetime.now(singapore_timezone) + expires_delta
     else:
-        expire = datetime.now() + timedelta(minutes=15)
+        expire = datetime.now(singapore_timezone) + timedelta(minutes=15)
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, TOKEN_SECRET)
     return encoded_jwt

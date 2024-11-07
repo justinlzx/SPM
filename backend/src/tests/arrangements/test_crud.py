@@ -225,6 +225,7 @@ class TestGetArrangements:
     @pytest.fixture
     def mock_filters(self):
         return ArrangementFilters(
+            staff_ids=None,
             current_approval_status=[ApprovalStatus.PENDING_APPROVAL],
             name=None,
             wfh_type=None,
@@ -248,6 +249,7 @@ class TestGetArrangements:
         mock_query.join.return_value = mock_join
         mock_join.filter.return_value = mock_filter
         mock_filter.filter.return_value = mock_filter
+        mock_filter.order_by.return_value = mock_filter
         mock_filter.all.return_value = [mock_latest_arrangement]
 
         result = crud.get_arrangements(mock_db_session, filters=mock_filters)
@@ -268,6 +270,7 @@ class TestGetArrangements:
         mock_query.join.return_value = mock_join
         mock_join.filter.return_value = mock_filter
         mock_filter.filter.return_value = mock_filter
+        mock_filter.order_by.return_value = mock_filter
         mock_filter.all.return_value = [mock_latest_arrangement]
 
         mock_filters.name = "John"
@@ -291,6 +294,7 @@ class TestGetArrangements:
         mock_query.join.return_value = mock_joined
         mock_joined.filter.return_value = mock_filtered
         mock_filtered.filter.return_value = mock_filtered  # For additional filters
+        mock_filtered.order_by.return_value = mock_filtered
         mock_filtered.all.return_value = [mock_latest_arrangement]
 
         filters = ArrangementFilters(reason="Test reason", staff_ids=100)
@@ -313,6 +317,7 @@ class TestGetArrangements:
         mock_query.join.return_value = mock_joined
         mock_joined.filter.return_value = mock_filtered
         mock_filtered.filter.return_value = mock_filtered  # For additional filters
+        mock_filtered.order_by.return_value = mock_filtered
         mock_filtered.all.return_value = [mock_latest_arrangement]
 
         filters = ArrangementFilters(department="IT", staff_ids=100)
@@ -343,6 +348,7 @@ class TestGetArrangements:
         mock_db_session.query.return_value = mock_query
         mock_query.join.return_value = mock_join
         mock_join.filter.return_value = mock_filter
+        mock_filter.order_by.return_value = mock_filter
         mock_filter.all.return_value = [mock_latest_arrangement]
 
         result = crud.get_arrangements(mock_db_session, filters=filter)
@@ -358,6 +364,7 @@ class TestGetArrangements:
         mock_query.join.return_value = mock_join
         mock_join.filter.return_value = mock_filter
         mock_filter.filter.return_value = mock_filter
+        mock_filter.order_by.return_value = mock_filter
         mock_filter.all.return_value = [mock_latest_arrangement]
 
         filters = ArrangementFilters(name="John", staff_ids=100)
@@ -376,6 +383,7 @@ class TestGetArrangements:
         mock_query.join.return_value = mock_join
         mock_join.filter.return_value = mock_filter
         mock_filter.filter.return_value = mock_filter
+        mock_filter.order_by.return_value = mock_filter
         mock_filter.all.return_value = [mock_latest_arrangement]
 
         filters = ArrangementFilters(
@@ -395,6 +403,7 @@ class TestGetArrangements:
         mock_query.join.return_value = mock_join
         mock_join.filter.return_value = mock_filter
         mock_filter.filter.return_value = mock_filter
+        mock_filter.order_by.return_value = mock_filter
         mock_filter.all.return_value = [mock_latest_arrangement]
 
         filters = ArrangementFilters(wfh_type=[WfhType.FULL], staff_ids=100)
@@ -416,6 +425,7 @@ class TestGetArrangements:
         mock_query = mock_db_session.query.return_value
         mock_query.join.return_value = mock_query  # For join operation
         mock_query.filter.return_value = mock_query  # Chain filter for each filter call
+        mock_query.order_by.return_value = mock_query  # Chain order_by for each filter call
         mock_query.all.return_value = [mock_latest_arrangement]  # Return the expected result
 
         # Execute the function

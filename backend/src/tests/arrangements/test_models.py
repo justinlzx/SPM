@@ -1,16 +1,28 @@
-import pytest
 from datetime import datetime
-from sqlalchemy.exc import IntegrityError
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker, Session
-from sqlalchemy.pool import StaticPool
+from zoneinfo import ZoneInfo
 
+import pytest
+from sqlalchemy import create_engine
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import StaticPool
+from src.arrangements.commons.enums import (
+    Action,
+    ApprovalStatus,
+    RecurringFrequencyUnit,
+    WfhType,
+)
+from src.arrangements.commons.models import (
+    ArrangementLog,
+    LatestArrangement,
+    RecurringRequest,
+)
+from src.auth.models import Auth
 from src.employees.models import Employee
 
 from ...database import Base
-from src.arrangements.commons.models import ArrangementLog, LatestArrangement, RecurringRequest
-from src.arrangements.commons.enums import Action, ApprovalStatus, RecurringFrequencyUnit, WfhType
-from src.auth.models import Auth
+
+singapore_timezone = ZoneInfo("Asia/Singapore")
 
 
 @pytest.fixture(scope="function")
@@ -113,7 +125,7 @@ def test_delegate_approver(db_session):
 def create_test_arrangement(db_session, employee, approver=None, **kwargs):
     """Helper function to create a test arrangement with default values."""
     default_values = {
-        "update_datetime": datetime.now(),
+        "update_datetime": datetime.now(singapore_timezone),
         "requester_staff_id": employee.staff_id,
         "wfh_date": "2024-11-05",
         "wfh_type": WfhType.FULL,
@@ -131,7 +143,7 @@ def create_test_arrangement(db_session, employee, approver=None, **kwargs):
 def create_test_log(db_session, arrangement, employee, **kwargs):
     """Helper function to create a test arrangement log with default values."""
     default_values = {
-        "update_datetime": datetime.now(),
+        "update_datetime": datetime.now(singapore_timezone),
         "arrangement_id": arrangement.arrangement_id,
         "requester_staff_id": employee.staff_id,
         "wfh_date": arrangement.wfh_date,
@@ -167,9 +179,9 @@ def create_test_recurring_request(db_session, employee, **kwargs):
 
 class TestArrangementLog:
     def test_create_arrangement_log(self, db_session):
-        """Test creating a basic arrangement log"""
+        """Test creating a basic arrangement log."""
         log = ArrangementLog(
-            update_datetime=datetime.now(),
+            update_datetime=datetime.now(singapore_timezone),
             arrangement_id=1,
             requester_staff_id=100,
             wfh_date="2024-11-05",
@@ -185,7 +197,7 @@ class TestArrangementLog:
         assert log.wfh_type == WfhType.FULL
 
     def test_required_fields(self, db_session):
-        """Test that required fields raise appropriate errors when missing"""
+        """Test that required fields raise appropriate errors when missing."""
         log = ArrangementLog(
             # Missing required fields
             wfh_date="2024-11-05",
@@ -195,7 +207,7 @@ class TestArrangementLog:
             db_session.commit()
 
     def test_relationships(self, db_session, test_auth):
-        """Test relationships with Employee model"""
+        """Test relationships with Employee model."""
         # Create employee with correct field names
         employee = Employee(
             staff_id=100,
@@ -212,7 +224,7 @@ class TestArrangementLog:
 
         # Create the arrangement log
         log = ArrangementLog(
-            update_datetime=datetime.now(),
+            update_datetime=datetime.now(singapore_timezone),
             arrangement_id=1,
             requester_staff_id=employee.staff_id,
             wfh_date="2024-11-05",
@@ -229,9 +241,9 @@ class TestArrangementLog:
 
 class TestLatestArrangement:
     def test_create_latest_arrangement(self, db_session):
-        """Test creating a basic latest arrangement"""
+        """Test creating a basic latest arrangement."""
         arrangement = LatestArrangement(
-            update_datetime=datetime.now(),
+            update_datetime=datetime.now(singapore_timezone),
             requester_staff_id=100,
             wfh_date="2024-11-05",
             wfh_type=WfhType.FULL,
@@ -246,10 +258,10 @@ class TestLatestArrangement:
     def test_delegate_approving_officer(
         self, db_session, test_employee, test_approver, test_delegate_approver
     ):
-        """Test delegate approving officer functionality"""
+        """Test delegate approving officer functionality."""
         # Create arrangement using existing fixtures
         arrangement = LatestArrangement(
-            update_datetime=datetime.now(),
+            update_datetime=datetime.now(singapore_timezone),
             requester_staff_id=test_employee.staff_id,
             wfh_date="2024-11-05",
             wfh_type=WfhType.FULL,
@@ -270,7 +282,7 @@ class TestLatestArrangement:
 
 class TestRecurringRequest:
     def test_create_recurring_request(self, db_session):
-        """Test creating a basic recurring request"""
+        """Test creating a basic recurring request."""
         request = RecurringRequest(
             request_datetime="2024-11-05 10:00:00",
             requester_staff_id=100,
@@ -287,7 +299,7 @@ class TestRecurringRequest:
         assert request.recurring_occurrences == 4
 
     def test_valid_frequency(self, db_session, test_employee):
-        """Test that valid frequency values are accepted"""
+        """Test that valid frequency values are accepted."""
         request = RecurringRequest(
             request_datetime="2024-11-05 10:00:00",
             requester_staff_id=test_employee.staff_id,
@@ -302,7 +314,7 @@ class TestRecurringRequest:
         assert request.recurring_frequency_number == 1
 
     def test_valid_request(self, db_session, test_employee):
-        """Test creating a valid recurring request"""
+        """Test creating a valid recurring request."""
         request = RecurringRequest(
             request_datetime="2024-11-05 10:00:00",
             requester_staff_id=test_employee.staff_id,
@@ -322,7 +334,7 @@ class TestRecurringRequest:
 
 class TestIntegration:
     def test_full_workflow(self, db_session):
-        """Test the complete workflow of creating a recurring request and its arrangements"""
+        """Test the complete workflow of creating a recurring request and its arrangements."""
         # Create a recurring request
         recurring_request = RecurringRequest(
             request_datetime="2024-11-05 10:00:00",
@@ -337,7 +349,7 @@ class TestIntegration:
 
         # Create a latest arrangement linked to the recurring request
         arrangement = LatestArrangement(
-            update_datetime=datetime.now(),
+            update_datetime=datetime.now(singapore_timezone),
             requester_staff_id=100,
             wfh_date="2024-11-05",
             wfh_type=WfhType.FULL,
@@ -349,7 +361,7 @@ class TestIntegration:
 
         # Create a log entry for the arrangement
         log = ArrangementLog(
-            update_datetime=datetime.now(),
+            update_datetime=datetime.now(singapore_timezone),
             arrangement_id=arrangement.arrangement_id,
             requester_staff_id=100,
             wfh_date="2024-11-05",
