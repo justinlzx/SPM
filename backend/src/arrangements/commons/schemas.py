@@ -1,8 +1,8 @@
 from datetime import date, datetime
 from typing import Annotated, List, Optional
 
-from fastapi import Form
-from pydantic import Field, field_serializer
+from fastapi import Form, Query
+from pydantic import Field, ValidationInfo, field_serializer, field_validator
 
 from ...base import BaseSchema
 from .enums import Action, ApprovalStatus, RecurringFrequencyUnit, WfhType
@@ -33,10 +33,37 @@ class ArrangementFilters(BaseSchema):
         None,
         title="Filter by the reason for the arrangement",
     )
+    department: Optional[str] = Field(
+        None,
+        title="Filter by the department of the employee",
+    )
     group_by_date: Optional[bool] = Field(
         True,
         title="Group by date",
     )
+
+    @classmethod
+    def as_query(
+        cls,
+        current_approval_status: Optional[List[ApprovalStatus]] = Query(None),
+        name: Optional[str] = Query(None),
+        start_date: Optional[date] = Query(None),
+        end_date: Optional[date] = Query(None),
+        wfh_type: Optional[List[WfhType]] = Query(None),
+        reason: Optional[str] = Query(None),
+        department: Optional[str] = Query(None),
+        group_by_date: Optional[bool] = Query(True),
+    ):
+        return cls(
+            current_approval_status=current_approval_status,
+            name=name,
+            start_date=start_date,
+            end_date=end_date,
+            wfh_type=wfh_type,
+            reason=reason,
+            department=department,
+            group_by_date=group_by_date,
+        )
 
 
 class PaginationConfig(BaseSchema):
@@ -49,15 +76,36 @@ class PaginationConfig(BaseSchema):
         title="Page number",
     )
 
-
-class PersonalArrangementsRequest(BaseSchema):
-    current_approval_status: Optional[List[ApprovalStatus]] = Field(
-        None,
-        title="Filter by the current approval status",
-    )
+    @classmethod
+    def as_query(
+        cls,
+        items_per_page: Optional[int] = Query(10),
+        page_num: Optional[int] = Query(1),
+    ):
+        return cls(
+            items_per_page=items_per_page,
+            page_num=page_num,
+        )
 
 
 class CreateArrangementRequest(BaseSchema):
+    @field_validator(
+        "recurring_frequency_number", "recurring_frequency_unit", "recurring_occurrences"
+    )
+    def validate_recurring_fields(cls, v: str, info: ValidationInfo) -> str:
+        if info.data.get("is_recurring"):
+            if not v:
+                raise ValueError(
+                    "When 'is_recurring' is True, 'recurring_frequency_number', 'recurring_frequency_unit', and 'recurring_occurrences' must have a non-zero value"
+                )
+        return v
+
+    @field_validator("wfh_date")
+    def validate_wfh_date(cls, v: date, info: ValidationInfo) -> date:
+        if (v - datetime.now().date()).days < 1:
+            raise ValueError("WFH date must be at least 24 hours from the current time")
+        return v
+
     requester_staff_id: int = Field(
         ...,
         title="Staff ID of the employee who made the request",
@@ -153,6 +201,14 @@ class ArrangementResponse(BaseSchema):
     def serialize_update_datetime(self, update_datetime: datetime) -> str:
         return update_datetime.isoformat()
 
+    @field_serializer("wfh_type")
+    def serialize_wfh_type(self, wfh_type: WfhType) -> str:
+        return wfh_type.value
+
+    @field_serializer("current_approval_status")
+    def serialize_current_approval_status(self, current_approval_status: ApprovalStatus) -> str:
+        return current_approval_status.value
+
     arrangement_id: int = Field(
         ...,
         title="ID of the arrangement",
@@ -217,13 +273,18 @@ class ArrangementResponse(BaseSchema):
 
 
 class ArrangementLogResponse(BaseSchema):
-    @field_serializer("wfh_date")
-    def serialize_wfh_date(self, wfh_date: date) -> str:
-        return wfh_date.isoformat()
-
-    @field_serializer("update_datetime")
-    def serialize_update_datetime(self, update_datetime: datetime) -> str:
-        return update_datetime.isoformat()
+    @field_validator("updated_approval_status")
+    def validate_previous_approval_status(
+        cls, v: ApprovalStatus, info: ValidationInfo
+    ) -> ApprovalStatus:
+        if (
+            v != ApprovalStatus.PENDING_APPROVAL
+            and info.data.get("previous_approval_status") is None
+        ):
+            raise ValueError(
+                "When 'updated_approval_status' is not 'PENDING_APPROVAL', 'previous_approval_status' cannot be None"
+            )
+        return v
 
     log_id: int = Field(
         ...,
@@ -232,6 +293,10 @@ class ArrangementLogResponse(BaseSchema):
     update_datetime: datetime = Field(
         ...,
         title="Datetime that the log was last updated",
+    )
+    arrangement_id: int = Field(
+        ...,
+        title="ID of the arrangement",
     )
     requester_staff_id: int = Field(
         ...,

@@ -1,9 +1,10 @@
 import inspect
 from dataclasses import dataclass
 from datetime import date, datetime
-from typing import List, Optional
+from typing import List, Optional, Union
 
 from fastapi import File
+from src.employees.models import Employee
 
 from .enums import Action, ApprovalStatus, RecurringFrequencyUnit, WfhType
 
@@ -48,6 +49,9 @@ class ArrangementFilters(BaseClass):
     end_date: Optional[date] = None
     reason: Optional[str] = None
     group_by_date: Optional[bool] = True
+    department: Optional[str] = None
+    staff_ids: Optional[Union[int, List[int]]] = None
+    manager_id: Optional[int] = None
 
 
 @dataclass
@@ -93,6 +97,7 @@ class UpdateArrangementRequest(BaseClass):
     supporting_doc_1: Optional[File] = None
     supporting_doc_2: Optional[File] = None
     supporting_doc_3: Optional[File] = None
+    auto_reject: Optional[bool] = False
 
 
 @dataclass
@@ -114,6 +119,7 @@ class ArrangementResponse(BaseClass):
     supporting_doc_2: Optional[File] = None
     supporting_doc_3: Optional[File] = None
     status_reason: Optional[str] = None
+    requester_info: Optional[Employee] = None
 
 
 @dataclass
@@ -121,6 +127,7 @@ class ArrangementLogResponse(BaseClass):
     """Dataclass for created arrangement."""
 
     log_id: int
+    arrangement_id: int
     update_datetime: datetime
     requester_staff_id: int
     wfh_date: date

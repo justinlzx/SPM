@@ -1,6 +1,7 @@
 from unittest.mock import MagicMock
 
 from src.auth.models import Auth, create_user, get_user_by_email
+from src.tests.test_utils import mock_db_session  # noqa: F401
 
 
 # Test for create_user function

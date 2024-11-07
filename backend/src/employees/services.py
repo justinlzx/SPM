@@ -1,12 +1,19 @@
 from enum import Enum
-from typing import List
+from typing import List, Tuple, Union
 
 from sqlalchemy.orm import Session
 
-from ..email.routes import send_email
-from ..notifications.email_notifications import craft_email_content_for_delegation
+from ..notifications.commons.dataclasses import DelegateNotificationConfig
+from ..notifications.email_notifications import craft_and_send_email
 from ..utils import convert_model_to_pydantic_schema
 from . import crud, exceptions, models, schemas
+from .dataclasses import EmployeeFilters
+
+
+def get_employees(db: Session, filters: EmployeeFilters):
+    employees = crud.get_employees(db, filters)
+    employees_pydantic = convert_model_to_pydantic_schema(employees, schemas.EmployeeBase)
+    return employees_pydantic
 
 
 def get_reporting_manager_and_peer_employees(db: Session, staff_id: int):
@@ -47,36 +54,76 @@ class DelegationApprovalStatus(Enum):
     reject = "rejected"
 
 
-def get_manager_by_subordinate_id(db: Session, staff_id: int) -> models.Employee:
-    """
-    The function `get_manager_by_subordinate_id` retrieves the manager for a given subordinate ID,
-    ensuring that the manager's peer employees are not locked in an active delegation relationship and
-    excluding a specific ID.
+# def get_manager_by_subordinate_id(
+#     db: Session, staff_id: int
+# ) -> Union[Tuple[models.Employee, List[models.Employee]], Tuple[None, None]]:
+#     """
+#     The function `get_manager_by_subordinate_id` retrieves the manager for a given subordinate ID,
+#     ensuring that the manager's peer employees are not locked in an active delegation relationship and
+#     excluding a specific ID.
 
-    :param db: The `db` parameter in the `get_manager_by_subordinate_id` function is of type `Session`,
-    which is likely an instance of a database session that allows interaction with the database. This
-    parameter is used to query the database for employee and manager information
-    :type db: Session
-    :param staff_id: The function `get_manager_by_subordinate_id` is designed to retrieve the manager
-    for a given subordinate ID while ensuring that the manager's peer employees are not locked in an
-    active delegation relationship and excluding the specific ID 130002
-    :type staff_id: int
-    :return: The function `get_manager_by_subordinate_id` is returning a tuple containing the manager of
-    the employee and a list of unlocked peers reporting to the manager.
-    """
+#     :param db: The `db` parameter in the `get_manager_by_subordinate_id` function is of type `Session`,
+#     which is likely an instance of a database session that allows interaction with the database. This
+#     parameter is used to query the database for employee and manager information
+#     :type db: Session
+#     :param staff_id: The function `get_manager_by_subordinate_id` is designed to retrieve the manager
+#     for a given subordinate ID while ensuring that the manager's peer employees are not locked in an
+#     active delegation relationship and excluding the specific ID 130002
+#     :type staff_id: int
+#     :return: The function `get_manager_by_subordinate_id` is returning a tuple containing the manager of
+#     the employee and a list of unlocked peers reporting to the manager.
+#     """
+#     # Auto Approve for Jack Sim and bypass manager check
+#     if staff_id == 130002:
+#         return None, None  # Auto-approve for Jack Sim
+
+#     # Retrieve the employee
+#     emp = get_employee_by_id(db, staff_id)
+#     if not emp:
+#         raise exceptions.EmployeeNotFoundException(staff_id)
+
+#     # Get the manager of the employee
+#     manager = crud.get_manager_of_employee(db, emp)
+#     if not manager:
+#         return None, None  # Return None if there's no valid manager
+
+#     # Retrieve all peers reporting to the manager
+#     all_peers = crud.get_peer_employees(db, manager.staff_id)
+
+#     # Filter out peers who are either locked in a delegation relationship or have the ID 130002
+#     unlocked_peers = [
+#         peer
+#         for peer in all_peers
+#         if not crud.is_employee_locked_in_delegation(db, peer.staff_id) and peer.staff_id != 130002
+#     ]
+
+#     print(
+#         f"Unlocked peers for manager {manager.staff_id}: {[peer.staff_id for peer in unlocked_peers]}"
+#     )
+#     return manager, unlocked_peers
+
+
+def get_manager_by_subordinate_id(
+    db: Session, staff_id: int
+) -> Union[Tuple[models.Employee, List[models.Employee]], Tuple[None, None]]:
     # Auto Approve for Jack Sim and bypass manager check
     if staff_id == 130002:
-        return None  # Auto-approve for Jack Sim
+        return None, None  # Auto-approve for Jack Sim
 
     # Retrieve the employee
     emp = get_employee_by_id(db, staff_id)
     if not emp:
-        raise exceptions.EmployeeNotFoundException()
+        raise exceptions.EmployeeNotFoundException(staff_id)
 
     # Get the manager of the employee
     manager = crud.get_manager_of_employee(db, emp)
     if not manager:
-        return None  # Return None if there's no valid manager
+        return None, None  # Return None if there's no valid manager
+
+    # Check if the manager has delegated their authority
+    delegated_manager = crud.get_delegated_manager(db, manager.staff_id)
+    if delegated_manager:
+        manager = delegated_manager
 
     # Retrieve all peers reporting to the manager
     all_peers = crud.get_peer_employees(db, manager.staff_id)
@@ -111,7 +158,7 @@ def get_employee_by_id(db: Session, staff_id: int) -> models.Employee:
     employee: models.Employee = crud.get_employee_by_staff_id(db, staff_id)
 
     if not employee:
-        raise exceptions.EmployeeNotFoundException()
+        raise exceptions.EmployeeNotFoundException(staff_id)
 
     return employee
 
@@ -120,7 +167,7 @@ def get_employee_by_email(db: Session, email: str) -> models.Employee:
     employee: models.Employee = crud.get_employee_by_email(db, email)
 
     if not employee:
-        raise exceptions.EmployeeNotFoundException()
+        raise exceptions.EmployeeGenericNotFoundException()
 
     return employee
 
@@ -196,15 +243,10 @@ async def delegate_manager(staff_id: int, delegate_manager_id: int, db: Session)
         delegatee_employee = get_employee_by_id(db, delegate_manager_id)
 
         # Step 4: Craft and send email notifications
-        manager_subject, manager_content = craft_email_content_for_delegation(
-            manager_employee, delegatee_employee, "delegate"
+        notification_config = DelegateNotificationConfig(
+            delegator=manager_employee, delegatee=delegatee_employee, action="delegate"
         )
-        await send_email(manager_employee.email, manager_subject, manager_content)
-
-        delegatee_subject, delegatee_content = craft_email_content_for_delegation(
-            delegatee_employee, manager_employee, "delegated_to"
-        )
-        await send_email(delegatee_employee.email, delegatee_subject, delegatee_content)
+        await craft_and_send_email(notification_config)
 
         return new_delegation  # Return the created delegation log
 
@@ -260,15 +302,10 @@ async def process_delegation_status(
         )
 
         # Send approval emails
-        manager_subject, manager_content = craft_email_content_for_delegation(
-            manager_employee, delegatee_employee, "approved"
+        notification_config = DelegateNotificationConfig(
+            delegator=manager_employee, delegatee=delegatee_employee, action="approved"
         )
-        await send_email(manager_employee.email, manager_subject, manager_content)
-
-        delegate_subject, delegate_content = craft_email_content_for_delegation(
-            delegatee_employee, manager_employee, "approved_for_delegate"
-        )
-        await send_email(delegatee_employee.email, delegate_subject, delegate_content)
+        await craft_and_send_email(notification_config)
 
     elif status == DelegationApprovalStatus.reject:
         # Reject delegation and save the required description
@@ -277,15 +314,10 @@ async def process_delegation_status(
         )
 
         # Send rejection emails
-        manager_subject, manager_content = craft_email_content_for_delegation(
-            manager_employee, delegatee_employee, "rejected"
+        notification_config = DelegateNotificationConfig(
+            delegator=manager_employee, delegatee=delegatee_employee, action="rejected"
         )
-        await send_email(manager_employee.email, manager_subject, manager_content)
-
-        delegate_subject, delegate_content = craft_email_content_for_delegation(
-            delegatee_employee, manager_employee, "rejected_for_delegate"
-        )
-        await send_email(delegatee_employee.email, delegate_subject, delegate_content)
+        await craft_and_send_email(notification_config)
 
     return delegation_log
 
@@ -312,30 +344,21 @@ async def undelegate_manager(staff_id: int, db: Session):
     if not delegation_log:
         return "Delegation log not found."
 
-    # Step 2: Check if the delegation status is 'accepted'
-    if delegation_log.status_of_delegation != models.DelegationStatus.accepted:
-        return "Delegation must be approved to undelegate."
-
-    # Step 3: Remove delegate from arrangements
+    # Step 2: Remove delegate from arrangements
     crud.remove_delegate_from_arrangements(db, delegation_log.delegate_manager_id)
 
-    # Step 4: Mark the delegation as 'undelegated'
+    # Step 3: Mark the delegation as 'undelegated'
     delegation_log = crud.mark_delegation_as_undelegated(db, delegation_log)
 
-    # Step 5: Fetch manager and delegatee info for notifications
+    # Step 4: Fetch manager and delegatee info for notifications
     manager_employee = get_employee_by_id(db, delegation_log.manager_id)
     delegatee_employee = get_employee_by_id(db, delegation_log.delegate_manager_id)
 
     # Send notification emails
-    manager_subject, manager_content = craft_email_content_for_delegation(
-        manager_employee, delegatee_employee, "withdrawn"
+    notification_config = DelegateNotificationConfig(
+        delegator=manager_employee, delegatee=delegatee_employee, action="undelegate"
     )
-    await send_email(manager_employee.email, manager_subject, manager_content)
-
-    delegate_subject, delegate_content = craft_email_content_for_delegation(
-        delegatee_employee, manager_employee, "withdrawn_for_delegate"
-    )
-    await send_email(delegatee_employee.email, delegate_subject, delegate_content)
+    await craft_and_send_email(notification_config)
 
     return delegation_log
 

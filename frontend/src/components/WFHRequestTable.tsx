@@ -19,10 +19,10 @@ import axios from "axios";
 import { ChipProps } from "@mui/material/Chip";
 import { ApprovalStatus } from "../types/status";
 import { capitalize } from "../utils/utils";
+import { DocumentDialog } from "./requests/DocumentDialog";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 
-// Define types for WFH request
 type TWFHRequest = {
   arrangement_id: number;
   requester_staff_id: number;
@@ -31,6 +31,9 @@ type TWFHRequest = {
   wfh_type: string;
   reason_description: string;
   current_approval_status: ApprovalStatus;
+  supporting_doc_1?: string | null;
+  supporting_doc_2?: string | null;
+  supporting_doc_3?: string | null;
 };
 
 type TWFHRequestTableProps = {
@@ -55,6 +58,7 @@ const getChipColor = (
   }
 };
 
+// Confirmation modal component for cancel/withdraw actions
 const ConfirmationModal: React.FC<{
   open: boolean;
   action: "cancel" | "withdraw" | undefined;
@@ -107,7 +111,6 @@ const ConfirmationModal: React.FC<{
           onClick={handleClose}
           variant="outlined"
           color="secondary"
-          data-cy="no-button"
           sx={{ mr: 2 }}
         >
           No
@@ -116,7 +119,6 @@ const ConfirmationModal: React.FC<{
           onClick={handleConfirm}
           variant="contained"
           color="primary"
-          data-cy="yes-button"
           disabled={loading}
         >
           {loading ? <CircularProgress size={24} color="inherit" /> : "Yes"}
@@ -126,10 +128,9 @@ const ConfirmationModal: React.FC<{
   </Modal>
 );
 
-export const WFHRequestTable: React.FC<TWFHRequestTableProps> = ({
-  requests,
-  handleSuccess,
-}) => {
+export const WFHRequestTable: React.FC<
+  TWFHRequestTableProps & { refreshData: () => void }
+> = ({ requests, handleSuccess, refreshData }) => {
   const [open, setOpen] = useState(false);
   const [action, setAction] = useState<"cancel" | "withdraw">();
   const [selectedArrangementId, setSelectedArrangementId] = useState<
@@ -137,6 +138,9 @@ export const WFHRequestTable: React.FC<TWFHRequestTableProps> = ({
   >(null);
   const [loading, setLoading] = useState(false);
   const [reason, setReason] = useState<string>("");
+
+  const [documentDialogOpen, setDocumentDialogOpen] = useState(false);
+  const [documents, setDocuments] = useState<string[]>([]);
 
   const handleOpen = (arrangementId: number, action: "cancel" | "withdraw") => {
     setSelectedArrangementId(arrangementId);
@@ -151,7 +155,16 @@ export const WFHRequestTable: React.FC<TWFHRequestTableProps> = ({
     setReason("");
   };
 
-  // Handle the withdrawal action with FormData
+  const handleDocumentDialogOpen = (docs: string[]) => {
+    setDocuments(docs);
+    setDocumentDialogOpen(true);
+  };
+
+  const handleDocumentDialogClose = () => {
+    setDocumentDialogOpen(false);
+    setDocuments([]);
+  };
+
   const handleWithdrawal = async () => {
     if (!selectedArrangementId) return;
     setLoading(true);
@@ -184,6 +197,7 @@ export const WFHRequestTable: React.FC<TWFHRequestTableProps> = ({
       );
 
       handleSuccess(selectedArrangementId, "withdraw");
+      refreshData();
     } catch (error) {
       console.error("Failed to withdraw request:", error);
     } finally {
@@ -192,7 +206,6 @@ export const WFHRequestTable: React.FC<TWFHRequestTableProps> = ({
     }
   };
 
-  // Handle the cancellation action with FormData
   const handleCancellation = async () => {
     if (!selectedArrangementId) return;
     setLoading(true);
@@ -224,6 +237,7 @@ export const WFHRequestTable: React.FC<TWFHRequestTableProps> = ({
       );
 
       handleSuccess(selectedArrangementId, "cancel");
+      refreshData();
     } catch (error) {
       console.error("Failed to cancel request:", error);
     } finally {
@@ -240,9 +254,9 @@ export const WFHRequestTable: React.FC<TWFHRequestTableProps> = ({
             <TableRow>
               <TableCell>Staff ID</TableCell>
               <TableCell>Start Date</TableCell>
-              <TableCell>End Date</TableCell>
               <TableCell>Type</TableCell>
               <TableCell>Reason</TableCell>
+              <TableCell>Supporting Documents</TableCell>
               <TableCell>Status</TableCell>
               <TableCell>Action</TableCell>
             </TableRow>
@@ -255,75 +269,92 @@ export const WFHRequestTable: React.FC<TWFHRequestTableProps> = ({
                 </TableCell>
               </TableRow>
             ) : (
-              requests.map((request) => (
-                <TableRow key={request.arrangement_id}>
-                  <TableCell>{request.requester_staff_id}</TableCell>
-                  <TableCell>{request.wfh_date}</TableCell>
-                  <TableCell>{request.end_date || "-"}</TableCell>
-                  <TableCell>
-                    {request.wfh_type?.toUpperCase() || "-"}
-                  </TableCell>
-                  <TableCell
-                    sx={{
-                      maxWidth: "200px",
-                      wordBreak: "break-word",
-                      whiteSpace: "nowrap",
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      padding: 1,
-                    }}
-                  >
-                    {request.reason_description || "-"}
-                  </TableCell>
-                  <TableCell>
-                    <Chip
-                      color={getChipColor(request.current_approval_status)}
-                      label={capitalize(request.current_approval_status)}
-                      variant={
-                        request.current_approval_status ===
-                        ApprovalStatus.PendingWithdrawal
-                          ? "outlined"
-                          : "filled"
-                      }
-                    />
-                  </TableCell>
-                  <TableCell>
-                    {request.current_approval_status ===
-                      ApprovalStatus.PendingApproval && (
-                      <Button
-                        size="small"
-                        variant="outlined"
-                        color="primary"
-                        data-cy={`cancel-button-${request.arrangement_id}`}
-                        onClick={() =>
-                          handleOpen(request.arrangement_id, "cancel")
+              requests.map((request) => {
+                const docs = [
+                  request.supporting_doc_1,
+                  request.supporting_doc_2,
+                  request.supporting_doc_3,
+                ].filter(Boolean) as string[];
+
+                return (
+                  <TableRow key={request.arrangement_id}>
+                    <TableCell>{request.requester_staff_id}</TableCell>
+                    <TableCell>{request.wfh_date}</TableCell>
+                    <TableCell>
+                      {request.wfh_type?.toUpperCase() || "-"}
+                    </TableCell>
+                    <TableCell
+                      sx={{
+                        maxWidth: "200px",
+                        wordBreak: "break-word",
+                        whiteSpace: "nowrap",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        padding: 1,
+                      }}
+                    >
+                      {request.reason_description || "-"}
+                    </TableCell>
+                    <TableCell>
+                      {docs.length > 0 ? (
+                        <Button
+                          variant="text"
+                          onClick={() => handleDocumentDialogOpen(docs)}
+                        >
+                          View Documents
+                        </Button>
+                      ) : (
+                        "-"
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <Chip
+                        color={getChipColor(request.current_approval_status)}
+                        label={capitalize(request.current_approval_status)}
+                        variant={
+                          request.current_approval_status ===
+                          ApprovalStatus.PendingWithdrawal
+                            ? "outlined"
+                            : "filled"
                         }
-                      >
-                        Cancel
-                      </Button>
-                    )}
-                    {request.current_approval_status ===
-                      ApprovalStatus.Approved && (
-                      <Button
-                        size="small"
-                        variant="outlined"
-                        color="secondary"
-                        onClick={() =>
-                          handleOpen(request.arrangement_id, "withdraw")
-                        }
-                      >
-                        Withdraw
-                      </Button>
-                    )}
-                  </TableCell>
-                </TableRow>
-              ))
+                      />
+                    </TableCell>
+                    <TableCell>
+                      {request.current_approval_status ===
+                        ApprovalStatus.PendingApproval && (
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          color="primary"
+                          onClick={() =>
+                            handleOpen(request.arrangement_id, "cancel")
+                          }
+                        >
+                          Cancel
+                        </Button>
+                      )}
+                      {request.current_approval_status ===
+                        ApprovalStatus.Approved && (
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          color="secondary"
+                          onClick={() =>
+                            handleOpen(request.arrangement_id, "withdraw")
+                          }
+                        >
+                          Withdraw
+                        </Button>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                );
+              })
             )}
           </TableBody>
         </Table>
       </TableContainer>
 
-      {/* Reusable Confirmation Dialog */}
       <ConfirmationModal
         open={open}
         action={action}
@@ -334,6 +365,12 @@ export const WFHRequestTable: React.FC<TWFHRequestTableProps> = ({
         loading={loading}
         reason={reason}
         setReason={setReason}
+      />
+
+      <DocumentDialog
+        isOpen={documentDialogOpen}
+        documents={documents}
+        onClose={handleDocumentDialogClose}
       />
     </>
   );

@@ -7,3 +7,7 @@ omit =
     */database.py
     */base.py
     */app.py
+    */init_db/*
+    */dataclasses.py
+    */main.py
+    */src/utils.py

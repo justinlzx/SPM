@@ -25,6 +25,17 @@ def create_mock_employee():
     }
 
 
+class TestGetEmployees:
+    @patch("src.employees.services.get_employees", return_value=[MagicMock()])
+    def test_success(self, mock_get_employees):
+        # Act
+        response = client.get("/employees")
+
+        # Assert
+        assert response.status_code == 200
+        assert response.json() == [{}]
+
+
 class TestGetReportingManagerAndPeerEmployees:
     @patch("src.employees.services.get_manager_by_subordinate_id")
     def test_ceo_staff_id(self, mock_get_manager):
@@ -77,14 +88,14 @@ class TestGetReportingManagerAndPeerEmployees:
     def test_employee_not_found(self, mock_get_manager):
         # Arrange
         staff_id = 12345
-        mock_get_manager.side_effect = EmployeeNotFoundException()
+        mock_get_manager.side_effect = EmployeeNotFoundException(staff_id)
 
         # Act
         response = client.get(f"/employees/manager/peermanager/{staff_id}")
 
         # Assert
         assert response.status_code == 404
-        assert response.json()["detail"] == "Employee not found"
+        assert response.json()["detail"] == f"Employee with ID {staff_id} not found"
 
     @patch("src.employees.services.get_manager_by_subordinate_id")
     def test_manager_not_found(self, mock_get_manager):
@@ -119,14 +130,14 @@ class TestGetEmployeeByStaffId:
     def test_employee_not_found(self, mock_get_employee):
         # Arrange
         staff_id = 12345
-        mock_get_employee.side_effect = EmployeeNotFoundException()
+        mock_get_employee.side_effect = EmployeeNotFoundException(staff_id)
 
         # Act
         response = client.get(f"/employees/{staff_id}")
 
         # Assert
         assert response.status_code == 404
-        assert response.json()["detail"] == "Employee not found"
+        assert response.json()["detail"] == f"Employee with ID {staff_id} not found"
 
 
 class TestGetEmployeeByEmail:
@@ -148,14 +159,15 @@ class TestGetEmployeeByEmail:
     def test_employee_not_found(self, mock_get_employee):
         # Arrange
         email = "john@example.com"
-        mock_get_employee.side_effect = EmployeeNotFoundException()
+        staff_id = None
+        mock_get_employee.side_effect = EmployeeNotFoundException(staff_id)
 
         # Act
         response = client.get(f"/employees/email/{email}")
 
         # Assert
         assert response.status_code == 404
-        assert response.json()["detail"] == "Employee not found"
+        assert response.json()["detail"] == f"Employee with ID {staff_id} not found"
 
 
 class TestGetSubordinatesByManagerId:

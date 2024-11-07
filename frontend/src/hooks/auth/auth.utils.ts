@@ -9,6 +9,8 @@ export const AUTH_LOCAL_STORAGE_KEYS = {
   EMAIL: "user",
   ROLE: "role",
   ID: "id",
+  POSITION: "position",
+  DEPT: "dept"
 };
 
 export const signUp = async (credentials: {
@@ -37,7 +39,7 @@ export const login = async (credentials: {
   password: string;
 }): Promise<TLoginResponse> => {
   const { email } = credentials;
-  
+
   try {
     const response = await axios.post(
       `${BACKEND_URL}/auth/login`,
@@ -47,24 +49,27 @@ export const login = async (credentials: {
       }
     );
 
-    console.log(BACKEND_URL)
-
     const { access_token: accessToken, employee_info: {
       staff_id: id,
-      role
+      role,
+      position,
+      department: dept
     } } = response.data.data;
 
-    // TODO: remove this hardcode when the backend is ready
     localStorage.setItem(AUTH_LOCAL_STORAGE_KEYS.JWT, accessToken);
     localStorage.setItem(AUTH_LOCAL_STORAGE_KEYS.EMAIL, email);
     localStorage.setItem(AUTH_LOCAL_STORAGE_KEYS.ROLE, role.toString());
     localStorage.setItem(AUTH_LOCAL_STORAGE_KEYS.ID, id.toString());
+    localStorage.setItem(AUTH_LOCAL_STORAGE_KEYS.POSITION, position);
+    localStorage.setItem(AUTH_LOCAL_STORAGE_KEYS.DEPT, dept);
     axios.defaults.headers.common.Authorization = `Bearer ${accessToken}`;
 
     return {
       email,
       role: Number(role),
-      id: Number(id)
+      id: Number(id),
+      position,
+      dept
     };
   } catch (error) {
     throw new Error("Login failed");
@@ -75,5 +80,7 @@ export const logout = () => {
   localStorage.removeItem(AUTH_LOCAL_STORAGE_KEYS.JWT);
   localStorage.removeItem(AUTH_LOCAL_STORAGE_KEYS.EMAIL);
   localStorage.removeItem(AUTH_LOCAL_STORAGE_KEYS.ROLE)
+  localStorage.removeItem(AUTH_LOCAL_STORAGE_KEYS.ID)
+  localStorage.removeItem(AUTH_LOCAL_STORAGE_KEYS.POSITION)
   delete axios.defaults.headers.common.Authorization;
 };

@@ -1,7 +1,10 @@
+import asyncio
 import os
 from contextlib import asynccontextmanager
 from venv import logger
 
+from apscheduler.schedulers.background import BackgroundScheduler
+from apscheduler.triggers.cron import CronTrigger
 from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -9,6 +12,7 @@ from main import ENV
 
 from .arrangements.commons import models as arrangement_models
 from .arrangements.routes import router as arrangement_router
+from .arrangements.services import auto_reject_old_requests
 from .auth import models as auth_models
 from .auth.routes import router as auth_router
 from .database import engine
@@ -50,7 +54,24 @@ async def lifespan(app: FastAPI):
     # Load arrangements data from CSV
     load_data.load_latest_arrangement_data_from_csv("./src/init_db/latest_arrangement.csv")
 
+    # Startup: Initialize services before the application starts
+    print("Starting scheduler...")
+    scheduler = BackgroundScheduler()
+    scheduler.add_job(
+        lambda: asyncio.run(auto_reject_old_requests()),
+        CronTrigger(hour=0, minute=0),  # Run every day at midnight
+        id="auto_reject_job",
+        replace_existing=True,
+        misfire_grace_time=300,  # 5 minutes grace time
+        max_instances=1,  # Ensure only one instance runs at a time
+    )
+    scheduler.start()
+
     yield
+
+    # Shutdown: Clean up resources when the application is shutting down
+    print("Stopping scheduler...")
+    scheduler.shutdown(wait=False)
 
     # Drop all tables
     arrangement_models.Base.metadata.drop_all(bind=engine)
@@ -77,6 +98,7 @@ app.add_middleware(
     allow_headers=["*"],
     expose_headers=["*"],
 )
+
 
 # Include the auth and user routes
 app.include_router(auth_router, prefix="/auth", tags=["Authentication"])

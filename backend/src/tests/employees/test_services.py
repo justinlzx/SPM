@@ -3,10 +3,12 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from sqlalchemy import Enum, create_engine
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import Session, sessionmaker
 from src.auth.models import Auth
 from src.employees import schemas
+from src.employees.dataclasses import EmployeeFilters
 from src.employees.exceptions import (
+    EmployeeGenericNotFoundException,
     EmployeeNotFoundException,
     ManagerWithIDNotFoundException,
 )
@@ -16,6 +18,7 @@ from src.employees.services import (
     delegate_manager,
     get_employee_by_email,
     get_employee_by_id,
+    get_employees,
     get_manager_by_subordinate_id,
     get_peers_by_staff_id,
     get_reporting_manager_and_peer_employees,
@@ -31,14 +34,13 @@ engine = create_engine("sqlite:///:memory:")
 SessionLocal = sessionmaker(bind=engine)
 
 
-@pytest.fixture(autouse=True)  # Automatically use this for each test
+@pytest.fixture(autouse=True)
 def test_db():
-    # Create all tables in the database
     Base.metadata.create_all(bind=engine)
     db = SessionLocal()
     yield db
-    db.rollback()  # Reset the session after each test
-    Base.metadata.drop_all(bind=engine)  # Clear tables
+    db.rollback()
+    Base.metadata.drop_all(bind=engine)
     db.close()
 
 
@@ -87,12 +89,10 @@ def seed_data(test_db):
         ),
     ]
 
-    # Add records to database
     test_db.add_all(auth_records)
     test_db.add_all(employees)
     test_db.commit()
 
-    # Return the test data for reference if needed
     return {"auth_records": auth_records, "employees": employees}
 
 
@@ -118,15 +118,27 @@ def mock_manager():
     )
 
 
+@patch("src.employees.services.convert_model_to_pydantic_schema")
+@patch("src.employees.crud.get_employees")
+def test_get_employees(mock_get_employees, mock_convert, test_db, mock_employee):
+    mock_filters = MagicMock(spec=EmployeeFilters)
+    mock_convert.return_value = [mock_employee, mock_employee]
+
+    employees = get_employees(test_db, mock_filters)
+    assert len(employees) == len(mock_convert.return_value)
+
+
 def test_get_manager_by_subordinate_id_auto_approve(test_db):
-    assert get_manager_by_subordinate_id(test_db, 130002) is None
+    manager, peers = get_manager_by_subordinate_id(test_db, 130002)
+    assert manager is None
+    assert peers is None
 
 
 def test_get_manager_by_subordinate_id_non_existent_employee(test_db):
     with patch("src.employees.services.get_employee_by_id", return_value=None):
         with pytest.raises(EmployeeNotFoundException) as excinfo:
             get_manager_by_subordinate_id(test_db, 999)
-        assert str(excinfo.value) == "Employee not found"
+        assert str(excinfo.value) == "Employee with ID 999 not found"
 
 
 def test_get_employee_by_id_exists(test_db, seed_data):
@@ -135,8 +147,9 @@ def test_get_employee_by_id_exists(test_db, seed_data):
 
 
 def test_get_employee_by_id_not_found(test_db):
-    with pytest.raises(EmployeeNotFoundException):
+    with pytest.raises(EmployeeNotFoundException) as exc_info:
         get_employee_by_id(test_db, 999)
+    assert str(exc_info.value) == "Employee with ID 999 not found"
 
 
 def test_get_peers_by_staff_id_with_peers(test_db, seed_data):
@@ -145,10 +158,9 @@ def test_get_peers_by_staff_id_with_peers(test_db, seed_data):
 
 
 def test_get_peers_by_staff_id_no_peers(test_db):
-    # This will raise EmployeeNotFoundException because the employee doesn't exist
-    with pytest.raises(EmployeeNotFoundException) as excinfo:
+    with pytest.raises(EmployeeNotFoundException) as exc_info:
         get_peers_by_staff_id(test_db, 999)
-    assert str(excinfo.value) == "Employee not found"
+    assert str(exc_info.value) == "Employee with ID 999 not found"
 
 
 @pytest.mark.asyncio
@@ -203,8 +215,9 @@ def test_get_manager_with_valid_subordinate(test_db, seed_data):
 
 
 def test_get_manager_no_manager_available(test_db, seed_data):
-    with pytest.raises(EmployeeNotFoundException):
+    with pytest.raises(EmployeeNotFoundException) as exc_info:
         get_manager_by_subordinate_id(test_db, 999)
+    assert str(exc_info.value) == "Employee with ID 999 not found"
 
 
 @pytest.mark.asyncio
@@ -233,9 +246,7 @@ async def test_delegate_manager_new_delegation(test_db, seed_data):
     test_db.add_all([employee1, employee2])
     test_db.commit()
 
-    with patch(
-        "src.employees.services.craft_email_content_for_delegation"
-    ) as mock_craft_email, patch("src.employees.services.send_email") as mock_send_email:
+    with patch("src.employees.services.craft_and_send_email") as mock_craft_email:
         mock_craft_email.return_value = ("Subject", "Content")
 
         # Use the new employee IDs
@@ -243,7 +254,7 @@ async def test_delegate_manager_new_delegation(test_db, seed_data):
 
         assert result is not None
         assert isinstance(result, DelegateLog)
-        mock_send_email.assert_called()
+        mock_craft_email.assert_called()
 
 
 @pytest.mark.asyncio
@@ -293,16 +304,14 @@ async def test_process_delegation_status_accept(test_db, seed_data):
     test_db.add(delegate_log)
     test_db.commit()
 
-    with patch(
-        "src.employees.services.craft_email_content_for_delegation"
-    ) as mock_craft_email, patch("src.employees.services.send_email") as mock_send_email:
+    with patch("src.employees.services.craft_and_send_email") as mock_craft_email:
         mock_craft_email.return_value = ("Subject", "Content")
 
         result = await process_delegation_status(2, DelegationApprovalStatus.accept, test_db)
 
         assert isinstance(result, DelegateLog)
         assert result.status_of_delegation == DelegationStatus.accepted
-        mock_send_email.assert_called()
+        mock_craft_email.assert_called()
 
 
 @pytest.mark.asyncio
@@ -316,9 +325,7 @@ async def test_process_delegation_status_reject(test_db, seed_data):
     test_db.add(delegate_log)
     test_db.commit()
 
-    with patch(
-        "src.employees.services.craft_email_content_for_delegation"
-    ) as mock_craft_email, patch("src.employees.services.send_email") as mock_send_email:
+    with patch("src.employees.services.craft_and_send_email") as mock_craft_email:
         mock_craft_email.return_value = ("Subject", "Content")
 
         # Process delegation status for staff_id 2 (the delegate)
@@ -326,7 +333,7 @@ async def test_process_delegation_status_reject(test_db, seed_data):
 
         assert isinstance(result, DelegateLog)
         assert result.status_of_delegation == DelegationStatus.rejected
-        mock_send_email.assert_called()
+        mock_craft_email.assert_called()
 
 
 @pytest.mark.asyncio
@@ -338,7 +345,6 @@ async def test_process_delegation_status_log_not_found(test_db):
 
 # Test case for when manager lookup returns None
 def test_get_manager_by_subordinate_id_no_manager(test_db):
-    # Create employee with no manager
     employee = Employee(
         staff_id=12,
         staff_fname="No",
@@ -353,11 +359,9 @@ def test_get_manager_by_subordinate_id_no_manager(test_db):
     test_db.add(employee)
     test_db.commit()
 
-    result = get_manager_by_subordinate_id(test_db, 12)
-    assert result is None
-
-
-# Test case for branch where manager exists but has no peers
+    manager, peers = get_manager_by_subordinate_id(test_db, 12)
+    assert manager is None
+    assert peers is None
 
 
 # Test for employee locked in delegation
@@ -529,15 +533,13 @@ async def test_undelegate_manager_success(test_db):
     test_db.add_all([manager, delegate, delegation])
     test_db.commit()
 
-    with patch("src.employees.services.send_email") as mock_send_email, patch(
-        "src.employees.services.craft_email_content_for_delegation"
-    ) as mock_craft_email:
+    with patch("src.employees.services.craft_and_send_email") as mock_craft_email:
         mock_craft_email.return_value = ("Subject", "Content")
 
         result = await undelegate_manager(40, test_db)
         assert isinstance(result, DelegateLog)
         assert result.status_of_delegation == DelegationStatus.undelegated
-        mock_send_email.assert_called()
+        mock_craft_email.assert_called()
 
 
 @pytest.mark.asyncio
@@ -548,7 +550,7 @@ async def test_undelegate_manager_not_found(test_db):
 
 @pytest.mark.asyncio
 async def test_undelegate_manager_not_accepted(test_db):
-    # Create delegation with pending status
+    # Create manager
     manager = Employee(
         staff_id=50,
         staff_fname="Pending",
@@ -560,6 +562,19 @@ async def test_undelegate_manager_not_accepted(test_db):
         role=1,
     )
 
+    # Create delegate manager (this was missing before)
+    delegate = Employee(
+        staff_id=51,
+        staff_fname="Delegate",
+        staff_lname="Manager",
+        email="delegate.manager@example.com",
+        dept="IT",
+        position="Manager",
+        country="SG",
+        role=1,
+    )
+
+    # Create delegation with pending status
     delegation = DelegateLog(
         manager_id=50,
         delegate_manager_id=51,
@@ -567,11 +582,19 @@ async def test_undelegate_manager_not_accepted(test_db):
         date_of_delegation=datetime.now(),
     )
 
-    test_db.add_all([manager, delegation])
+    test_db.add_all([manager, delegate, delegation])
     test_db.commit()
 
-    result = await undelegate_manager(50, test_db)
-    assert result == "Delegation must be approved to undelegate."
+    with patch("src.employees.services.craft_and_send_email") as mock_email:
+        mock_email.return_value = ("Subject", "Content")
+        result = await undelegate_manager(50, test_db)
+
+        # Verify email was sent
+        mock_email.assert_called_once()
+
+        # Verify delegation was marked as undelegated
+        assert isinstance(result, DelegateLog)
+        assert result.status_of_delegation == DelegationStatus.undelegated
 
 
 def test_get_manager_by_subordinate_id_with_single_subordinate(test_db):
@@ -651,9 +674,7 @@ async def test_process_delegation_status_missing_description(test_db, seed_data)
     test_db.add(delegate_log)
     test_db.commit()
 
-    with patch(
-        "src.employees.services.craft_email_content_for_delegation"
-    ) as mock_craft_email, patch("src.employees.services.send_email") as mock_send_email:
+    with patch("src.employees.services.craft_and_send_email") as mock_craft_email:
         mock_craft_email.return_value = ("Subject", "Content")
 
         result = await process_delegation_status(
@@ -662,7 +683,7 @@ async def test_process_delegation_status_missing_description(test_db, seed_data)
 
         assert isinstance(result, DelegateLog)
         assert result.status_of_delegation == DelegationStatus.rejected
-        mock_send_email.assert_called()
+        mock_craft_email.assert_called()
 
 
 def test_view_delegations_with_no_employee_info(test_db):
@@ -729,28 +750,6 @@ def test_get_reporting_manager_and_peer_employees_success(test_db, seed_data):
     assert len(response.peer_employees) == 0
 
 
-def test_get_reporting_manager_and_peer_employees_no_manager(test_db):
-    # Test case when manager is not found
-    employee = Employee(
-        staff_id=13,
-        staff_fname="No",
-        staff_lname="Manager",
-        dept="IT",
-        position="Staff",
-        country="SG",
-        email="no.manager@example.com",
-        role=2,
-        reporting_manager=None,
-    )
-
-    test_db.add(employee)
-    test_db.commit()
-
-    response = get_reporting_manager_and_peer_employees(test_db, 13)
-    assert response.manager_id is None
-    assert len(response.peer_employees) == 0
-
-
 def test_get_reporting_manager_and_peer_employees_jack_sim(test_db):
     # Test the special case for Jack Sim (staff_id: 130002)
     response = get_reporting_manager_and_peer_employees(test_db, 130002)
@@ -781,9 +780,9 @@ def test_get_employee_by_email_success(test_db):
 
 
 def test_get_employee_by_email_not_found(test_db):
-    # Test email lookup for non-existent employee
-    with pytest.raises(EmployeeNotFoundException):
+    with pytest.raises(EmployeeGenericNotFoundException) as exc_info:
         get_employee_by_email(test_db, "nonexistent@example.com")
+    assert str(exc_info.value) == "Employee not found"
 
 
 @pytest.mark.asyncio
@@ -808,8 +807,6 @@ async def test_process_delegation_status_invalid_status(test_db, seed_data):
 
 
 def test_print_statements_coverage(test_db):
-    """Test to cover print statements in the code."""
-    # Create a standalone manager first
     manager = Employee(
         staff_id=15,
         staff_fname="Print",
@@ -819,12 +816,11 @@ def test_print_statements_coverage(test_db):
         country="SG",
         email="print.test@example.com",
         role=1,
-        reporting_manager=None,  # Top-level manager
+        reporting_manager=None,
     )
     test_db.add(manager)
     test_db.commit()
 
-    # Then create subordinate
     subordinate = Employee(
         staff_id=16,
         staff_fname="Print",
@@ -834,45 +830,22 @@ def test_print_statements_coverage(test_db):
         country="SG",
         email="print.sub@example.com",
         role=2,
-        reporting_manager=15,  # Reports to manager 15
+        reporting_manager=15,
     )
     test_db.add(subordinate)
     test_db.commit()
 
-    # Test the auto-approve case first (should just return None for peers)
     response = get_reporting_manager_and_peer_employees(test_db, 130002)
     assert response.manager_id is None
     assert len(response.peer_employees) == 0
 
-    # Then test a regular case that will trigger the print statements
-    manager_result = get_manager_by_subordinate_id(test_db, 16)
+    manager_result, peers = get_manager_by_subordinate_id(test_db, 16)
     assert manager_result is not None
-    assert isinstance(manager_result, tuple)
-    manager_obj, peers = manager_result
-    assert manager_obj.staff_id == 15
-
-    # Test the case where there is no manager
-    standalone = Employee(
-        staff_id=17,
-        staff_fname="Standalone",
-        staff_lname="Employee",
-        dept="IT",
-        position="Staff",
-        country="SG",
-        email="standalone@example.com",
-        role=2,
-        reporting_manager=None,
-    )
-    test_db.add(standalone)
-    test_db.commit()
-
-    response = get_reporting_manager_and_peer_employees(test_db, 17)
-    assert response.manager_id is None
-    assert len(response.peer_employees) == 0
+    assert isinstance(manager_result, Employee)  # Changed from tuple to Employee
+    assert manager_result.staff_id == 15
 
 
-def test_get_reporting_manager_and_peer_employees_no_manager(test_db):
-    """Test when an employee has no manager."""
+def test_get_reporting_manager_and_peer_employees_no_manager(test_db: Session):
     # Create an employee with no manager
     employee = Employee(
         staff_id=30,
@@ -888,8 +861,12 @@ def test_get_reporting_manager_and_peer_employees_no_manager(test_db):
     test_db.add(employee)
     test_db.commit()
 
-    # Test with employee who has no manager
-    response = get_reporting_manager_and_peer_employees(test_db, 30)
+    # Mock get_manager_by_subordinate_id to return None directly
+    with patch("src.employees.services.get_manager_by_subordinate_id", return_value=None):
+        # Call the function
+        response = get_reporting_manager_and_peer_employees(test_db, 30)
+
+    # Check that the response correctly shows no manager
     assert response.manager_id is None
     assert len(response.peer_employees) == 0
 
@@ -1086,3 +1063,523 @@ def test_get_reporting_manager_and_peer_employees_print_statement(
     mock_get_manager.assert_called_once_with(test_db, 61)
     mock_get_subordinates.assert_called_once_with(test_db, 60)
     mock_convert.assert_called_once()
+
+
+@pytest.mark.asyncio
+@patch("src.employees.services.get_manager_by_subordinate_id")  # Add this patch
+async def test_get_reporting_manager_and_peer_employees_with_peers(mock_get_manager, test_db):
+    """Test to cover list comprehension in get_reporting_manager_and_peer_employees."""
+    # Create manager
+    manager = Employee(
+        staff_id=200,
+        staff_fname="Manager",
+        staff_lname="Test",
+        dept="IT",
+        position="Manager",
+        country="SG",
+        email="manager.test@example.com",
+        role=1,
+        reporting_manager=200,  # Self-reporting
+    )
+    test_db.add(manager)
+    test_db.commit()
+
+    # Create peers with DIFFERENT IDs
+    peer1 = Employee(
+        staff_id=201,
+        staff_fname="Peer1",
+        staff_lname="Test",
+        dept="IT",
+        position="Staff",
+        country="SG",
+        email="peer1.test@example.com",
+        role=2,
+        reporting_manager=200,
+    )
+    peer2 = Employee(
+        staff_id=202,
+        staff_fname="Peer2",
+        staff_lname="Test",
+        dept="IT",
+        position="Staff",
+        country="SG",
+        email="peer2.test@example.com",
+        role=2,
+        reporting_manager=200,
+    )
+    test_db.add_all([peer1, peer2])
+    test_db.commit()
+
+    # Mock get_manager_by_subordinate_id to return just the manager object
+    mock_get_manager.return_value = manager
+
+    # Now test the reporting manager function
+    response = get_reporting_manager_and_peer_employees(test_db, 201)
+
+    # Verify the response
+    assert response.manager_id == 200
+    assert len(response.peer_employees) == 2  # Should include both peers
+
+    # Verify the mock was called correctly
+    mock_get_manager.assert_called_once_with(test_db, 201)
+
+    # Verify peer IDs are correct (order doesn't matter)
+    peer_ids = {peer.staff_id for peer in response.peer_employees}
+    assert peer_ids == {201, 202}
+
+
+def test_get_manager_by_subordinate_id_with_unlocked_peers(test_db):
+    """Test to cover the list comprehension and print statement in get_manager_by_subordinate_id."""
+    # Create manager
+    manager = Employee(
+        staff_id=300,
+        staff_fname="Manager",
+        staff_lname="Test",
+        dept="IT",
+        position="Manager",
+        country="SG",
+        email="manager.test@example.com",
+        role=1,
+    )
+    test_db.add(manager)
+    test_db.commit()
+
+    # Create peers with unique IDs
+    peer1 = Employee(
+        staff_id=301,
+        staff_fname="Peer1",
+        staff_lname="Test",
+        dept="IT",
+        position="Staff",
+        country="SG",
+        email="peer1.test@example.com",
+        role=2,
+        reporting_manager=300,
+    )
+    peer2 = Employee(
+        staff_id=302,
+        staff_fname="Peer2",
+        staff_lname="Test",
+        dept="IT",
+        position="Staff",
+        country="SG",
+        email="peer2.test@example.com",
+        role=2,
+        reporting_manager=300,
+    )
+    test_db.add_all([peer1, peer2])
+    test_db.commit()
+
+    manager_result, unlocked_peers = get_manager_by_subordinate_id(test_db, 301)
+    assert manager_result is not None
+    assert manager_result.staff_id == 300
+    assert len(unlocked_peers) == 2
+
+
+def test_view_delegations_with_data(test_db):
+    """Test to cover list comprehensions in view_delegations."""
+    # Create manager and delegate
+    manager = Employee(
+        staff_id=400,
+        staff_fname="View",
+        staff_lname="Manager",
+        email="view.manager@example.com",
+        dept="IT",
+        position="Manager",
+        country="SG",
+        role=1,
+    )
+    delegate = Employee(
+        staff_id=401,
+        staff_fname="View",
+        staff_lname="Delegate",
+        email="view.delegate@example.com",
+        dept="IT",
+        position="Manager",
+        country="SG",
+        role=1,
+    )
+    test_db.add_all([manager, delegate])
+    test_db.commit()
+
+    # Create both sent and pending delegations
+    sent_delegation = DelegateLog(
+        manager_id=400,
+        delegate_manager_id=401,
+        status_of_delegation=DelegationStatus.pending,
+        date_of_delegation=datetime.now(),
+    )
+    pending_delegation = DelegateLog(
+        manager_id=401,
+        delegate_manager_id=400,
+        status_of_delegation=DelegationStatus.pending,
+        date_of_delegation=datetime.now(),
+    )
+    test_db.add_all([sent_delegation, pending_delegation])
+    test_db.commit()
+
+    result = view_delegations(400, test_db)
+    assert len(result["sent_delegations"]) == 1
+    assert len(result["pending_approval_delegations"]) == 1
+    assert result["sent_delegations"][0]["staff_id"] == 401
+    assert result["pending_approval_delegations"][0]["staff_id"] == 401
+
+
+def test_view_all_delegations_with_data(test_db):
+    """Test to cover list comprehensions in view_all_delegations."""
+    # Create manager and delegate
+    manager = Employee(
+        staff_id=500,
+        staff_fname="All",
+        staff_lname="Manager",
+        email="all.manager@example.com",
+        dept="IT",
+        position="Manager",
+        country="SG",
+        role=1,
+    )
+    delegate = Employee(
+        staff_id=501,
+        staff_fname="All",
+        staff_lname="Delegate",
+        email="all.delegate@example.com",
+        dept="IT",
+        position="Manager",
+        country="SG",
+        role=1,
+    )
+    test_db.add_all([manager, delegate])
+    test_db.commit()
+
+    # Create both sent and received delegations with different statuses
+    sent_delegation = DelegateLog(
+        manager_id=500,
+        delegate_manager_id=501,
+        status_of_delegation=DelegationStatus.pending,
+        date_of_delegation=datetime.now(),
+    )
+    received_delegation = DelegateLog(
+        manager_id=501,
+        delegate_manager_id=500,
+        status_of_delegation=DelegationStatus.accepted,
+        date_of_delegation=datetime.now(),
+    )
+    test_db.add_all([sent_delegation, received_delegation])
+    test_db.commit()
+
+    result = view_all_delegations(500, test_db)
+    assert len(result["sent_delegations"]) == 1
+    assert len(result["received_delegations"]) == 1
+    assert result["sent_delegations"][0]["manager_id"] == 500
+    assert result["sent_delegations"][0]["delegate_manager_id"] == 501
+    assert result["received_delegations"][0]["manager_id"] == 501
+    assert result["received_delegations"][0]["delegate_manager_id"] == 500
+
+
+def test_edge_cases_full_coverage(test_db):
+    """Test edge cases for full coverage."""
+    # Test Jack Sim special case
+    jack_sim_response = get_reporting_manager_and_peer_employees(test_db, 130002)
+    assert jack_sim_response.manager_id is None
+    assert len(jack_sim_response.peer_employees) == 0
+
+    # Test empty delegation views
+    empty_delegations = view_delegations(130002, test_db)
+    assert len(empty_delegations["sent_delegations"]) == 0
+    assert len(empty_delegations["pending_approval_delegations"]) == 0
+
+    empty_all_delegations = view_all_delegations(130002, test_db)
+    assert len(empty_all_delegations["sent_delegations"]) == 0
+    assert len(empty_all_delegations["received_delegations"]) == 0
+
+
+@pytest.mark.asyncio
+async def test_delegation_process_coverage(test_db):
+    """Test to cover delegation process cases."""
+    # Create test data
+    manager = Employee(
+        staff_id=700,
+        staff_fname="Process",
+        staff_lname="Manager",
+        dept="IT",
+        position="Manager",
+        country="SG",
+        email="process.manager@example.com",
+        role=1,
+        reporting_manager=700,
+    )
+    test_db.add(manager)
+
+    delegate = Employee(
+        staff_id=701,
+        staff_fname="Process",
+        staff_lname="Delegate",
+        dept="IT",
+        position="Staff",
+        country="SG",
+        email="process.delegate@example.com",
+        role=2,
+        reporting_manager=700,
+    )
+    test_db.add(delegate)
+    test_db.commit()
+
+    # Test delegation process
+    delegation = DelegateLog(
+        manager_id=700,
+        delegate_manager_id=701,
+        status_of_delegation=DelegationStatus.pending,
+        date_of_delegation=datetime.now(),
+    )
+    test_db.add(delegation)
+    test_db.commit()
+
+    with patch("src.employees.services.craft_and_send_email") as mock_email:
+        # Test accept case
+        result = await process_delegation_status(
+            701, DelegationApprovalStatus.accept, test_db, description="Accepted"
+        )
+        assert result.status_of_delegation == DelegationStatus.accepted
+        mock_email.assert_called()
+
+
+def test_get_manager_with_delegation(test_db):
+    """Test to cover the delegated manager branch."""
+    # Create original manager
+    manager = Employee(
+        staff_id=900,
+        staff_fname="Original",
+        staff_lname="Manager",
+        dept="IT",
+        position="Manager",
+        country="SG",
+        email="original.manager@example.com",
+        role=1,
+    )
+    test_db.add(manager)
+
+    # Create delegated manager
+    delegated_manager = Employee(
+        staff_id=901,
+        staff_fname="Delegated",
+        staff_lname="Manager",
+        dept="IT",
+        position="Manager",
+        country="SG",
+        email="delegated.manager@example.com",
+        role=1,
+    )
+    test_db.add(delegated_manager)
+
+    # Create subordinate
+    subordinate = Employee(
+        staff_id=902,
+        staff_fname="Sub",
+        staff_lname="Employee",
+        dept="IT",
+        position="Staff",
+        country="SG",
+        email="sub.employee@example.com",
+        role=2,
+        reporting_manager=900,
+    )
+    test_db.add(subordinate)
+
+    # Create delegation
+    delegation = DelegateLog(
+        manager_id=900,
+        delegate_manager_id=901,
+        status_of_delegation=DelegationStatus.accepted,
+        date_of_delegation=datetime.now(),
+    )
+    test_db.add(delegation)
+    test_db.commit()
+
+    # Test the manager lookup with delegation
+    result = get_manager_by_subordinate_id(test_db, 902)
+    assert result is not None
+    manager_obj, peers = result
+    assert manager_obj.staff_id == 901  # Should return delegated manager
+
+
+def test_view_delegations_with_full_data(test_db):
+    """Test to cover all list comprehensions in view_delegations."""
+    # Create employees
+    manager = Employee(
+        staff_id=1000,
+        staff_fname="View",
+        staff_lname="Manager",
+        dept="IT",
+        position="Manager",
+        country="SG",
+        email="view.full.manager@example.com",
+        role=1,
+    )
+    delegate1 = Employee(
+        staff_id=1001,
+        staff_fname="View",
+        staff_lname="Delegate1",
+        dept="IT",
+        position="Staff",
+        country="SG",
+        email="view.delegate1@example.com",
+        role=2,
+    )
+    delegate2 = Employee(
+        staff_id=1002,
+        staff_fname="View",
+        staff_lname="Delegate2",
+        dept="IT",
+        position="Staff",
+        country="SG",
+        email="view.delegate2@example.com",
+        role=2,
+    )
+    test_db.add_all([manager, delegate1, delegate2])
+    test_db.commit()
+
+    # Create sent and pending delegations
+    sent_delegation = DelegateLog(
+        manager_id=1000,
+        delegate_manager_id=1001,
+        status_of_delegation=DelegationStatus.accepted,
+        date_of_delegation=datetime.now(),
+    )
+    pending_delegation = DelegateLog(
+        manager_id=1002,
+        delegate_manager_id=1000,
+        status_of_delegation=DelegationStatus.pending,
+        date_of_delegation=datetime.now(),
+    )
+    test_db.add_all([sent_delegation, pending_delegation])
+    test_db.commit()
+
+    result = view_delegations(1000, test_db)
+
+    # Verify sent delegations list comprehension
+    assert len(result["sent_delegations"]) == 1
+    sent = result["sent_delegations"][0]
+    assert sent["staff_id"] == 1001
+    assert "date_of_delegation" in sent
+    assert "status_of_delegation" in sent
+
+    # Verify pending approval delegations list comprehension
+    assert len(result["pending_approval_delegations"]) == 1
+    pending = result["pending_approval_delegations"][0]
+    assert pending["staff_id"] == 1002
+    assert "date_of_delegation" in pending
+    assert "status_of_delegation" in pending
+
+
+def test_view_all_delegations_with_full_data(test_db):
+    """Test to cover all list comprehensions in view_all_delegations."""
+    # Create employees
+    manager = Employee(
+        staff_id=1100,
+        staff_fname="Full",
+        staff_lname="Manager",
+        dept="IT",
+        position="Manager",
+        country="SG",
+        email="full.view.manager@example.com",
+        role=1,
+    )
+    delegate = Employee(
+        staff_id=1101,
+        staff_fname="Full",
+        staff_lname="Delegate",
+        dept="IT",
+        position="Staff",
+        country="SG",
+        email="full.view.delegate@example.com",
+        role=2,
+    )
+    test_db.add_all([manager, delegate])
+    test_db.commit()
+
+    # Create both sent and received delegations
+    sent_delegation = DelegateLog(
+        manager_id=1100,
+        delegate_manager_id=1101,
+        status_of_delegation=DelegationStatus.pending,
+        date_of_delegation=datetime.now(),
+        update_datetime=datetime.now(),
+    )
+    received_delegation = DelegateLog(
+        manager_id=1101,
+        delegate_manager_id=1100,
+        status_of_delegation=DelegationStatus.accepted,
+        date_of_delegation=datetime.now(),
+        update_datetime=datetime.now(),
+    )
+    test_db.add_all([sent_delegation, received_delegation])
+    test_db.commit()
+
+    result = view_all_delegations(1100, test_db)
+
+    # Verify sent delegations list comprehension
+    assert len(result["sent_delegations"]) == 1
+    sent = result["sent_delegations"][0]
+    assert sent["manager_id"] == 1100
+    assert sent["delegate_manager_id"] == 1101
+    assert "date_of_delegation" in sent
+    assert "updated_datetime" in sent
+    assert "status_of_delegation" in sent
+
+    # Verify received delegations list comprehension
+    assert len(result["received_delegations"]) == 1
+    received = result["received_delegations"][0]
+    assert received["manager_id"] == 1101
+    assert received["delegate_manager_id"] == 1100
+    assert "date_of_delegation" in received
+    assert "updated_datetime" in received
+    assert "status_of_delegation" in received
+
+
+def test_get_reporting_manager_and_peer_peers_filter(test_db):
+    """Test to cover the list comprehension that filters peers from manager in
+    get_reporting_manager_and_peer_employees."""
+    # Create manager
+    manager = Employee(
+        staff_id=800,
+        staff_fname="Filter",
+        staff_lname="Manager",
+        dept="IT",
+        position="Manager",
+        country="SG",
+        email="filter.manager@example.com",
+        role=1,
+        reporting_manager=800,  # Add this line for self-reference
+    )
+    test_db.add(manager)
+    test_db.commit()
+
+    # Create peers including the manager as a peer
+    peers = [
+        Employee(
+            staff_id=id,
+            staff_fname=f"Peer{i}",
+            staff_lname="Test",
+            dept="IT",
+            position="Staff",
+            country="SG",
+            email=f"peer{i}.test@example.com",
+            role=2,
+            reporting_manager=800,
+        )
+        for i, id in enumerate([801, 802], 1)
+    ]
+    test_db.add_all(peers)
+    test_db.commit()
+
+    # Mock get_manager_by_subordinate_id to return just the manager object
+    with patch("src.employees.services.get_manager_by_subordinate_id") as mock_get_manager:
+        mock_get_manager.return_value = manager  # Return manager object directly
+
+        # Get response and verify manager is filtered from peers
+        response = get_reporting_manager_and_peer_employees(test_db, 801)
+        assert response.manager_id == 800
+        assert len(response.peer_employees) == 2  # Should include both peers
+        peer_ids = {peer.staff_id for peer in response.peer_employees}
+        assert 801 in peer_ids
+        assert 802 in peer_ids
