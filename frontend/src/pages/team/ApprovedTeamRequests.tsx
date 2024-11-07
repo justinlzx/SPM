@@ -79,7 +79,7 @@ export const ApprovedRequests = () => {
   const [filters, setFilters] = useState<TFilters>({
     startDate: null,
     endDate: null,
-    status: [],
+    workStatus: [],
     searchQuery: "",
   });
 
@@ -123,7 +123,7 @@ export const ApprovedRequests = () => {
               current_approval_status: "approved",
               start_date: filters.startDate?.toISOString().split("T")[0],
               end_date: filters.endDate?.toISOString().split("T")[0],
-              status: filters.status.join(","),
+              status: filters.workStatus.join(","),
               search_query: filters.searchQuery,
               items_per_page: rowsPerPage,
               page_num: page + 1,

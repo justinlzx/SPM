@@ -7,6 +7,7 @@ import { WFHRequestTable } from "../../components/WFHRequestTable";
 import { ApprovalStatus } from "../../types/status";
 import { Filters, TFilters } from "../../common/Filters";
 import { TWFHRequest } from "../../types/requests";
+import qs from "qs";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 
@@ -19,7 +20,7 @@ export const MyWfhSchedulePage = () => {
   const [filters, setFilters] = useState<TFilters>({
     startDate: null,
     endDate: null,
-    status: [],
+    workStatus: [],
     searchQuery: "",
   });
   const [openSnackbar, setOpenSnackbar] = useState(false);
@@ -42,11 +43,12 @@ export const MyWfhSchedulePage = () => {
         `${BACKEND_URL}/arrangements/personal/${userId}`,
         {
           params: {
-            current_approval_status: filters.status.join(","),
+            current_approval_status: filters.workStatus || [],
             start_date: filters.startDate?.toISOString().split("T")[0],
             end_date: filters.endDate?.toISOString().split("T")[0],
-            status: filters.status.join(","),
           },
+          paramsSerializer: (params) =>
+            qs.stringify(params, { arrayFormat: "repeat" }),
         }
       );
 
@@ -78,7 +80,7 @@ export const MyWfhSchedulePage = () => {
     setFilters({
       startDate: null,
       endDate: null,
-      status: [],
+      workStatus: [],
       searchQuery: "",
     });
   };

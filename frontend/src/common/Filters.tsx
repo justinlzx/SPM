@@ -20,7 +20,7 @@ import { ApprovalStatus } from "../types/status";
 export type TFilters = {
   startDate: Date | null;
   endDate: Date | null;
-  status: ApprovalStatus[];
+  workStatus: ApprovalStatus[];
   searchQuery: string;
 };
 interface FiltersProps {
@@ -28,7 +28,7 @@ interface FiltersProps {
   onClearFilters: ({
     startDate,
     endDate,
-    status,
+    workStatus,
     searchQuery,
   }: TFilters) => void;
 }
@@ -39,7 +39,7 @@ export const Filters: React.FC<FiltersProps> = ({
 }) => {
   const [startDate, setStartDate] = useState<Date | null>(null);
   const [endDate, setEndDate] = useState<Date | null>(null);
-  const [status, setStatus] = useState<ApprovalStatus[]>([]);
+  const [workStatus, setWorkStatus] = useState<ApprovalStatus[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
 
   // Update filters dynamically on search query change
@@ -47,7 +47,7 @@ export const Filters: React.FC<FiltersProps> = ({
     onApplyFilters({
       startDate,
       endDate,
-      status,
+      workStatus,
       searchQuery,
     });
   }, [searchQuery]); // Trigger filtering when searchQuery changes
@@ -56,7 +56,7 @@ export const Filters: React.FC<FiltersProps> = ({
     onApplyFilters({
       startDate,
       endDate,
-      status,
+      workStatus,
       searchQuery,
     });
   };
@@ -64,12 +64,12 @@ export const Filters: React.FC<FiltersProps> = ({
   const handleClearFilters = () => {
     setStartDate(null);
     setEndDate(null);
-    setStatus([]);
+    setWorkStatus([]);
     setSearchQuery("");
     onClearFilters({
       startDate,
       endDate,
-      status,
+      workStatus,
       searchQuery,
     }); // Call parent-provided clear function
   };
@@ -152,8 +152,8 @@ export const Filters: React.FC<FiltersProps> = ({
           <InputLabel>Status</InputLabel>
           <Select
             multiple
-            value={status}
-            onChange={(e) => setStatus(e.target.value as ApprovalStatus[])}
+            value={workStatus}
+            onChange={(e) => setWorkStatus(e.target.value as ApprovalStatus[])}
             input={<OutlinedInput label="Status" />}
             renderValue={(selected) => selected.join(", ")}
           >

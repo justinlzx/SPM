@@ -82,16 +82,20 @@ def get_arrangement_by_id(arrangement_id: int, db: Session = Depends(get_db)) ->
 )
 def get_personal_arrangements(
     staff_id: int,
-    current_approval_status: Optional[List[ApprovalStatus]] = Query(None),
+    request_filters: schemas.ArrangementFilters = Depends(schemas.ArrangementFilters.as_query),
     db: Session = Depends(get_db),
 ) -> JSendResponse:
     try:
+
+        # Convert to dataclasses
+        filters = dc.ArrangementFilters.from_dict(request_filters.model_dump())
+
         # Get arrangements
         logger.info(f"Route: Fetching personal arrangements for staff ID: {staff_id}")
         data = services.get_personal_arrangements(
             db=db,
             staff_id=staff_id,
-            current_approval_status=current_approval_status,
+            filters=filters,
         )
         logger.info(f"Route: Found {len(data)} arrangements for staff ID {staff_id}")
 
@@ -173,7 +177,7 @@ def get_team_arrangements(
         logger.info(
             f"Route: Found {pagination_meta.total_count} {'dates' if filters.group_by_date else 'arrangements'}"
         )
-        
+
         # Convert to Pydantic model
         response_data = format_arrangements_response(data)
         response_pagination_meta = PaginationMeta.model_validate(pagination_meta)

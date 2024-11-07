@@ -57,13 +57,10 @@ def get_all_arrangements(db: Session, filters: ArrangementFilters) -> List[Arran
 
 
 def get_personal_arrangements(
-    db: Session, staff_id: int, current_approval_status: Optional[List[ApprovalStatus]] = None
+    db: Session, staff_id: int, filters: ArrangementFilters
 ) -> List[ArrangementResponse]:
-    filters = ArrangementFilters(
-        current_approval_status=current_approval_status, staff_ids=staff_id
-    )
 
-    print(filters)
+    filters.staff_ids = [staff_id]
     logger.info(f"Service: Fetching personal arrangements for staff ID {staff_id}")
     arrangements = crud.get_arrangements(db, filters=filters)
     logger.info(f"Service: Found {len(arrangements)} arrangements for staff ID {staff_id}")
