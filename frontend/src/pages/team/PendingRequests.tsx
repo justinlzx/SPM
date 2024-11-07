@@ -26,7 +26,7 @@ import {
 } from "@mui/material";
 import CheckIcon from "@mui/icons-material/Check";
 import CloseIcon from "@mui/icons-material/Close";
-import { Filters } from "../../common/Filters";
+import { Filters, TFilters } from "../../common/Filters";
 import { fetchEmployeeByStaffId } from "../../hooks/employee/employee.utils";
 import {
   ApprovalStatus,
@@ -37,6 +37,8 @@ import { UserContext } from "../../context/UserContextProvider";
 import { SnackBarComponent, AlertStatus } from "../../common/SnackBar";
 import { LoadingSpinner } from "../../common/LoadingSpinner";
 import { DelegationStatus } from "../../types/delegation";
+import qs from "qs";
+import AllRequests from "./AllRequests";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 
@@ -60,11 +62,12 @@ export const PendingRequests = () => {
   const userId = user?.id;
 
   const [actionRequests, setActionRequests] = useState<TWFHRequest[]>([]);
-  const [filteredRequests, setFilteredRequests] = useState<TWFHRequest[]>([]);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [isDelegateManager, setIsDelegateManager] = useState(false);
-  const [delegatorManagerId, setDelegatorManagerId] = useState<number | null>(null);
+  const [delegatorManagerId, setDelegatorManagerId] = useState<number | null>(
+    null
+  );
 
   const [showSnackbar, setShowSnackbar] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState("");
@@ -73,7 +76,9 @@ export const PendingRequests = () => {
   const [filters, setFilters] = useState({});
 
   const [rejectModalOpen, setRejectModalOpen] = useState(false);
-  const [selectedArrangementId, setSelectedArrangementId] = useState<number | null>(null);
+  const [selectedArrangementId, setSelectedArrangementId] = useState<
+    number | null
+  >(null);
   const [rejectionReason, setRejectionReason] = useState("");
 
   const [documentDialogOpen, setDocumentDialogOpen] = useState(false);
@@ -82,13 +87,16 @@ export const PendingRequests = () => {
   const fetchDelegationStatus = async () => {
     if (!user || !userId) return;
     try {
-      const response = await axios.get(`${BACKEND_URL}/employees/manager/viewdelegations/${userId}`, {
-        params: {
-          status: "accepted",
-        },
-      });
-
-      const delegationRequests = response.data.pending_approval_delegations || [];
+      const response = await axios.get(
+        `${BACKEND_URL}/employees/manager/viewdelegations/${userId}`,
+        {
+          params: {
+            status: "accepted",
+          },
+        }
+      );
+      const delegationRequests =
+        response.data.pending_approval_delegations || [];
       const hasAcceptedDelegations = delegationRequests.some(
         (delegation: any) => delegation.status_of_delegation === "accepted"
       );
@@ -112,53 +120,54 @@ export const PendingRequests = () => {
     try {
       if (delegatorManagerId === userId && isDelegateManager) {
         setActionRequests([]);
-        setFilteredRequests([]);
+        // setFilteredRequests([]);
         setLoading(false);
         return;
       }
 
       let allRequests: TWFHRequest[] = [];
       if (!isDelegateManager || delegatorManagerId !== userId) {
-        const primaryResponse = await axios.get(`${BACKEND_URL}/arrangements/subordinates/${userId}`, {
-          params: { current_approval_status: ["pending approval", "pending withdrawal"] },
-        });
-        const primaryRequests = primaryResponse.data.data.flatMap(
-          (dateEntry: { pending_arrangements: TWFHRequest[] }) => dateEntry.pending_arrangements
+        const primaryResponse = await axios.get(
+          `${BACKEND_URL}/arrangements/subordinates/${userId}`,
+          {
+            params: {
+              current_approval_status: [
+                "pending approval",
+                "pending withdrawal",
+              ],
+            },
+            paramsSerializer: (params) =>
+              qs.stringify(params, { arrayFormat: "repeat" }),
+          }
         );
+        const primaryRequests = primaryResponse.data.data;
+
         allRequests = [...primaryRequests];
-        console.log(allRequests)
       }
 
-      if (isDelegateManager && delegatorManagerId && delegatorManagerId !== userId) {
-        const delegatedResponse = await axios.get(`${BACKEND_URL}/arrangements/subordinates/${delegatorManagerId}`, {
-          params: { current_approval_status: ["pending approval", "pending withdrawal"] },
-        });
-        const delegatedRequests = delegatedResponse.data.data.flatMap(
-          (dateEntry: { pending_arrangements: TWFHRequest[] }) => dateEntry.pending_arrangements
+      if (
+        isDelegateManager &&
+        delegatorManagerId &&
+        delegatorManagerId !== userId
+      ) {
+        const delegatedResponse = await axios.get(
+          `${BACKEND_URL}/arrangements/subordinates/${delegatorManagerId}`,
+          {
+            params: {
+              current_approval_status: [
+                "pending approval",
+                "pending withdrawal",
+              ],
+            },
+            paramsSerializer: (params) =>
+              qs.stringify(params, { arrayFormat: "repeat" }),
+          }
         );
-        allRequests = [...allRequests, ...delegatedRequests];
+        const delegatedRequests = delegatedResponse.data.data;
+        allRequests = [allRequests, ...delegatedRequests];
       }
 
-      const requests = allRequests.filter((request: TWFHRequest) => {
-        return (
-          request.current_approval_status === ApprovalStatus.PendingApproval ||
-          request.current_approval_status === ApprovalStatus.PendingWithdrawal
-        );
-      });
-      console.log(requests)
-
-      const requestsWithNames = await Promise.all(
-        requests.map(async (request: TWFHRequest) => {
-          const employee = await fetchEmployeeByStaffId(request.requester_staff_id);
-          return {
-            ...request,
-            requester_name: employee ? `${employee.staff_fname} ${employee.staff_lname}` : "N/A",
-          };
-        })
-      );
-
-      setActionRequests(requestsWithNames);
-      setFilteredRequests(requestsWithNames);
+      setActionRequests(allRequests);
     } catch (error) {
       console.error("Failed to fetch requests:", error);
       setAlertStatus(AlertStatus.Error);
@@ -168,6 +177,8 @@ export const PendingRequests = () => {
       setLoading(false);
     }
   };
+
+  console.log(actionRequests);
 
   useEffect(() => {
     const initializeData = async () => {
@@ -181,7 +192,6 @@ export const PendingRequests = () => {
     fetchPendingRequests();
   };
 
-
   const handleRequestAction = async (
     action: Action,
     arrangement_id: number,
@@ -194,7 +204,12 @@ export const PendingRequests = () => {
         : STATUS_ACTION_MAPPING[current_approval_status]?.[action];
 
     if (!nextStatus) {
-      console.warn(`Action '${action}' is not allowed for status '${current_approval_status}'`);
+      console.warn(
+        `Action '${action}' is not allowed for status '${current_approval_status}'`
+      );
+      console.warn(
+        `Action '${action}' is not allowed for status '${current_approval_status}'`
+      );
       return;
     }
 
@@ -206,12 +221,18 @@ export const PendingRequests = () => {
       formData.append("approving_officer", userId?.toString() || "");
       formData.append("current_approval_status", nextStatus);
 
-      await axios.put(`${BACKEND_URL}/arrangements/${arrangement_id}/status`, formData, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
+      await axios.put(
+        `${BACKEND_URL}/arrangements/${arrangement_id}/status`,
+        formData,
+        {
+          headers: { "Content-Type": "multipart/form-data" },
+        }
+      );
 
       setAlertStatus(AlertStatus.Success);
-      setSnackbarMessage(`Request '${action}' successfully updated to status '${nextStatus}'`);
+      setSnackbarMessage(
+        `Request '${action}' successfully updated to status '${nextStatus}'`
+      );
       setShowSnackbar(true);
       refreshData();
     } catch (error) {
@@ -225,7 +246,6 @@ export const PendingRequests = () => {
     }
   };
 
-
   const handleRejectClick = (arrangementId: number) => {
     setSelectedArrangementId(arrangementId);
     setRejectModalOpen(true);
@@ -237,7 +257,8 @@ export const PendingRequests = () => {
         Action.Reject,
         selectedArrangementId,
         rejectionReason,
-        ApprovalStatus.PendingApproval);
+        ApprovalStatus.PendingApproval
+      );
       setRejectionReason("");
     }
   };
@@ -247,26 +268,8 @@ export const PendingRequests = () => {
     setRejectionReason("");
   };
 
-  const handleApplyFilters = (newFilters: any) => {
+  const handleFilterChange = (newFilters: TFilters) => {
     setFilters(newFilters);
-    const filtered = actionRequests.filter((request) => {
-      const matchesDate =
-        (!newFilters.startDate || new Date(request.wfh_date) >= newFilters.startDate) &&
-        (!newFilters.endDate || new Date(request.wfh_date) <= newFilters.endDate);
-      const matchesStatus =
-        [ApprovalStatus.PendingApproval, ApprovalStatus.PendingWithdrawal].includes(request.current_approval_status);
-      const searchQuery = newFilters.searchQuery?.toLowerCase() || "";
-      const matchesSearchQuery =
-        !searchQuery ||
-        request.reason_description.toLowerCase().includes(searchQuery) ||
-        request.wfh_type.toLowerCase().includes(searchQuery) ||
-        request.wfh_date.includes(searchQuery) ||
-        request.requester_staff_id.toString().includes(searchQuery) ||
-        (request.requester_name && request.requester_name.toLowerCase().includes(searchQuery));
-      return matchesDate && matchesStatus && matchesSearchQuery;
-    });
-    setFilteredRequests(filtered);
-    console.log("Filtered Requests:", filtered);
   };
 
   const handleViewDocuments = (docs: string[]) => {
@@ -289,13 +292,18 @@ export const PendingRequests = () => {
 
   return (
     <>
-
-      <Filters onApplyFilters={handleApplyFilters} onClearFilters={() => setFilteredRequests(actionRequests)} />
+      <Filters
+        onApplyFilters={(newFilters) => handleFilterChange(newFilters)}
+        onClearFilters={(newFilters) => handleFilterChange(newFilters)}
+      />
 
       <Typography variant="h4" gutterBottom align="left" sx={{ marginTop: 4 }}>
         Action Required
       </Typography>
-      <TableContainer component={Paper} sx={{ marginTop: 3, textAlign: "center" }}>
+      <TableContainer
+        component={Paper}
+        sx={{ marginTop: 3, textAlign: "center" }}
+      >
         <Table>
           <TableHead>
             <TableRow>
@@ -304,20 +312,21 @@ export const PendingRequests = () => {
               <TableCell sx={{ fontWeight: "bold" }}>WFH Date</TableCell>
               <TableCell sx={{ fontWeight: "bold" }}>WFH Type</TableCell>
               <TableCell sx={{ fontWeight: "bold" }}>Reason</TableCell>
-              <TableCell sx={{ fontWeight: "bold" }}>Supporting Documents</TableCell>
+              <TableCell sx={{ fontWeight: "bold" }}>
+                Supporting Documents
+              </TableCell>
               <TableCell sx={{ fontWeight: "bold" }}>Action</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
-            {(filteredRequests.length === 0
-            ) ? (
+            {actionRequests.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={7} align="center">
                   No pending requests
                 </TableCell>
               </TableRow>
             ) : (
-              filteredRequests.map((arrangement) => (
+              actionRequests.map((arrangement) => (
                 <ArrangementRow
                   key={arrangement.arrangement_id}
                   arrangement={arrangement}
@@ -326,19 +335,22 @@ export const PendingRequests = () => {
                   handleViewDocuments={handleViewDocuments}
                 />
               ))
-            )}
-          </TableBody>
-        </Table>
-      </TableContainer>
+            )
+            }
+          </TableBody >
+        </Table >
+      </TableContainer >
 
       <TablePagination
         component="div"
         rowsPerPageOptions={[10, 20, 30]}
-        count={filteredRequests.length}
+        count={actionRequests.length}
         rowsPerPage={rowsPerPage}
         page={page}
         onPageChange={(event, newPage) => setPage(newPage)}
-        onRowsPerPageChange={(event) => setRowsPerPage(parseInt(event.target.value, 10))}
+        onRowsPerPageChange={(event) =>
+          setRowsPerPage(parseInt(event.target.value, 10))
+        }
       />
 
       <SnackBarComponent
@@ -390,7 +402,6 @@ export const PendingRequests = () => {
   );
 };
 
-
 const ArrangementRow = ({
   arrangement,
   handleRequestAction,
@@ -415,7 +426,11 @@ const ArrangementRow = ({
     supporting_doc_3,
   } = arrangement;
 
-  const documents = [supporting_doc_1, supporting_doc_2, supporting_doc_3].filter(Boolean) as string[];
+  const documents = [
+    supporting_doc_1,
+    supporting_doc_2,
+    supporting_doc_3,
+  ].filter(Boolean) as string[];
 
   return (
     <TableRow key={arrangement_id}>
@@ -425,7 +440,9 @@ const ArrangementRow = ({
       <TableCell>{wfh_type?.toUpperCase()}</TableCell>
       <TableCell>
         <Tooltip title="Scroll to view more">
-          <Box sx={{ overflowX: "scroll", maxWidth: 200, whiteSpace: "nowrap" }}>
+          <Box
+            sx={{ overflowX: "scroll", maxWidth: 200, whiteSpace: "nowrap" }}
+          >
             {reason_description}
           </Box>
         </Tooltip>
@@ -433,7 +450,9 @@ const ArrangementRow = ({
       <TableCell>
         {documents.length > 0 ? (
           <Button variant="text" onClick={() => handleViewDocuments(documents)}>
-            <Typography sx={{ textDecoration: "underline" }}>View more...</Typography>
+            <Typography sx={{ textDecoration: "underline" }}>
+              View more...
+            </Typography>
           </Button>
         ) : (
           "NA"
@@ -447,7 +466,14 @@ const ArrangementRow = ({
                 color="success"
                 startIcon={<CheckIcon />}
                 data-cy={`approve-button-${arrangement.arrangement_id}`}
-                onClick={() => handleRequestAction(Action.Approve, arrangement_id, reason_description, current_approval_status)}
+                onClick={() =>
+                  handleRequestAction(
+                    Action.Approve,
+                    arrangement_id,
+                    reason_description,
+                    current_approval_status
+                  )
+                }
               >
                 Approve
               </Button>
@@ -468,7 +494,14 @@ const ArrangementRow = ({
                 color="warning" // orange color for "Withdraw"
                 startIcon={<CheckIcon />}
                 data-cy={`withdraw-button-${arrangement.arrangement_id}`}
-                onClick={() => handleRequestAction(Action.Approve, arrangement_id, reason_description, current_approval_status)}
+                onClick={() =>
+                  handleRequestAction(
+                    Action.Approve,
+                    arrangement_id,
+                    reason_description,
+                    current_approval_status
+                  )
+                }
               >
                 Withdraw
               </Button>

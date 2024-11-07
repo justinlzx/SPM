@@ -623,3 +623,6 @@ arrangement_id,update_datetime,requester_staff_id,wfh_date,wfh_type,current_appr
 622,2025-01-14T11:35:05Z,180015,2025-08-19,FULL,PENDING_APPROVAL,180001,,WFH - Moving to a new home or handling logistics related to a recent move.,145,1,None,None,None,None
 623,2025-10-16T02:48:16Z,140878,2025-08-19,AM,APPROVED,140894,,OOO - Celebrating a religious holiday or participating in a faith-based event.,171,1,None,None,None,None
 624,2025-03-20T17:02:11Z,150008,2025-08-19,PM,APPROVED,130002,,"WFH - Taking leave to attend a course, certification, or exam preparation.",197,1,None,None,None,None
+625,2025-01-18T22:43:36Z,160287,2024-07-22,AM,APPROVED,160008,,OOO - Celebrating a religious holiday or participating in a faith-based event.,73,1,None,None,None,None
+626,2025-01-18T22:43:36Z,160287,2024-07-23,AM,APPROVED,160008,,OOO - Celebrating a religious holiday or participating in a faith-based event.,73,1,None,None,None,None
+627,2025-01-18T22:43:36Z,160287,2024-07-24,AM,APPROVED,160008,,OOO - Celebrating a religious holiday or participating in a faith-based event.,73,1,None,None,None,None

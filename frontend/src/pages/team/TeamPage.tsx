@@ -1,6 +1,5 @@
 import { useNavigate } from "react-router-dom";
 import { Container } from "@mui/material";
-import { PendingRequests } from "./PendingRequests";
 import { useContext } from "react";
 import { UserContext } from "../../context/UserContextProvider";
 import { RequestList } from "./RequestList";

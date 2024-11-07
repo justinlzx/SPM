@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Annotated, List, Optional
 
-from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from sqlalchemy.orm import Session
 
 from ..database import get_db
@@ -82,16 +82,20 @@ def get_arrangement_by_id(arrangement_id: int, db: Session = Depends(get_db)) ->
 )
 def get_personal_arrangements(
     staff_id: int,
-    current_approval_status: Optional[List[ApprovalStatus]] = Query(None),
+    request_filters: schemas.ArrangementFilters = Depends(schemas.ArrangementFilters.as_query),
     db: Session = Depends(get_db),
 ) -> JSendResponse:
     try:
+
+        # Convert to dataclasses
+        filters = dc.ArrangementFilters.from_dict(request_filters.model_dump())
+
         # Get arrangements
         logger.info(f"Route: Fetching personal arrangements for staff ID: {staff_id}")
         data = services.get_personal_arrangements(
             db=db,
             staff_id=staff_id,
-            current_approval_status=current_approval_status,
+            filters=filters,
         )
         logger.info(f"Route: Found {len(data)} arrangements for staff ID {staff_id}")
 
@@ -143,6 +147,7 @@ def get_subordinates_arrangements(
             data=response_data,
             pagination_meta=response_pagination_meta,
         )
+
     except ManagerWithIDNotFoundException as e:
         raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
@@ -161,19 +166,23 @@ def get_team_arrangements(
     db: Session = Depends(get_db),
 ) -> JSendResponse:
     try:
+
         # Convert to dataclasses
         filters = dc.ArrangementFilters.from_dict(request_filters.model_dump())
         pagination = dc.PaginationConfig.from_dict(request_pagination.model_dump())
-
+        logger.info(filters)
         # Get arrangements
         logger.info(f"Route: Fetching arrangements for team of staff ID: {staff_id}")
-        data, pagination_meta = services.get_team_arrangements(db, staff_id, filters, pagination)
+        response_data, pagination_meta = services.get_team_arrangements(
+            db, staff_id, filters, pagination
+        )
         logger.info(
             f"Route: Found {pagination_meta.total_count} {'dates' if filters.group_by_date else 'arrangements'}"
         )
 
         # Convert to Pydantic model
-        response_data = format_arrangements_response(data)
+        if len(response_data) > 0:
+            response_data = format_arrangements_response(response_data)
         response_pagination_meta = PaginationMeta.model_validate(pagination_meta)
 
         return JSendResponse(
@@ -181,6 +190,7 @@ def get_team_arrangements(
             data=response_data,
             pagination_meta=response_pagination_meta,
         )
+
     except Exception as e:
         logger.error(f"Error occurred: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))

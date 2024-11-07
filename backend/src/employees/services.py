@@ -3,6 +3,7 @@ from typing import List, Tuple, Union
 
 from sqlalchemy.orm import Session
 
+from ..logger import logger
 from ..notifications.commons.dataclasses import DelegateNotificationConfig
 from ..notifications.email_notifications import craft_and_send_email
 from ..utils import convert_model_to_pydantic_schema
@@ -37,7 +38,7 @@ def get_reporting_manager_and_peer_employees(db: Session, staff_id: int):
         peer_employees, schemas.EmployeeBase
     )
 
-    print(f"Num results: {len(peer_employees)}")
+    logger.info(f"Num results: {len(peer_employees)}")
 
     # Format to response model
     response = schemas.EmployeePeerResponse(
@@ -135,7 +136,7 @@ def get_manager_by_subordinate_id(
         if not crud.is_employee_locked_in_delegation(db, peer.staff_id) and peer.staff_id != 130002
     ]
 
-    print(
+    logger.info(
         f"Unlocked peers for manager {manager.staff_id}: {[peer.staff_id for peer in unlocked_peers]}"
     )
     return manager, unlocked_peers
