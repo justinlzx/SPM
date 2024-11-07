@@ -4,6 +4,7 @@ import { IconButton, Input, InputAdornment, InputLabel } from "@mui/material";
 import { Link, useNavigate } from "react-router-dom";
 import { useLogin } from "../../hooks/auth/auth";
 import { VisibilityOff, Visibility } from "@mui/icons-material";
+import React from "react";
 
 export const LoginPage = () => {
   const [email, setEmail] = useState("");

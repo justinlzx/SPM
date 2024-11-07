@@ -5,6 +5,8 @@ import {
   logout as logoutUtil,
 } from "../hooks/auth/auth.utils";
 import { login } from "../hooks/auth/auth.utils";
+import React from "react";
+import { JSX } from "react";
 
 export type TUser = {
   email: string;

@@ -10,7 +10,11 @@ export default [
   {
     files: ["**/*.{js,mjs,cjs,jsx,ts,tsx}"],
     languageOptions: {
-      globals: globals.browser,
+      globals: {
+        ...globals.builtin,
+        ...globals.browser,
+        ...globals.node,
+      },
       parser: typescriptParser,
       parserOptions: {
         ecmaVersion: "latest",
@@ -34,7 +38,6 @@ export default [
       "@typescript-eslint/no-unused-vars": "off",
       "react/jsx-key": "off",
       "@typescript-eslint/no-explicit-any": "off",
-      "no-undef": "off",
     },
   },
 ];
