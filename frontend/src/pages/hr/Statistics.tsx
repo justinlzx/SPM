@@ -53,7 +53,7 @@ export const Statistics = () => {
             break;
         }
 
-        if (arrangement.reason_description === "OOO") {
+        if (arrangement.reason_description.slice(0,3) === "OOO") {
           counts.onLeave++;
         }
       });

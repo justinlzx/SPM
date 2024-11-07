@@ -54,7 +54,9 @@ export const RequestList = () => {
   const [error, setError] = useState<string | null>(null);
   const [showSnackbar, setShowSnackbar] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState("");
-  const [alertStatus, setAlertStatus] = useState<"success" | "error">("success");
+  const [alertStatus, setAlertStatus] = useState<"success" | "error">(
+    "success"
+  );
   const { user } = useContext(UserContext);
 
   useEffect(() => {
@@ -64,21 +66,7 @@ export const RequestList = () => {
           setLoading(true);
           setError(null);
 
-          const managerResponse = await axios.get(
-            `${BACKEND_URL}/employees/manager/peermanager/${user.id}`,
-            {
-              withCredentials: true,
-              headers: {
-                Accept: "application/json",
-                "Content-Type": "application/json",
-              },
-            }
-          );
-
-          const managerId = managerResponse.data.manager_id;
-          if (!managerId) {
-            throw new Error("Manager ID not found");
-          }
+          const managerId = user.id;
 
           const arrangementsResponse = await axios.get(
             `${BACKEND_URL}/arrangements/team/${managerId}`,
@@ -87,6 +75,10 @@ export const RequestList = () => {
               headers: {
                 Accept: "application/json",
                 "Content-Type": "application/json",
+              },
+              params: {
+                items_per_page: rowsPerPage,
+                page,
               },
             }
           );
@@ -105,7 +97,9 @@ export const RequestList = () => {
     };
 
     fetchAllRequests();
-  }, [user]);
+  }, [user, page, rowsPerPage]);
+
+  console.log(arrangements);
 
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchTerm(e.target.value);
@@ -115,7 +109,9 @@ export const RequestList = () => {
     setPage(newPage);
   };
 
-  const handleChangeRowsPerPage = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleChangeRowsPerPage = (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
     setRowsPerPage(parseInt(event.target.value, 10));
     setPage(0);
   };
@@ -124,16 +120,11 @@ export const RequestList = () => {
     setShowSnackbar(false);
   };
 
-  const filteredArrangements = arrangements.filter(
-    (arrangement) =>
-      arrangement.reason_description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      arrangement.wfh_type?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      arrangement.current_approval_status?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
   if (loading) {
     return (
-      <div style={{ display: "flex", justifyContent: "center", padding: "2rem" }}>
+      <div
+        style={{ display: "flex", justifyContent: "center", padding: "2rem" }}
+      >
         <CircularProgress />
       </div>
     );
@@ -174,7 +165,9 @@ export const RequestList = () => {
           <TableHead>
             <TableRow>
               <TableCell sx={{ fontWeight: "bold" }}>Arrangement ID</TableCell>
-              <TableCell sx={{ fontWeight: "bold" }}>Approving Officer</TableCell>
+              <TableCell sx={{ fontWeight: "bold" }}>
+                Approving Officer
+              </TableCell>
               <TableCell sx={{ fontWeight: "bold" }}>WFH Type</TableCell>
               <TableCell sx={{ fontWeight: "bold" }}>WFH Date</TableCell>
               <TableCell sx={{ fontWeight: "bold" }}>Approval Status</TableCell>
@@ -182,28 +175,38 @@ export const RequestList = () => {
             </TableRow>
           </TableHead>
           <TableBody>
-            {filteredArrangements.length === 0 ? (
+            {arrangements.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={6} align="center">
                   No arrangement data available
                 </TableCell>
               </TableRow>
             ) : (
-              filteredArrangements
+              arrangements
                 .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
                 .map((arrangement) => (
-                  <TableRow key={arrangement.arrangement_id}>
+                  <TableRow
+                    key={arrangement.arrangement_id + arrangement.wfh_date}
+                  >
                     <TableCell>{arrangement.arrangement_id}</TableCell>
-                    <TableCell>{arrangement.approving_officer || "N/A"}</TableCell>
-                    <TableCell>{arrangement.wfh_type?.toUpperCase() || "N/A"}</TableCell>
+                    <TableCell>
+                      {arrangement.approving_officer || "N/A"}
+                    </TableCell>
+                    <TableCell>
+                      {arrangement.wfh_type?.toUpperCase() || "N/A"}
+                    </TableCell>
                     <TableCell>{arrangement.wfh_date || "N/A"}</TableCell>
                     <TableCell>
                       <Chip
                         label={arrangement.current_approval_status}
-                        color={getChipColor(arrangement.current_approval_status)}
+                        color={getChipColor(
+                          arrangement.current_approval_status
+                        )}
                       />
                     </TableCell>
-                    <TableCell>{arrangement.reason_description || "N/A"}</TableCell>
+                    <TableCell>
+                      {arrangement.reason_description || "N/A"}
+                    </TableCell>
                   </TableRow>
                 ))
             )}
@@ -214,7 +217,7 @@ export const RequestList = () => {
       <TablePagination
         component="div"
         rowsPerPageOptions={[10, 20, 30]}
-        count={filteredArrangements.length}
+        count={arrangements.length}
         rowsPerPage={rowsPerPage}
         page={page}
         onPageChange={handleChangePage}
