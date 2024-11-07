@@ -234,8 +234,8 @@ class ArrangementResponse(BaseSchema):
         ...,
         title="Current status of the request",
     )
-    approving_officer: int = Field(
-        ...,
+    approving_officer: Optional[int] = Field(
+        None,
         title="Staff ID of the approving officer",
     )
     delegate_approving_officer: Optional[int] = Field(
