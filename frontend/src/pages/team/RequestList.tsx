@@ -17,6 +17,7 @@ import {
 } from "@mui/material";
 import { UserContext } from "../../context/UserContextProvider";
 import axios from "axios";
+import { set } from "react-datepicker/dist/date_utils";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 
@@ -50,6 +51,7 @@ export const RequestList = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [totalItems, setTotalItems] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showSnackbar, setShowSnackbar] = useState(false);
@@ -78,14 +80,13 @@ export const RequestList = () => {
               },
               params: {
                 items_per_page: rowsPerPage,
-                page,
+                page_num: page + 1,
               },
             }
           );
-
-          const responseData = arrangementsResponse.data.data.flatMap(
-            (item: any) => item.pending_arrangements
-          );
+          console.log("dog", arrangementsResponse.data);
+          setTotalItems(arrangementsResponse.data.pagination_meta.total_count);
+          const responseData = arrangementsResponse.data.data;
           setArrangements(responseData);
         } catch (error) {
           console.error("Failed to fetch data:", error);
@@ -95,11 +96,8 @@ export const RequestList = () => {
         }
       }
     };
-
     fetchAllRequests();
   }, [user, page, rowsPerPage]);
-
-  console.log(arrangements);
 
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchTerm(e.target.value);
@@ -182,33 +180,29 @@ export const RequestList = () => {
                 </TableCell>
               </TableRow>
             ) : (
-              arrangements
-                .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
-                .map((arrangement) => (
-                  <TableRow
-                    key={arrangement.arrangement_id + arrangement.wfh_date}
-                  >
-                    <TableCell>{arrangement.arrangement_id}</TableCell>
-                    <TableCell>
-                      {arrangement.approving_officer || "N/A"}
-                    </TableCell>
-                    <TableCell>
-                      {arrangement.wfh_type?.toUpperCase() || "N/A"}
-                    </TableCell>
-                    <TableCell>{arrangement.wfh_date || "N/A"}</TableCell>
-                    <TableCell>
-                      <Chip
-                        label={arrangement.current_approval_status}
-                        color={getChipColor(
-                          arrangement.current_approval_status
-                        )}
-                      />
-                    </TableCell>
-                    <TableCell>
-                      {arrangement.reason_description || "N/A"}
-                    </TableCell>
-                  </TableRow>
-                ))
+              arrangements.map((arrangement) => (
+                <TableRow
+                  key={arrangement.arrangement_id + arrangement.wfh_date}
+                >
+                  <TableCell>{arrangement.arrangement_id}</TableCell>
+                  <TableCell>
+                    {arrangement.approving_officer || "N/A"}
+                  </TableCell>
+                  <TableCell>
+                    {arrangement.wfh_type?.toUpperCase() || "N/A"}
+                  </TableCell>
+                  <TableCell>{arrangement.wfh_date || "N/A"}</TableCell>
+                  <TableCell>
+                    <Chip
+                      label={arrangement.current_approval_status}
+                      color={getChipColor(arrangement.current_approval_status)}
+                    />
+                  </TableCell>
+                  <TableCell>
+                    {arrangement.reason_description || "N/A"}
+                  </TableCell>
+                </TableRow>
+              ))
             )}
           </TableBody>
         </Table>
@@ -217,7 +211,7 @@ export const RequestList = () => {
       <TablePagination
         component="div"
         rowsPerPageOptions={[10, 20, 30]}
-        count={arrangements.length}
+        count={totalItems}
         rowsPerPage={rowsPerPage}
         page={page}
         onPageChange={handleChangePage}

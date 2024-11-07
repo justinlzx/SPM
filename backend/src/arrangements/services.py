@@ -105,21 +105,21 @@ def get_subordinates_arrangements(
         record.supporting_doc_3 = create_presigned_url(record.supporting_doc_3)
 
     # Group by date if required
-    if filters.group_by_date:
+    if filters.group_by_date is False:
         arrangements = group_arrangements_by_date(arrangements)
 
         logger.info(f"Grouped arrangements into {len(arrangements)} dates")
 
-        # slice the list based on page number and items per page
-        arrangements = arrangements[
-            (pagination.page_num - 1)
-            * pagination.items_per_page : pagination.page_num
-            * pagination.items_per_page
-        ]
-
     pagination_meta = compute_pagination_meta(
         arrangements, pagination.items_per_page, pagination.page_num
     )
+
+    # slice the list based on page number and items per page
+    arrangements = arrangements[
+        (pagination.page_num - 1)
+        * pagination.items_per_page : pagination.page_num
+        * pagination.items_per_page
+    ]
 
     return arrangements, pagination_meta
 
@@ -169,21 +169,21 @@ def get_team_arrangements(
         record.supporting_doc_3 = create_presigned_url(record.supporting_doc_3)
 
     # Group by date if required
-    if filters.group_by_date:
+    if filters.group_by_date is False:
         team_arrangements = group_arrangements_by_date(team_arrangements)
 
         logger.info(f"Grouped arrangements into {len(team_arrangements)} dates")
 
-        # slice the list based on page number and items per page
-        team_arrangements = team_arrangements[
-            (pagination.page_num - 1)
-            * pagination.items_per_page : pagination.page_num
-            * pagination.items_per_page
-        ]
-
     pagination_meta = compute_pagination_meta(
         team_arrangements, pagination.items_per_page, pagination.page_num
     )
+
+    # slice the list based on page number and items per page
+    team_arrangements = team_arrangements[
+        (pagination.page_num - 1)
+        * pagination.items_per_page : pagination.page_num
+        * pagination.items_per_page
+    ]
 
     return team_arrangements, pagination_meta
 

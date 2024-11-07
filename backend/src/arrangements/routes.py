@@ -143,6 +143,7 @@ def get_subordinates_arrangements(
             data=response_data,
             pagination_meta=response_pagination_meta,
         )
+
     except ManagerWithIDNotFoundException as e:
         raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
@@ -161,6 +162,7 @@ def get_team_arrangements(
     db: Session = Depends(get_db),
 ) -> JSendResponse:
     try:
+
         # Convert to dataclasses
         filters = dc.ArrangementFilters.from_dict(request_filters.model_dump())
         pagination = dc.PaginationConfig.from_dict(request_pagination.model_dump())
@@ -181,6 +183,7 @@ def get_team_arrangements(
             data=response_data,
             pagination_meta=response_pagination_meta,
         )
+
     except Exception as e:
         logger.error(f"Error occurred: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))

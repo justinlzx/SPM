@@ -38,7 +38,7 @@ class ArrangementFilters(BaseSchema):
         title="Filter by the department of the employee",
     )
     group_by_date: Optional[bool] = Field(
-        True,
+        False,
         title="Group by date",
     )
 
