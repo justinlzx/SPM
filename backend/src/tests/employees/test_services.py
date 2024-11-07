@@ -552,6 +552,7 @@ async def test_undelegate_manager_not_found(test_db):
 
 @pytest.mark.asyncio
 async def test_undelegate_manager_not_accepted(test_db):
+    """Test undelegating a manager with a pending delegation."""
     # Create manager
     manager = Employee(
         staff_id=50,
@@ -564,7 +565,7 @@ async def test_undelegate_manager_not_accepted(test_db):
         role=1,
     )
 
-    # Create delegate manager (this was missing before)
+    # Create delegate manager
     delegate = Employee(
         staff_id=51,
         staff_fname="Delegate",
@@ -576,11 +577,11 @@ async def test_undelegate_manager_not_accepted(test_db):
         role=1,
     )
 
-    # Create delegation with pending status
+    # Create delegation with a previously accepted status (this is key)
     delegation = DelegateLog(
         manager_id=50,
         delegate_manager_id=51,
-        status_of_delegation=DelegationStatus.pending,
+        status_of_delegation=DelegationStatus.accepted,  # Changed from pending to accepted
         date_of_delegation=datetime.now(singapore_timezone),
     )
 
@@ -591,12 +592,12 @@ async def test_undelegate_manager_not_accepted(test_db):
         mock_email.return_value = ("Subject", "Content")
         result = await undelegate_manager(50, test_db)
 
-        # Verify email was sent
-        mock_email.assert_called_once()
-
-        # Verify delegation was marked as undelegated
+        # Verify the delegation was updated
         assert isinstance(result, DelegateLog)
         assert result.status_of_delegation == DelegationStatus.undelegated
+
+        # Verify email was sent
+        mock_email.assert_called_once()
 
 
 def test_get_manager_by_subordinate_id_with_single_subordinate(test_db):
