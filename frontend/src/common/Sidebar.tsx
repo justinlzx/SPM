@@ -90,7 +90,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
       route: "/review-requests",
       name: "review-requests",
       display:
-        user?.role === 3 || (user?.role === 1 && user?.position === "Director"), // role 3 == manager, and role == 1 HR and directors, but only directors should be able to view
+        user?.role === 3 ||
+        (user?.role === 1 &&
+          (user?.position === "Director" || user?.position === "MD")), // role 3 == manager, and role == 1 HR and directors, but only directors should be able to view. CEO is a separate designation but this tab must still be visible
     },
     {
       text: "Delegation",
