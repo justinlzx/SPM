@@ -1,6 +1,8 @@
-# Getting Started with Create React App
+# Frontend for the All-
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app) and proxied by an NGINX server.
+
+This project is also containerised with docker. 
 
 ## Available Scripts
 
