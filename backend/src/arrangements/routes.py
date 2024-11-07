@@ -28,7 +28,7 @@ router = APIRouter()
 singapore_timezone = ZoneInfo("Asia/Singapore")
 
 
-@router.get("", summary="Get all arrangements with optional filters")
+@router.get("", summary="Get arrangements with optional filters")
 def get_arrangements(
     db: Session = Depends(get_db),
     request_filters: schemas.ArrangementFilters = Depends(schemas.ArrangementFilters.as_query),
@@ -56,7 +56,7 @@ def get_arrangements(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/{arrangement_id}", summary="Get an arrangement by its arrangement_id")
+@router.get("/{arrangement_id}", summary="Get a single arrangement by its arrangement_id")
 def get_arrangement_by_id(arrangement_id: int, db: Session = Depends(get_db)) -> JSendResponse:
     try:
         # Get arrangement
@@ -80,7 +80,7 @@ def get_arrangement_by_id(arrangement_id: int, db: Session = Depends(get_db)) ->
 
 @router.get(
     "/personal/{staff_id}",
-    summary="Get personal arrangements by an employee's staff_id",
+    summary="Get arrangements of a single employee by their staff_id",
 )
 def get_personal_arrangements(
     staff_id: int,
@@ -117,7 +117,7 @@ def get_personal_arrangements(
 
 @router.get(
     "/subordinates/{manager_id}",
-    summary="Get arrangements for subordinate employees under a manager",
+    summary="Get arrangements for subordinate employees under a manager by their manager_id",
 )
 def get_subordinates_arrangements(
     manager_id: int,
@@ -159,7 +159,7 @@ def get_subordinates_arrangements(
 
 @router.get(
     "/team/{staff_id}",
-    summary="Get all arrangements for a team, including peers and subordinates",
+    summary="Get arrangements for a team, including peers and subordinates",
 )
 def get_team_arrangements(
     staff_id: int,
@@ -215,7 +215,7 @@ def get_arrangement_logs(db: Session = Depends(get_db)) -> JSendResponse:
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/request")
+@router.post("/request", summary="Create a new WFH request")
 async def create_wfh_request(
     request: schemas.CreateArrangementRequest = Depends(schemas.CreateArrangementRequest.as_form),
     supporting_docs: Annotated[Optional[List[UploadFile]], File()] = [],
@@ -250,7 +250,7 @@ async def create_wfh_request(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.put("/{arrangement_id}/status", summary="Update the status of a WFH request")
+@router.put("/{arrangement_id}/status", summary="Update the status of an existing WFH request")
 async def update_wfh_request(
     arrangement_id: int,
     update: schemas.UpdateArrangementRequest = Depends(schemas.UpdateArrangementRequest.as_form),

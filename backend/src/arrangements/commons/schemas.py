@@ -12,31 +12,31 @@ from .enums import Action, ApprovalStatus, RecurringFrequencyUnit, WfhType
 class ArrangementFilters(BaseSchema):
     current_approval_status: Optional[List[ApprovalStatus]] = Field(
         None,
-        title="Filter by the current approval status",
+        title="Current approval status",
     )
     name: Optional[str] = Field(
         None,
-        title="Filter by the name of the employee",
+        title="Full, first, or last name of the employee (case-insensitive)",
     )
     start_date: Optional[date] = Field(
         datetime.now().date(),
-        title="Filter by the start date of the arrangement",
+        title="Start of the date range of WFH dates",
     )
     end_date: Optional[date] = Field(
         None,
-        title="Filter by the end date of the arrangement",
+        title="End of the date range of WFH dates",
     )
     wfh_type: Optional[List[WfhType]] = Field(
         None,
-        title="Filter by the type of the arrangement",
+        title="Type of WFH arrangement",
     )
     reason: Optional[str] = Field(
         None,
-        title="Filter by the reason for the arrangement",
+        title="Reason for the arrangement",
     )
     department: Optional[str] = Field(
         None,
-        title="Filter by the department of the employee",
+        title="Department of the employee",
     )
     group_by_date: Optional[bool] = Field(
         False,
@@ -130,7 +130,7 @@ class CreateArrangementRequest(BaseSchema):
     )
     recurring_frequency_number: Optional[int] = Field(
         None,
-        title="Numerical frequency of the recurring WFH request",
+        title="Frequency interval of the recurring WFH request",
     )
     recurring_frequency_unit: Optional[RecurringFrequencyUnit] = Field(
         None,
@@ -138,7 +138,7 @@ class CreateArrangementRequest(BaseSchema):
     )
     recurring_occurrences: Optional[int] = Field(
         None,
-        title="Number of occurrences of the recurring WFH request",
+        title="Number of times the recurring WFH request will occur",
     )
 
     @classmethod
