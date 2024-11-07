@@ -1,5 +1,6 @@
 from datetime import datetime
 from unittest.mock import MagicMock, patch
+from zoneinfo import ZoneInfo
 
 from fastapi.testclient import TestClient
 from src.app import app
@@ -9,6 +10,7 @@ from src.employees.schemas import DelegateLogCreate
 from src.employees.services import DelegationApprovalStatus
 
 client = TestClient(app)
+singapore_timezone = ZoneInfo("Asia/Singapore")
 
 
 def create_mock_employee():
@@ -211,7 +213,7 @@ class TestDelegateManagerRoute:
         mock_delegate_log = MagicMock(spec=DelegateLogCreate)
         mock_delegate_log.manager_id = staff_id
         mock_delegate_log.delegate_manager_id = delegate_manager_id
-        mock_delegate_log.date_of_delegation = datetime.now()
+        mock_delegate_log.date_of_delegation = datetime.now(singapore_timezone)
         mock_delegate_log.status_of_delegation = DelegationStatus.pending
         mock_delegate_log.model_dump.return_value = {
             "manager_id": staff_id,
@@ -258,7 +260,7 @@ class TestUpdateDelegationStatusRoute:
         mock_delegate_log = MagicMock(spec=DelegateLogCreate)
         mock_delegate_log.manager_id = staff_id
         mock_delegate_log.delegate_manager_id = 2
-        mock_delegate_log.date_of_delegation = datetime.now()
+        mock_delegate_log.date_of_delegation = datetime.now(singapore_timezone)
         mock_delegate_log.status_of_delegation = DelegationStatus.accepted
         mock_delegate_log.model_dump.return_value = {
             "manager_id": staff_id,
@@ -318,7 +320,7 @@ class TestUndelegateManagerRoute:
         mock_delegate_log = MagicMock(spec=DelegateLogCreate)
         mock_delegate_log.manager_id = staff_id
         mock_delegate_log.delegate_manager_id = 2
-        mock_delegate_log.date_of_delegation = datetime.now()
+        mock_delegate_log.date_of_delegation = datetime.now(singapore_timezone)
         mock_delegate_log.status_of_delegation = DelegationStatus.undelegated
         mock_delegate_log.model_dump.return_value = {
             "manager_id": staff_id,

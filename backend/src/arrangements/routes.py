@@ -1,5 +1,6 @@
 from datetime import datetime
 from typing import Annotated, List, Optional
+from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from sqlalchemy.orm import Session
@@ -24,6 +25,7 @@ from .commons.exceptions import (
 from .utils import format_arrangement_response, format_arrangements_response
 
 router = APIRouter()
+singapore_timezone = ZoneInfo("Asia/Singapore")
 
 
 @router.get("", summary="Get all arrangements with optional filters")
@@ -222,7 +224,7 @@ async def create_wfh_request(
     try:
         # Convert to dataclasses
         wfh_request = dc.CreateArrangementRequest(
-            update_datetime=datetime.now(),
+            update_datetime=datetime.now(singapore_timezone),
             current_approval_status=ApprovalStatus.PENDING_APPROVAL,
             **request.model_dump(),
         )
@@ -258,7 +260,7 @@ async def update_wfh_request(
     try:
         # Convert to dataclasses
         wfh_update = dc.UpdateArrangementRequest(
-            update_datetime=datetime.now(),
+            update_datetime=datetime.now(singapore_timezone),
             arrangement_id=arrangement_id,
             **update.model_dump(),
         )

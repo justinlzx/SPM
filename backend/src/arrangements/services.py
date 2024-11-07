@@ -1,6 +1,7 @@
 from dataclasses import asdict
 from datetime import datetime
 from typing import Dict, List, Tuple, Union
+from zoneinfo import ZoneInfo
 
 import boto3
 import botocore
@@ -39,6 +40,7 @@ from .utils import (
 )
 
 JACK_SIM_STAFF_ID = 130002
+singapore_timezone = ZoneInfo("Asia/Singapore")
 
 
 def get_arrangement_by_id(db: Session, arrangement_id: int) -> ArrangementResponse:
@@ -381,7 +383,7 @@ async def auto_reject_old_requests():
 
         wfh_update = UpdateArrangementRequest(
             arrangement_id=arrangement["arrangement_id"],
-            update_datetime=datetime.now(),
+            update_datetime=datetime.now(singapore_timezone),
             action=Action.REJECT,
             approving_officer=approving_officer,
             status_reason="AUTO-REJECTED due to pending status one day before WFH date",

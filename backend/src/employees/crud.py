@@ -1,5 +1,6 @@
 from datetime import datetime
 from typing import List, Optional
+from zoneinfo import ZoneInfo
 
 from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
@@ -8,6 +9,8 @@ from ..arrangements.commons.models import LatestArrangement
 from . import models
 from .dataclasses import EmployeeFilters
 from .models import DelegateLog, DelegationStatus, Employee
+
+singapore_timezone = ZoneInfo("Asia/Singapore")
 
 
 def get_employees(db: Session, filters: EmployeeFilters) -> List[models.Employee]:
@@ -141,7 +144,7 @@ def create_delegation(db: Session, staff_id: int, delegate_manager_id: int):
     new_delegation = DelegateLog(
         manager_id=staff_id,
         delegate_manager_id=delegate_manager_id,
-        date_of_delegation=datetime.utcnow(),
+        date_of_delegation=datetime.now(singapore_timezone),
         status_of_delegation=DelegationStatus.pending,
     )
     db.add(new_delegation)
@@ -227,7 +230,7 @@ def update_pending_arrangements_for_delegate(
     ).update(
         {
             LatestArrangement.delegate_approving_officer: delegate_manager_id,
-            LatestArrangement.update_datetime: datetime.now(),
+            LatestArrangement.update_datetime: datetime.now(singapore_timezone),
         },
     )
 
@@ -269,7 +272,7 @@ def remove_delegate_from_arrangements(db: Session, delegate_manager_id: int):
     ).update(
         {
             LatestArrangement.delegate_approving_officer: None,
-            LatestArrangement.update_datetime: datetime.now(),
+            LatestArrangement.update_datetime: datetime.now(singapore_timezone),
         }
     )
 
