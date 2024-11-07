@@ -15,9 +15,10 @@ import {
   Snackbar,
   Alert,
 } from "@mui/material";
+import { ApprovalStatus } from "../../types/requests";
+// import Filters from "../../common/Filters";
 import { UserContext } from "../../context/UserContextProvider";
 import axios from "axios";
-import { set } from "react-datepicker/dist/date_utils";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 
@@ -27,7 +28,7 @@ type Arrangement = {
   requester_staff_id: number;
   wfh_date: string;
   wfh_type: string;
-  current_approval_status: string;
+  current_approval_status: ApprovalStatus;
   approving_officer: number;
   reason_description: string;
 };
@@ -47,6 +48,10 @@ const getChipColor = (status: string | undefined) => {
 };
 
 export const RequestList = () => {
+  const [filteredArrangements, setFilteredArrangements] = useState<
+    Arrangement[]
+  >([]);
+  const [baseArrangements, setBaseArrangements] = useState<Arrangement[]>([]);
   const [arrangements, setArrangements] = useState<Arrangement[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [page, setPage] = useState(0);
@@ -62,7 +67,12 @@ export const RequestList = () => {
   const { user } = useContext(UserContext);
 
   useEffect(() => {
-    const fetchAllRequests = async () => {
+    const fetchAllRequests = async (
+      startDate: Date | null = null,
+      endDate: Date | null = null,
+      status: ApprovalStatus[] = [],
+      department: string[] = []
+    ) => {
       if (user?.id) {
         try {
           setLoading(true);
@@ -100,6 +110,10 @@ export const RequestList = () => {
 
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchTerm(e.target.value);
+  };
+
+  const handleSearchChange = (searchQuery: string) => {
+    setSearchTerm(searchQuery);
   };
 
   const handleChangePage = (_event: unknown, newPage: number) => {
@@ -141,14 +155,14 @@ export const RequestList = () => {
         My Team's WFH/OOO Requests
       </Typography>
 
-      <TextField
+      {/* <TextField
         label="Search by reason, type or status"
         variant="outlined"
         fullWidth
         margin="normal"
         value={searchTerm}
         onChange={handleSearch}
-      />
+      /> */}
 
       <TableContainer
         component={Paper}

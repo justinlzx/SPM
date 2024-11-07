@@ -107,15 +107,16 @@ export const ApprovedRequests = () => {
         const delegationResponse = await axios.get(
           `${BACKEND_URL}/employees/manager/viewdelegations/${userId}`
         );
-
         const delegationStatus = delegationResponse.data.status_of_delegation;
         const delegateManagerId = delegationResponse.data.delegate_manager_id;
 
+        // Step 2: Determine the manager ID to fetch requests for
         const managerIdToFetch =
           delegationStatus === DelegationStatus.Accepted && delegateManagerId
             ? delegateManagerId
             : userId;
 
+        // Step 3: Fetch approved requests for the determined manager ID
         const response = await axios.get(
           `${BACKEND_URL}/arrangements/subordinates/${managerIdToFetch}`,
           {
@@ -187,6 +188,17 @@ export const ApprovedRequests = () => {
     setWithdrawModalOpen(true);
   };
 
+  const handleChangePage = (_event: unknown, newPage: number) => {
+    setPage(newPage);
+  };
+
+  const handleChangeRowsPerPage = (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    setRowsPerPage(parseInt(event.target.value, 10));
+    setPage(0);
+  };
+
   return (
     <>
       <Typography variant="h4" gutterBottom align="left" sx={{ marginTop: 4 }}>
@@ -210,6 +222,9 @@ export const ApprovedRequests = () => {
               <TableCell sx={{ fontWeight: "bold" }}>WFH Date</TableCell>
               <TableCell sx={{ fontWeight: "bold" }}>WFH Type</TableCell>
               <TableCell sx={{ fontWeight: "bold" }}>Reason</TableCell>
+              <TableCell sx={{ fontWeight: "bold" }}>
+                Supporting Documents
+              </TableCell>
               <TableCell sx={{ fontWeight: "bold" }}>
                 Supporting Documents
               </TableCell>

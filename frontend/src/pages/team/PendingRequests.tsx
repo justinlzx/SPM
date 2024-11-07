@@ -95,7 +95,6 @@ export const PendingRequests = () => {
           },
         }
       );
-
       const delegationRequests =
         response.data.pending_approval_delegations || [];
       const hasAcceptedDelegations = delegationRequests.some(
@@ -205,6 +204,9 @@ export const PendingRequests = () => {
         : STATUS_ACTION_MAPPING[current_approval_status]?.[action];
 
     if (!nextStatus) {
+      console.warn(
+        `Action '${action}' is not allowed for status '${current_approval_status}'`
+      );
       console.warn(
         `Action '${action}' is not allowed for status '${current_approval_status}'`
       );

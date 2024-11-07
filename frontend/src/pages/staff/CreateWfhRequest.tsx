@@ -270,13 +270,13 @@ export const CreateWfhRequestPage: React.FC = () => {
       ),
   });
 
-  <LoadingSpinner open={loading} />
+  <LoadingSpinner open={loading} />;
   return (
     <Container maxWidth="sm">
       <Formik
         initialValues={{
           reason: "",
-          startDate: new Date(),
+          startDate: addDays(new Date(), 1),
           endDate: null,
           wfhType: "",
           repeatInterval: 1,

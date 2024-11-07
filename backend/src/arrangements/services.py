@@ -1,6 +1,6 @@
 from dataclasses import asdict
 from datetime import datetime
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Dict, List, Tuple, Union
 
 import boto3
 import botocore
@@ -135,6 +135,7 @@ def get_team_arrangements(
     team_arrangements = []
 
     # Get peer arrangements
+    filters.personal_staff_id = staff_id
     filters.staff_ids = [employee.staff_id for employee in employees]  # type: ignore
     logger.info(f"Service: Fetching arrangements for peers of staff ID {staff_id}")
     peer_arrangements = crud.get_arrangements(
@@ -147,7 +148,7 @@ def get_team_arrangements(
     # Get subordinate arrangements
     filters.staff_ids = None
     filters.manager_id = staff_id
-    logger.info(f"Service: Fetching arrangements for team of staff ID {staff_id}")
+    logger.info(f"Service: Fetching arrangements for subordinates of staff ID {staff_id}")
     subordinates_arrangements = crud.get_arrangements(
         db=db,
         filters=filters,
@@ -361,6 +362,8 @@ async def auto_reject_old_requests():
     wfh_requests = crud.get_expiring_requests(db)
     total_count = len(wfh_requests)
     failure_ids = []
+
+    logger.info(f"Auto-rejecting {total_count} expiring requests")
 
     for arrangement in wfh_requests:
         if (
