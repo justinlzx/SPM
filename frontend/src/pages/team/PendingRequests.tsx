@@ -295,6 +295,10 @@ export const PendingRequests = () => {
       <Filters
         onApplyFilters={(newFilters) => handleFilterChange(newFilters)}
         onClearFilters={(newFilters) => handleFilterChange(newFilters)}
+        statusOptions={[
+          ApprovalStatus.PendingApproval,
+          ApprovalStatus.PendingWithdrawal,
+        ]}
       />
 
       <Typography variant="h4" gutterBottom align="left" sx={{ marginTop: 4 }}>
