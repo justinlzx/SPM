@@ -168,7 +168,7 @@ export const RequestList = () => {
   }
 
   return (
-    <div>
+    <div data-cy="team-requests-filter">
       <Typography variant="h4" gutterBottom align="left" sx={{ marginTop: 4 }}>
         My Team's WFH/OOO Requests
       </Typography>
@@ -198,7 +198,7 @@ export const RequestList = () => {
               <TableCell sx={{ fontWeight: "bold" }}>Reason</TableCell>
             </TableRow>
           </TableHead>
-          <TableBody>
+          <TableBody data-cy="arrangement-list">
             {arrangements.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={6} align="center">

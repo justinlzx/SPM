@@ -188,7 +188,7 @@ export const ApprovedRequests = () => {
   };
 
   return (
-    <>
+    <div data-cy="approved-requests-filter">
       <Typography variant="h4" gutterBottom align="left" sx={{ marginTop: 4 }}>
         Approved Requests
       </Typography>
@@ -264,6 +264,7 @@ export const ApprovedRequests = () => {
             label="Input a reason for withdrawal"
             fullWidth
             multiline
+            data-cy="withdrawal-reason-team"
             rows={2}
             sx={{ mt: 2 }}
             margin="dense"
@@ -277,6 +278,7 @@ export const ApprovedRequests = () => {
             onClick={() => setWithdrawModalOpen(false)}
             color="secondary"
             variant="outlined"
+            data-cy="withdraw-cancel-button-team"
           >
             Cancel
           </Button>
@@ -285,6 +287,7 @@ export const ApprovedRequests = () => {
             color="warning"
             variant="outlined"
             disabled={!withdrawReason.trim() || withdrawLoading}
+            data-cy="withdraw-button-team"
           >
             {withdrawLoading ? (
               <CircularProgress size={24} color="inherit" />
@@ -302,7 +305,7 @@ export const ApprovedRequests = () => {
         alertStatus={alertStatus}
         snackbarMessage={snackbarMessage}
       />
-    </>
+    </div>
   );
 };
 
@@ -378,6 +381,7 @@ const ArrangementRow = ({
             color="warning"
             variant="outlined"
             onClick={() => openWithdrawModal(arrangement_id)}
+            data-cy="withdraw-button-team"
           >
             Withdraw
           </Button>
