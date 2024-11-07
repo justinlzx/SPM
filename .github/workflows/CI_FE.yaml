@@ -30,14 +30,6 @@ jobs:
       run: npm install
       working-directory: frontend
 
-    - name: Ensure frontend .env exists
-      run: |
-        if [ ! -f "frontend/.env" ]; then
-          echo "Creating .env file..."
-          touch frontend/.env
-          echo "REACT_APP_BACKEND_URL=${{ vars.REACT_APP_BACKEND_URL }}" >> frontend/.env
-        fi
-
     - name: Create frontend env files
       run: |
         echo "Creating backend .env..."
@@ -52,9 +44,9 @@ jobs:
         pip install --upgrade cryptography pyOpenSSL
       working-directory: backend
 
-    - name: Ensure backend .env exists
+    - name: Create backend env files
       run: |
-        echo "Creating backend .env file..."
+        echo "Creating backend .env..."
         cat > backend/.env << EOF
         AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }}
         AWS_S3_BUCKET_NAME=${{ secrets.AWS_S3_BUCKET_NAME }}
@@ -62,10 +54,10 @@ jobs:
         SMTP_PASSWORD=${{ secrets.SMTP_PASSWORD }}
         SMTP_USERNAME=${{ secrets.SMTP_USERNAME }}
         TOKEN_SECRET=${{ secrets.TOKEN_SECRET }}
-        ENV=${{ vars.ENV }}
-        FRONTEND_URL=${{ vars.FRONTEND_URL }}
-        SMTP_PORT=${{ vars.SMTP_PORT }}
-        SMTP_SERVER=${{ vars.SMTP_SERVER }}
+        ENV=${{ vars.ENV}}
+        FRONTEND_URL=${{ vars.FRONTEND_URL}}
+        SMTP_PORT=${{ vars.SMTP_PORT}}
+        SMTP_SERVER=${{ vars.SMTP_SERVER}}
         EOF
 
         
