@@ -221,10 +221,13 @@ class TestGetPersonalArrangements:
             MagicMock(spec=dc.ArrangementResponse)
         ] * num_arrangements
 
-        # Act
-        get_personal_arrangements(
-            mock_db_session, staff_id=1, current_approval_status=current_approval_status
+        group_by_date = (
+            False  # always False since it is deprecated, but retained for backwards compatibility
         )
+        filters = dc.ArrangementFilters(group_by_date=group_by_date)
+
+        # Act
+        get_personal_arrangements(mock_db_session, staff_id=1, filters=filters)
 
         # Assert
         mock_get_arrangements.assert_called_once()
@@ -244,8 +247,8 @@ class TestGetSubordinatesArrangements:
     @pytest.mark.parametrize(
         ("supporting_docs", "group_by_date"),
         [
-            ([None, None, None], True),
-            (["/140002/2024-10-12T14:30:00/test_file_1.pdf", None, None], True),
+            ([None, None, None], False),
+            (["/140002/2024-10-12T14:30:00/test_file_1.pdf", None, None], False),
             (["/140002/2024-10-12T14:30:00/test_file_1.pdf", None, None], False),
             (
                 [
@@ -253,7 +256,7 @@ class TestGetSubordinatesArrangements:
                     "/140002/2024-10-12T14:30:00/test_file_2.pdf",
                     "/1/2024-10-12T14:30:00/test_file_3.pdf",
                 ],
-                True,
+                False,
             ),
         ],
     )
@@ -267,7 +270,6 @@ class TestGetSubordinatesArrangements:
         group_by_date,
         mock_db_session,
         mock_presigned_url,
-        mock_employee,
     ):
         # Arrange
         mock_get_arrangements.return_value = [MagicMock(spec=dc.ArrangementResponse)]

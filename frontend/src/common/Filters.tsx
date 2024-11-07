@@ -9,7 +9,6 @@ import {
   InputLabel,
   Button,
   Box,
-  Stack,
   InputAdornment,
   OutlinedInput,
   Checkbox,
@@ -18,71 +17,58 @@ import {
 import CalendarTodayIcon from "@mui/icons-material/CalendarToday";
 import { ApprovalStatus } from "../types/status";
 
+export type TFilters = {
+  startDate: Date | null;
+  endDate: Date | null;
+  workStatus: ApprovalStatus[];
+  searchQuery: string;
+};
 interface FiltersProps {
-  onApplyFilters: (filters: {
-    startDate: Date | null;
-    endDate: Date | null;
-    department: string[];
-    status: ApprovalStatus[];
-    searchQuery: string;
-    workStatus: string[];
-  }) => void;
-  onClearFilters: () => void;
-  onSearchChange?: (searchQuery: string) => void;
-  experimentalFlag?: boolean;
+  onApplyFilters: (filters: TFilters) => void;
+  onClearFilters: ({
+    startDate,
+    endDate,
+    workStatus,
+    searchQuery,
+  }: TFilters) => void;
 }
 
 export const Filters: React.FC<FiltersProps> = ({
   onApplyFilters,
   onClearFilters,
-  onSearchChange,
-  experimentalFlag = false,
 }) => {
   const [startDate, setStartDate] = useState<Date | null>(null);
   const [endDate, setEndDate] = useState<Date | null>(null);
-  const [department, setDepartment] = useState<string[]>([]);
-  const [status, setStatus] = useState<ApprovalStatus[]>([]);
+  const [workStatus, setWorkStatus] = useState<ApprovalStatus[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
-  const [workStatus, setWorkStatus] = useState<string[]>([]);
-
-  if (experimentalFlag) {
-    console.log("Experimental flag is enabled");
-    useEffect(() => {
-      onSearchChange?.(searchQuery);
-    }, [searchQuery]);
-  } else {
-    // Update filters dynamically on search query change
-    useEffect(() => {
-      onApplyFilters({
-        startDate,
-        endDate,
-        department,
-        status,
-        searchQuery,
-        workStatus,
-      });
-    }, [searchQuery]); // Trigger filtering when searchQuery changes
-  }
 
   const handleApplyFilters = () => {
     onApplyFilters({
       startDate,
       endDate,
-      department,
-      status,
-      searchQuery,
       workStatus,
+      searchQuery,
     });
   };
 
   const handleClearFilters = () => {
     setStartDate(null);
     setEndDate(null);
-    setDepartment([]);
-    setStatus([]);
-    setSearchQuery("");
     setWorkStatus([]);
-    onClearFilters(); // Call parent-provided clear function
+    setSearchQuery("");
+    onClearFilters({
+      startDate,
+      endDate,
+      workStatus,
+      searchQuery,
+    }); // Call parent-provided clear function
+    
+    onClearFilters({
+      startDate,
+      endDate,
+      workStatus,
+      searchQuery,
+    });
   };
 
   return (
@@ -158,34 +144,13 @@ export const Filters: React.FC<FiltersProps> = ({
           />
         </Box>
 
-        {/* Department Filter */}
-        <FormControl size="small" sx={{ minWidth: 150 }}>
-          <InputLabel>Department</InputLabel>
-          <Select
-            multiple
-            value={department}
-            onChange={(e) => setDepartment(e.target.value as string[])}
-            input={<OutlinedInput label="Department" />}
-            renderValue={(selected) => selected.join(", ")}
-          >
-            <MenuItem value="Sales">Sales</MenuItem>
-            <MenuItem value="Consultancy">Consultancy</MenuItem>
-            <MenuItem value="Systems Solutioning">Systems Solutioning</MenuItem>
-            <MenuItem value="Engineering Operation">
-              Engineering Operation
-            </MenuItem>
-            <MenuItem value="HR and Admin">HR and Admin</MenuItem>
-            <MenuItem value="Finance and IT">Finance and IT</MenuItem>
-          </Select>
-        </FormControl>
-
         {/* Status Filter */}
         <FormControl size="small" sx={{ minWidth: 150 }}>
           <InputLabel>Status</InputLabel>
           <Select
             multiple
-            value={status}
-            onChange={(e) => setStatus(e.target.value as ApprovalStatus[])}
+            value={workStatus}
+            onChange={(e) => setWorkStatus(e.target.value as ApprovalStatus[])}
             input={<OutlinedInput label="Status" />}
             renderValue={(selected) => selected.join(", ")}
           >
@@ -193,7 +158,9 @@ export const Filters: React.FC<FiltersProps> = ({
               <MenuItem key={statusKey} value={statusKey}>
                 <Checkbox checked={status.includes(statusKey)} />
                 <ListItemText
+                 
                   primary={statusKey.replace(/^\w/, (c) => c.toUpperCase())}
+               
                 />
               </MenuItem>
             ))}
@@ -203,9 +170,13 @@ export const Filters: React.FC<FiltersProps> = ({
         {/* Apply and Clear Filters Buttons */}
         <Box display="flex" gap={1}>
           <Button
+           
             variant="contained"
+           
             color="primary"
+           
             onClick={handleApplyFilters}
+          
           >
             Apply Filters
           </Button>

@@ -26,7 +26,7 @@ import {
 } from "@mui/material";
 import CheckIcon from "@mui/icons-material/Check";
 import CloseIcon from "@mui/icons-material/Close";
-import { Filters } from "../../common/Filters";
+import { Filters, TFilters } from "../../common/Filters";
 import { fetchEmployeeByStaffId } from "../../hooks/employee/employee.utils";
 import {
   ApprovalStatus,
@@ -37,6 +37,8 @@ import { UserContext } from "../../context/UserContextProvider";
 import { SnackBarComponent, AlertStatus } from "../../common/SnackBar";
 import { LoadingSpinner } from "../../common/LoadingSpinner";
 import { DelegationStatus } from "../../types/delegation";
+import qs from "qs";
+import AllRequests from "./AllRequests";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 
@@ -60,7 +62,6 @@ export const PendingRequests = () => {
   const userId = user?.id;
 
   const [actionRequests, setActionRequests] = useState<TWFHRequest[]>([]);
-  const [filteredRequests, setFilteredRequests] = useState<TWFHRequest[]>([]);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [isDelegateManager, setIsDelegateManager] = useState(false);
@@ -94,7 +95,6 @@ export const PendingRequests = () => {
           },
         }
       );
-
       const delegationRequests =
         response.data.pending_approval_delegations || [];
       const hasAcceptedDelegations = delegationRequests.some(
@@ -105,10 +105,8 @@ export const PendingRequests = () => {
       if (hasAcceptedDelegations) {
         const delegatorId = delegationRequests[0].staff_id;
         setDelegatorManagerId(delegatorId);
-        console.log("Delegator Manager ID set to:", delegatorId);
       } else {
         setDelegatorManagerId(userId);
-        console.log("User is the delegator, setting their own ID:", userId);
       }
     } catch (error) {
       console.error("Failed to fetch delegation status:", error);
@@ -122,7 +120,7 @@ export const PendingRequests = () => {
     try {
       if (delegatorManagerId === userId && isDelegateManager) {
         setActionRequests([]);
-        setFilteredRequests([]);
+        // setFilteredRequests([]);
         setLoading(false);
         return;
       }
@@ -138,14 +136,15 @@ export const PendingRequests = () => {
                 "pending withdrawal",
               ],
             },
+            paramsSerializer: (params) =>
+              qs.stringify(params, { arrayFormat: "repeat" }),
           }
         );
         const primaryRequests = primaryResponse.data.data;
+
         allRequests = [...primaryRequests];
       }
-      console.log(allRequests);
 
-      // If the user is a delegatee, fetch delegated requests
       if (
         isDelegateManager &&
         delegatorManagerId &&
@@ -160,38 +159,15 @@ export const PendingRequests = () => {
                 "pending withdrawal",
               ],
             },
+            paramsSerializer: (params) =>
+              qs.stringify(params, { arrayFormat: "repeat" }),
           }
         );
         const delegatedRequests = delegatedResponse.data.data;
-        //console.log(delegatedRequests);
-        allRequests = [...allRequests, ...delegatedRequests];
+        allRequests = [allRequests, ...delegatedRequests];
       }
 
-      // Filter requests with pending status
-      const requests = allRequests.filter((request: TWFHRequest) => {
-        return (
-          request.current_approval_status === ApprovalStatus.PendingApproval ||
-          request.current_approval_status === ApprovalStatus.PendingWithdrawal
-        );
-      });
-      console.log(requests)
-
-      const requestsWithNames = await Promise.all(
-        requests.map(async (request: TWFHRequest) => {
-          const employee = await fetchEmployeeByStaffId(
-            request.requester_staff_id
-          );
-          return {
-            ...request,
-            requester_name: employee
-              ? `${employee.staff_fname} ${employee.staff_lname}`
-              : "N/A",
-          };
-        })
-      );
-
-      setActionRequests(requestsWithNames);
-      setFilteredRequests(requestsWithNames);
+      setActionRequests(allRequests);
     } catch (error) {
       console.error("Failed to fetch requests:", error);
       setAlertStatus(AlertStatus.Error);
@@ -202,9 +178,11 @@ export const PendingRequests = () => {
     }
   };
 
+  console.log(actionRequests);
+
   useEffect(() => {
     const initializeData = async () => {
-      await fetchDelegationStatus(); 
+      await fetchDelegationStatus();
       await fetchPendingRequests();
     };
     initializeData();
@@ -229,6 +207,9 @@ export const PendingRequests = () => {
       console.warn(
         `Action '${action}' is not allowed for status '${current_approval_status}'`
       );
+      console.warn(
+        `Action '${action}' is not allowed for status '${current_approval_status}'`
+      );
       return;
     }
 
@@ -248,11 +229,20 @@ export const PendingRequests = () => {
         }
       );
 
+      await axios.put(
+        `${BACKEND_URL}/arrangements/${arrangement_id}/status`,
+        formData,
+        {
+          headers: { "Content-Type": "multipart/form-data" },
+        }
+      );
+
       setAlertStatus(AlertStatus.Success);
       setSnackbarMessage(
         `Request '${action}' successfully updated to status '${nextStatus}'`
       );
       setShowSnackbar(true);
+      refreshData();
       refreshData();
     } catch (error) {
       console.error(`Error performing action '${action}':`, error);
@@ -287,31 +277,8 @@ export const PendingRequests = () => {
     setRejectionReason("");
   };
 
-  const handleApplyFilters = (newFilters: any) => {
+  const handleFilterChange = (newFilters: TFilters) => {
     setFilters(newFilters);
-    const filtered = actionRequests.filter((request) => {
-      const matchesDate =
-        (!newFilters.startDate ||
-          new Date(request.wfh_date) >= newFilters.startDate) &&
-        (!newFilters.endDate ||
-          new Date(request.wfh_date) <= newFilters.endDate);
-      const matchesStatus = [
-        ApprovalStatus.PendingApproval,
-        ApprovalStatus.PendingWithdrawal,
-      ].includes(request.current_approval_status);
-      const searchQuery = newFilters.searchQuery?.toLowerCase() || "";
-      const matchesSearchQuery =
-        !searchQuery ||
-        request.reason_description.toLowerCase().includes(searchQuery) ||
-        request.wfh_type.toLowerCase().includes(searchQuery) ||
-        request.wfh_date.includes(searchQuery) ||
-        request.requester_staff_id.toString().includes(searchQuery) ||
-        (request.requester_name &&
-          request.requester_name.toLowerCase().includes(searchQuery));
-      return matchesDate && matchesStatus && matchesSearchQuery;
-    });
-    setFilteredRequests(filtered);
-    console.log("Filtered Requests:", filtered);
   };
 
   const handleViewDocuments = (docs: string[]) => {
@@ -335,8 +302,8 @@ export const PendingRequests = () => {
   return (
     <>
       <Filters
-        onApplyFilters={handleApplyFilters}
-        onClearFilters={() => setFilteredRequests(actionRequests)}
+        onApplyFilters={(newFilters) => handleFilterChange(newFilters)}
+        onClearFilters={(newFilters) => handleFilterChange(newFilters)}
       />
 
       <Typography variant="h4" gutterBottom align="left" sx={{ marginTop: 4 }}>
@@ -361,14 +328,14 @@ export const PendingRequests = () => {
             </TableRow>
           </TableHead>
           <TableBody>
-            {filteredRequests.length === 0 ? (
+            {actionRequests.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={7} align="center">
                   No pending requests
                 </TableCell>
               </TableRow>
             ) : (
-              filteredRequests.map((arrangement) => (
+              actionRequests.map((arrangement) => (
                 <ArrangementRow
                   key={arrangement.arrangement_id}
                   arrangement={arrangement}
@@ -385,7 +352,7 @@ export const PendingRequests = () => {
       <TablePagination
         component="div"
         rowsPerPageOptions={[10, 20, 30]}
-        count={filteredRequests.length}
+        count={actionRequests.length}
         rowsPerPage={rowsPerPage}
         page={page}
         onPageChange={(event, newPage) => setPage(newPage)}
@@ -440,7 +407,6 @@ export const PendingRequests = () => {
     </>
   );
 };
-
 
 const ArrangementRow = ({
   arrangement,

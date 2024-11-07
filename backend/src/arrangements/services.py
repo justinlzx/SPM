@@ -1,6 +1,6 @@
 from dataclasses import asdict
 from datetime import datetime
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Dict, List, Tuple, Union
 
 import boto3
 import botocore
@@ -57,12 +57,10 @@ def get_all_arrangements(db: Session, filters: ArrangementFilters) -> List[Arran
 
 
 def get_personal_arrangements(
-    db: Session, staff_id: int, current_approval_status: Optional[List[ApprovalStatus]] = None
+    db: Session, staff_id: int, filters: ArrangementFilters
 ) -> List[ArrangementResponse]:
-    filters = ArrangementFilters(
-        current_approval_status=current_approval_status, staff_ids=staff_id
-    )
 
+    filters.staff_ids = [staff_id]
     logger.info(f"Service: Fetching personal arrangements for staff ID {staff_id}")
     arrangements = crud.get_arrangements(db, filters=filters)
     logger.info(f"Service: Found {len(arrangements)} arrangements for staff ID {staff_id}")
@@ -105,21 +103,21 @@ def get_subordinates_arrangements(
         record.supporting_doc_3 = create_presigned_url(record.supporting_doc_3)
 
     # Group by date if required
-    if filters.group_by_date:
+    if filters.group_by_date is True:
         arrangements = group_arrangements_by_date(arrangements)
 
         logger.info(f"Grouped arrangements into {len(arrangements)} dates")
 
-        # slice the list based on page number and items per page
-        arrangements = arrangements[
-            (pagination.page_num - 1)
-            * pagination.items_per_page : pagination.page_num
-            * pagination.items_per_page
-        ]
-
     pagination_meta = compute_pagination_meta(
         arrangements, pagination.items_per_page, pagination.page_num
     )
+
+    # slice the list based on page number and items per page
+    arrangements = arrangements[
+        (pagination.page_num - 1)
+        * pagination.items_per_page : pagination.page_num
+        * pagination.items_per_page
+    ]
 
     return arrangements, pagination_meta
 
@@ -162,6 +160,7 @@ def get_team_arrangements(
     team_arrangements = [
         ArrangementResponse.from_dict(arrangement) for arrangement in team_arrangements
     ]
+    print(filters)
 
     # Get presigned URL for each supporting document in each arrangement
     for record in team_arrangements:
@@ -170,21 +169,21 @@ def get_team_arrangements(
         record.supporting_doc_3 = create_presigned_url(record.supporting_doc_3)
 
     # Group by date if required
-    if filters.group_by_date:
+    if filters.group_by_date is True:
         team_arrangements = group_arrangements_by_date(team_arrangements)
 
         logger.info(f"Grouped arrangements into {len(team_arrangements)} dates")
 
-        # slice the list based on page number and items per page
-        team_arrangements = team_arrangements[
-            (pagination.page_num - 1)
-            * pagination.items_per_page : pagination.page_num
-            * pagination.items_per_page
-        ]
-
     pagination_meta = compute_pagination_meta(
         team_arrangements, pagination.items_per_page, pagination.page_num
     )
+
+    # slice the list based on page number and items per page
+    team_arrangements = team_arrangements[
+        (pagination.page_num - 1)
+        * pagination.items_per_page : pagination.page_num
+        * pagination.items_per_page
+    ]
 
     return team_arrangements, pagination_meta
 

@@ -16,10 +16,9 @@ import {
   Alert,
 } from "@mui/material";
 import { ApprovalStatus } from "../../types/requests";
-import Filters from "../../common/Filters";
+// import Filters from "../../common/Filters";
 import { UserContext } from "../../context/UserContextProvider";
 import axios from "axios";
-import qs from "qs";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 
@@ -57,6 +56,7 @@ export const RequestList = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [totalItems, setTotalItems] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showSnackbar, setShowSnackbar] = useState(false);
@@ -67,79 +67,46 @@ export const RequestList = () => {
   const { user } = useContext(UserContext);
 
   useEffect(() => {
-    fetchAllRequests();
-  }, [user]);
+    const fetchAllRequests = async (
+      startDate: Date | null = null,
+      endDate: Date | null = null,
+      status: ApprovalStatus[] = [],
+      department: string[] = []
+    ) => {
+      if (user?.id) {
+        try {
+          setLoading(true);
+          setError(null);
 
-  const fetchAllRequests = async (
-    startDate: Date | null = null,
-    endDate: Date | null = null,
-    status: ApprovalStatus[] = [],
-    department: string[] = []
-  ) => {
-    if (user?.id) {
-      try {
-        setLoading(true);
-        setError(null);
+          const managerId = user.id;
 
-        const instance = axios.create({
-          withCredentials: true,
-          headers: {
-            Accept: "application/json",
-            "Content-Type": "application/json",
-          },
-          paramsSerializer: (params: Record<string, any>): string => {
-            const serializedParams: Record<string, any> = {};
-
-            Object.entries(params).forEach(([key, value]) => {
-              // Only serialize non-null values
-              if (value !== null && value !== undefined) {
-                if (value instanceof Date) {
-                  serializedParams[key] = value.toISOString().split("T")[0]; // Format date as YYYY-MM-DD
-                } else if (
-                  Array.isArray(value) &&
-                  (key === "current_approval_status" || key === "department")
-                ) {
-                  serializedParams[key] = value;
-                } else {
-                  serializedParams[key] = value;
-                }
-              }
-            });
-
-            return qs.stringify(serializedParams, { arrayFormat: "repeat" });
-          },
-        });
-
-        const arrangementsResponse = await instance.get(
-          `${BACKEND_URL}/arrangements/team/${user.id}`,
-          {
-            params: {
-              start_date: startDate,
-              end_date: endDate,
-              current_approval_status: status,
-              department: department,
-            },
-          }
-        );
-
-        const responseData = arrangementsResponse.data.data;
-        console.log(responseData);
-        if (baseArrangements.length === 0) {
-          console.log("Setting base arrangements");
-          setBaseArrangements(responseData);
+          const arrangementsResponse = await axios.get(
+            `${BACKEND_URL}/arrangements/team/${managerId}`,
+            {
+              withCredentials: true,
+              headers: {
+                Accept: "application/json",
+                "Content-Type": "application/json",
+              },
+              params: {
+                items_per_page: rowsPerPage,
+                page_num: page + 1,
+              },
+            }
+          );
+          setTotalItems(arrangementsResponse.data.pagination_meta.total_count);
+          const responseData = arrangementsResponse.data.data;
           setArrangements(responseData);
-        } else {
-          setFilteredArrangements(responseData);
-          setArrangements(responseData);
+        } catch (error) {
+          console.error("Failed to fetch data:", error);
+          setError("Failed to fetch team requests. Please try again later.");
+        } finally {
+          setLoading(false);
         }
-      } catch (error) {
-        console.error("Failed to fetch data:", error);
-        setError("Failed to fetch team requests. Please try again later.");
-      } finally {
-        setLoading(false);
       }
-    }
-  };
+    };
+    fetchAllRequests();
+  }, [user, page, rowsPerPage]);
 
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchTerm(e.target.value);
@@ -162,66 +129,6 @@ export const RequestList = () => {
 
   const handleCloseSnackBar = () => {
     setShowSnackbar(false);
-  };
-  // const filteredArrangements = arrangements.filter(
-  //   (arrangement) =>
-  //     arrangement.reason_description
-  //       ?.toLowerCase()
-  //       .includes(searchTerm.toLowerCase()) ||
-  //     arrangement.wfh_type?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-  //     arrangement.current_approval_status
-  //       ?.toLowerCase()
-  //       .includes(searchTerm.toLowerCase())
-  // );
-
-  const onApplyFilters = (filters: {
-    startDate: Date | null;
-    endDate: Date | null;
-    department: string[];
-    status: ApprovalStatus[];
-    searchQuery: string;
-    workStatus: string[];
-  }) => {
-    if (
-      !filters.startDate ||
-      !filters.endDate ||
-      !filters.department ||
-      !filters.status
-    ) {
-      fetchAllRequests(
-        filters.startDate,
-        filters.endDate,
-        filters.status,
-        filters.department
-      );
-    }
-
-    const filtered = arrangements.filter((request) => {
-      // const matchesDate =
-      //   (!filters.startDate ||
-      //     new Date(request.wfh_date) >= filters.startDate) &&
-      //   (!filters.endDate || new Date(request.wfh_date) <= filters.endDate);
-
-      // const matchesStatus =
-      //   filters.status.length === 0 ||
-      //   filters.status.includes(request.current_approval_status);
-
-      const searchQuery = filters.searchQuery.toLowerCase();
-      const matchesSearchQuery =
-        !searchQuery ||
-        request.reason_description.toLowerCase().includes(searchQuery) ||
-        request.wfh_type.toLowerCase().includes(searchQuery) ||
-        request.wfh_date.includes(searchQuery) ||
-        request.requester_staff_id.toString().includes(searchQuery);
-
-      return matchesSearchQuery;
-    });
-    setFilteredArrangements(filtered);
-  };
-
-  const onClearFilters = () => {
-    console.log("Clearing filters");
-    setArrangements(baseArrangements);
   };
 
   if (loading) {
@@ -257,13 +164,6 @@ export const RequestList = () => {
         onChange={handleSearch}
       /> */}
 
-      <Filters
-        onApplyFilters={onApplyFilters}
-        onClearFilters={onClearFilters}
-        experimentalFlag={true}
-        onSearchChange={handleSearchChange}
-      />
-
       <TableContainer
         component={Paper}
         sx={{
@@ -293,31 +193,29 @@ export const RequestList = () => {
                 </TableCell>
               </TableRow>
             ) : (
-              arrangements
-                .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
-                .map((arrangement) => (
-                  <TableRow key={arrangement.arrangement_id}>
-                    <TableCell>{arrangement.arrangement_id}</TableCell>
-                    <TableCell>
-                      {arrangement.approving_officer || "N/A"}
-                    </TableCell>
-                    <TableCell>
-                      {arrangement.wfh_type?.toUpperCase() || "N/A"}
-                    </TableCell>
-                    <TableCell>{arrangement.wfh_date || "N/A"}</TableCell>
-                    <TableCell>
-                      <Chip
-                        label={arrangement.current_approval_status}
-                        color={getChipColor(
-                          arrangement.current_approval_status
-                        )}
-                      />
-                    </TableCell>
-                    <TableCell>
-                      {arrangement.reason_description || "N/A"}
-                    </TableCell>
-                  </TableRow>
-                ))
+              arrangements.map((arrangement) => (
+                <TableRow
+                  key={arrangement.arrangement_id + arrangement.wfh_date}
+                >
+                  <TableCell>{arrangement.arrangement_id}</TableCell>
+                  <TableCell>
+                    {arrangement.approving_officer || "N/A"}
+                  </TableCell>
+                  <TableCell>
+                    {arrangement.wfh_type?.toUpperCase() || "N/A"}
+                  </TableCell>
+                  <TableCell>{arrangement.wfh_date || "N/A"}</TableCell>
+                  <TableCell>
+                    <Chip
+                      label={arrangement.current_approval_status}
+                      color={getChipColor(arrangement.current_approval_status)}
+                    />
+                  </TableCell>
+                  <TableCell>
+                    {arrangement.reason_description || "N/A"}
+                  </TableCell>
+                </TableRow>
+              ))
             )}
           </TableBody>
         </Table>
@@ -326,7 +224,7 @@ export const RequestList = () => {
       <TablePagination
         component="div"
         rowsPerPageOptions={[10, 20, 30]}
-        count={arrangements.length}
+        count={totalItems}
         rowsPerPage={rowsPerPage}
         page={page}
         onPageChange={handleChangePage}
