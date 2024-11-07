@@ -1,5 +1,5 @@
 describe('Testing delegation (Happy path) w Cancel', () => {
-    it('Should create a request and then have it approved by a manager', () => {
+    it('Should create a request and then have it approved by a manager, then cancel to test other functions', () => {
         // Step 1: Login as Rahim and create a WFH request
         cy.visit('http://localhost:3000/login');
         cy.get('[data-cy="email"]').type('rahim.khalid@allinone.com.sg');
@@ -133,7 +133,7 @@ describe('Testing delegation (Happy path) w Cancel', () => {
 
 
 describe('Testing delegation Reject delegation request', () => {
-    it('Should create a request and then have it approved by a manager', () => {
+    it('Should create a request and delegatee rejects it', () => {
         // Step 1: Login as Rahim and create a WFH request
         cy.visit('http://localhost:3000/login');
         cy.get('[data-cy="email"]').type('rahim.khalid@allinone.com.sg');
@@ -221,7 +221,7 @@ describe('Testing delegation Reject delegation request', () => {
 
 
 describe('Testing delegation cancelling the reject delegation request and then accepting it', () => {
-    it('Should create a request and then have it approved by a manager', () => {
+    it('Should create a delegate request, want to reject but then changed mind and accepts it', () => {
         // Step 1: Login as Rahim and create a WFH request
         cy.visit('http://localhost:3000/login');
         cy.get('[data-cy="email"]').type('rahim.khalid@allinone.com.sg');
@@ -341,7 +341,7 @@ describe('Testing delegation cancelling the reject delegation request and then a
             // Find the row with Delegation Status "Accepted"
             cy.contains('tr', 'Accepted').within(() => {
                 // Check that the delegated manager name is "Eric Loh" (or the expected manager name)
-                cy.get('td').eq(1).should('have.text', 'Eric Loh');
+                cy.get('td').eq(1).should('have.text', 'Sally Loh');
 
                 // Verify the Delegation Status column has "Accepted"
                 cy.get('td').eq(3).should('have.text', 'Accepted');
@@ -359,7 +359,7 @@ describe('Testing delegation cancelling the reject delegation request and then a
 })
 
 describe('Testing delegation by accessing it through the button in the homepage', () => {
-    it('Should create a request and then have it approved by a manager', () => {
+    it('Should create a request via homepage and then have it approved by a manager', () => {
         // Step 1: Login as Jack Goh and create a WFH request via accessing the create form thru the homepage
         cy.visit('http://localhost:3000/login');
         cy.get('[data-cy="email"]').type('jack.goh@allinone.com.sg');
@@ -441,7 +441,7 @@ describe('Testing delegation by accessing it through the button in the homepage'
         cy.get('[data-cy="delegation"]').first().click({ force: true });
         cy.url().should('eq', 'http://localhost:3000/delegate');
         cy.get('[data-cy="reject-delegation"]').click();
-        cy.get('[data-cy="RejectDelegationModal"]').click().type("I am also going on holiday, delegate someone else!");
+        cy.get('[data-cy="RejectDelegationModal"]').click().type("I am also going on holiday, delegate someone else! Meh, nevermind I changed my mind.");
         cy.get('[data-cy="RejectDelegationModalCancel"]').click();
 
         cy.url().should('eq', 'http://localhost:3000/delegate');
