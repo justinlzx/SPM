@@ -30,6 +30,7 @@ interface FiltersProps {
   excludeDateFilter?: boolean;
   excludeStatusFilter?: boolean;
   excludeSearchFilter?: boolean;
+  statusOptions?: ApprovalStatus[]; // New optional prop
 }
 
 export const Filters: React.FC<FiltersProps> = ({
@@ -38,6 +39,7 @@ export const Filters: React.FC<FiltersProps> = ({
   excludeDateFilter = false,
   excludeStatusFilter = false,
   excludeSearchFilter = false,
+  statusOptions = Object.values(ApprovalStatus), // Default to all statuses
 }) => {
   const [startDate, setStartDate] = useState<Date | null>(null);
   const [endDate, setEndDate] = useState<Date | null>(null);
@@ -165,16 +167,17 @@ export const Filters: React.FC<FiltersProps> = ({
                 setWorkStatus(e.target.value as ApprovalStatus[])
               }
               input={<OutlinedInput label="Status" />}
-              renderValue={(selected) => selected.join(", ")}
+              renderValue={(selected) =>
+                selected.length > 1 ? `${selected.length} selected` : selected.join(", ")
+              }
             >
-              {Object.values(ApprovalStatus).map((statusKey) => (
-                <>
-                  <MenuItem key={statusKey} value={statusKey}></MenuItem>
+              {statusOptions.map((statusKey) => (
+                <MenuItem key={statusKey} value={statusKey}>
                   <Checkbox checked={workStatus.includes(statusKey)} />
                   <ListItemText
                     primary={statusKey.replace(/^\w/, (c) => c.toUpperCase())}
                   />
-                </>
+                </MenuItem>
               ))}
             </Select>
           </FormControl>
