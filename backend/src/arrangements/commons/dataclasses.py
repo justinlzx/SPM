@@ -42,6 +42,7 @@ class BaseClass:
 class ArrangementFilters(BaseClass):
     """Dataclass for arrangement filters."""
 
+    personal_staff_id: Optional[int] = None
     current_approval_status: Optional[List[ApprovalStatus]] = None
     name: Optional[str] = None
     wfh_type: Optional[List[WfhType]] = None

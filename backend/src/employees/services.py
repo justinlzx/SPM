@@ -3,11 +3,14 @@ from typing import List, Tuple, Union
 
 from sqlalchemy.orm import Session
 
+from ..logger import logger
 from ..notifications.commons.dataclasses import DelegateNotificationConfig
 from ..notifications.email_notifications import craft_and_send_email
 from ..utils import convert_model_to_pydantic_schema
 from . import crud, exceptions, models, schemas
 from .dataclasses import EmployeeFilters
+
+JACK_SIM_STAFF_ID = 130002
 
 
 def get_employees(db: Session, filters: EmployeeFilters):
@@ -18,7 +21,7 @@ def get_employees(db: Session, filters: EmployeeFilters):
 
 def get_reporting_manager_and_peer_employees(db: Session, staff_id: int):
     # Auto Approve for Jack Sim and Skip manager check
-    if staff_id == 130002:
+    if staff_id == JACK_SIM_STAFF_ID:
         return schemas.EmployeePeerResponse(manager_id=None, peer_employees=[])
 
     manager: models.Employee = get_manager_by_subordinate_id(db, staff_id)
@@ -37,7 +40,7 @@ def get_reporting_manager_and_peer_employees(db: Session, staff_id: int):
         peer_employees, schemas.EmployeeBase
     )
 
-    print(f"Num results: {len(peer_employees)}")
+    logger.info(f"Num results: {len(peer_employees)}")
 
     # Format to response model
     response = schemas.EmployeePeerResponse(
@@ -107,7 +110,7 @@ def get_manager_by_subordinate_id(
     db: Session, staff_id: int
 ) -> Union[Tuple[models.Employee, List[models.Employee]], Tuple[None, None]]:
     # Auto Approve for Jack Sim and bypass manager check
-    if staff_id == 130002:
+    if staff_id == JACK_SIM_STAFF_ID:
         return None, None  # Auto-approve for Jack Sim
 
     # Retrieve the employee
@@ -132,10 +135,11 @@ def get_manager_by_subordinate_id(
     unlocked_peers = [
         peer
         for peer in all_peers
-        if not crud.is_employee_locked_in_delegation(db, peer.staff_id) and peer.staff_id != 130002
+        if not crud.is_employee_locked_in_delegation(db, peer.staff_id)
+        and peer.staff_id != JACK_SIM_STAFF_ID
     ]
 
-    print(
+    logger.info(
         f"Unlocked peers for manager {manager.staff_id}: {[peer.staff_id for peer in unlocked_peers]}"
     )
     return manager, unlocked_peers

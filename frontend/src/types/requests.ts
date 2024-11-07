@@ -18,8 +18,6 @@ export type TWFHRequest = {
   requester_info: {
     staff_fname: string;
     staff_lname: string;
-    dept: string;
-    position: string;
   };
   wfh_date: string;
   end_date?: string;
@@ -31,6 +29,8 @@ export type TWFHRequest = {
   supporting_doc_2: string;
   supporting_doc_3: string;
 };
+
+
   
 // Type for grouping work-from-home requests by date
 export type TArrangementsByDate = {

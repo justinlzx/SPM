@@ -20,7 +20,7 @@ import {
   ListItem,
   Link,
   Chip,
-  Tooltip, 
+  Tooltip,
 } from "@mui/material";
 import { UserContext } from "../../context/UserContextProvider";
 import { ApprovalStatus } from "../../types/status";
@@ -74,16 +74,18 @@ export const AllRequests = () => {
           `${BACKEND_URL}/arrangements/subordinates/${userId}`
         );
 
-        const allRequests: TWFHRequest[] = response.data.data.flatMap(
-          (dateEntry: any) => dateEntry.pending_arrangements
-        );
+        const allRequests: TWFHRequest[] = response.data.data;
 
         const requestsWithNames = await Promise.all(
           allRequests.map(async (request: TWFHRequest) => {
-            const employee = await fetchEmployeeByStaffId(request.requester_staff_id);
+            const employee = await fetchEmployeeByStaffId(
+              request.requester_staff_id
+            );
             return {
               ...request,
-              requester_name: employee ? `${employee.staff_fname} ${employee.staff_lname}` : "N/A",
+              requester_name: employee
+                ? `${employee.staff_fname} ${employee.staff_lname}`
+                : "N/A",
             };
           })
         );
@@ -113,106 +115,124 @@ export const AllRequests = () => {
     setPage(newPage);
   };
 
-  const handleChangeRowsPerPage = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleChangeRowsPerPage = (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
     setRowsPerPage(parseInt(event.target.value, 10));
     setPage(0);
   };
 
   return (
     <>
-    
       <Typography variant="h4" gutterBottom align="left" sx={{ marginTop: 4 }}>
         Processed Team Requests
       </Typography>
-        <TableContainer component={Paper}>
-          <Table>
-            <TableHead>
+      <TableContainer component={Paper}>
+        <Table>
+          <TableHead>
+            <TableRow>
+              <TableCell sx={{ fontWeight: "bold" }}>Staff ID</TableCell>
+              <TableCell sx={{ fontWeight: "bold" }}>Staff Name</TableCell>
+              <TableCell sx={{ fontWeight: "bold" }}>Start Date</TableCell>
+              <TableCell sx={{ fontWeight: "bold" }}>Type</TableCell>
+              <TableCell sx={{ fontWeight: "bold" }}>Reason</TableCell>
+              <TableCell sx={{ fontWeight: "bold" }}>
+                Supporting Documents
+              </TableCell>
+              <TableCell sx={{ fontWeight: "bold" }}>Status</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {loading ? (
               <TableRow>
-                <TableCell sx={{ fontWeight: "bold" }}>Staff ID</TableCell>
-                <TableCell sx={{ fontWeight: "bold" }}>Staff Name</TableCell>
-                <TableCell sx={{ fontWeight: "bold" }}>Start Date</TableCell>
-                <TableCell sx={{ fontWeight: "bold" }}>Type</TableCell>
-                <TableCell sx={{ fontWeight: "bold" }}>Reason</TableCell>
-                <TableCell sx={{ fontWeight: "bold" }}>Supporting Documents</TableCell>
-                <TableCell sx={{ fontWeight: "bold" }}>Status</TableCell>
+                <TableCell colSpan={7} align="center">
+                  Loading...
+                </TableCell>
               </TableRow>
-            </TableHead>
-            <TableBody>
-              {loading ? (
-                <TableRow>
-                  <TableCell colSpan={7} align="center">
-                    Loading...
-                  </TableCell>
-                </TableRow>
-              ) : requests.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={7} align="center">
-                    No requests found
-                  </TableCell>
-                </TableRow>
-              ) : (
-                requests
-                  .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
-                  .map((request) => {
-                    const docs = [
-                      request.supporting_doc_1,
-                      request.supporting_doc_2,
-                      request.supporting_doc_3,
-                    ].filter(Boolean) as string[];
+            ) : requests.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={7} align="center">
+                  No requests found
+                </TableCell>
+              </TableRow>
+            ) : (
+              requests
+                .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
+                .map((request) => {
+                  const docs = [
+                    request.supporting_doc_1,
+                    request.supporting_doc_2,
+                    request.supporting_doc_3,
+                  ].filter(Boolean) as string[];
 
-                    return (
-                      <TableRow key={request.arrangement_id}>
-                        <TableCell>{request.requester_staff_id}</TableCell>
-                        <TableCell>{request.requester_name}</TableCell>
-                        <TableCell>{request.wfh_date}</TableCell>
-                        <TableCell>{request.wfh_type?.toUpperCase() || "-"}</TableCell>
-                        <TableCell>
-                            <Tooltip title="Scroll to view more">
-                            <Box sx={{ overflowX: "scroll", maxWidth: 150, whiteSpace: "nowrap" }}>
-                                {request.reason_description}
-                            </Box>
-                            </Tooltip>
-                        </TableCell>
-                        <TableCell>
-                          {docs.length > 0 ? (
-                            <Button variant="text" onClick={() => handleDocumentDialogOpen(docs)}>
-                              View Documents
-                            </Button>
-                          ) : (
-                            "None"
+                  return (
+                    <TableRow key={request.arrangement_id}>
+                      <TableCell>{request.requester_staff_id}</TableCell>
+                      <TableCell>{request.requester_name}</TableCell>
+                      <TableCell>{request.wfh_date}</TableCell>
+                      <TableCell>
+                        {request.wfh_type?.toUpperCase() || "-"}
+                      </TableCell>
+                      <TableCell>
+                        <Tooltip title="Scroll to view more">
+                          <Box
+                            sx={{
+                              overflowX: "scroll",
+                              maxWidth: 150,
+                              whiteSpace: "nowrap",
+                            }}
+                          >
+                            {request.reason_description}
+                          </Box>
+                        </Tooltip>
+                      </TableCell>
+                      <TableCell>
+                        {docs.length > 0 ? (
+                          <Button
+                            variant="text"
+                            onClick={() => handleDocumentDialogOpen(docs)}
+                          >
+                            View Documents
+                          </Button>
+                        ) : (
+                          "None"
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <Chip
+                          color={getChipColor(request.current_approval_status)}
+                          label={capitalize(
+                            request.current_approval_status
+                              ? request.current_approval_status
+                              : "Unknown Status"
                           )}
-                        </TableCell>
-                        <TableCell>
-                          <Chip
-                            color={getChipColor(request.current_approval_status)}
-                            label={capitalize(
-                              request.current_approval_status
-                                ? request.current_approval_status
-                                : "Unknown Status"
-                            )}
-                            variant="outlined"
-                          />
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })
-              )}
-            </TableBody>
-          </Table>
-        </TableContainer>
+                          variant="outlined"
+                        />
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
+            )}
+          </TableBody>
+        </Table>
+      </TableContainer>
 
-        <TablePagination
-          component="div"
-          rowsPerPageOptions={[10, 20, 30]}
-          count={requests.length}
-          rowsPerPage={rowsPerPage}
-          page={page}
-          onPageChange={handleChangePage}
-          onRowsPerPageChange={handleChangeRowsPerPage}
-        />
+      <TablePagination
+        component="div"
+        rowsPerPageOptions={[10, 20, 30]}
+        count={requests.length}
+        rowsPerPage={rowsPerPage}
+        page={page}
+        onPageChange={handleChangePage}
+        onRowsPerPageChange={handleChangeRowsPerPage}
+      />
 
       {/* Document Dialog */}
-      <Dialog open={documentDialogOpen} onClose={handleDocumentDialogClose} fullWidth>
+      <Dialog
+        open={documentDialogOpen}
+        onClose={handleDocumentDialogClose}
+        fullWidth
+      >
         <DialogTitle>Supporting Documents</DialogTitle>
         <DialogContent>
           <List>

@@ -54,6 +54,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 }) => {
   const { user } = useContext(UserContext);
   const navigate = useNavigate();
+  const location = useLocation(); 
 
   const sideBarItems: TSidebarItem[] = [
     {
@@ -90,7 +91,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
       route: "/review-requests",
       name: "review-requests",
       display:
-        user?.role === 3 || (user?.role === 1 && user?.position === "Director"), // role 3 == manager, and role == 1 HR and directors, but only directors should be able to view
+        user?.role === 3 ||
+        (user?.role === 1 &&
+          (user?.position === "Director" || user?.position === "MD")), // role 3 == manager, and role == 1 HR and directors, but only directors should be able to view. CEO is a separate designation but this tab must still be visible
     },
     {
       text: "Delegation",
@@ -109,11 +112,18 @@ export const Sidebar: React.FC<SidebarProps> = ({
     },
   ];
 
+  const [currentTab, setCurrentTab] = useState<string>(SidebarNames.HOME);
+
+  useEffect(() => {
+    const currentPath = location.pathname.replace("/", "");
+    const matchingTab = sideBarItems.find(item => currentPath === item.route.replace("/", ""))?.name || SidebarNames.HOME;
+    setCurrentTab(matchingTab);
+  }, [location.pathname]);
+
   const handleButtonClick = (route: string) => {
     navigate(route);
   };
 
-  const [currentTab, setCurrentTab] = useState<string>(SidebarNames.HOME);
 
   const drawer = (
     <Box sx={{ bgcolor: "#f5f5f5", height: "100%" }}>

@@ -29,27 +29,9 @@ import { SnackBarComponent, AlertStatus } from '../../common/SnackBar';
 import { UserContext } from '../../context/UserContextProvider';
 import { capitalize } from "../../utils/utils";
 import { LoadingSpinner } from "../../common/LoadingSpinner";
-
-interface Peer {
-  staff_id: string;
-  name: string;
-}
+import { DelegationStatus, TDelegationLog, Peer } from "../../types/delegation";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
-
-enum DelegationStatus {
-  Accepted = "accepted",
-  Pending = "pending",
-  Rejected = "rejected",
-}
-
-type TDelegationLog = {
-  manager_id: number;
-  delegate_manager_id: number;
-  delegate_manager_name: string;
-  date_of_delegation: string;
-  status_of_delegation: DelegationStatus;
-};
 
 export const SendDelegation: React.FC = () => {
   const { user } = useContext(UserContext);
@@ -64,6 +46,23 @@ export const SendDelegation: React.FC = () => {
   const [openModal, setOpenModal] = useState(false);
   const [delegationLogs, setDelegationLogs] = useState<TDelegationLog[]>([]);
   const [loading, setLoading] = useState(true);
+
+  const fetchDelegationLogs = async () => {
+    if (!user || !userId) return;
+    setLoading(true);
+    try {
+      const response = await axios.get(
+        `${BACKEND_URL}/employees/manager/viewalldelegations/${userId}`
+      );
+      const sentDelegations: TDelegationLog[] = response.data.sent_delegations || [];
+      setDelegationLogs(sentDelegations);
+    } catch (error) {
+      console.error("Failed to fetch delegation logs:", error);
+      handleSnackbar(AlertStatus.Error, 'Failed to load delegation logs.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     const fetchPeers = async () => {
@@ -88,28 +87,8 @@ export const SendDelegation: React.FC = () => {
     };
 
     fetchPeers();
-  }, [user]);
-
-  useEffect(() => {
-    const fetchDelegationLogs = async () => {
-      if (!user || !userId) return;
-      setLoading(true);
-      try {
-        const response = await axios.get(
-          `${BACKEND_URL}/employees/manager/viewalldelegations/${userId}`
-        );
-        const sentDelegations: TDelegationLog[] = response.data.sent_delegations || [];
-  
-        setDelegationLogs(sentDelegations);
-      } catch (error) {
-        console.error("Failed to fetch delegation logs:", error);
-        handleSnackbar(AlertStatus.Error, 'Failed to load delegation logs.');
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchDelegationLogs();
-  }, [user, userId]);
+  }, [user]);
 
   const hasPendingOrActiveDelegation = delegationLogs.some(
     (log) =>
@@ -122,7 +101,6 @@ export const SendDelegation: React.FC = () => {
   };
 
   const handleDelegate = async () => {
-    // Check if the selected peer already has a delegation
     const existingDelegation = delegationLogs.find(
       (log) =>
         log.delegate_manager_id === parseInt(selectedPeer) &&
@@ -130,7 +108,6 @@ export const SendDelegation: React.FC = () => {
     );
   
     if (existingDelegation) {
-      // If an existing delegation is found, show an error message and return early
       handleSnackbar(
         AlertStatus.Error,
         'This peer already has an active or pending delegation. Please select a different manager.'
@@ -138,7 +115,6 @@ export const SendDelegation: React.FC = () => {
       return;
     }
   
-    // Proceed with sending delegation if validation passes
     setLoading(true);
     try {
       const response = await axios.post(`${BACKEND_URL}/employees/manager/delegate/${userId}`, null, {
@@ -147,27 +123,16 @@ export const SendDelegation: React.FC = () => {
         },
       });
   
-      setDelegationLogs((prevLogs) => [
-        ...prevLogs,
-        {
-          manager_id: response.data.manager_id,
-          delegate_manager_id: response.data.delegate_manager_id,
-          delegate_manager_name: peers.find((peer) => peer.staff_id === selectedPeer)?.name || "Unknown",
-          date_of_delegation: response.data.date_of_delegation,
-          status_of_delegation: response.data.status_of_delegation,
-        },
-      ]);
-  
       handleSnackbar(AlertStatus.Success, 'Request to delegate peer manager sent');
+      setOpenModal(false);
+      await fetchDelegationLogs(); // Refresh data after sending delegation
     } catch (error) {
       console.error('Error delegating peer:', error);
       handleSnackbar(AlertStatus.Error, 'Failed to delegate peer as manager.');
     } finally {
       setLoading(false);
-      setOpenModal(false);
     }
   };
-  
 
   const handleCancelDelegation = async (delegateManagerId: number) => {
     setLoading(true);
@@ -175,8 +140,8 @@ export const SendDelegation: React.FC = () => {
       await axios.put(`${BACKEND_URL}/employees/manager/undelegate/${userId}`, {
         params: { delegate_manager_id: delegateManagerId },
       });
-      setDelegationLogs((prevLogs) => prevLogs.filter(log => log.delegate_manager_id !== delegateManagerId));
       handleSnackbar(AlertStatus.Success, 'Delegation canceled successfully.');
+      await fetchDelegationLogs(); // Refresh data after canceling delegation
     } catch (error) {
       console.error('Error canceling delegation:', error);
       handleSnackbar(AlertStatus.Error, 'Failed to cancel delegation.');
@@ -216,159 +181,141 @@ export const SendDelegation: React.FC = () => {
         </Box>
       ) : (
         <>
-      <Box 
-        display="flex" 
-        alignItems="center" 
-        justifyContent="space-between" 
-        sx={{ my: 4, gap: 2, p: 2, borderRadius: 1, bgcolor: '#EDEDED' }}
-      >
-      <Box display="flex" alignItems="center" gap={2}>
-        <NotificationsNoneIcon />
-        <Box display="flex" flexDirection="column">
-          <Typography variant="body2" style={{ color: 'black' }}>
-            You can only delegate to one person at a single time.
-          </Typography>
-          <Typography variant="caption" style={{ color: 'grey' }}>
-            To withdraw a delegation, click 'Cancel'.
-          </Typography>
-        </Box>
-      </Box>
-
-      <Tooltip
-        title={
-          hasPendingOrActiveDelegation
-            ? "You have a pending delegation in progress."
-            : ""
-        }
-      >
-        <span> 
-          <Button
-            variant="outlined"
-            color="primary"
-            onClick={handleOpenModal}
-            disabled={hasPendingOrActiveDelegation}
+          <Box 
+            display="flex" 
+            alignItems="center" 
+            justifyContent="space-between" 
+            sx={{ my: 4, gap: 2, p: 2, borderRadius: 1, bgcolor: '#EDEDED' }}
           >
-            Delegate a Manager
-          </Button>
-        </span>
-      </Tooltip>
-    </Box>
+            <Box display="flex" alignItems="center" gap={2}>
+              <NotificationsNoneIcon />
+              <Box display="flex" flexDirection="column">
+                <Typography variant="body2" style={{ color: 'black' }}>
+                  You can only delegate to one person at a single time.
+                </Typography>
+                <Typography variant="caption" style={{ color: 'grey' }}>
+                  To withdraw a delegation, click 'Cancel'.
+                </Typography>
+              </Box>
+            </Box>
 
-
-      <Typography variant="h6">Sent Delegations</Typography>
-      <Dialog open={openModal} onClose={handleCloseModal}>
-        <DialogTitle>Delegate a Peer for Manager Responsibilities</DialogTitle>
-        <DialogContent>
-          <FormControl fullWidth sx={{ my: 2 }}>
-            <InputLabel id="select-peer-label">Select Manager</InputLabel>
-            <Select
-              labelId="select-peer-label"
-              label="Select Manager"
-              value={selectedPeer}
-              onChange={handlePeerSelect}
+            <Tooltip
+              title={
+                hasPendingOrActiveDelegation
+                  ? "You have a pending delegation in progress."
+                  : ""
+              }
             >
-              {peers.map((peer) => (
-                <MenuItem key={peer.staff_id} value={peer.staff_id}>
-                  {peer.name}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-        </DialogContent>
-        <DialogActions sx={{ m: 2 }}>
-          <Button onClick={handleCloseModal} color="secondary">Cancel</Button>
-          <Button
-            variant="contained"
-            color="primary"
-            onClick={handleDelegate}
-          >
-            Delegate Manager
-          </Button>
-        </DialogActions>
-      </Dialog>
+              <span> 
+                <Button
+                  variant="outlined"
+                  color="primary"
+                  onClick={handleOpenModal}
+                  disabled={hasPendingOrActiveDelegation}
+                >
+                  Delegate a Manager
+                </Button>
+              </span>
+            </Tooltip>
+          </Box>
 
-      <SnackBarComponent
-        showSnackbar={snackbar.showSnackbar}
-        handleCloseSnackBar={handleCloseSnackBar}
-        alertStatus={snackbar.alertStatus}
-        snackbarMessage={snackbar.snackbarMessage}
-      />
+          <Typography variant="h6">Sent Delegations</Typography>
+          <Dialog open={openModal} onClose={handleCloseModal}>
+            <DialogTitle>Delegate a Peer for Manager Responsibilities</DialogTitle>
+            <DialogContent>
+              <FormControl fullWidth sx={{ my: 2 }}>
+                <InputLabel id="select-peer-label">Select Manager</InputLabel>
+                <Select
+                  labelId="select-peer-label"
+                  label="Select Manager"
+                  value={selectedPeer}
+                  onChange={handlePeerSelect}
+                >
+                  {peers.map((peer) => (
+                    <MenuItem key={peer.staff_id} value={peer.staff_id}>
+                      {peer.name}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </DialogContent>
+            <DialogActions sx={{ m: 2 }}>
+              <Button onClick={handleCloseModal} color="secondary">Cancel</Button>
+              <Button
+                variant="contained"
+                color="primary"
+                onClick={handleDelegate}
+              >
+                Delegate Manager
+              </Button>
+            </DialogActions>
+          </Dialog>
 
-      {/* Sent Delegations Table */}
-      <TableContainer component={Paper} sx={{ marginTop: 3, textAlign: "center" }}>
-        <Table>
-          <TableHead>
-            <TableRow>
-              <TableCell sx={{ fontWeight: "bold" }}>Delegated Manager ID</TableCell>
-              <TableCell sx={{ fontWeight: "bold" }}>Delegated Manager Name</TableCell>
-              <TableCell sx={{ fontWeight: "bold" }}>Date of Delegation</TableCell>
-              <TableCell sx={{ fontWeight: "bold" }}>Delegation Status</TableCell>
-              <TableCell sx={{ fontWeight: "bold" }}>Actions</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {delegationLogs.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={5} align="center">
-                  No delegation requests found
-                </TableCell>
-              </TableRow>
-            ) : (
-              delegationLogs.map((log) => (
-                <TableRow key={log.delegate_manager_id}>
-                  <TableCell>{log.delegate_manager_id}</TableCell>
-                  <TableCell>{log.delegate_manager_name}</TableCell>
-                  <TableCell>{new Date(log.date_of_delegation).toLocaleDateString()}</TableCell>
-                  <TableCell>
-                    <Chip
-                      label={capitalize(log.status_of_delegation)}
-                      color={
-                        log.status_of_delegation === DelegationStatus.Accepted
-                          ? "success"
-                          : log.status_of_delegation === DelegationStatus.Rejected
-                          ? "error"
-                          : log.status_of_delegation === DelegationStatus.Pending
-                          ? "warning"
-                          : "default"
-                      }
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <Button
-                      variant="outlined"
-                      color="secondary"
-                      onClick={() => handleCancelDelegation(log.delegate_manager_id)}
-                      disabled={log.status_of_delegation !== DelegationStatus.Accepted}
-                    >
-                      Cancel
-                    </Button>
-                  </TableCell>
+          <SnackBarComponent
+            showSnackbar={snackbar.showSnackbar}
+            handleCloseSnackBar={handleCloseSnackBar}
+            alertStatus={snackbar.alertStatus}
+            snackbarMessage={snackbar.snackbarMessage}
+          />
+
+          <TableContainer component={Paper} sx={{ marginTop: 3, textAlign: "center" }}>
+            <Table>
+              <TableHead>
+                <TableRow>
+                  <TableCell sx={{ fontWeight: "bold" }}>Delegated Manager ID</TableCell>
+                  <TableCell sx={{ fontWeight: "bold" }}>Delegated Manager Name</TableCell>
+                  <TableCell sx={{ fontWeight: "bold" }}>Date of Delegation</TableCell>
+                  <TableCell sx={{ fontWeight: "bold" }}>Delegation Status</TableCell>
+                  <TableCell sx={{ fontWeight: "bold" }}>Actions</TableCell>
                 </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </TableContainer>
-      </>
+              </TableHead>
+              <TableBody>
+                {delegationLogs.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={5} align="center">
+                      No delegation requests found
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  delegationLogs.map((log) => (
+                    <TableRow key={log.delegate_manager_id}>
+                      <TableCell>{log.delegate_manager_id}</TableCell>
+                      <TableCell>{log.delegate_manager_name}</TableCell>
+                      <TableCell>{new Date(log.date_of_delegation).toLocaleDateString()}</TableCell>
+                      <TableCell>
+                        <Chip
+                          label={capitalize(log.status_of_delegation)}
+                          color={
+                            log.status_of_delegation === DelegationStatus.Accepted
+                              ? "success"
+                              : log.status_of_delegation === DelegationStatus.Rejected
+                              ? "error"
+                              : log.status_of_delegation === DelegationStatus.Pending
+                              ? "warning"
+                              : "default"
+                          }
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <Button
+                          variant="outlined"
+                          color="secondary"
+                          onClick={() => handleCancelDelegation(log.delegate_manager_id)}
+                          disabled={log.status_of_delegation !== DelegationStatus.Accepted}
+                        >
+                          Cancel
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </>
       )}
     </Container>
   );
 };
 
 export default SendDelegation;
-
-interface SeePeerManagerButtonProps {
-  onClick: () => void;
-}
-
-interface SeePeerManagerButtonProps {
-  onClick: () => void;
-  hasPendingOrActiveDelegation: boolean;
-}
-
-export const SeePeerManagerButton: React.FC<SeePeerManagerButtonProps> = ({ onClick, hasPendingOrActiveDelegation }) => (
-  <Button variant="outlined" color="primary" onClick={onClick} disabled={hasPendingOrActiveDelegation}>
-    Delegate a Manager
-  </Button>
-);
-

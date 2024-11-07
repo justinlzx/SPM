@@ -1,6 +1,7 @@
 from datetime import datetime
 from typing import List
 from unittest.mock import MagicMock, patch
+from zoneinfo import ZoneInfo
 
 import botocore
 import botocore.exceptions
@@ -29,6 +30,7 @@ from src.employees.schemas import EmployeeBase
 from src.tests.test_utils import mock_db_session  # noqa: F401, E261
 
 client = TestClient(app)
+singapore_timezone = ZoneInfo("Asia/Singapore")
 
 
 @pytest.fixture
@@ -86,7 +88,7 @@ def mock_arrangement_data():
         "wfh_type": "full",
         "approving_officer": 456,
         "reason_description": "Work from home",
-        "update_datetime": datetime.now(),
+        "update_datetime": datetime.now(singapore_timezone),
         "current_approval_status": "pending approval",
         "is_recurring": False,
         "recurring_end_date": None,
@@ -143,7 +145,7 @@ def mock_manager_pending_request_response(mock_arrangement_data):
 #         "reason_description": "Work from home request",
 #         "is_recurring": False,
 #         "approving_officer": None,
-#         "update_datetime": datetime.now(),
+#         "update_datetime": datetime.now(singapore_timezone),
 #         "current_approval_status": "pending approval",
 #         "supporting_doc_1": None,
 #         "supporting_doc_2": None,
@@ -221,10 +223,13 @@ class TestGetPersonalArrangements:
             MagicMock(spec=dc.ArrangementResponse)
         ] * num_arrangements
 
-        # Act
-        get_personal_arrangements(
-            mock_db_session, staff_id=1, current_approval_status=current_approval_status
+        group_by_date = (
+            False  # always False since it is deprecated, but retained for backwards compatibility
         )
+        filters = dc.ArrangementFilters(group_by_date=group_by_date)
+
+        # Act
+        get_personal_arrangements(mock_db_session, staff_id=1, filters=filters)
 
         # Assert
         mock_get_arrangements.assert_called_once()
@@ -244,8 +249,8 @@ class TestGetSubordinatesArrangements:
     @pytest.mark.parametrize(
         ("supporting_docs", "group_by_date"),
         [
-            ([None, None, None], True),
-            (["/140002/2024-10-12T14:30:00/test_file_1.pdf", None, None], True),
+            ([None, None, None], False),
+            (["/140002/2024-10-12T14:30:00/test_file_1.pdf", None, None], False),
             (["/140002/2024-10-12T14:30:00/test_file_1.pdf", None, None], False),
             (
                 [
@@ -253,7 +258,7 @@ class TestGetSubordinatesArrangements:
                     "/140002/2024-10-12T14:30:00/test_file_2.pdf",
                     "/1/2024-10-12T14:30:00/test_file_3.pdf",
                 ],
-                True,
+                False,
             ),
         ],
     )
@@ -267,7 +272,6 @@ class TestGetSubordinatesArrangements:
         group_by_date,
         mock_db_session,
         mock_presigned_url,
-        mock_employee,
     ):
         # Arrange
         mock_get_arrangements.return_value = [MagicMock(spec=dc.ArrangementResponse)]
@@ -453,9 +457,9 @@ class TestCreateArrangementsFromRequest:
         mock_wfh_request.configure_mock(
             requester_staff_id=1 if not is_jack_sim else 130002,
             is_recurring=is_recurring,
-            update_datetime=datetime.now(),
+            update_datetime=datetime.now(singapore_timezone),
             current_approval_status=ApprovalStatus.PENDING_APPROVAL,
-            wfh_date=datetime.now().date(),
+            wfh_date=datetime.now(singapore_timezone).date(),
             batch_id=None,
             approving_officer=None,
         )
@@ -557,7 +561,7 @@ class TestCreateArrangementsFromRequest:
         mock_wfh_request = MagicMock(spec=dc.CreateArrangementRequest)
         mock_wfh_request.configure_mock(
             requester_staff_id=1,
-            update_datetime=datetime.now(),
+            update_datetime=datetime.now(singapore_timezone),
         )
 
         mock_get_employee.return_value = MagicMock(spec=EmployeeBase)

@@ -1,6 +1,7 @@
 from dataclasses import asdict
 from datetime import datetime
 from typing import Dict, List, Optional, Union
+from zoneinfo import ZoneInfo
 
 # from pydantic import ValidationError
 from sqlalchemy import and_, func, or_
@@ -22,6 +23,8 @@ from .commons.dataclasses import (
 from .commons.enums import Action, ApprovalStatus
 from .utils import get_tomorrow_date
 
+singapore_timezone = ZoneInfo("Asia/Singapore")
+
 
 def get_arrangement_by_id(db: Session, arrangement_id: int) -> Optional[Dict]:
     response = db.query(models.LatestArrangement).get(arrangement_id)
@@ -37,6 +40,12 @@ def get_arrangements(
 
     if filters:
         # Apply optional filters
+        if filters.personal_staff_id:
+            query = query.filter(
+                models.LatestArrangement.requester_staff_id != filters.personal_staff_id
+            )
+            logger.info(f"Crud: Excluding personal staff id {filters.personal_staff_id}")
+
         if filters.staff_ids:
             staff_ids = (
                 list(set(filters.staff_ids))
@@ -48,6 +57,7 @@ def get_arrangements(
                 query = query.filter(models.LatestArrangement.requester_staff_id == staff_ids)
             else:
                 query = query.filter(models.LatestArrangement.requester_staff_id.in_(staff_ids))
+            logger.info(f"Crud: Including staff ids {staff_ids}")
 
         if filters.name:
             query = query.filter(
@@ -56,27 +66,37 @@ def get_arrangements(
                     Employee.staff_lname.ilike(f"%{filters.name}%"),
                 )
             )
+            logger.info(f"Crud: Including name {filters.name}")
+
         if filters.current_approval_status:
             query = query.filter(
                 models.LatestArrangement.current_approval_status.in_(
                     filters.current_approval_status
                 )
             )
+            logger.info(
+                f"Crud: Including current approval status {filters.current_approval_status}"
+            )
 
         if filters.wfh_type:
             models.LatestArrangement.wfh_type.in_(filters.wfh_type)
+            logger.info(f"Crud: Including wfh type {filters.wfh_type}")
 
         if filters.start_date:
             query = query.filter(func.date(models.LatestArrangement.wfh_date) >= filters.start_date)
+            logger.info(f"Crud: Including start date {filters.start_date}")
 
         if filters.end_date:
             query = query.filter(func.date(models.LatestArrangement.wfh_date) <= filters.end_date)
+            logger.info(f"Crud: Including end date {filters.end_date}")
 
         if filters.reason:
             query = query.filter(models.LatestArrangement.reason_description.like(filters.reason))
+            logger.info(f"Crud: Including reason {filters.reason}")
 
         if filters.department:
             query = query.filter(Employee.dept == filters.department)
+            logger.info(f"Crud: Including department {filters.department}")
 
         if filters.manager_id:
             query = query.filter(
@@ -88,8 +108,12 @@ def get_arrangements(
                     models.LatestArrangement.delegate_approving_officer == filters.manager_id,
                 )
             )
+            logger.info(f"Crud: Including manager id {filters.manager_id}")
+
+        query = query.order_by(models.LatestArrangement.wfh_date.asc())
 
     results = query.all()
+
     logger.info(f"Crud: Found {len(results)} arrangements")
 
     return [result.__dict__ for result in results]
@@ -222,7 +246,7 @@ def update_arrangement_approval_status(
             models.LatestArrangement.arrangement_id == arrangement_data.arrangement_id
         ).update(
             {
-                models.LatestArrangement.update_datetime: datetime.now(),
+                models.LatestArrangement.update_datetime: datetime.now(singapore_timezone),
                 models.LatestArrangement.current_approval_status: arrangement_data.current_approval_status,
                 models.LatestArrangement.supporting_doc_1: arrangement_data.supporting_doc_1,
                 models.LatestArrangement.supporting_doc_2: arrangement_data.supporting_doc_2,
