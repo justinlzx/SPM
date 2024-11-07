@@ -18,7 +18,7 @@ import {
   Alert,
 } from "@mui/material";
 
-import { SnackBarComponent, AlertStatus } from "../../common/SnackBar";
+import { AlertStatus } from "../../common/SnackBar";
 import * as Yup from "yup";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";

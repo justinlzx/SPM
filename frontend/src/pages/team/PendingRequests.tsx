@@ -18,8 +18,6 @@ import {
   DialogContent,
   DialogActions,
   TextField,
-  Tooltip,
-  Box,
   Link,
   List,
   ListItem,
@@ -36,9 +34,7 @@ import {
 import { UserContext } from "../../context/UserContextProvider";
 import { SnackBarComponent, AlertStatus } from "../../common/SnackBar";
 import { LoadingSpinner } from "../../common/LoadingSpinner";
-import { DelegationStatus } from "../../types/delegation";
 import qs from "qs";
-import AllRequests from "./AllRequests";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 
@@ -73,7 +69,7 @@ export const PendingRequests = () => {
   const [snackbarMessage, setSnackbarMessage] = useState("");
   const [alertStatus, setAlertStatus] = useState<AlertStatus>(AlertStatus.Info);
   const [loading, setLoading] = useState(true);
-  const [filters, setFilters] = useState({});
+  const [, setFilters] = useState({});
 
   const [rejectModalOpen, setRejectModalOpen] = useState(false);
   const [selectedArrangementId, setSelectedArrangementId] = useState<

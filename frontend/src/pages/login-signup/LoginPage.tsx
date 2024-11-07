@@ -34,7 +34,7 @@ export const LoginPage = () => {
           setIsLoggingIn(false);
           navigate("/home");
         },
-        onError: (error: any) => {
+        onError: () => {
           setIsLoggingIn(false);
           setError("Invalid email or password. Please try again.");
         },

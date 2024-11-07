@@ -1,6 +1,6 @@
 // delegation.utils.ts
 import axios from "axios";
-import { TDelegationLog, TDelegationRequest, Peer, DelegationStatus } from "../../types/delegation";
+import { TDelegationLog, TDelegationRequest, Peer } from "../../types/delegation";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 

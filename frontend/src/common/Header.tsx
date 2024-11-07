@@ -22,7 +22,7 @@ interface Props {
 
 export const Header = ({ window }: Props) => {
   const [mobileOpen, setMobileOpen] = React.useState(false);
-  const { user, logout } = useContext(UserContext);
+  const { logout } = useContext(UserContext);
   const navigate = useNavigate(); // Add useNavigate hook
 
   const handleDrawerToggle = () => {

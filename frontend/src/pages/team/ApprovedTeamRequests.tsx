@@ -17,8 +17,6 @@ import {
   DialogContent,
   DialogActions,
   TextField,
-  Tooltip,
-  Box,
   Link,
   List,
   ListItem,

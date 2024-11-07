@@ -35,7 +35,7 @@ export default [
       ...js.configs.recommended.rules,
       // ...react.configs.recommended.rules,
       ...typescript.configs.recommended.rules,
-      "@typescript-eslint/no-unused-vars": "off",
+      // "@typescript-eslint/no-unused-vars": "off",
       "react/jsx-key": "off",
       "@typescript-eslint/no-explicit-any": "off",
     },

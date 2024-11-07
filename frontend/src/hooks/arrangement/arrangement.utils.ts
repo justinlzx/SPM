@@ -44,14 +44,13 @@ export const getArrangementsByManager = async ({
     if (response.status === 200) {
       return response.data as TRequest[];
     }
-  } catch (error: any) {
+  } catch {
     return;
   }
 };
 
 export const updateArrangement = async (
   request: "approve" | "reject",
-  arrangement_id: number
 ): Promise<any | undefined> => {
   // try {
   //TODO: double check endpoint

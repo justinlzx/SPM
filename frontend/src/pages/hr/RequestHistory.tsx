@@ -2,7 +2,6 @@ import React, { useContext, useEffect, useState } from "react";
 import { UserContext } from "../../context/UserContextProvider";
 import { useNavigate } from "react-router-dom";
 import {
-  Box,
   Container,
   Typography,
   Divider,
