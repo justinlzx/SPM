@@ -211,8 +211,9 @@ export const RequestList = () => {
                   key={arrangement.arrangement_id + arrangement.wfh_date}
                 >
                   <TableCell>
-                    {`${arrangement.requester_info.staff_fname} ${arrangement.requester_info.staff_lname}` ||
-                      "N/A"}
+                    {arrangement.requester_info
+                      ? `${arrangement.requester_info.staff_fname} ${arrangement.requester_info.staff_lname}`
+                      : "N/A"}
                   </TableCell>
                   <TableCell>
                     {arrangement.wfh_type?.toUpperCase() || "N/A"}
