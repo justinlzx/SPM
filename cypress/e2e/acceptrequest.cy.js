@@ -1,8 +1,8 @@
 describe('Testing accept request', () => {
-    it('Should create a request and then have it approved by a manager', () => {
+    it('Should create a request and then have it approved by a mid-level manager', () => {
         // Step 1: Login as Rahim and create a WFH request
         cy.visit('http://localhost:3000/login');
-        cy.get('[data-cy="email"]').type('rahim.khalid@allinone.com.sg');
+        cy.get('[data-cy="email"]').type('mary.teo@allinone.com.sg');
         cy.get('[data-cy="password"]').type('password');
         cy.get('[data-cy="submit"]').click();
         cy.url().should('eq', 'http://localhost:3000/home');
@@ -20,7 +20,7 @@ describe('Testing accept request', () => {
         cy.get('[data-cy="submit-request"]').click();
 
         // Capture the latest request arrangement_id
-        cy.request('http://localhost:8000/arrangements/personal/140894').then((response) => {
+        cy.request('http://localhost:8000/arrangements/personal/140004').then((response) => {
             expect(response.body).to.have.property('data');
             const arrangements = response.body.data;
             const latestRequest = arrangements.reduce((latest, current) =>
@@ -29,10 +29,10 @@ describe('Testing accept request', () => {
             cy.wrap(latestRequest.arrangement_id).as('latestArrangementId');
         });
 
-        // Step 2: Log out and log in as Derek
+        // Step 2: Log out and log in as Rahim
         cy.get('[data-cy="logout"]').click();
         cy.url().should('eq', 'http://localhost:3000/login');
-        cy.get('[data-cy="email"]').type('Derek.Tan@allinone.com.sg');
+        cy.get('[data-cy="email"]').type('rahim.khalid@allinone.com.sg');
         cy.get('[data-cy="password"]').type('password');
         cy.get('[data-cy="submit"]').click();
         cy.url().should('eq', 'http://localhost:3000/home');
