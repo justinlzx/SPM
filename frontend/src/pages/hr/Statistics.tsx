@@ -53,7 +53,7 @@ export const Statistics = () => {
             break;
         }
 
-        if (arrangement.reason_description.slice(0,3) === "OOO") {
+        if (arrangement.reason_description.slice(0, 3) === "OOO") {
           counts.onLeave++;
         }
       });
@@ -119,7 +119,7 @@ export const Statistics = () => {
           userInfo={{ department: user?.dept }}
           action={(filterValues) => handleFilterChange(filterValues)}
         />
-        <Box className="w-full border-grey border-[1px] rounded-lg p-8 flex justify-center">
+        <Box className="w-full border-grey border-[1px] rounded-lg p-8 flex justify-center" data-cy="chart-container">
           <Box className="w-1/2">
             {data.slice(0, 3).reduce((count, val) => count + val, 0) === 0 ? (
               <Box className="h-full flex justify-center items-center">

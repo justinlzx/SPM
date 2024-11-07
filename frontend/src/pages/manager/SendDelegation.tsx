@@ -80,7 +80,7 @@ export const SendDelegation: React.FC = () => {
         } catch (error) {
           console.error('Error fetching peers:', error);
           handleSnackbar(AlertStatus.Error, 'Failed to load peers.');
-        } finally { 
+        } finally {
           setLoading(false);
         }
       }
@@ -106,7 +106,7 @@ export const SendDelegation: React.FC = () => {
         log.delegate_manager_id === parseInt(selectedPeer) &&
         (log.status_of_delegation === DelegationStatus.Pending || log.status_of_delegation === DelegationStatus.Accepted)
     );
-  
+
     if (existingDelegation) {
       handleSnackbar(
         AlertStatus.Error,
@@ -114,7 +114,7 @@ export const SendDelegation: React.FC = () => {
       );
       return;
     }
-  
+
     setLoading(true);
     try {
       const response = await axios.post(`${BACKEND_URL}/employees/manager/delegate/${userId}`, null, {
@@ -122,7 +122,7 @@ export const SendDelegation: React.FC = () => {
           delegate_manager_id: selectedPeer,
         },
       });
-  
+
       handleSnackbar(AlertStatus.Success, 'Request to delegate peer manager sent');
       setOpenModal(false);
       await fetchDelegationLogs(); // Refresh data after sending delegation
@@ -175,16 +175,16 @@ export const SendDelegation: React.FC = () => {
 
   return (
     <Container>
-       {loading ? (
+      {loading ? (
         <Box display="flex" justifyContent="center" alignItems="center" minHeight="50vh">
           <LoadingSpinner open={loading} />
         </Box>
       ) : (
         <>
-          <Box 
-            display="flex" 
-            alignItems="center" 
-            justifyContent="space-between" 
+          <Box
+            display="flex"
+            alignItems="center"
+            justifyContent="space-between"
             sx={{ my: 4, gap: 2, p: 2, borderRadius: 1, bgcolor: '#EDEDED' }}
           >
             <Box display="flex" alignItems="center" gap={2}>
@@ -206,10 +206,11 @@ export const SendDelegation: React.FC = () => {
                   : ""
               }
             >
-              <span> 
+              <span>
                 <Button
                   variant="outlined"
                   color="primary"
+                  data-cy="Delegate-A-Manager"
                   onClick={handleOpenModal}
                   disabled={hasPendingOrActiveDelegation}
                 >
@@ -226,6 +227,7 @@ export const SendDelegation: React.FC = () => {
               <FormControl fullWidth sx={{ my: 2 }}>
                 <InputLabel id="select-peer-label">Select Manager</InputLabel>
                 <Select
+                  data-cy="select-peer-dropdown"
                   labelId="select-peer-label"
                   label="Select Manager"
                   value={selectedPeer}
@@ -245,6 +247,7 @@ export const SendDelegation: React.FC = () => {
                 variant="contained"
                 color="primary"
                 onClick={handleDelegate}
+                data-cy="delegate-manager-button"
               >
                 Delegate Manager
               </Button>
@@ -289,10 +292,10 @@ export const SendDelegation: React.FC = () => {
                             log.status_of_delegation === DelegationStatus.Accepted
                               ? "success"
                               : log.status_of_delegation === DelegationStatus.Rejected
-                              ? "error"
-                              : log.status_of_delegation === DelegationStatus.Pending
-                              ? "warning"
-                              : "default"
+                                ? "error"
+                                : log.status_of_delegation === DelegationStatus.Pending
+                                  ? "warning"
+                                  : "default"
                           }
                         />
                       </TableCell>
@@ -302,6 +305,7 @@ export const SendDelegation: React.FC = () => {
                           color="secondary"
                           onClick={() => handleCancelDelegation(log.delegate_manager_id)}
                           disabled={log.status_of_delegation !== DelegationStatus.Accepted}
+                          data-cy="cancel-delegation-button"
                         >
                           Cancel
                         </Button>
@@ -314,7 +318,7 @@ export const SendDelegation: React.FC = () => {
           </TableContainer>
         </>
       )}
-    </Container>
+    </Container >
   );
 };
 
