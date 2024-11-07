@@ -103,7 +103,7 @@ def get_subordinates_arrangements(
         record.supporting_doc_3 = create_presigned_url(record.supporting_doc_3)
 
     # Group by date if required
-    if filters.group_by_date is False:
+    if filters.group_by_date is True:
         arrangements = group_arrangements_by_date(arrangements)
 
         logger.info(f"Grouped arrangements into {len(arrangements)} dates")
@@ -168,7 +168,7 @@ def get_team_arrangements(
         record.supporting_doc_3 = create_presigned_url(record.supporting_doc_3)
 
     # Group by date if required
-    if filters.group_by_date is False:
+    if filters.group_by_date is True:
         team_arrangements = group_arrangements_by_date(team_arrangements)
 
         logger.info(f"Grouped arrangements into {len(team_arrangements)} dates")
