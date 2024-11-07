@@ -18,8 +18,8 @@ def test_send_email_success(valid_email_data):
     assert response.status_code == 200
     assert response.json() == {
         "message": "Email sent successfully!",  # Updated to match the actual response
-        # "sender_email": "zarapetproject@gmail.com",
-        "sender_email": "zarapetproject2@gmail.com",
+        "sender_email": "zarapetproject@gmail.com",
+        # "sender_email": "zarapetproject2@gmail.com",
         "to_email": valid_email_data["to_email"],
         "subject": valid_email_data["subject"],
         "content": valid_email_data["content"],

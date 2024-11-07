@@ -14,8 +14,8 @@ async def send_email(to_email: str = Form(...), subject: str = Form(...), conten
     if not content.strip():
         raise HTTPException(status_code=400, detail="Content cannot be empty.")
 
-    # sender_email = "zarapetproject@gmail.com"
-    sender_email = "zarapetproject2@gmail.com"
+    sender_email = "zarapetproject@gmail.com"
+    # sender_email = "zarapetproject2@gmail.com"
 
     try:
         email = models.EmailModel(
