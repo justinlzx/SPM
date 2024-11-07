@@ -1,6 +1,7 @@
 from dataclasses import asdict
 from datetime import datetime
 from typing import Dict, List, Optional, Union
+from zoneinfo import ZoneInfo
 
 # from pydantic import ValidationError
 from sqlalchemy import and_, func, or_
@@ -21,6 +22,8 @@ from .commons.dataclasses import (
 )
 from .commons.enums import Action, ApprovalStatus
 from .utils import get_tomorrow_date
+
+singapore_timezone = ZoneInfo("Asia/Singapore")
 
 
 def get_arrangement_by_id(db: Session, arrangement_id: int) -> Optional[Dict]:
@@ -242,7 +245,7 @@ def update_arrangement_approval_status(
             models.LatestArrangement.arrangement_id == arrangement_data.arrangement_id
         ).update(
             {
-                models.LatestArrangement.update_datetime: datetime.now(),
+                models.LatestArrangement.update_datetime: datetime.now(singapore_timezone),
                 models.LatestArrangement.current_approval_status: arrangement_data.current_approval_status,
                 models.LatestArrangement.supporting_doc_1: arrangement_data.supporting_doc_1,
                 models.LatestArrangement.supporting_doc_2: arrangement_data.supporting_doc_2,

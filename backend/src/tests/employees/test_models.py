@@ -1,24 +1,14 @@
 from datetime import datetime
-from unittest.mock import MagicMock
 
 import pytest
-from src.auth.models import Auth
-from src.employees.models import DelegateLog, DelegationStatus, Employee
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from src.database import Base
-from datetime import datetime
-from src.employees.models import Employee, DelegateLog, DelegationStatus
 
 # pls do not delete this, this needs to be here for mock_db_session to work
 # pls do not ask me why this is the case, i dont know...
-from src.arrangements.commons.models import (
-    ArrangementLog,
-    LatestArrangement,
-    WfhType,
-    ApprovalStatus,
-    Action,
-)
+from src.auth.models import Auth
+from src.database import Base
+from src.employees.models import DelegateLog, DelegationStatus, Employee
 
 
 @pytest.fixture

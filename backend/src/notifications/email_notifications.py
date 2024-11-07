@@ -1,6 +1,7 @@
 from datetime import datetime
 from os import getenv
 from typing import Union
+from zoneinfo import ZoneInfo
 
 import httpx
 from dotenv import load_dotenv
@@ -17,6 +18,7 @@ from .commons.structs import ARRANGEMENT_SUBJECT, DELEGATION_SUBJECT
 
 load_dotenv()
 BASE_URL = getenv("BACKEND_BASE_URL", "http://localhost:8000")
+singapore_timezone = ZoneInfo("Asia/Singapore")
 
 
 async def send_email(to_email: str, subject: str, content: str):
@@ -144,7 +146,7 @@ def format_details(config: Union[ArrangementNotificationConfig, DelegateNotifica
             "withdrawn": "Delegation Withdrawal",
         }
 
-        details += f"{verb_map.get(config.action)} Date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} UTC\n"
+        details += f"{verb_map.get(config.action)} Date: {datetime.now(singapore_timezone).strftime('%Y-%m-%d %H:%M:%S')} UTC\n"
         details += f"Delegator: {config.delegator.staff_fname} {config.delegator.staff_lname}\n"
         details += f"Delegatee: {config.delegatee.staff_fname} {config.delegatee.staff_lname}\n"
 
