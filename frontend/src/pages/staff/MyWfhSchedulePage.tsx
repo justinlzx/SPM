@@ -117,6 +117,7 @@ export const MyWfhSchedulePage = () => {
       <Filters
         onApplyFilters={(filters) => handleFilterChange(filters)}
         onClearFilters={(filters) => handleFilterChange(filters)}
+        excludeSearchFilter={true}
       />
       <WFHRequestTable
         requests={requests}
