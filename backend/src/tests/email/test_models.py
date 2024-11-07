@@ -31,7 +31,8 @@ def mock_environ():
         "SMTP_PORT": "587",
         # "SMTP_USERNAME": "zarapetproject@gmail.com",
         "SMTP_USERNAME": "zarapetproject2@gmail.com",
-        "SMTP_PASSWORD": "htexgclmmbqbuwia",
+        # "SMTP_PASSWORD": "htexgclmmbqbuwia",
+        "SMTP_PASSWORD": "ladfaogrebelnmkh",
     }
     with patch.dict("os.environ", env_vars):
         yield
