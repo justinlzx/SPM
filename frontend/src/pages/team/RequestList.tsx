@@ -226,7 +226,7 @@ export const RequestList = () => {
                       color={getChipColor(arrangement.current_approval_status)}
                     />
                   </TableCell>
-                  <TableCell>
+                  <TableCell style={{ whiteSpace: "normal", wordWrap: "break-word" }}>
                     {arrangement.reason_description || "N/A"}
                   </TableCell>
                 </TableRow>

@@ -168,9 +168,11 @@ export const PendingRequests = () => {
       }
 
       // Adjust requests to pull the names of the corresponding staff_id
-        const updatedRequests = await Promise.all(
+      const updatedRequests = await Promise.all(
         allRequests.map(async (request) => {
-          const requester = await fetchEmployeeByStaffId(request.requester_staff_id);
+          const requester = await fetchEmployeeByStaffId(
+            request.requester_staff_id
+          );
           return {
             ...request,
             requester_name: requester
@@ -243,9 +245,7 @@ export const PendingRequests = () => {
       );
 
       setAlertStatus(AlertStatus.Success);
-      setSnackbarMessage(
-        `WFH Request successfully updated to '${nextStatus}'`
-      );
+      setSnackbarMessage(`WFH Request successfully updated to '${nextStatus}'`);
       setShowSnackbar(true);
       refreshData();
     } catch (error) {
@@ -452,14 +452,8 @@ const ArrangementRow = ({
       <TableCell>{requester_name}</TableCell>
       <TableCell>{wfh_date}</TableCell>
       <TableCell>{wfh_type?.toUpperCase()}</TableCell>
-      <TableCell>
-        <Tooltip title="Scroll to view more">
-          <Box
-            sx={{ overflowX: "scroll", maxWidth: 200, whiteSpace: "nowrap" }}
-          >
-            {reason_description}
-          </Box>
-        </Tooltip>
+      <TableCell style={{ whiteSpace: "normal", wordWrap: "break-word" }}>
+        {reason_description}
       </TableCell>
       <TableCell>
         {documents.length > 0 ? (
