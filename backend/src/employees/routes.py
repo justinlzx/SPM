@@ -4,11 +4,11 @@ from fastapi import APIRouter, Depends, Form, HTTPException
 from pydantic import EmailStr
 from sqlalchemy.orm import Session
 
-from ..logger import logger
 from .. import utils
 from ..database import get_db
 from ..employees.models import Employee
 from ..employees.schemas import DelegateLogCreate, EmployeeBase, EmployeePeerResponse
+from ..logger import logger
 from . import exceptions, schemas, services
 from .dataclasses import EmployeeFilters
 
