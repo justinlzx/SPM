@@ -1,12 +1,12 @@
-import pytest
-from pydantic import ValidationError
 from typing import Any, Dict
 
+import pytest
+from pydantic import ValidationError
 from src.email.schemas import EmailSchema
 
 
 def create_valid_email_data() -> Dict[str, Any]:
-    """Helper function to create valid email data"""
+    """Helper function to create valid email data."""
     return {
         "sender_email": "sender@example.com",
         "to_email": "recipient@example.com",
@@ -16,7 +16,7 @@ def create_valid_email_data() -> Dict[str, Any]:
 
 
 def test_valid_email_schema():
-    """Test creation of EmailSchema with valid data"""
+    """Test creation of EmailSchema with valid data."""
     email_data = create_valid_email_data()
     email = EmailSchema(**email_data)
 
@@ -27,7 +27,7 @@ def test_valid_email_schema():
 
 
 def test_invalid_sender_email():
-    """Test validation error for invalid sender email"""
+    """Test validation error for invalid sender email."""
     email_data = create_valid_email_data()
     email_data["sender_email"] = "invalid-email"
 
@@ -41,7 +41,7 @@ def test_invalid_sender_email():
 
 
 def test_invalid_recipient_email():
-    """Test validation error for invalid recipient email"""
+    """Test validation error for invalid recipient email."""
     email_data = create_valid_email_data()
     email_data["to_email"] = "not-an-email"
 
@@ -55,7 +55,7 @@ def test_invalid_recipient_email():
 
 
 def test_empty_subject():
-    """Test that empty subject is allowed"""
+    """Test that empty subject is allowed."""
     email_data = create_valid_email_data()
     email_data["subject"] = ""
 
@@ -64,7 +64,7 @@ def test_empty_subject():
 
 
 def test_empty_content():
-    """Test that empty content is allowed"""
+    """Test that empty content is allowed."""
     email_data = create_valid_email_data()
     email_data["content"] = ""
 
@@ -73,7 +73,7 @@ def test_empty_content():
 
 
 def test_missing_required_fields():
-    """Test validation error when required fields are missing"""
+    """Test validation error when required fields are missing."""
     with pytest.raises(ValidationError) as exc_info:
         EmailSchema()
 
@@ -85,7 +85,7 @@ def test_missing_required_fields():
 
 @pytest.mark.parametrize("email_field", ["sender_email", "to_email"])
 def test_email_normalization(email_field):
-    """Test that email addresses are properly normalized"""
+    """Test that email addresses are properly normalized."""
     email_data = create_valid_email_data()
     email_data[email_field] = "Test.User@EXAMPLE.COM"
 
