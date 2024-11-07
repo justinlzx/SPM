@@ -196,6 +196,8 @@ export const ApprovedRequests = () => {
       <Filters
         onApplyFilters={(newFilters) => handleFilterChange(newFilters)}
         onClearFilters={(newFilters) => handleFilterChange(newFilters)}
+        excludeStatusFilter={true}
+        excludeSearchFilter={true}
       />
 
       <TableContainer
