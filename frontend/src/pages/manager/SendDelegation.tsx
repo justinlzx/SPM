@@ -305,6 +305,7 @@ export const SendDelegation: React.FC = () => {
                           color="secondary"
                           onClick={() => handleCancelDelegation(log.delegate_manager_id)}
                           disabled={log.status_of_delegation !== DelegationStatus.Accepted}
+                          data-cy="cancel-delegation-button"
                         >
                           Cancel
                         </Button>

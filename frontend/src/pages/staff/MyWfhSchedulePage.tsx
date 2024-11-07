@@ -3,6 +3,7 @@ import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import { Container, Typography, Snackbar, Alert } from "@mui/material";
 import { UserContext } from "../../context/UserContextProvider";
+import { WFHRequestTable } from "../../components/WFHRequestTable";
 import { ApprovalStatus } from "../../types/status";
 import { Filters, TFilters } from "../../common/Filters";
 import { TWFHRequest } from "../../types/requests";
