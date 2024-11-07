@@ -36,10 +36,11 @@ import {
 import { UserContext } from "../../context/UserContextProvider";
 import { SnackBarComponent, AlertStatus } from "../../common/SnackBar";
 import { LoadingSpinner } from "../../common/LoadingSpinner";
+import { DelegationStatus } from "../../types/delegation";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 
-type TWFHRequest = {
+export type TWFHRequest = {
   arrangement_id: number;
   requester_staff_id: number;
   requester_name?: string;
@@ -51,15 +52,19 @@ type TWFHRequest = {
   supporting_doc_1?: string | null;
   supporting_doc_2?: string | null;
   supporting_doc_3?: string | null;
+  delegate_approving_officer?: number;
 };
 
 export const PendingRequests = () => {
+  const { user } = useContext(UserContext);
+  const userId = user?.id;
+
   const [actionRequests, setActionRequests] = useState<TWFHRequest[]>([]);
   const [filteredRequests, setFilteredRequests] = useState<TWFHRequest[]>([]);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
-  const { user } = useContext(UserContext);
-  const userId = user?.id;
+  const [isDelegateManager, setIsDelegateManager] = useState(false);
+  const [delegatorManagerId, setDelegatorManagerId] = useState<number | null>(null);
 
   const [showSnackbar, setShowSnackbar] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState("");
@@ -67,30 +72,80 @@ export const PendingRequests = () => {
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState({});
 
-  // Rejection modal state
   const [rejectModalOpen, setRejectModalOpen] = useState(false);
   const [selectedArrangementId, setSelectedArrangementId] = useState<number | null>(null);
   const [rejectionReason, setRejectionReason] = useState("");
 
-  // Document dialog state
   const [documentDialogOpen, setDocumentDialogOpen] = useState(false);
   const [documents, setDocuments] = useState<string[]>([]);
+
+  const fetchDelegationStatus = async () => {
+    if (!user || !userId) return;
+    try {
+      const response = await axios.get(`${BACKEND_URL}/employees/manager/viewdelegations/${userId}`, {
+        params: {
+          status: "accepted",
+        },
+      });
+
+      const delegationRequests = response.data.pending_approval_delegations || [];
+      const hasAcceptedDelegations = delegationRequests.some(
+        (delegation: any) => delegation.status_of_delegation === "accepted"
+      );
+      setIsDelegateManager(hasAcceptedDelegations);
+
+      if (hasAcceptedDelegations) {
+        const delegatorId = delegationRequests[0].staff_id;
+        setDelegatorManagerId(delegatorId);
+      } else {
+        setDelegatorManagerId(userId);
+      }
+    } catch (error) {
+      console.error("Failed to fetch delegation status:", error);
+    }
+  };
 
   const fetchPendingRequests = async () => {
     if (!user || !userId) return;
     setLoading(true);
-    try {
-      const response = await axios.get(
-        `${BACKEND_URL}/arrangements/subordinates/${userId}`,
-        { params: { current_approval_status: ["pending approval", "pending withdrawal"] } }
-      );
 
-      const requests = response.data.data
-        .flatMap((dateEntry: any) => dateEntry.pending_arrangements)
-        .filter((request: TWFHRequest) =>
-          [ApprovalStatus.PendingApproval, ApprovalStatus.PendingWithdrawal].includes(request.current_approval_status)
+    try {
+      if (delegatorManagerId === userId && isDelegateManager) {
+        setActionRequests([]);
+        setFilteredRequests([]);
+        setLoading(false);
+        return;
+      }
+
+      let allRequests: TWFHRequest[] = [];
+      if (!isDelegateManager || delegatorManagerId !== userId) {
+        const primaryResponse = await axios.get(`${BACKEND_URL}/arrangements/subordinates/${userId}`, {
+          params: { current_approval_status: ["pending approval", "pending withdrawal"] },
+        });
+        const primaryRequests = primaryResponse.data.data.flatMap(
+          (dateEntry: { pending_arrangements: TWFHRequest[] }) => dateEntry.pending_arrangements
         );
-      console.log(requests);
+        allRequests = [...primaryRequests];
+        console.log(allRequests)
+      }
+
+      if (isDelegateManager && delegatorManagerId && delegatorManagerId !== userId) {
+        const delegatedResponse = await axios.get(`${BACKEND_URL}/arrangements/subordinates/${delegatorManagerId}`, {
+          params: { current_approval_status: ["pending approval", "pending withdrawal"] },
+        });
+        const delegatedRequests = delegatedResponse.data.data.flatMap(
+          (dateEntry: { pending_arrangements: TWFHRequest[] }) => dateEntry.pending_arrangements
+        );
+        allRequests = [...allRequests, ...delegatedRequests];
+      }
+
+      const requests = allRequests.filter((request: TWFHRequest) => {
+        return (
+          request.current_approval_status === ApprovalStatus.PendingApproval ||
+          request.current_approval_status === ApprovalStatus.PendingWithdrawal
+        );
+      });
+      console.log(requests)
 
       const requestsWithNames = await Promise.all(
         requests.map(async (request: TWFHRequest) => {
@@ -105,7 +160,7 @@ export const PendingRequests = () => {
       setActionRequests(requestsWithNames);
       setFilteredRequests(requestsWithNames);
     } catch (error) {
-      console.error("Failed to fetch subordinates' requests:", error);
+      console.error("Failed to fetch requests:", error);
       setAlertStatus(AlertStatus.Error);
       setSnackbarMessage("Failed to fetch requests.");
       setShowSnackbar(true);
@@ -114,12 +169,14 @@ export const PendingRequests = () => {
     }
   };
 
-  // Initialize data on component mount
   useEffect(() => {
-    fetchPendingRequests();
+    const initializeData = async () => {
+      await fetchDelegationStatus();
+      await fetchPendingRequests();
+    };
+    initializeData();
   }, [user, userId]);
 
-  // Refresh function to refetch data
   const refreshData = () => {
     fetchPendingRequests();
   };
@@ -209,6 +266,7 @@ export const PendingRequests = () => {
       return matchesDate && matchesStatus && matchesSearchQuery;
     });
     setFilteredRequests(filtered);
+    console.log("Filtered Requests:", filtered);
   };
 
   const handleViewDocuments = (docs: string[]) => {
@@ -251,7 +309,8 @@ export const PendingRequests = () => {
             </TableRow>
           </TableHead>
           <TableBody>
-            {filteredRequests.length === 0 ? (
+            {(filteredRequests.length === 0
+            ) ? (
               <TableRow>
                 <TableCell colSpan={7} align="center">
                   No pending requests
@@ -331,7 +390,7 @@ export const PendingRequests = () => {
   );
 };
 
-// ArrangementRow Component
+
 const ArrangementRow = ({
   arrangement,
   handleRequestAction,

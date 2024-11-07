@@ -10,12 +10,8 @@ from sqlalchemy.orm import Session
 
 from ..database import get_db
 from ..employees import crud as employee_crud
-from ..employees import models as employee_models
 from ..employees import services as employee_services
-from ..employees.exceptions import (
-    EmployeeNotFoundException,
-    ManagerWithIDNotFoundException,
-)
+from ..employees.exceptions import EmployeeNotFoundException
 from ..logger import logger
 from ..notifications.commons.dataclasses import ArrangementNotificationConfig
 from ..notifications.email_notifications import craft_and_send_email
@@ -36,9 +32,9 @@ from .commons.enums import STATUS_ACTION_MAPPING, Action, ApprovalStatus
 from .utils import (
     compute_pagination_meta,
     create_presigned_url,
-    delete_file,
     expand_recurring_arrangement,
     group_arrangements_by_date,
+    handle_multi_file_deletion,
     upload_file,
 )
 
@@ -63,14 +59,26 @@ def get_all_arrangements(db: Session, filters: ArrangementFilters) -> List[Arran
 def get_personal_arrangements(
     db: Session, staff_id: int, current_approval_status: Optional[List[ApprovalStatus]] = None
 ) -> List[ArrangementResponse]:
-
-    filters = ArrangementFilters(current_approval_status=current_approval_status)
+    filters = ArrangementFilters(
+        current_approval_status=current_approval_status, staff_ids=staff_id
+    )
 
     logger.info(f"Service: Fetching personal arrangements for staff ID {staff_id}")
-    arrangements = crud.get_arrangements(db, staff_id, filters=filters)
+    arrangements = crud.get_arrangements(db, filters=filters)
     logger.info(f"Service: Found {len(arrangements)} arrangements for staff ID {staff_id}")
 
-    return [ArrangementResponse.from_dict(arrangement) for arrangement in arrangements]
+    arrangements = [ArrangementResponse.from_dict(arrangement) for arrangement in arrangements]
+
+    if len(arrangements) > 0:
+        # Get presigned URL for each supporting document in each arrangement
+        for record in arrangements:
+            record.supporting_doc_1 = create_presigned_url(record.supporting_doc_1)
+            record.supporting_doc_2 = create_presigned_url(record.supporting_doc_2)
+            record.supporting_doc_3 = create_presigned_url(record.supporting_doc_3)
+
+    logger.info(f"Service: Found {len(arrangements)} arrangements")
+
+    return arrangements
 
 
 def get_subordinates_arrangements(
@@ -80,18 +88,11 @@ def get_subordinates_arrangements(
     pagination: PaginationConfig,
 ) -> Tuple[Union[List[ArrangementResponse], List[CreatedArrangementGroupByDate]], PaginationMeta]:
 
-    # Get subordinates of the manager
-    employees_under_manager = employee_services.get_subordinates_by_manager_id(db, manager_id)
-    employees_under_manager = [
-        employees_under_manager.__dict__ for employees_under_manager in employees_under_manager
-    ]
-    employees_under_manager_ids = [employee["staff_id"] for employee in employees_under_manager]
-
     # Get arrangements for the subordinates
     logger.info(f"Service: Fetching arrangements for employees under manager ID: {manager_id}")
+    filters.manager_id = manager_id
     arrangements = crud.get_arrangements(
         db=db,
-        staff_ids=employees_under_manager_ids,
         filters=filters,
     )
     arrangements = [ArrangementResponse.from_dict(arrangement) for arrangement in arrangements]
@@ -131,43 +132,60 @@ def get_team_arrangements(
 ) -> Tuple[Union[List[ArrangementResponse], List[CreatedArrangementGroupByDate]], PaginationMeta]:
 
     # Get peer employees
-    employees: List[employee_models.Employee] = []
-    employees.extend(employee_services.get_peers_by_staff_id(db, staff_id))
+    employees = employee_services.get_peers_by_staff_id(db, staff_id)
 
-    try:
-        # Get subordinate employees
-        employees.extend(employee_services.get_subordinates_by_manager_id(db, staff_id))
-    except ManagerWithIDNotFoundException:
-        logger.info("Employee is not a manager, skipping subordinate retrieval")
+    team_arrangements = []
 
-    # Get team arrangements
-    logger.info(f"Service: Fetching arrangements for team of staff ID {staff_id}")
-    arrangements = crud.get_arrangements(
+    # Get peer arrangements
+    filters.staff_ids = [employee.staff_id for employee in employees]  # type: ignore
+    logger.info(f"Service: Fetching arrangements for peers of staff ID {staff_id}")
+    peer_arrangements = crud.get_arrangements(
         db=db,
-        staff_ids=[employee.staff_id for employee in employees],
         filters=filters,
     )
-    arrangements = [ArrangementResponse.from_dict(arrangement) for arrangement in arrangements]
-    logger.info(f"Service: Found {len(arrangements)} arrangements")
+    team_arrangements.extend(peer_arrangements)
+    logger.info(f"Service: Found {len(peer_arrangements)} peer arrangements")
+
+    # Get subordinate arrangements
+    filters.staff_ids = None
+    filters.manager_id = staff_id
+    logger.info(f"Service: Fetching arrangements for team of staff ID {staff_id}")
+    subordinates_arrangements = crud.get_arrangements(
+        db=db,
+        filters=filters,
+    )
+    team_arrangements.extend(subordinates_arrangements)
+    logger.info(f"Service: Found {len(subordinates_arrangements)} subordinates arrangements")
+
+    # Convert to dataclasses
+    team_arrangements = [
+        ArrangementResponse.from_dict(arrangement) for arrangement in team_arrangements
+    ]
+
+    # Get presigned URL for each supporting document in each arrangement
+    for record in team_arrangements:
+        record.supporting_doc_1 = create_presigned_url(record.supporting_doc_1)
+        record.supporting_doc_2 = create_presigned_url(record.supporting_doc_2)
+        record.supporting_doc_3 = create_presigned_url(record.supporting_doc_3)
 
     # Group by date if required
     if filters.group_by_date:
-        arrangements = group_arrangements_by_date(arrangements)
+        team_arrangements = group_arrangements_by_date(team_arrangements)
 
-        logger.info(f"Grouped arrangements into {len(arrangements)} dates")
+        logger.info(f"Grouped arrangements into {len(team_arrangements)} dates")
 
         # slice the list based on page number and items per page
-        arrangements = arrangements[
+        team_arrangements = team_arrangements[
             (pagination.page_num - 1)
             * pagination.items_per_page : pagination.page_num
             * pagination.items_per_page
         ]
 
     pagination_meta = compute_pagination_meta(
-        arrangements, pagination.items_per_page, pagination.page_num
+        team_arrangements, pagination.items_per_page, pagination.page_num
     )
 
-    return arrangements, pagination_meta
+    return team_arrangements, pagination_meta
 
 
 def get_arrangement_logs(
@@ -276,14 +294,8 @@ async def create_arrangements_from_request(
     except botocore.exceptions.ClientError as upload_error:
         # If any error occurs, delete uploaded files from S3
         logger.info(f"Deleting files due to error: {str(upload_error)}")
-        for path in file_paths:
-            try:
-                await delete_file(path, datetime.now(), s3_client)
-            except botocore.exceptions.ClientError as delete_error:
-                # Log deletion error, but do not raise to avoid overriding the main exception
-                logger.info(f"Error deleting file {path} from S3: {str(delete_error)}")
+        await handle_multi_file_deletion(file_paths, s3_client)
         raise exceptions.S3UploadFailedException(str(upload_error))
-    # TODO: Email notification error
 
 
 async def update_arrangement_approval_status(
@@ -293,19 +305,17 @@ async def update_arrangement_approval_status(
 
     # Get the arrangement to be updated
     arrangement = crud.get_arrangement_by_id(db, wfh_update.arrangement_id)
-
     if not arrangement:
         raise exceptions.ArrangementNotFoundException(wfh_update.arrangement_id)
-
     arrangement = ArrangementResponse.from_dict(arrangement)
 
-    # Update arrangement fields
-
+    # Check if action is valid for the current status
     if wfh_update.action not in STATUS_ACTION_MAPPING[arrangement.current_approval_status]:
         raise exceptions.ArrangementActionNotAllowedException(
             arrangement.current_approval_status, wfh_update.action
         )
 
+    # Update arrangement fields
     previous_approval_status = arrangement.current_approval_status
     arrangement.current_approval_status = STATUS_ACTION_MAPPING[
         arrangement.current_approval_status

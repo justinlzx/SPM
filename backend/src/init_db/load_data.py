@@ -129,6 +129,9 @@ def load_latest_arrangement_data_from_csv(file_path: str):
                         approving_officer=(
                             int(row["approving_officer"]) if row["approving_officer"] else None
                         ),
+                        delegate_approving_officer=(
+                            int(row["delegate_approving_officer"]) if row["delegate_approving_officer"] else None
+                        ),
                         update_datetime=update_datetime,
                         batch_id=int(row["batch_id"]) if row["batch_id"] else None,
                         supporting_doc_1=None,

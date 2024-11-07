@@ -131,7 +131,7 @@ def format_details(config: Union[ArrangementNotificationConfig, DelegateNotifica
     else:
         verb_map = {
             "delegate": "Delegation",
-            "undelegated": "Undelegation",
+            "undelegate": "Undelegation",
             "approved": "Delegation Approval",
             "rejected": "Delegation Rejection",
             "withdrawn": "Delegation Withdrawal",
@@ -195,13 +195,13 @@ def format_email_body(
             body += "Once accepted, any pending approvals assigned to "
             body += f"{config.delegator.staff_fname} will be routed to you.\n\n"
 
-        elif role == "delegator" and config.action == "undelegated":
+        elif role == "delegator" and config.action == "undelegate":
             body += "The delegation of approval responsibilities between you and "
             body += f"{config.delegatee.staff_fname} {config.delegatee.staff_lname} has been revoked.\n\n"
             body += "All pending approvals will be reassigned to the original manager, and you no longer have the responsibility "
             body += f"for approvals on behalf of {config.delegatee.staff_fname}.\n"
 
-        elif role == "delegatee" and config.action == "undelegated":
+        elif role == "delegatee" and config.action == "undelegate":
             body += "The delegation of approval responsibilities between you and "
             body += f"{config.delegator.staff_fname} {config.delegator.staff_lname} has been revoked.\n\n"
             body += "All pending approvals will be reassigned to the original manager, and you no longer have the responsibility "
@@ -212,7 +212,7 @@ def format_email_body(
             body += f"{config.delegatee.staff_fname} {config.delegatee.staff_lname} has been approved.\n\n"
 
         elif role == "delegatee" and config.action == "approved":
-            body += f"{config.delegator.staff_fname} {config.delegator.staff_lname} has approved your delegation request.\n\n"
+            body += f"You have approved the delegation request from {config.delegator.staff_fname} {config.delegator.staff_lname}.\n\n"
 
         elif role == "delegator" and config.action == "rejected":
             body += "Your delegation request to "
@@ -232,4 +232,5 @@ def format_email_body(
 
     # Add common footer
     body += "\n\nThis email is auto-generated. Please do not reply to this email. Thank you."
+
     return body

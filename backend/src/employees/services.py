@@ -7,6 +7,13 @@ from ..notifications.commons.dataclasses import DelegateNotificationConfig
 from ..notifications.email_notifications import craft_and_send_email
 from ..utils import convert_model_to_pydantic_schema
 from . import crud, exceptions, models, schemas
+from .dataclasses import EmployeeFilters
+
+
+def get_employees(db: Session, filters: EmployeeFilters):
+    employees = crud.get_employees(db, filters)
+    employees_pydantic = convert_model_to_pydantic_schema(employees, schemas.EmployeeBase)
+    return employees_pydantic
 
 
 def get_reporting_manager_and_peer_employees(db: Session, staff_id: int):
@@ -47,25 +54,58 @@ class DelegationApprovalStatus(Enum):
     reject = "rejected"
 
 
+# def get_manager_by_subordinate_id(
+#     db: Session, staff_id: int
+# ) -> Union[Tuple[models.Employee, List[models.Employee]], Tuple[None, None]]:
+#     """
+#     The function `get_manager_by_subordinate_id` retrieves the manager for a given subordinate ID,
+#     ensuring that the manager's peer employees are not locked in an active delegation relationship and
+#     excluding a specific ID.
+
+#     :param db: The `db` parameter in the `get_manager_by_subordinate_id` function is of type `Session`,
+#     which is likely an instance of a database session that allows interaction with the database. This
+#     parameter is used to query the database for employee and manager information
+#     :type db: Session
+#     :param staff_id: The function `get_manager_by_subordinate_id` is designed to retrieve the manager
+#     for a given subordinate ID while ensuring that the manager's peer employees are not locked in an
+#     active delegation relationship and excluding the specific ID 130002
+#     :type staff_id: int
+#     :return: The function `get_manager_by_subordinate_id` is returning a tuple containing the manager of
+#     the employee and a list of unlocked peers reporting to the manager.
+#     """
+#     # Auto Approve for Jack Sim and bypass manager check
+#     if staff_id == 130002:
+#         return None, None  # Auto-approve for Jack Sim
+
+#     # Retrieve the employee
+#     emp = get_employee_by_id(db, staff_id)
+#     if not emp:
+#         raise exceptions.EmployeeNotFoundException(staff_id)
+
+#     # Get the manager of the employee
+#     manager = crud.get_manager_of_employee(db, emp)
+#     if not manager:
+#         return None, None  # Return None if there's no valid manager
+
+#     # Retrieve all peers reporting to the manager
+#     all_peers = crud.get_peer_employees(db, manager.staff_id)
+
+#     # Filter out peers who are either locked in a delegation relationship or have the ID 130002
+#     unlocked_peers = [
+#         peer
+#         for peer in all_peers
+#         if not crud.is_employee_locked_in_delegation(db, peer.staff_id) and peer.staff_id != 130002
+#     ]
+
+#     print(
+#         f"Unlocked peers for manager {manager.staff_id}: {[peer.staff_id for peer in unlocked_peers]}"
+#     )
+#     return manager, unlocked_peers
+
+
 def get_manager_by_subordinate_id(
     db: Session, staff_id: int
 ) -> Union[Tuple[models.Employee, List[models.Employee]], Tuple[None, None]]:
-    """
-    The function `get_manager_by_subordinate_id` retrieves the manager for a given subordinate ID,
-    ensuring that the manager's peer employees are not locked in an active delegation relationship and
-    excluding a specific ID.
-
-    :param db: The `db` parameter in the `get_manager_by_subordinate_id` function is of type `Session`,
-    which is likely an instance of a database session that allows interaction with the database. This
-    parameter is used to query the database for employee and manager information
-    :type db: Session
-    :param staff_id: The function `get_manager_by_subordinate_id` is designed to retrieve the manager
-    for a given subordinate ID while ensuring that the manager's peer employees are not locked in an
-    active delegation relationship and excluding the specific ID 130002
-    :type staff_id: int
-    :return: The function `get_manager_by_subordinate_id` is returning a tuple containing the manager of
-    the employee and a list of unlocked peers reporting to the manager.
-    """
     # Auto Approve for Jack Sim and bypass manager check
     if staff_id == 130002:
         return None, None  # Auto-approve for Jack Sim
@@ -79,6 +119,11 @@ def get_manager_by_subordinate_id(
     manager = crud.get_manager_of_employee(db, emp)
     if not manager:
         return None, None  # Return None if there's no valid manager
+
+    # Check if the manager has delegated their authority
+    delegated_manager = crud.get_delegated_manager(db, manager.staff_id)
+    if delegated_manager:
+        manager = delegated_manager
 
     # Retrieve all peers reporting to the manager
     all_peers = crud.get_peer_employees(db, manager.staff_id)
@@ -299,17 +344,13 @@ async def undelegate_manager(staff_id: int, db: Session):
     if not delegation_log:
         return "Delegation log not found."
 
-    # Step 2: Check if the delegation status is 'accepted'
-    if delegation_log.status_of_delegation != models.DelegationStatus.accepted:
-        return "Delegation must be approved to undelegate."
-
-    # Step 3: Remove delegate from arrangements
+    # Step 2: Remove delegate from arrangements
     crud.remove_delegate_from_arrangements(db, delegation_log.delegate_manager_id)
 
-    # Step 4: Mark the delegation as 'undelegated'
+    # Step 3: Mark the delegation as 'undelegated'
     delegation_log = crud.mark_delegation_as_undelegated(db, delegation_log)
 
-    # Step 5: Fetch manager and delegatee info for notifications
+    # Step 4: Fetch manager and delegatee info for notifications
     manager_employee = get_employee_by_id(db, delegation_log.manager_id)
     delegatee_employee = get_employee_by_id(db, delegation_log.delegate_manager_id)
 

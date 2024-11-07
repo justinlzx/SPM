@@ -1,8 +1,9 @@
 from dataclasses import asdict
+from datetime import datetime
 from typing import Dict, List, Optional, Union
 
 # from pydantic import ValidationError
-from sqlalchemy import func, or_
+from sqlalchemy import and_, func, or_
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, class_mapper
 from src.employees.models import (
@@ -29,32 +30,25 @@ def get_arrangement_by_id(db: Session, arrangement_id: int) -> Optional[Dict]:
 
 def get_arrangements(
     db: Session,
-    staff_ids: Union[None, int, List[int]] = None,
     filters: Union[None, ArrangementFilters] = None,
 ) -> List[Dict]:
     query = db.query(models.LatestArrangement)
     query = query.join(Employee, Employee.staff_id == models.LatestArrangement.requester_staff_id)
 
-    if staff_ids:
-        staff_ids = list(set(staff_ids)) if isinstance(staff_ids, list) else staff_ids
-
-        # Log the number of staff IDs being fetched
-        logger.info(
-            f"Crud: Fetching arrangements for {len(staff_ids) if isinstance(staff_ids, list) else 1} staff IDs with filters"
-        )
-
-        # TODO
-        # Log all non-null filters
-        # non_null_filters = {key: value for key, value in filters.items() if value}
-        # logger.info(f"Crud: Applying filters: {non_null_filters}")
-
-        if isinstance(staff_ids, int):
-            query = query.filter(models.LatestArrangement.requester_staff_id == staff_ids)
-        else:
-            query = query.filter(models.LatestArrangement.requester_staff_id.in_(staff_ids))
-
     if filters:
         # Apply optional filters
+        if filters.staff_ids:
+            staff_ids = (
+                list(set(filters.staff_ids))
+                if isinstance(filters.staff_ids, list)
+                else filters.staff_ids
+            )
+
+            if isinstance(staff_ids, int):
+                query = query.filter(models.LatestArrangement.requester_staff_id == staff_ids)
+            else:
+                query = query.filter(models.LatestArrangement.requester_staff_id.in_(staff_ids))
+
         if filters.name:
             query = query.filter(
                 or_(
@@ -84,26 +78,21 @@ def get_arrangements(
         if filters.department:
             query = query.filter(Employee.dept == filters.department)
 
+        if filters.manager_id:
+            query = query.filter(
+                or_(
+                    and_(
+                        models.LatestArrangement.approving_officer == filters.manager_id,
+                        models.LatestArrangement.delegate_approving_officer == None,  # noqa: E711
+                    ),
+                    models.LatestArrangement.delegate_approving_officer == filters.manager_id,
+                )
+            )
+
     results = query.all()
     logger.info(f"Crud: Found {len(results)} arrangements")
 
     return [result.__dict__ for result in results]
-
-
-def get_team_arrangements(
-    db: Session,
-    staff_id: int,
-    filters: ArrangementFilters,
-) -> List[Dict]:
-    # Log the team lead's staff ID
-    logger.info(f"Crud: Fetching team arrangements for team lead {staff_id}")
-
-    # Fetch the team members' staff IDs
-    team_members = db.query(Employee.staff_id).filter(Employee.manager_staff_id == staff_id).all()
-    team_member_ids = [member[0] for member in team_members]
-
-    # Fetch the team members' arrangements
-    return get_arrangements(db, team_member_ids, filters)
 
 
 def get_arrangement_logs(
@@ -123,7 +112,7 @@ def get_expiring_requests(db: Session):
     query = db.query(models.LatestArrangement)
     query = query.filter(
         models.LatestArrangement.current_approval_status == ApprovalStatus.PENDING_APPROVAL,
-        models.LatestArrangement.wfh_date == tomorrow_date.strftime("%Y-%m-%d"),
+        models.LatestArrangement.wfh_date < tomorrow_date.strftime("%Y-%m-%d"),
     )
     arrangements = query.all()
 
@@ -134,7 +123,7 @@ def create_arrangement_log(
     db: Session,
     arrangement: models.LatestArrangement,
     action: Action,
-    previous_approval_status: ApprovalStatus,
+    previous_approval_status: Optional[ApprovalStatus],
 ) -> models.ArrangementLog:
     try:
         logger.info(f"Crud: Creating arrangement log for action {action}")
@@ -233,11 +222,12 @@ def update_arrangement_approval_status(
             models.LatestArrangement.arrangement_id == arrangement_data.arrangement_id
         ).update(
             {
-                "current_approval_status": arrangement_data.current_approval_status,
-                "supporting_doc_1": arrangement_data.supporting_doc_1,
-                "supporting_doc_2": arrangement_data.supporting_doc_2,
-                "supporting_doc_3": arrangement_data.supporting_doc_3,
-                "status_reason": arrangement_data.status_reason,
+                models.LatestArrangement.update_datetime: datetime.now(),
+                models.LatestArrangement.current_approval_status: arrangement_data.current_approval_status,
+                models.LatestArrangement.supporting_doc_1: arrangement_data.supporting_doc_1,
+                models.LatestArrangement.supporting_doc_2: arrangement_data.supporting_doc_2,
+                models.LatestArrangement.supporting_doc_3: arrangement_data.supporting_doc_3,
+                models.LatestArrangement.status_reason: arrangement_data.status_reason,
             }
         )
 

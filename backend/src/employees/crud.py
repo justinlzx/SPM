@@ -1,14 +1,33 @@
 from datetime import datetime
-from typing import List
+from typing import List, Optional
 
 from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
 
-from ..arrangements.commons.enums import ApprovalStatus
-
 from ..arrangements.commons.models import LatestArrangement
 from . import models
+from .dataclasses import EmployeeFilters
 from .models import DelegateLog, DelegationStatus, Employee
+
+
+def get_employees(db: Session, filters: EmployeeFilters) -> List[models.Employee]:
+    """This function retrieves a list of employees from the database based on the provided filters.
+
+    :param db: The `db` parameter is of type `Session`, which is likely an instance of a database
+    session that allows you to interact with the database. It is used to query the database for
+    employees based on the specified filters
+    :type db: Session
+    :param filters: The `filters` parameter is an instance of the `EmployeeFilters` dataclass, which
+    contains the filter criteria for retrieving employees from the database. The filters include
+    department, position, and status
+    :type filters: EmployeeFilters
+    :return: The function `get_employees` returns a list of `Employee` objects from the database that
+    match the specified filter criteria.
+    """
+    query = db.query(models.Employee)
+    if filters.department:
+        query = query.filter(models.Employee.dept == filters.department)
+    return query.all()
 
 
 def get_employee_by_staff_id(db: Session, staff_id: int) -> models.Employee:
@@ -202,20 +221,15 @@ def update_pending_arrangements_for_delegate(
     in the database for a specific manager by reassigning the approval authority to another manager
     :type delegate_manager_id: int
     """
-    pending_arrangements = (
-        db.query(LatestArrangement)
-        .filter(
-            LatestArrangement.approving_officer == manager_id,
-            LatestArrangement.current_approval_status.in_(
-                [ApprovalStatus.PENDING_APPROVAL, ApprovalStatus.PENDING_WITHDRAWAL]
-            ),
-        )
-        .all()
-    )
 
-    for arrangement in pending_arrangements:
-        arrangement.delegate_approving_officer = delegate_manager_id
-        db.add(arrangement)
+    db.query(LatestArrangement).filter(
+        LatestArrangement.approving_officer == manager_id,
+    ).update(
+        {
+            LatestArrangement.delegate_approving_officer: delegate_manager_id,
+            LatestArrangement.update_datetime: datetime.now(),
+        },
+    )
 
     db.commit()
 
@@ -249,26 +263,15 @@ def remove_delegate_from_arrangements(db: Session, delegate_manager_id: int):
     the delegate manager from all pending arrangements where they are the approving officer
     :type delegate_manager_id: int
     """
-    # pending_arrangements = (
-    #     db.query(LatestArrangement)
-    #     .filter(
-    #         LatestArrangement.delegate_approving_officer == delegate_manager_id,
-    #         LatestArrangement.current_approval_status.in_(
-    #             [ApprovalStatus.PENDING_APPROVAL, ApprovalStatus.PENDING_WITHDRAWAL]
-    #         ),
-    #     )
-    #     .all()
-    # )
 
-    # for arrangement in pending_arrangements:
-    #     arrangement.delegate_approving_officer = None  # Remove the delegate manager
-    #     db.add(arrangement)
     db.query(LatestArrangement).filter(
         LatestArrangement.delegate_approving_officer == delegate_manager_id,
-        LatestArrangement.current_approval_status.in_(
-            [ApprovalStatus.PENDING_APPROVAL, ApprovalStatus.PENDING_WITHDRAWAL]
-        ),
-    ).update({LatestArrangement.delegate_approving_officer: None}, synchronize_session=False)
+    ).update(
+        {
+            LatestArrangement.delegate_approving_officer: None,
+            LatestArrangement.update_datetime: datetime.now(),
+        }
+    )
 
     db.commit()
 
@@ -462,3 +465,38 @@ def is_employee_locked_in_delegation(db: Session, employee_id: int) -> bool:
         .first()
         is not None
     )
+
+
+def get_delegated_manager(db: Session, approving_officer_id: int) -> Optional[models.Employee]:
+    """Check if the approving officer has delegated their approval authority to another officer. If
+    so, return the delegate approving officer as the manager.
+
+    Args:
+        db (Session): Database session
+        approving_officer_id (int): ID of the original approving officer
+
+    Returns:
+        Optional[models.Employee]: The delegate approving officer if delegation exists and is accepted,
+                                 None otherwise
+    """
+    # Query for active delegation where the original approving officer has delegated to someone
+    delegation = (
+        db.query(DelegateLog)
+        .filter(
+            DelegateLog.manager_id == approving_officer_id,
+            DelegateLog.status_of_delegation == DelegationStatus.accepted,
+        )
+        .order_by(DelegateLog.date_of_delegation.desc())  # Get the most recent delegation
+        .first()
+    )
+
+    if delegation:
+        # Get the delegate approving officer's details
+        delegate_manager = (
+            db.query(models.Employee)
+            .filter(models.Employee.staff_id == delegation.delegate_manager_id)
+            .first()
+        )
+        return delegate_manager
+
+    return None

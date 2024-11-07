@@ -29,27 +29,9 @@ import { SnackBarComponent, AlertStatus } from '../../common/SnackBar';
 import { UserContext } from '../../context/UserContextProvider';
 import { capitalize } from "../../utils/utils";
 import { LoadingSpinner } from "../../common/LoadingSpinner";
-
-interface Peer {
-  staff_id: string;
-  name: string;
-}
+import { DelegationStatus, TDelegationLog, Peer } from "../../types/delegation";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
-
-enum DelegationStatus {
-  Accepted = "accepted",
-  Pending = "pending",
-  Rejected = "rejected",
-}
-
-type TDelegationLog = {
-  manager_id: number;
-  delegate_manager_id: number;
-  delegate_manager_name: string;
-  date_of_delegation: string;
-  status_of_delegation: DelegationStatus;
-};
 
 export const SendDelegation: React.FC = () => {
   const { user } = useContext(UserContext);
@@ -64,6 +46,23 @@ export const SendDelegation: React.FC = () => {
   const [openModal, setOpenModal] = useState(false);
   const [delegationLogs, setDelegationLogs] = useState<TDelegationLog[]>([]);
   const [loading, setLoading] = useState(true);
+
+  const fetchDelegationLogs = async () => {
+    if (!user || !userId) return;
+    setLoading(true);
+    try {
+      const response = await axios.get(
+        `${BACKEND_URL}/employees/manager/viewalldelegations/${userId}`
+      );
+      const sentDelegations: TDelegationLog[] = response.data.sent_delegations || [];
+      setDelegationLogs(sentDelegations);
+    } catch (error) {
+      console.error("Failed to fetch delegation logs:", error);
+      handleSnackbar(AlertStatus.Error, 'Failed to load delegation logs.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     const fetchPeers = async () => {
@@ -88,27 +87,8 @@ export const SendDelegation: React.FC = () => {
     };
 
     fetchPeers();
-  }, [user]);
-
-  useEffect(() => {
-    const fetchDelegationLogs = async () => {
-      if (!user || !userId) return;
-      setLoading(true);
-      try {
-        const response = await axios.get(
-          `${BACKEND_URL}/employees/manager/viewalldelegations/${userId}`
-        );
-        const sentDelegations: TDelegationLog[] = response.data.sent_delegations || [];
-        setDelegationLogs(sentDelegations);
-      } catch (error) {
-        console.error("Failed to fetch delegation logs:", error);
-        handleSnackbar(AlertStatus.Error, 'Failed to load delegation logs.');
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchDelegationLogs();
-  }, [user, userId]);
+  }, [user]);
 
   const hasPendingOrActiveDelegation = delegationLogs.some(
     (log) =>
@@ -121,7 +101,6 @@ export const SendDelegation: React.FC = () => {
   };
 
   const handleDelegate = async () => {
-    // Check if the selected peer already has a delegation
     const existingDelegation = delegationLogs.find(
       (log) =>
         log.delegate_manager_id === parseInt(selectedPeer) &&
@@ -129,7 +108,6 @@ export const SendDelegation: React.FC = () => {
     );
 
     if (existingDelegation) {
-      // If an existing delegation is found, show an error message and return early
       handleSnackbar(
         AlertStatus.Error,
         'This peer already has an active or pending delegation. Please select a different manager.'
@@ -137,7 +115,6 @@ export const SendDelegation: React.FC = () => {
       return;
     }
 
-    // Proceed with sending delegation if validation passes
     setLoading(true);
     try {
       const response = await axios.post(`${BACKEND_URL}/employees/manager/delegate/${userId}`, null, {
@@ -146,27 +123,16 @@ export const SendDelegation: React.FC = () => {
         },
       });
 
-      setDelegationLogs((prevLogs) => [
-        ...prevLogs,
-        {
-          manager_id: response.data.manager_id,
-          delegate_manager_id: response.data.delegate_manager_id,
-          delegate_manager_name: peers.find((peer) => peer.staff_id === selectedPeer)?.name || "Unknown",
-          date_of_delegation: response.data.date_of_delegation,
-          status_of_delegation: response.data.status_of_delegation,
-        },
-      ]);
-
       handleSnackbar(AlertStatus.Success, 'Request to delegate peer manager sent');
+      setOpenModal(false);
+      await fetchDelegationLogs(); // Refresh data after sending delegation
     } catch (error) {
       console.error('Error delegating peer:', error);
       handleSnackbar(AlertStatus.Error, 'Failed to delegate peer as manager.');
     } finally {
       setLoading(false);
-      setOpenModal(false);
     }
   };
-
 
   const handleCancelDelegation = async (delegateManagerId: number) => {
     setLoading(true);
@@ -174,8 +140,8 @@ export const SendDelegation: React.FC = () => {
       await axios.put(`${BACKEND_URL}/employees/manager/undelegate/${userId}`, {
         params: { delegate_manager_id: delegateManagerId },
       });
-      setDelegationLogs((prevLogs) => prevLogs.filter(log => log.delegate_manager_id !== delegateManagerId));
       handleSnackbar(AlertStatus.Success, 'Delegation canceled successfully.');
+      await fetchDelegationLogs(); // Refresh data after canceling delegation
     } catch (error) {
       console.error('Error canceling delegation:', error);
       handleSnackbar(AlertStatus.Error, 'Failed to cancel delegation.');
@@ -254,7 +220,6 @@ export const SendDelegation: React.FC = () => {
             </Tooltip>
           </Box>
 
-
           <Typography variant="h6">Sent Delegations</Typography>
           <Dialog open={openModal} onClose={handleCloseModal}>
             <DialogTitle>Delegate a Peer for Manager Responsibilities</DialogTitle>
@@ -296,7 +261,6 @@ export const SendDelegation: React.FC = () => {
             snackbarMessage={snackbar.snackbarMessage}
           />
 
-          {/* Sent Delegations Table */}
           <TableContainer component={Paper} sx={{ marginTop: 3, textAlign: "center" }}>
             <Table>
               <TableHead>
@@ -353,24 +317,8 @@ export const SendDelegation: React.FC = () => {
           </TableContainer>
         </>
       )}
-    </Container>
+    </Container >
   );
 };
 
 export default SendDelegation;
-
-interface SeePeerManagerButtonProps {
-  onClick: () => void;
-}
-
-interface SeePeerManagerButtonProps {
-  onClick: () => void;
-  hasPendingOrActiveDelegation: boolean;
-}
-
-export const SeePeerManagerButton: React.FC<SeePeerManagerButtonProps> = ({ onClick, hasPendingOrActiveDelegation }) => (
-  <Button variant="outlined" color="primary" onClick={onClick} disabled={hasPendingOrActiveDelegation}>
-    Delegate a Manager
-  </Button>
-);
-
