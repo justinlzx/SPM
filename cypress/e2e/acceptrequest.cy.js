@@ -49,7 +49,7 @@ describe('Testing accept request', () => {
         // Confirm the approval action with an alert or message assertion
         cy.get('.MuiSnackbar-root .MuiAlert-message', { timeout: 20000 })
             .should('be.visible')
-            .and('contain', "Request 'approve' successfully updated to status 'approved'");
+            .and('contain', "WFH Request successfully updated to 'approved'");
     });
 });
 
@@ -107,7 +107,7 @@ describe('Testing reject request', () => {
         // Confirm the reject action with an alert or message assertion
         cy.get('.MuiSnackbar-root .MuiAlert-message', { timeout: 20000 })
             .should('be.visible')
-            .and('contain', "Request 'reject' successfully updated to status 'rejected'");
+            .and('contain', "WFH Request successfully updated to 'rejected'");
 
     });
 });
@@ -232,7 +232,7 @@ describe('Testing reject request, then press cancel, then press approve', () => 
         // Confirm the approval action with an alert or message assertion
         cy.get('.MuiSnackbar-root .MuiAlert-message', { timeout: 20000 })
             .should('be.visible')
-            .and('contain', "Request 'approve' successfully updated to status 'approved'");
+            .and('contain', "WFH Request successfully updated to 'approved'");
 
     });
 });

@@ -49,7 +49,7 @@ describe('Testing withdraw request', () => {
         // Confirm the approval action with an alert or message assertion
         cy.get('.MuiSnackbar-root .MuiAlert-message', { timeout: 20000 })
             .should('be.visible')
-            .and('contain', "Request 'approve' successfully updated to status 'approved'");
+            .and('contain', "WFH Request successfully updated to 'approved'");
 
 
         // Step 4: Log out and log in as Rahim again
@@ -153,7 +153,7 @@ describe('Testing withdraw request, when withdrawing, press no', () => {
         // Confirm the approval action with an alert or message assertion
         cy.get('.MuiSnackbar-root .MuiAlert-message', { timeout: 20000 })
             .should('be.visible')
-            .and('contain', "Request 'approve' successfully updated to status 'approved'");
+            .and('contain', "WFH Request successfully updated to 'approved'");
 
 
         // Step 4: Log out and log in as Rahim again
@@ -255,7 +255,7 @@ describe('Testing withdraw request, Manager should approve withdrawal too', () =
         // Confirm the approval action with an alert or message assertion
         cy.get('.MuiSnackbar-root .MuiAlert-message', { timeout: 20000 })
             .should('be.visible')
-            .and('contain', "Request 'approve' successfully updated to status 'approved'");
+            .and('contain', "WFH Request successfully updated to 'approved'");
 
 
         // Step 4: Log out and log in as Rahim again
@@ -324,7 +324,7 @@ describe('Testing withdraw request, Manager should approve withdrawal too', () =
                 // Confirm the approval action with an alert or message assertion
                 cy.get('.MuiSnackbar-root .MuiAlert-message', { timeout: 20000 })
                     .should('be.visible')
-                    .and('contain', "Request 'approve' successfully updated to status 'withdrawn'");
+                    .and('contain', "WFH Request successfully updated to 'withdrawn'");
             });
     });
 });
@@ -380,7 +380,7 @@ describe('Testing withdraw request, Manager should reject withdrawal', () => {
         // Confirm the approval action with an alert or message assertion
         cy.get('.MuiSnackbar-root .MuiAlert-message', { timeout: 20000 })
             .should('be.visible')
-            .and('contain', "Request 'approve' successfully updated to status 'approved'");
+            .and('contain', "WFH Request successfully updated to 'approved'");
 
 
         // Step 4: Log out and log in as Rahim again
@@ -453,7 +453,7 @@ describe('Testing withdraw request, Manager should reject withdrawal', () => {
                 // Confirm the approval action with an alert or message assertion
                 cy.get('.MuiSnackbar-root .MuiAlert-message', { timeout: 20000 })
                     .should('be.visible')
-                    .and('contain', "Request 'reject' successfully updated to status 'rejected'");
+                    .and('contain', "WFH Request successfully updated to 'rejected'");
 
 
             });
