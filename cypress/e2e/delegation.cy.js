@@ -84,7 +84,7 @@ describe('Testing delegation (Happy path) w Cancel', () => {
             .should('be.visible')
             .and('contain', "Delegation request accepted successfully!");
 
-        // Step 7: Access the review requests page to see if requests exist
+        // Step 8: Access the review requests page to see if requests exist
         cy.get('[data-cy="review-team-requests"]').first().click({ force: true });
         cy.url().should('eq', 'http://localhost:3000/review-requests');
 
@@ -100,7 +100,7 @@ describe('Testing delegation (Happy path) w Cancel', () => {
                 expect(arrangements).to.be.an('array').and.not.to.be.empty;
             })
 
-        // Step 8: Log out and log in as Derek to check if delegations have been accepted
+        // Step 9: Log out and log in as Derek to check if delegations have been accepted
         cy.get('[data-cy="logout"]').click();
         cy.url().should('eq', 'http://localhost:3000/login');
         cy.get('[data-cy="email"]').type('Derek.Tan@allinone.com.sg');
@@ -121,7 +121,7 @@ describe('Testing delegation (Happy path) w Cancel', () => {
             });
         });
 
-        // Step 9: Click on the cancel button
+        // Step 10: Click on the cancel button
         cy.get('[data-cy="cancel-delegation-button"]').click();
         // Confirm the approval action with an alert or message assertion
         cy.get('.MuiSnackbar-root .MuiAlert-message', { timeout: 20000 })
