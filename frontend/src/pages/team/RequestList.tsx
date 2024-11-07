@@ -184,11 +184,11 @@ export const RequestList = () => {
         component={Paper}
         sx={{
           marginTop: 3,
-          maxHeight: "60vh", // Set a max height for the table container
-          overflow: "auto", // Enable scroll within the table container if needed
+          maxHeight: "60vh", 
+          overflow: "auto", 
         }}
       >
-        <Table>
+        <Table stickyHeader>
           <TableHead>
             <TableRow>
               <TableCell sx={{ fontWeight: "bold" }}>Staff Name</TableCell>

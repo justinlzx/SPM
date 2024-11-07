@@ -18,8 +18,6 @@ import {
   DialogContent,
   DialogActions,
   TextField,
-  Tooltip,
-  Box,
   Link,
   List,
   ListItem,
@@ -28,17 +26,12 @@ import CheckIcon from "@mui/icons-material/Check";
 import CloseIcon from "@mui/icons-material/Close";
 import { Filters, TFilters } from "../../common/Filters";
 import { fetchEmployeeByStaffId } from "../../hooks/employee/employee.utils";
-import {
-  ApprovalStatus,
-  Action,
-  STATUS_ACTION_MAPPING,
-} from "../../types/status";
+import { ApprovalStatus, Action, STATUS_ACTION_MAPPING } from "../../types/status";
 import { UserContext } from "../../context/UserContextProvider";
 import { SnackBarComponent, AlertStatus } from "../../common/SnackBar";
 import { LoadingSpinner } from "../../common/LoadingSpinner";
 import { DelegationStatus } from "../../types/delegation";
 import qs from "qs";
-import AllRequests from "./AllRequests";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 
@@ -54,125 +47,79 @@ export type TWFHRequest = {
   supporting_doc_1?: string | null;
   supporting_doc_2?: string | null;
   supporting_doc_3?: string | null;
-  delegate_approving_officer?: number;
+  requester_info: {
+    staff_fname: string;
+    staff_lname: string;
+  };
 };
 
 export const PendingRequests = () => {
   const { user } = useContext(UserContext);
   const userId = user?.id;
 
-  const [actionRequests, setActionRequests] = useState<TWFHRequest[]>([]);
+  const [pendingRequests, setPendingRequests] = useState<TWFHRequest[]>([]);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
-  const [isDelegateManager, setIsDelegateManager] = useState(false);
-  const [delegatorManagerId, setDelegatorManagerId] = useState<number | null>(
-    null
-  );
-
+  const [totalItems, setTotalItems] = useState(0);
+  const [filters, setFilters] = useState<TFilters>({
+    startDate: null,
+    endDate: null,
+    workStatus: [],
+    searchQuery: "",
+  });
   const [showSnackbar, setShowSnackbar] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState("");
   const [alertStatus, setAlertStatus] = useState<AlertStatus>(AlertStatus.Info);
   const [loading, setLoading] = useState(true);
-  const [filters, setFilters] = useState({});
 
   const [rejectModalOpen, setRejectModalOpen] = useState(false);
-  const [selectedArrangementId, setSelectedArrangementId] = useState<
-    number | null
-  >(null);
+  const [selectedArrangementId, setSelectedArrangementId] = useState<number | null>(null);
   const [rejectionReason, setRejectionReason] = useState("");
-
   const [documentDialogOpen, setDocumentDialogOpen] = useState(false);
   const [documents, setDocuments] = useState<string[]>([]);
 
-  const fetchDelegationStatus = async () => {
+  const fetchPendingRequestsFromSubordinates = async () => {
     if (!user || !userId) return;
+
     try {
+      const delegationResponse = await axios.get(
+        `${BACKEND_URL}/employees/manager/viewdelegations/${userId}`
+      );
+      
+      const delegationStatus = delegationResponse.data.status_of_delegation;
+      const delegateManagerId = delegationResponse.data.delegate_manager_id;
+
+      const managerIdToFetch =
+        delegationStatus === DelegationStatus.Accepted && delegateManagerId
+          ? delegateManagerId
+          : userId;
+
+      const approvalStatuses = filters.workStatus.length > 0
+          ? filters.workStatus
+          : [ApprovalStatus.PendingApproval, ApprovalStatus.PendingWithdrawal];
+
       const response = await axios.get(
-        `${BACKEND_URL}/employees/manager/viewdelegations/${userId}`,
+        `${BACKEND_URL}/arrangements/subordinates/${managerIdToFetch}`,
         {
           params: {
-            status: "accepted",
+            current_approval_status: approvalStatuses,
+            start_date: filters.startDate?.toISOString().split("T")[0],
+            end_date: filters.endDate?.toISOString().split("T")[0],
+            status: filters.workStatus.join(","),
+            search_query: filters.searchQuery,
+            items_per_page: rowsPerPage,
+            page_num: page + 1,
           },
+          paramsSerializer: (params) =>
+            qs.stringify(params, { arrayFormat: "repeat" }),
         }
       );
-      const delegationRequests =
-        response.data.pending_approval_delegations || [];
-      const hasAcceptedDelegations = delegationRequests.some(
-        (delegation: any) => delegation.status_of_delegation === "accepted"
-      );
-      setIsDelegateManager(hasAcceptedDelegations);
 
-      if (hasAcceptedDelegations) {
-        const delegatorId = delegationRequests[0].staff_id;
-        setDelegatorManagerId(delegatorId);
-      } else {
-        setDelegatorManagerId(userId);
-      }
-    } catch (error) {
-      console.error("Failed to fetch delegation status:", error);
-    }
-  };
+      let data: TWFHRequest[] = response.data.data;
 
-  const fetchPendingRequests = async () => {
-    if (!user || !userId) return;
-    setLoading(true);
-
-    try {
-      if (delegatorManagerId === userId && isDelegateManager) {
-        setActionRequests([]);
-        // setFilteredRequests([]);
-        setLoading(false);
-        return;
-      }
-
-      let allRequests: TWFHRequest[] = [];
-      if (!isDelegateManager || delegatorManagerId !== userId) {
-        const primaryResponse = await axios.get(
-          `${BACKEND_URL}/arrangements/subordinates/${userId}`,
-          {
-            params: {
-              current_approval_status: [
-                "pending approval",
-                "pending withdrawal",
-              ],
-            },
-            paramsSerializer: (params) =>
-              qs.stringify(params, { arrayFormat: "repeat" }),
-          }
-        );
-        const primaryRequests = primaryResponse.data.data;
-
-        allRequests = [...primaryRequests];
-      }
-
-      if (
-        isDelegateManager &&
-        delegatorManagerId &&
-        delegatorManagerId !== userId
-      ) {
-        const delegatedResponse = await axios.get(
-          `${BACKEND_URL}/arrangements/subordinates/${delegatorManagerId}`,
-          {
-            params: {
-              current_approval_status: [
-                "pending approval",
-                "pending withdrawal",
-              ],
-            },
-            paramsSerializer: (params) =>
-              qs.stringify(params, { arrayFormat: "repeat" }),
-          }
-        );
-        const delegatedRequests = delegatedResponse.data.data;
-        allRequests = [allRequests, ...delegatedRequests];
-      }
-
-      // Adjust requests to pull the names of the corresponding staff_id
-      const updatedRequests = await Promise.all(
-        allRequests.map(async (request) => {
-          const requester = await fetchEmployeeByStaffId(
-            request.requester_staff_id
-          );
+      data = await Promise.all(
+        data.map(async (request) => {
+          const requester = await fetchEmployeeByStaffId(request.requester_staff_id);
           return {
             ...request,
             requester_name: requester
@@ -182,80 +129,16 @@ export const PendingRequests = () => {
         })
       );
 
-      setActionRequests(updatedRequests);
+      setPendingRequests(data);
+      console.log(data);
+      setTotalItems(response.data.pagination_meta.total_count);
     } catch (error) {
-      console.error("Failed to fetch requests:", error);
+      console.error("Failed to fetch pending requests:", error);
+      setSnackbarMessage("Failed to fetch pending requests.");
       setAlertStatus(AlertStatus.Error);
-      setSnackbarMessage("Failed to fetch requests.");
       setShowSnackbar(true);
     } finally {
       setLoading(false);
-    }
-  };
-
-  console.log(actionRequests);
-
-  useEffect(() => {
-    const initializeData = async () => {
-      await fetchDelegationStatus();
-      await fetchPendingRequests();
-    };
-    initializeData();
-  }, [user, userId]);
-
-  const refreshData = () => {
-    fetchPendingRequests();
-  };
-
-  const handleRequestAction = async (
-    action: Action,
-    arrangement_id: number,
-    reason_description: string,
-    current_approval_status: ApprovalStatus
-  ) => {
-    const nextStatus =
-      action === Action.Reject
-        ? ApprovalStatus.Rejected
-        : STATUS_ACTION_MAPPING[current_approval_status]?.[action];
-
-    if (!nextStatus) {
-      console.warn(
-        `Action '${action}' is not allowed for status '${current_approval_status}'`
-      );
-      console.warn(
-        `Action '${action}' is not allowed for status '${current_approval_status}'`
-      );
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const formData = new FormData();
-      formData.append("action", action);
-      formData.append("reason_description", reason_description);
-      formData.append("approving_officer", userId?.toString() || "");
-      formData.append("current_approval_status", nextStatus);
-
-      await axios.put(
-        `${BACKEND_URL}/arrangements/${arrangement_id}/status`,
-        formData,
-        {
-          headers: { "Content-Type": "multipart/form-data" },
-        }
-      );
-
-      setAlertStatus(AlertStatus.Success);
-      setSnackbarMessage(`WFH Request successfully updated to '${nextStatus}'`);
-      setShowSnackbar(true);
-      refreshData();
-    } catch (error) {
-      console.error(`Error performing action '${action}':`, error);
-      setAlertStatus(AlertStatus.Error);
-      setSnackbarMessage(`Error performing action '${action}'`);
-      setShowSnackbar(true);
-    } finally {
-      setLoading(false);
-      setRejectModalOpen(false);
     }
   };
 
@@ -281,10 +164,6 @@ export const PendingRequests = () => {
     setRejectionReason("");
   };
 
-  const handleFilterChange = (newFilters: TFilters) => {
-    setFilters(newFilters);
-  };
-
   const handleViewDocuments = (docs: string[]) => {
     setDocuments(docs);
     setDocumentDialogOpen(true);
@@ -293,6 +172,62 @@ export const PendingRequests = () => {
   const handleCloseDocumentDialog = () => {
     setDocumentDialogOpen(false);
     setDocuments([]);
+  };
+
+  const handleRequestAction = async (
+    action: Action,
+    arrangement_id: number,
+    reason_description: string,
+    current_approval_status: ApprovalStatus
+  ) => {
+    const nextStatus =
+      action === Action.Reject
+        ? ApprovalStatus.Rejected
+        : STATUS_ACTION_MAPPING[current_approval_status]?.[action];
+
+    if (!nextStatus) {
+      console.warn(
+        `Action '${action}' is not allowed for status '${current_approval_status}'`
+      );
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const formData = new FormData();
+      formData.append("action", action);
+      formData.append("reason_description", reason_description);
+      formData.append("approving_officer", userId?.toString() || "");
+      formData.append("current_approval_status", nextStatus);
+
+      await axios.put(
+        `${BACKEND_URL}/arrangements/${arrangement_id}/status`,
+        formData,
+        {
+          headers: { "Content-Type": "multipart/form-data" },
+        }
+      );
+
+      setAlertStatus(AlertStatus.Success);
+      setSnackbarMessage(`WFH Request successfully updated to '${nextStatus}'`);
+      setShowSnackbar(true);
+    } catch (error) {
+      console.error(`Error performing action '${action}':`, error);
+      setAlertStatus(AlertStatus.Error);
+      setSnackbarMessage(`Error performing action '${action}'`);
+      setShowSnackbar(true);
+    } finally {
+      setLoading(false);
+      setRejectModalOpen(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchPendingRequestsFromSubordinates();
+  }, [user, userId, page, rowsPerPage, filters]);
+
+  const handleFilterChange = (filters: TFilters) => {
+    setFilters(filters);
   };
 
   if (loading) {
@@ -315,11 +250,16 @@ export const PendingRequests = () => {
       />
 
       <Typography variant="h4" gutterBottom align="left" sx={{ marginTop: 4 }}>
-        Action Required
+        Pending Requests
       </Typography>
       <TableContainer
         component={Paper}
-        sx={{ marginTop: 3, textAlign: "center" }}
+        sx={{
+          marginTop: 3,
+          textAlign: "center",
+          maxHeight: "60vh",
+          overflow: "auto",
+        }}
       >
         <Table>
           <TableHead>
@@ -336,35 +276,34 @@ export const PendingRequests = () => {
             </TableRow>
           </TableHead>
           <TableBody>
-            {actionRequests.length === 0 ? (
+            {pendingRequests.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={7} align="center">
                   No pending requests
                 </TableCell>
               </TableRow>
             ) : (
-              actionRequests.map((arrangement) => (
+              pendingRequests.map((arrangement) => (
                 <ArrangementRow
                   key={arrangement.arrangement_id}
                   arrangement={arrangement}
                   handleRequestAction={handleRequestAction}
                   handleRejectClick={handleRejectClick}
                   handleViewDocuments={handleViewDocuments}
-                />
+              />
               ))
-            )
-            }
-          </TableBody >
-        </Table >
-      </TableContainer >
+            )}
+          </TableBody>
+        </Table>
+      </TableContainer>
 
       <TablePagination
         component="div"
         rowsPerPageOptions={[10, 20, 30]}
-        count={actionRequests.length}
+        count={totalItems}
         rowsPerPage={rowsPerPage}
         page={page}
-        onPageChange={(event, newPage) => setPage(newPage)}
+        onPageChange={(_, newPage) => setPage(newPage)}
         onRowsPerPageChange={(event) =>
           setRowsPerPage(parseInt(event.target.value, 10))
         }
@@ -382,7 +321,6 @@ export const PendingRequests = () => {
         <DialogTitle>Reject Request</DialogTitle>
         <DialogContent>
           <TextField
-            data-cy="rejection-modal"
             label="Input a reason for rejection"
             fullWidth
             multiline
@@ -393,7 +331,7 @@ export const PendingRequests = () => {
           />
         </DialogContent>
         <DialogActions>
-          <Button data-cy='cancel-modal-button' onClick={handleCloseRejectModal} variant="outlined">
+          <Button onClick={handleCloseRejectModal} variant="outlined">
             Cancel
           </Button>
           <Button
@@ -402,7 +340,6 @@ export const PendingRequests = () => {
             disabled={!rejectionReason.trim()}
             variant="outlined"
             sx={{ m: 2 }}
-            data-cy='reject-modal-button'
           >
             Reject Request
           </Button>
@@ -410,14 +347,32 @@ export const PendingRequests = () => {
       </Dialog>
 
       {/* Document Dialog */}
-      <DocumentDialog
-        isOpen={documentDialogOpen}
-        documents={documents}
-        onClose={handleCloseDocumentDialog}
-      />
+      <Dialog open={documentDialogOpen} onClose={handleCloseDocumentDialog} fullWidth>
+        <DialogTitle>Supporting Documents</DialogTitle>
+        <DialogContent>
+          <List>
+            {documents.map((document, idx) => (
+              <ListItem key={document}>
+                {idx + 1}.{" "}
+                <Link href={document} target="_blank" rel="noopener noreferrer">
+                  View Document
+                </Link>
+              </ListItem>
+            ))}
+          </List>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseDocumentDialog}>
+            <CloseIcon />
+          </Button>
+        </DialogActions>
+      </Dialog>
     </>
   );
 };
+
+export default PendingRequests;
+
 
 const ArrangementRow = ({
   arrangement,
@@ -476,7 +431,6 @@ const ArrangementRow = ({
               <Button
                 color="success"
                 startIcon={<CheckIcon />}
-                data-cy={`approve-button-${arrangement.arrangement_id}`}
                 onClick={() =>
                   handleRequestAction(
                     Action.Approve,
@@ -491,7 +445,6 @@ const ArrangementRow = ({
               <Button
                 color="error"
                 startIcon={<CloseIcon />}
-                data-cy={`reject-button-${arrangement.arrangement_id}`}
                 onClick={() => handleRejectClick(arrangement_id)}
               >
                 Reject
@@ -502,9 +455,8 @@ const ArrangementRow = ({
           <>
             <ButtonGroup variant="contained">
               <Button
-                color="warning" // orange color for "Withdraw"
+                color="warning" 
                 startIcon={<CheckIcon />}
-                data-cy={`withdraw-button-${arrangement.arrangement_id}`}
                 onClick={() =>
                   handleRequestAction(
                     Action.Approve,
@@ -520,7 +472,6 @@ const ArrangementRow = ({
                 color="error"
                 startIcon={<CloseIcon />}
                 onClick={() => handleRejectClick(arrangement_id)}
-                data-cy={`reject-button-${arrangement.arrangement_id}`}
               >
                 Reject
               </Button>
@@ -563,3 +514,4 @@ const DocumentDialog = ({
     </DialogActions>
   </Dialog>
 );
+

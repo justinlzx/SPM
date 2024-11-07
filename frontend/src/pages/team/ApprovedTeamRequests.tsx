@@ -132,7 +132,6 @@ export const ApprovedRequests = () => {
         );
 
         const data: TWFHRequest[] = response.data.data;
-
         setApprovedRequests(data);
         setTotalItems(response.data.pagination_meta.total_count);
       } catch (error) {
@@ -171,14 +170,14 @@ export const ApprovedRequests = () => {
       setWithdrawReason("");
       setSnackbarMessage("Request withdrawn successfully.");
       setAlertStatus(AlertStatus.Success);
-      setShowSnackbar(true); // Trigger snackbar
+      setShowSnackbar(true); 
     } catch (error) {
       console.error("Error withdrawing approval:", error);
       setSnackbarMessage("Failed to withdraw request.");
       setAlertStatus(AlertStatus.Error);
-      setShowSnackbar(true); // Trigger snackbar
+      setShowSnackbar(true);
     } finally {
-      setWithdrawLoading(false); // Set loading state to false
+      setWithdrawLoading(false); 
     }
   };
 
@@ -202,9 +201,14 @@ export const ApprovedRequests = () => {
 
       <TableContainer
         component={Paper}
-        sx={{ marginTop: 3, textAlign: "center" }}
+        sx={{
+          marginTop: 3,
+          textAlign: "center",
+          maxHeight: "60vh", // Set a max height for the table container
+          overflow: "auto", // Enable scroll within the table container if needed
+        }}
       >
-        <Table>
+        <Table stickyHeader>
           <TableHead>
             <TableRow>
               <TableCell sx={{ fontWeight: "bold" }}>Staff ID</TableCell>
