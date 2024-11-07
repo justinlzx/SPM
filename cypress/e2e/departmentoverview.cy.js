@@ -11,6 +11,7 @@ describe('Testing Department Overview Page', () => {
 
         // Step 2: Access the department overview page
         cy.get('[data-cy="department-overview"]').first().click({ force: true });
+        cy.url().should('eq', 'http://localhost:3000/department-overview');
 
 
         // Step 3: Choose the department
@@ -53,6 +54,7 @@ describe('Testing Department Overview Page, no data to be seen', () => {
 
         // Step 2: Access the department overview page
         cy.get('[data-cy="department-overview"]').first().click({ force: true });
+        cy.url().should('eq', 'http://localhost:3000/department-overview');
 
 
         // Step 3: Choose the department
@@ -93,6 +95,7 @@ describe('Testing Department Overview Page, no data to be seen, so try again for
 
         // Step 2: Access the department overview page
         cy.get('[data-cy="department-overview"]').first().click({ force: true });
+        cy.url().should('eq', 'http://localhost:3000/department-overview');
 
 
         // Step 3: Choose the department
@@ -165,6 +168,7 @@ describe('Testing Department Overview Page (Trying out with Derek Tan)', () => {
 
         // Step 2: Access the department overview page
         cy.get('[data-cy="department-overview"]').first().click({ force: true });
+        cy.url().should('eq', 'http://localhost:3000/department-overview');
 
 
         // Step 3: Choose the department
@@ -206,6 +210,7 @@ describe('Testing Department Overview Page (Trying out with Jack Sim, he wants t
 
         // Step 2: Access the department overview page
         cy.get('[data-cy="department-overview"]').first().click({ force: true });
+        cy.url().should('eq', 'http://localhost:3000/department-overview');
 
 
         // Step 3: Choose the department

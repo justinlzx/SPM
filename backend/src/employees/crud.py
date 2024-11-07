@@ -237,21 +237,42 @@ def update_pending_arrangements_for_delegate(
     db.commit()
 
 
-def get_delegation_log_by_manager(db: Session, staff_id: int):
-    """This function retrieves a delegation log entry by manager ID from the database.
+# def get_delegation_log_by_manager(db: Session, staff_id: int):
+#     """This function retrieves a delegation log entry by manager ID from the database.
 
-    :param db: The `db` parameter is of type `Session`, which is likely an instance of a database
-    session that allows interaction with the database. It is used to query the database for delegation
-    logs
+#     :param db: The `db` parameter is of type `Session`, which is likely an instance of a database
+#     session that allows interaction with the database. It is used to query the database for delegation
+#     logs
+#     :type db: Session
+#     :param staff_id: The `staff_id` parameter is an integer that represents the unique identifier of a
+#     staff member or manager in the database. This parameter is used to filter and retrieve delegation
+#     logs associated with a specific manager based on their ID
+#     :type staff_id: int
+#     :return: The function `get_delegation_log_by_manager` returns the first delegation log entry from
+#     the database where the manager_id matches the provided staff_id.
+#     """
+#     return db.query(models.DelegateLog).filter(models.DelegateLog.manager_id == staff_id).first()
+
+
+def get_delegation_log_by_manager(db: Session, staff_id: int):
+    """This function retrieves the first accepted delegation log entry by manager ID from the database.
+
+    :param db: The database session instance used to interact with the database
     :type db: Session
-    :param staff_id: The `staff_id` parameter is an integer that represents the unique identifier of a
-    staff member or manager in the database. This parameter is used to filter and retrieve delegation
-    logs associated with a specific manager based on their ID
+    :param staff_id: The unique identifier of the staff member/manager
     :type staff_id: int
-    :return: The function `get_delegation_log_by_manager` returns the first delegation log entry from
-    the database where the manager_id matches the provided staff_id.
+    :return: The first accepted delegation log entry for the specified manager, or None if no accepted
+            delegation exists
+    :rtype: models.DelegateLog | None
     """
-    return db.query(models.DelegateLog).filter(models.DelegateLog.manager_id == staff_id).first()
+    return (
+        db.query(models.DelegateLog)
+        .filter(
+            models.DelegateLog.manager_id == staff_id,
+            models.DelegateLog.status_of_delegation == models.DelegationStatus.accepted,
+        )
+        .first()
+    )
 
 
 def remove_delegate_from_arrangements(db: Session, delegate_manager_id: int):
