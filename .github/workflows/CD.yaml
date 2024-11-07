@@ -3,6 +3,23 @@ name: CI Pipeline
 on:
   push:
     branches: ["main"]
+    paths:
+      # frontend files
+      - "frontend/src/**"
+      - "frontend/public/**"
+      - "frontend/package.json"
+      - "frontend/Dockerfile"
+      - "frontend/tailwind.config.js"
+      - "frontend/tsconfig.json"
+
+      # backend files
+      - "backend/src/**"
+      - "backend/requirements.prod.txt"
+      - "backend/Dockerfile"
+      - "backend/main.py"
+
+      - "docker-compose.yaml"
+      - ".github/workflows/CD.yaml"
 
 env:
   TELEGRAM_GROUP_ID: ${{ secrets.TELE_CHAT_ID }}

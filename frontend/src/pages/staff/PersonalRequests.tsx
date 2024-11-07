@@ -74,7 +74,7 @@ export const PersonalRequests = () => {
   const [documentDialogOpen, setDocumentDialogOpen] = useState(false);
   const [documents, setDocuments] = useState<string[]>([]);
   const { user } = useContext(UserContext);
-  const userId = user!.id;
+  const userId = user?.id;
 
   useEffect(() => {
     const fetchRequests = async () => {

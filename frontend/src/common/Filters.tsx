@@ -92,6 +92,7 @@ export const Filters: React.FC<FiltersProps> = ({
           onChange={(e) => setSearchQuery(e.target.value)}
           placeholder="Search by Staff ID, Date, Reason, or Type"
           sx={{ marginBottom: 2 }}
+          data-cy="search-input" // Added data-cy for search input
         />
       )}
 
@@ -131,6 +132,7 @@ export const Filters: React.FC<FiltersProps> = ({
                       </InputAdornment>
                     ),
                   }}
+                  data-cy="start-date-picker" // Added data-cy for start date picker
                 />
               }
             />
@@ -151,6 +153,7 @@ export const Filters: React.FC<FiltersProps> = ({
                       </>
                     ),
                   }}
+                  data-cy="end-date-picker" // Added data-cy for end date picker
                 />
               }
             />
@@ -158,7 +161,7 @@ export const Filters: React.FC<FiltersProps> = ({
         )}
 
         {!excludeStatusFilter && (
-          <FormControl size="small" sx={{ minWidth: 150 }}>
+          <FormControl size="small" sx={{ minWidth: 150 }} data-cy="status-select">
             <InputLabel>Status</InputLabel>
             <Select
               multiple
@@ -188,6 +191,7 @@ export const Filters: React.FC<FiltersProps> = ({
             variant="contained"
             color="primary"
             onClick={handleApplyFilters}
+            data-cy="apply-filters" // Added data-cy for apply filters button
           >
             Apply Filters
           </Button>
@@ -195,12 +199,13 @@ export const Filters: React.FC<FiltersProps> = ({
             variant="outlined"
             color="secondary"
             onClick={handleClearFilters}
+            data-cy="clear-filters" // Added data-cy for clear filters button
           >
             Clear Filters
           </Button>
         </Box>
       </Box>
-    </Box>
+    </Box >
   );
 };
 

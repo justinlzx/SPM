@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, Form, HTTPException
 from pydantic import EmailStr
 from sqlalchemy.orm import Session
 
+from ..logger import logger
 from .. import utils
 from ..database import get_db
 from ..employees.models import Employee
@@ -55,7 +56,7 @@ def get_reporting_manager_and_peer_employees(staff_id: int, db: Session = Depend
             utils.convert_model_to_pydantic_schema(unlocked_peers, schemas.EmployeeBase)
         )
 
-        print(f"Num results: {len(unlocked_peers)}")
+        logger.info(f"Num results: {len(unlocked_peers)}")
 
         # Format to response model
         response = EmployeePeerResponse(

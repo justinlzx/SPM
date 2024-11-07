@@ -76,57 +76,60 @@ const ConfirmationModal: React.FC<{
   reason,
   setReason,
 }) => (
-  <Modal open={open} onClose={handleClose}>
-    <Box
-      sx={{
-        position: "absolute",
-        top: "50%",
-        left: "50%",
-        transform: "translate(-50%, -50%)",
-        width: 400,
-        bgcolor: "background.paper",
-        borderRadius: 2,
-        p: 4,
-        boxShadow: 24,
-      }}
-    >
-      <Typography variant="h6">
-        Confirm {action === "cancel" ? "Cancellation" : "Withdrawal"}
-      </Typography>
-      <Typography mb={2}>
-        Are you sure you want to {action === "cancel" ? "cancel" : "withdraw"}{" "}
-        this request?
-      </Typography>
-      {action === "withdraw" && (
-        <TextField
-          label="Reason for withdrawal (Optional)"
-          fullWidth
-          value={reason}
-          onChange={(e) => setReason(e.target.value)}
-          margin="normal"
-        />
-      )}
-      <Box mt={2} display="flex" justifyContent="flex-end">
-        <Button
-          onClick={handleClose}
-          variant="outlined"
-          color="secondary"
-          sx={{ mr: 2 }}
-        >
-          No
-        </Button>
-        <Button
-          onClick={handleConfirm}
-          variant="contained"
-          color="primary"
-          disabled={loading}
-        >
-          {loading ? <CircularProgress size={24} color="inherit" /> : "Yes"}
-        </Button>
+    <Modal open={open} onClose={handleClose}>
+      <Box
+        sx={{
+          position: "absolute",
+          top: "50%",
+          left: "50%",
+          transform: "translate(-50%, -50%)",
+          width: 400,
+          bgcolor: "background.paper",
+          borderRadius: 2,
+          p: 4,
+          boxShadow: 24,
+        }}
+      >
+        <Typography variant="h6">
+          Confirm {action === "cancel" ? "Cancellation" : "Withdrawal"}
+        </Typography>
+        <Typography mb={2}>
+          Are you sure you want to {action === "cancel" ? "cancel" : "withdraw"}{" "}
+          this request?
+        </Typography>
+        {action === "withdraw" && (
+          <TextField
+            data-cy='withdrawal-reason'
+            label="Reason for withdrawal (Optional)"
+            fullWidth
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            margin="normal"
+          />
+        )}
+        <Box mt={2} display="flex" justifyContent="flex-end">
+          <Button
+            data-cy="no-button"
+            onClick={handleClose}
+            variant="outlined"
+            color="secondary"
+            sx={{ mr: 2 }}
+          >
+            No
+          </Button>
+          <Button
+            data-cy="yes-button"
+            onClick={handleConfirm}
+            variant="contained"
+            color="primary"
+            disabled={loading}
+          >
+            {loading ? <CircularProgress size={24} color="inherit" /> : "Yes"}
+          </Button>
+        </Box>
       </Box>
-    </Box>
-  </Modal>
-);
+    </Modal>
+  );
 
 export const WFHRequestTable: React.FC<
   TWFHRequestTableProps & { refreshData: () => void }
@@ -277,7 +280,7 @@ export const WFHRequestTable: React.FC<
                 ].filter(Boolean) as string[];
 
                 return (
-                  <TableRow key={request.arrangement_id}>
+                  <TableRow key={request.arrangement_id} data-cy="request-item"> {/* Add here */}
                     <TableCell>{request.requester_staff_id}</TableCell>
                     <TableCell>{request.wfh_date}</TableCell>
                     <TableCell>
@@ -313,7 +316,7 @@ export const WFHRequestTable: React.FC<
                         label={capitalize(request.current_approval_status)}
                         variant={
                           request.current_approval_status ===
-                          ApprovalStatus.PendingWithdrawal
+                            ApprovalStatus.PendingWithdrawal
                             ? "outlined"
                             : "filled"
                         }
@@ -322,30 +325,32 @@ export const WFHRequestTable: React.FC<
                     <TableCell>
                       {request.current_approval_status ===
                         ApprovalStatus.PendingApproval && (
-                        <Button
-                          size="small"
-                          variant="outlined"
-                          color="primary"
-                          onClick={() =>
-                            handleOpen(request.arrangement_id, "cancel")
-                          }
-                        >
-                          Cancel
-                        </Button>
-                      )}
+                          <Button
+                            size="small"
+                            variant="outlined"
+                            color="primary"
+                            data-cy={`cancel-button-${request.arrangement_id}`}
+                            onClick={() =>
+                              handleOpen(request.arrangement_id, "cancel")
+                            }
+                          >
+                            Cancel
+                          </Button>
+                        )}
                       {request.current_approval_status ===
                         ApprovalStatus.Approved && (
-                        <Button
-                          size="small"
-                          variant="outlined"
-                          color="secondary"
-                          onClick={() =>
-                            handleOpen(request.arrangement_id, "withdraw")
-                          }
-                        >
-                          Withdraw
-                        </Button>
-                      )}
+                          <Button
+                            size="small"
+                            variant="outlined"
+                            color="secondary"
+                            data-cy={`withdraw-button-${request.arrangement_id}`}
+                            onClick={() =>
+                              handleOpen(request.arrangement_id, "withdraw")
+                            }
+                          >
+                            Withdraw
+                          </Button>
+                        )}
                     </TableCell>
                   </TableRow>
                 );

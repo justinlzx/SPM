@@ -136,12 +136,14 @@ const ArrangementRow = ({
         ) : (
           "NA"
         )}
+
       </TableCell>
       <TableCell>
         {current_approval_status === ApprovalStatus.PendingApproval ? (
           <>
             <ButtonGroup variant="contained">
               <Button
+                data-cy={`approve-button-${arrangement.arrangement_id}`}
                 color="success"
                 startIcon={<CheckIcon />}
                 onClick={() => handleRequestAction(Action.Approve, arrangement_id, reason_description, current_approval_status)}
@@ -149,6 +151,7 @@ const ArrangementRow = ({
                 Approve
               </Button>
               <Button
+                data-cy={`reject-button-${arrangement.arrangement_id}`}
                 color="error"
                 startIcon={<CloseIcon />}
                 onClick={() => handleRejectClick(arrangement_id)}
@@ -177,7 +180,7 @@ const ArrangementRow = ({
             </ButtonGroup>
           </>
         ) : null}
-      </TableCell>
-    </TableRow>
+      </TableCell >
+    </TableRow >
   );
 };

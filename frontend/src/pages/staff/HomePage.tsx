@@ -67,10 +67,10 @@ export const HomePage = () => {
   const storedUser = localStorage.getItem("user");
   const userName = storedUser
     ? storedUser
-        .split("@")[0]
-        .split(".")
-        .map((part) => part[0].toUpperCase() + part.slice(1).toLowerCase())
-        .join(" ")
+      .split("@")[0]
+      .split(".")
+      .map((part) => part[0].toUpperCase() + part.slice(1).toLowerCase())
+      .join(" ")
     : "Guest";
 
   const handleCreateApplication = (path: string) => {
@@ -94,13 +94,14 @@ export const HomePage = () => {
           color="primary"
           startIcon={<AddIcon />}
           onClick={() => handleCreateApplication("/create-request")}
+          data-cy="home-page-create-request-button"
         >
           Create a WFH Request
         </Button>
-        {(user?.role === 3 ||
+        {(user?.role === 2 ||
           (user?.role === 1 && user?.position === "Director")) && (
-          <DelegateButton />
-        )}
+            <DelegateButton data-cy="home-page-delegate-button" />
+          )}
         <Typography variant="h5" sx={{ mt: 4 }}>
           Your Requests
         </Typography>
