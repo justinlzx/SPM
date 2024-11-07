@@ -86,9 +86,9 @@ jobs:
         echo $! > backend.pid
       working-directory: backend
       
-    - name: Wait for backend server to start
-      run: |
-        npx wait-on http://127.0.0.1:8000  # Adjust the URL and port for your backend
+    # - name: Wait for backend server to start
+    #   run: |
+    #     npx wait-on http://127.0.0.1:8000  # Adjust the URL and port for your backend
       
 
     # Optional: Uncomment to wait for services to be ready
