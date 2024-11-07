@@ -94,12 +94,13 @@ export const HomePage = () => {
           color="primary"
           startIcon={<AddIcon />}
           onClick={() => handleCreateApplication("/create-request")}
+          data-cy="home-page-create-request-button"
         >
           Create a WFH Request
         </Button>
-        {(user?.role === 3 ||
+        {(user?.role === 2 ||
           (user?.role === 1 && user?.position === "Director")) && (
-            <DelegateButton />
+            <DelegateButton data-cy="home-page-delegate-button" />
           )}
         <Typography variant="h5" sx={{ mt: 4 }}>
           Your Requests
