@@ -229,20 +229,11 @@ export const PendingRequests = () => {
         }
       );
 
-      await axios.put(
-        `${BACKEND_URL}/arrangements/${arrangement_id}/status`,
-        formData,
-        {
-          headers: { "Content-Type": "multipart/form-data" },
-        }
-      );
-
       setAlertStatus(AlertStatus.Success);
       setSnackbarMessage(
         `Request '${action}' successfully updated to status '${nextStatus}'`
       );
       setShowSnackbar(true);
-      refreshData();
       refreshData();
     } catch (error) {
       console.error(`Error performing action '${action}':`, error);

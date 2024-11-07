@@ -42,6 +42,16 @@ export const Filters: React.FC<FiltersProps> = ({
   const [workStatus, setWorkStatus] = useState<ApprovalStatus[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
 
+  // Update filters dynamically on search query change
+  useEffect(() => {
+    onApplyFilters({
+      startDate,
+      endDate,
+      workStatus,
+      searchQuery,
+    });
+  }, [searchQuery]); // Trigger filtering when searchQuery changes
+
   const handleApplyFilters = () => {
     onApplyFilters({
       startDate,
@@ -62,13 +72,6 @@ export const Filters: React.FC<FiltersProps> = ({
       workStatus,
       searchQuery,
     }); // Call parent-provided clear function
-    
-    onClearFilters({
-      startDate,
-      endDate,
-      workStatus,
-      searchQuery,
-    });
   };
 
   return (
@@ -158,9 +161,7 @@ export const Filters: React.FC<FiltersProps> = ({
               <MenuItem key={statusKey} value={statusKey}>
                 <Checkbox checked={status.includes(statusKey)} />
                 <ListItemText
-                 
                   primary={statusKey.replace(/^\w/, (c) => c.toUpperCase())}
-               
                 />
               </MenuItem>
             ))}
@@ -170,13 +171,9 @@ export const Filters: React.FC<FiltersProps> = ({
         {/* Apply and Clear Filters Buttons */}
         <Box display="flex" gap={1}>
           <Button
-           
             variant="contained"
-           
             color="primary"
-           
             onClick={handleApplyFilters}
-          
           >
             Apply Filters
           </Button>
