@@ -164,7 +164,6 @@ def get_team_arrangements(
     team_arrangements = [
         ArrangementResponse.from_dict(arrangement) for arrangement in team_arrangements
     ]
-    print(filters)
 
     # Get presigned URL for each supporting document in each arrangement
     for record in team_arrangements:
