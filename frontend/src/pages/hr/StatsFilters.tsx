@@ -58,6 +58,7 @@ export const StatsFilters = ({ userInfo, action }: PropType) => {
             <InputLabel>Department</InputLabel>
             <Select
               value={department}
+              data-cy="stats-department"
               onChange={(e) => setDepartment(e.target.value)}
               input={<OutlinedInput label="Department" />}
             >
@@ -78,6 +79,7 @@ export const StatsFilters = ({ userInfo, action }: PropType) => {
             <label className="mx-1 font-leagueSpartan-400">Select Date:</label>
             <input
               type="date"
+              data-cy="date-department"
               className="w-[180px] border border-neutral-300 font-leagueSpartan-400 rounded-lg"
               value={formatDate(date)}
               onChange={(e) => {
@@ -88,7 +90,7 @@ export const StatsFilters = ({ userInfo, action }: PropType) => {
         </div>
         {error && <p className="text-red-500">{error}</p>}
         <div className="grid grid-cols-2">
-          <Button
+          <Button data-cy="go-button"
             sx={{
               backgroundColor: "navy",
               color: "white",
@@ -109,6 +111,7 @@ export const StatsFilters = ({ userInfo, action }: PropType) => {
               marginLeft: "4px",
             }}
             onClick={handleClearFilters}
+            data-cy="department-refresh-button"
           >
             <RestartAltIcon />
           </Button>

@@ -1,6 +1,7 @@
 from datetime import datetime
 from os import getenv
 from typing import Union
+from zoneinfo import ZoneInfo
 
 import httpx
 from dotenv import load_dotenv
@@ -17,6 +18,7 @@ from .commons.structs import ARRANGEMENT_SUBJECT, DELEGATION_SUBJECT
 
 load_dotenv()
 BASE_URL = getenv("BACKEND_BASE_URL", "http://localhost:8000")
+singapore_timezone = ZoneInfo("Asia/Singapore")
 
 
 async def send_email(to_email: str, subject: str, content: str):
@@ -63,18 +65,25 @@ async def craft_and_send_email(
         )
     )
 
-    email_list.append(
-        (
-            getattr(config, role_2).email,
-            email_content[role_2]["subject"],
-            email_content[role_2]["content"],
+    # Ignore for Jack Sim
+    if isinstance(config, ArrangementNotificationConfig) and config.employee.staff_id == 130002:
+        pass
+    else:
+        email_list.append(
+            (
+                getattr(config, role_2).email,
+                email_content[role_2]["subject"],
+                email_content[role_2]["content"],
+            )
         )
-    )
 
     email_errors = []
 
     for email, subject, content in email_list:
         try:
+            logger.info(
+                f"Sending email to {email} with the following content:\n\n{subject}\n{content}\n\n"
+            )
             await send_email(email, subject, content)
             logger.info(
                 f"Email sent successfully to {email} with the following content:\n\n{subject}\n{content}\n\n"
@@ -137,7 +146,7 @@ def format_details(config: Union[ArrangementNotificationConfig, DelegateNotifica
             "withdrawn": "Delegation Withdrawal",
         }
 
-        details += f"{verb_map.get(config.action)} Date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} UTC\n"
+        details += f"{verb_map.get(config.action)} Date: {datetime.now(singapore_timezone).strftime('%Y-%m-%d %H:%M:%S')} UTC\n"
         details += f"Delegator: {config.delegator.staff_fname} {config.delegator.staff_lname}\n"
         details += f"Delegatee: {config.delegatee.staff_fname} {config.delegatee.staff_lname}\n"
 
@@ -147,6 +156,14 @@ def format_details(config: Union[ArrangementNotificationConfig, DelegateNotifica
 def format_email_subject(
     role: str, config: Union[ArrangementNotificationConfig, DelegateNotificationConfig]
 ):
+    # Ignore for Jack Sim
+    if (
+        role == "manager"
+        and isinstance(config, ArrangementNotificationConfig)
+        and config.employee.staff_id == 130002
+    ):
+        return ""
+
     if isinstance(config, ArrangementNotificationConfig):
         subject = ARRANGEMENT_SUBJECT[role][config.action]
 
@@ -163,6 +180,14 @@ def format_email_body(
     formatted_details: str,
     config: Union[ArrangementNotificationConfig, DelegateNotificationConfig],
 ):
+    # Ignore for Jack Sim
+    if (
+        role == "manager"
+        and isinstance(config, ArrangementNotificationConfig)
+        and config.employee.staff_id == 130002
+    ):
+        return ""
+
     # Add common header
     body = f"Dear {getattr(config, role).staff_fname} {getattr(config, role).staff_lname},\n\n"
 

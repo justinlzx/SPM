@@ -181,6 +181,7 @@ export const PendingDelegations = () => {
                               size="small"
                               color="success"
                               startIcon={<CheckIcon />}
+                              data-cy="accept-delegation"
                               onClick={() => handleDelegationAction("accepted", staff_id)}
                             >
                               Accept
@@ -191,6 +192,7 @@ export const PendingDelegations = () => {
                               size="small"
                               color="error"
                               startIcon={<CloseIcon />}
+                              data-cy="reject-delegation"
                               onClick={() => handleOpenRejectModal(staff_id)}
                             >
                               Reject
@@ -223,10 +225,11 @@ export const PendingDelegations = () => {
             required
             value={reason}
             onChange={(e) => setReason(e.target.value)}
+            data-cy="RejectDelegationModal"
           />
         </DialogContent>
         <DialogActions sx={{ m: 2 }}>
-          <Button onClick={handleCloseRejectModal} color="secondary">
+          <Button data-cy="RejectDelegationModalCancel" onClick={handleCloseRejectModal} color="secondary">
             Cancel
           </Button>
           <Button
@@ -234,6 +237,7 @@ export const PendingDelegations = () => {
             variant="outlined"
             color="error"
             disabled={!reason.trim() || actionLoading} // Disable when loading or reason is empty
+            data-cy="RejectDelegationModalConfirm"
           >
             {actionLoading ? <LoadingSpinner open={true} /> : "Confirm"}
           </Button>

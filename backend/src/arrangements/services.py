@@ -1,6 +1,7 @@
 from dataclasses import asdict
 from datetime import datetime
 from typing import Dict, List, Tuple, Union
+from zoneinfo import ZoneInfo
 
 import boto3
 import botocore
@@ -37,6 +38,9 @@ from .utils import (
     handle_multi_file_deletion,
     upload_file,
 )
+
+JACK_SIM_STAFF_ID = 130002
+singapore_timezone = ZoneInfo("Asia/Singapore")
 
 
 def get_arrangement_by_id(db: Session, arrangement_id: int) -> ArrangementResponse:
@@ -135,6 +139,7 @@ def get_team_arrangements(
     team_arrangements = []
 
     # Get peer arrangements
+    filters.personal_staff_id = staff_id
     filters.staff_ids = [employee.staff_id for employee in employees]  # type: ignore
     logger.info(f"Service: Fetching arrangements for peers of staff ID {staff_id}")
     peer_arrangements = crud.get_arrangements(
@@ -147,7 +152,7 @@ def get_team_arrangements(
     # Get subordinate arrangements
     filters.staff_ids = None
     filters.manager_id = staff_id
-    logger.info(f"Service: Fetching arrangements for team of staff ID {staff_id}")
+    logger.info(f"Service: Fetching arrangements for subordinates of staff ID {staff_id}")
     subordinates_arrangements = crud.get_arrangements(
         db=db,
         filters=filters,
@@ -159,7 +164,6 @@ def get_team_arrangements(
     team_arrangements = [
         ArrangementResponse.from_dict(arrangement) for arrangement in team_arrangements
     ]
-    print(filters)
 
     # Get presigned URL for each supporting document in each arrangement
     for record in team_arrangements:
@@ -225,7 +229,7 @@ async def create_arrangements_from_request(
             wfh_request.delegate_approving_officer = delegation.__dict__["delegate_manager_id"]
 
         # Auto Approve Jack Sim's requests
-        if wfh_request.requester_staff_id == 130002:
+        if wfh_request.requester_staff_id == JACK_SIM_STAFF_ID:
             wfh_request.current_approval_status = ApprovalStatus.APPROVED
 
         # Upload supporting documents to S3 bucket
@@ -308,17 +312,20 @@ async def update_arrangement_approval_status(
         raise exceptions.ArrangementNotFoundException(wfh_update.arrangement_id)
     arrangement = ArrangementResponse.from_dict(arrangement)
 
-    # Check if action is valid for the current status
-    if wfh_update.action not in STATUS_ACTION_MAPPING[arrangement.current_approval_status]:
-        raise exceptions.ArrangementActionNotAllowedException(
-            arrangement.current_approval_status, wfh_update.action
-        )
+    # Auto Withdraw Jack Sim's requests
+    if arrangement.requester_staff_id == JACK_SIM_STAFF_ID and wfh_update.action == Action.WITHDRAW:
+        previous_approval_status = arrangement.current_approval_status
+        arrangement.current_approval_status = ApprovalStatus.WITHDRAWN
+    else:
+        if wfh_update.action not in STATUS_ACTION_MAPPING[arrangement.current_approval_status]:
+            raise exceptions.ArrangementActionNotAllowedException(
+                arrangement.current_approval_status, wfh_update.action
+            )
 
-    # Update arrangement fields
-    previous_approval_status = arrangement.current_approval_status
-    arrangement.current_approval_status = STATUS_ACTION_MAPPING[
-        arrangement.current_approval_status
-    ][wfh_update.action]
+        previous_approval_status = arrangement.current_approval_status
+        arrangement.current_approval_status = STATUS_ACTION_MAPPING[
+            arrangement.current_approval_status
+        ][wfh_update.action]
 
     arrangement.approving_officer = wfh_update.approving_officer
     arrangement.status_reason = wfh_update.status_reason
@@ -362,6 +369,8 @@ async def auto_reject_old_requests():
     total_count = len(wfh_requests)
     failure_ids = []
 
+    logger.info(f"Auto-rejecting {total_count} expiring requests")
+
     for arrangement in wfh_requests:
         if (
             "delegate_approving_officer" in arrangement
@@ -373,7 +382,7 @@ async def auto_reject_old_requests():
 
         wfh_update = UpdateArrangementRequest(
             arrangement_id=arrangement["arrangement_id"],
-            update_datetime=datetime.now(),
+            update_datetime=datetime.now(singapore_timezone),
             action=Action.REJECT,
             approving_officer=approving_officer,
             status_reason="AUTO-REJECTED due to pending status one day before WFH date",

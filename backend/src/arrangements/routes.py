@@ -1,5 +1,6 @@
 from datetime import datetime
 from typing import Annotated, List, Optional
+from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from sqlalchemy.orm import Session
@@ -24,6 +25,7 @@ from .commons.exceptions import (
 from .utils import format_arrangement_response, format_arrangements_response
 
 router = APIRouter()
+singapore_timezone = ZoneInfo("Asia/Singapore")
 
 
 @router.get("", summary="Get all arrangements with optional filters")
@@ -170,16 +172,19 @@ def get_team_arrangements(
         # Convert to dataclasses
         filters = dc.ArrangementFilters.from_dict(request_filters.model_dump())
         pagination = dc.PaginationConfig.from_dict(request_pagination.model_dump())
-
+        logger.info(filters)
         # Get arrangements
         logger.info(f"Route: Fetching arrangements for team of staff ID: {staff_id}")
-        data, pagination_meta = services.get_team_arrangements(db, staff_id, filters, pagination)
+        response_data, pagination_meta = services.get_team_arrangements(
+            db, staff_id, filters, pagination
+        )
         logger.info(
             f"Route: Found {pagination_meta.total_count} {'dates' if filters.group_by_date else 'arrangements'}"
         )
 
         # Convert to Pydantic model
-        response_data = format_arrangements_response(data)
+        if len(response_data) > 0:
+            response_data = format_arrangements_response(response_data)
         response_pagination_meta = PaginationMeta.model_validate(pagination_meta)
 
         return JSendResponse(
@@ -219,7 +224,7 @@ async def create_wfh_request(
     try:
         # Convert to dataclasses
         wfh_request = dc.CreateArrangementRequest(
-            update_datetime=datetime.now(),
+            update_datetime=datetime.now(singapore_timezone),
             current_approval_status=ApprovalStatus.PENDING_APPROVAL,
             **request.model_dump(),
         )
@@ -255,7 +260,7 @@ async def update_wfh_request(
     try:
         # Convert to dataclasses
         wfh_update = dc.UpdateArrangementRequest(
-            update_datetime=datetime.now(),
+            update_datetime=datetime.now(singapore_timezone),
             arrangement_id=arrangement_id,
             **update.model_dump(),
         )

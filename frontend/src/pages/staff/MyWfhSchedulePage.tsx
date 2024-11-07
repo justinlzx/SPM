@@ -1,12 +1,14 @@
 import { useContext, useEffect, useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
-import { Container, Typography, Snackbar, Alert } from "@mui/material";
+import { Container, Typography } from "@mui/material";
 import { UserContext } from "../../context/UserContextProvider";
 import { WFHRequestTable } from "../../components/WFHRequestTable";
 import { ApprovalStatus } from "../../types/status";
 import { Filters, TFilters } from "../../common/Filters";
 import { TWFHRequest } from "../../types/requests";
+import { SnackBarComponent, AlertStatus } from "../../common/SnackBar";
+import { JACK_SIM_STAFF_ID } from "../../utils/utils";
 import qs from "qs";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
@@ -25,8 +27,8 @@ export const MyWfhSchedulePage = () => {
   });
   const [openSnackbar, setOpenSnackbar] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState("");
-  const [snackbarSeverity, setSnackbarSeverity] = useState<"success" | "error">(
-    "success"
+  const [snackbarSeverity, setSnackbarSeverity] = useState<AlertStatus>(
+    AlertStatus.Success
   );
 
   useEffect(() => {
@@ -63,7 +65,7 @@ export const MyWfhSchedulePage = () => {
       setSnackbarMessage(
         "Failed to fetch WFH requests. Please try again later."
       );
-      setSnackbarSeverity("error");
+      setSnackbarSeverity(AlertStatus.Error);
       setOpenSnackbar(true);
     }
   };
@@ -90,12 +92,17 @@ export const MyWfhSchedulePage = () => {
       )
     );
 
-    setSnackbarMessage(
-      action === "cancel"
-        ? "Your WFH request has been successfully cancelled!"
-        : "Withdrawal Request has been sent to your manager for review."
-    );
-    setSnackbarSeverity("success");
+    if (userId === JACK_SIM_STAFF_ID && action === "withdraw") {
+      setSnackbarMessage("Request has been withdrawn successfully.");
+    } else {
+      setSnackbarMessage(
+        action === "cancel"
+          ? "Your WFH request has been successfully cancelled!"
+          : "Withdrawal Request has been sent to your manager for review."
+      );
+    }
+
+    setSnackbarSeverity(AlertStatus.Success);
     setOpenSnackbar(true);
     fetchRequests();
   };
@@ -110,22 +117,19 @@ export const MyWfhSchedulePage = () => {
       <Filters
         onApplyFilters={(filters) => handleFilterChange(filters)}
         onClearFilters={(filters) => handleFilterChange(filters)}
+        excludeSearchFilter={true}
       />
       <WFHRequestTable
         requests={requests}
         handleSuccess={handleSuccess}
         refreshData={fetchRequests}
       />
-      <Snackbar
-        open={openSnackbar}
-        autoHideDuration={3000}
-        onClose={handleCloseSnackBar}
-        anchorOrigin={{ vertical: "top", horizontal: "center" }}
-      >
-        <Alert onClose={handleCloseSnackBar} severity={snackbarSeverity}>
-          {snackbarMessage}
-        </Alert>
-      </Snackbar>
+      <SnackBarComponent
+        showSnackbar={openSnackbar}
+        handleCloseSnackBar={handleCloseSnackBar}
+        alertStatus={snackbarSeverity}
+        snackbarMessage={snackbarMessage}
+      />
     </Container>
   );
 };

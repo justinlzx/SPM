@@ -1,5 +1,6 @@
 from datetime import datetime
 from unittest.mock import MagicMock, patch
+from zoneinfo import ZoneInfo
 
 import pytest
 from sqlalchemy import Enum, create_engine
@@ -32,6 +33,7 @@ from src.employees.services import (
 # Configure the in-memory SQLite database
 engine = create_engine("sqlite:///:memory:")
 SessionLocal = sessionmaker(bind=engine)
+singapore_timezone = ZoneInfo("Asia/Singapore")
 
 
 @pytest.fixture(autouse=True)
@@ -440,7 +442,7 @@ def test_view_delegations_with_data(test_db):
         manager_id=20,
         delegate_manager_id=21,
         status_of_delegation=DelegationStatus.pending,
-        date_of_delegation=datetime.now(),
+        date_of_delegation=datetime.now(singapore_timezone),
     )
 
     test_db.add_all([manager, delegate, delegation])
@@ -480,14 +482,14 @@ def test_view_all_delegations(test_db):
         manager_id=30,
         delegate_manager_id=31,
         status_of_delegation=DelegationStatus.pending,
-        date_of_delegation=datetime.now(),
+        date_of_delegation=datetime.now(singapore_timezone),
     )
 
     received_delegation = DelegateLog(
         manager_id=31,
         delegate_manager_id=30,
         status_of_delegation=DelegationStatus.accepted,
-        date_of_delegation=datetime.now(),
+        date_of_delegation=datetime.now(singapore_timezone),
     )
 
     test_db.add_all([manager, delegate, sent_delegation, received_delegation])
@@ -527,7 +529,7 @@ async def test_undelegate_manager_success(test_db):
         manager_id=40,
         delegate_manager_id=41,
         status_of_delegation=DelegationStatus.accepted,
-        date_of_delegation=datetime.now(),
+        date_of_delegation=datetime.now(singapore_timezone),
     )
 
     test_db.add_all([manager, delegate, delegation])
@@ -579,7 +581,7 @@ async def test_undelegate_manager_not_accepted(test_db):
         manager_id=50,
         delegate_manager_id=51,
         status_of_delegation=DelegationStatus.pending,
-        date_of_delegation=datetime.now(),
+        date_of_delegation=datetime.now(singapore_timezone),
     )
 
     test_db.add_all([manager, delegate, delegation])
@@ -693,7 +695,7 @@ def test_view_delegations_with_no_employee_info(test_db):
         manager_id=999,
         delegate_manager_id=998,
         status_of_delegation=DelegationStatus.pending,
-        date_of_delegation=datetime.now(),
+        date_of_delegation=datetime.now(singapore_timezone),
     )
 
     test_db.add(delegation)
@@ -1207,13 +1209,13 @@ def test_view_delegations_with_data(test_db):
         manager_id=400,
         delegate_manager_id=401,
         status_of_delegation=DelegationStatus.pending,
-        date_of_delegation=datetime.now(),
+        date_of_delegation=datetime.now(singapore_timezone),
     )
     pending_delegation = DelegateLog(
         manager_id=401,
         delegate_manager_id=400,
         status_of_delegation=DelegationStatus.pending,
-        date_of_delegation=datetime.now(),
+        date_of_delegation=datetime.now(singapore_timezone),
     )
     test_db.add_all([sent_delegation, pending_delegation])
     test_db.commit()
@@ -1256,13 +1258,13 @@ def test_view_all_delegations_with_data(test_db):
         manager_id=500,
         delegate_manager_id=501,
         status_of_delegation=DelegationStatus.pending,
-        date_of_delegation=datetime.now(),
+        date_of_delegation=datetime.now(singapore_timezone),
     )
     received_delegation = DelegateLog(
         manager_id=501,
         delegate_manager_id=500,
         status_of_delegation=DelegationStatus.accepted,
-        date_of_delegation=datetime.now(),
+        date_of_delegation=datetime.now(singapore_timezone),
     )
     test_db.add_all([sent_delegation, received_delegation])
     test_db.commit()
@@ -1329,7 +1331,7 @@ async def test_delegation_process_coverage(test_db):
         manager_id=700,
         delegate_manager_id=701,
         status_of_delegation=DelegationStatus.pending,
-        date_of_delegation=datetime.now(),
+        date_of_delegation=datetime.now(singapore_timezone),
     )
     test_db.add(delegation)
     test_db.commit()
@@ -1390,7 +1392,7 @@ def test_get_manager_with_delegation(test_db):
         manager_id=900,
         delegate_manager_id=901,
         status_of_delegation=DelegationStatus.accepted,
-        date_of_delegation=datetime.now(),
+        date_of_delegation=datetime.now(singapore_timezone),
     )
     test_db.add(delegation)
     test_db.commit()
@@ -1443,13 +1445,13 @@ def test_view_delegations_with_full_data(test_db):
         manager_id=1000,
         delegate_manager_id=1001,
         status_of_delegation=DelegationStatus.accepted,
-        date_of_delegation=datetime.now(),
+        date_of_delegation=datetime.now(singapore_timezone),
     )
     pending_delegation = DelegateLog(
         manager_id=1002,
         delegate_manager_id=1000,
         status_of_delegation=DelegationStatus.pending,
-        date_of_delegation=datetime.now(),
+        date_of_delegation=datetime.now(singapore_timezone),
     )
     test_db.add_all([sent_delegation, pending_delegation])
     test_db.commit()
@@ -1502,15 +1504,15 @@ def test_view_all_delegations_with_full_data(test_db):
         manager_id=1100,
         delegate_manager_id=1101,
         status_of_delegation=DelegationStatus.pending,
-        date_of_delegation=datetime.now(),
-        update_datetime=datetime.now(),
+        date_of_delegation=datetime.now(singapore_timezone),
+        update_datetime=datetime.now(singapore_timezone),
     )
     received_delegation = DelegateLog(
         manager_id=1101,
         delegate_manager_id=1100,
         status_of_delegation=DelegationStatus.accepted,
-        date_of_delegation=datetime.now(),
-        update_datetime=datetime.now(),
+        date_of_delegation=datetime.now(singapore_timezone),
+        update_datetime=datetime.now(singapore_timezone),
     )
     test_db.add_all([sent_delegation, received_delegation])
     test_db.commit()

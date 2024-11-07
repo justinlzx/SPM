@@ -15,9 +15,14 @@ import {
   Snackbar,
   Alert,
 } from "@mui/material";
+import { capitalize } from "../../utils/utils";
+import { ApprovalStatus } from "../../types/requests";
+import { fetchEmployeeByStaffId } from "../../hooks/employee/employee.utils";
+// import Filters from "../../common/Filters";
 import { UserContext } from "../../context/UserContextProvider";
 import axios from "axios";
-import { set } from "react-datepicker/dist/date_utils";
+import Filters, { TFilters } from "../../common/Filters";
+import qs from "qs";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 
@@ -25,11 +30,16 @@ type Arrangement = {
   arrangement_id: number;
   update_datetime: string;
   requester_staff_id: number;
+  requester_name?: string;
   wfh_date: string;
   wfh_type: string;
-  current_approval_status: string;
+  current_approval_status: ApprovalStatus;
   approving_officer: number;
   reason_description: string;
+  requester_info: {
+    staff_fname: string;
+    staff_lname: string;
+  };
 };
 
 const getChipColor = (status: string | undefined) => {
@@ -59,6 +69,14 @@ export const RequestList = () => {
   const [alertStatus, setAlertStatus] = useState<"success" | "error">(
     "success"
   );
+
+  const [filters, setFilters] = useState<TFilters>({
+    startDate: null,
+    endDate: null,
+    workStatus: [],
+    searchQuery: "",
+  });
+
   const { user } = useContext(UserContext);
 
   useEffect(() => {
@@ -79,13 +97,20 @@ export const RequestList = () => {
                 "Content-Type": "application/json",
               },
               params: {
+                current_approval_status: filters.workStatus,
+                start_date: filters.startDate?.toISOString().split("T")[0],
+                end_date: filters.endDate?.toISOString().split("T")[0],
+                search_query: filters.searchQuery,
                 items_per_page: rowsPerPage,
                 page_num: page + 1,
               },
+              paramsSerializer: (params) =>
+                qs.stringify(params, { arrayFormat: "repeat" }),
             }
           );
           setTotalItems(arrangementsResponse.data.pagination_meta.total_count);
           const responseData = arrangementsResponse.data.data;
+
           setArrangements(responseData);
         } catch (error) {
           console.error("Failed to fetch data:", error);
@@ -96,12 +121,19 @@ export const RequestList = () => {
       }
     };
     fetchAllRequests();
-  }, [user, page, rowsPerPage]);
+  }, [user, page, rowsPerPage, filters]);
 
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchTerm(e.target.value);
   };
 
+  const handleSearchChange = (searchQuery: string) => {
+    setSearchTerm(searchQuery);
+  };
+
+  const handleFilterChange = (filters: TFilters) => {
+    setFilters(filters);
+  };
   const handleChangePage = (_event: unknown, newPage: number) => {
     setPage(newPage);
   };
@@ -141,13 +173,11 @@ export const RequestList = () => {
         My Team's WFH/OOO Requests
       </Typography>
 
-      <TextField
-        label="Search by reason, type or status"
-        variant="outlined"
-        fullWidth
-        margin="normal"
-        value={searchTerm}
-        onChange={handleSearch}
+      <Filters
+        onApplyFilters={(newFilters) => handleFilterChange(newFilters)}
+        onClearFilters={(newFilters) => handleFilterChange(newFilters)}
+        excludeStatusFilter={false}
+        excludeSearchFilter={true}
       />
 
       <TableContainer
@@ -158,13 +188,10 @@ export const RequestList = () => {
           overflow: "auto", // Enable scroll within the table container if needed
         }}
       >
-        <Table stickyHeader>
+        <Table>
           <TableHead>
             <TableRow>
-              <TableCell sx={{ fontWeight: "bold" }}>Arrangement ID</TableCell>
-              <TableCell sx={{ fontWeight: "bold" }}>
-                Approving Officer
-              </TableCell>
+              <TableCell sx={{ fontWeight: "bold" }}>Staff Name</TableCell>
               <TableCell sx={{ fontWeight: "bold" }}>WFH Type</TableCell>
               <TableCell sx={{ fontWeight: "bold" }}>WFH Date</TableCell>
               <TableCell sx={{ fontWeight: "bold" }}>Approval Status</TableCell>
@@ -183,9 +210,9 @@ export const RequestList = () => {
                 <TableRow
                   key={arrangement.arrangement_id + arrangement.wfh_date}
                 >
-                  <TableCell>{arrangement.arrangement_id}</TableCell>
                   <TableCell>
-                    {arrangement.approving_officer || "N/A"}
+                    {`${arrangement.requester_info.staff_fname} ${arrangement.requester_info.staff_lname}` ||
+                      "N/A"}
                   </TableCell>
                   <TableCell>
                     {arrangement.wfh_type?.toUpperCase() || "N/A"}
@@ -193,11 +220,13 @@ export const RequestList = () => {
                   <TableCell>{arrangement.wfh_date || "N/A"}</TableCell>
                   <TableCell>
                     <Chip
-                      label={arrangement.current_approval_status}
+                      label={capitalize(arrangement.current_approval_status)}
                       color={getChipColor(arrangement.current_approval_status)}
                     />
                   </TableCell>
-                  <TableCell>
+                  <TableCell
+                    style={{ whiteSpace: "normal", wordWrap: "break-word" }}
+                  >
                     {arrangement.reason_description || "N/A"}
                   </TableCell>
                 </TableRow>

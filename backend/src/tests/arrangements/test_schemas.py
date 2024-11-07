@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
 
 import pytest
 from pydantic import ValidationError
@@ -15,6 +16,8 @@ from src.arrangements.commons.schemas import (
     CreateArrangementRequest,
     UpdateArrangementRequest,
 )
+
+singapore_timezone = ZoneInfo("Asia/Singapore")
 
 
 @pytest.fixture
@@ -255,7 +258,7 @@ class TestCreateArrangementRequest:
             )  # type: ignore
 
     def test_wfh_date_less_than_24h(self):
-        wfh_date = datetime.now().date() + timedelta(hours=23)
+        wfh_date = datetime.now(singapore_timezone).date() + timedelta(hours=23)
 
         with pytest.raises(ValueError):
             CreateArrangementRequest(

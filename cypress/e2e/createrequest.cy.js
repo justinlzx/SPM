@@ -20,10 +20,12 @@ describe('Testing requests page', () => {
         cy.get('[data-cy="start-datepicker"]').click(); // Click the custom input for the date picker
 
         // Select a specific future date (ensure the date class matches your DatePicker setup)
-        cy.get('.react-datepicker__day--028').click(); // Adjust the day selection as necessary
+        cy.get('.react-datepicker__day--026').click(); // Adjust the day selection as necessary
 
         cy.get('[data-cy="submit-request"]').click();
-        cy.get('.MuiAlert-message').should('contain', 'Your request was successfully submitted');
+        cy.get('.MuiSnackbar-root .MuiAlert-message', { timeout: 10000 })
+            .should('be.visible')
+            .and('contain', 'Your request was successfully submitted!');
     })
 
     // Test case 2 (Happy Path with recurring)
@@ -50,10 +52,12 @@ describe('Testing requests page', () => {
         cy.get('[data-cy="start-datepicker-recurring"]').click(); // Click the custom input for the date picker
 
         // Select a specific future date (ensure the date class matches your DatePicker setup)
-        cy.get('.react-datepicker__day--028').click(); // Adjust the day selection as necessary
+        cy.get('.react-datepicker__day--026').click(); // Adjust the day selection as necessary
 
         cy.get('[data-cy="submit-request"]').click();
-        cy.get('.MuiAlert-message').should('contain', 'Your request was successfully submitted');
+        cy.get('.MuiSnackbar-root .MuiAlert-message', { timeout: 10000 })
+            .should('be.visible')
+            .and('contain', 'Your request was successfully submitted!');
     })
 
     // // Test case 3 (Submitting w Reason but no WFH type)
@@ -72,7 +76,7 @@ describe('Testing requests page', () => {
         cy.get('[data-cy="start-datepicker"]').click(); // Click the custom input for the date picker
 
         // Select a specific future date (ensure the date class matches your DatePicker setup)
-        cy.get('.react-datepicker__day--028').click(); // Adjust the day selection as necessary
+        cy.get('.react-datepicker__day--026').click(); // Adjust the day selection as necessary
         cy.get('[data-cy="submit-request"]').click();
 
         // Assert the error message is shown for WFH type
@@ -100,7 +104,7 @@ describe('Testing requests page', () => {
         cy.get('[data-cy="start-datepicker"]').click(); // Click the custom input for the date picker
 
         // Select a specific future date (ensure the date class matches your DatePicker setup)
-        cy.get('.react-datepicker__day--028').click(); // Adjust the day selection as necessary
+        cy.get('.react-datepicker__day--026').click(); // Adjust the day selection as necessary
         cy.get('[data-cy="submit-request"]').click();
 
         // Assert the error message is shown for the reason field
@@ -205,7 +209,7 @@ describe('Testing requests page', () => {
         cy.get('[data-cy="start-datepicker"]').click(); // Click the custom input for the date picker
 
         // Select a specific future date (ensure the date class matches your DatePicker setup)
-        cy.get('.react-datepicker__day--028').click(); // Adjust the day selection as necessary
+        cy.get('.react-datepicker__day--026').click(); // Adjust the day selection as necessary
         cy.get('[data-cy="submit-request"]').click();
         cy.url().should('eq', 'http://localhost:3000/create-request');
         // Assert the error message is shown for the reason field

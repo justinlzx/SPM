@@ -196,6 +196,8 @@ export const ApprovedRequests = () => {
       <Filters
         onApplyFilters={(newFilters) => handleFilterChange(newFilters)}
         onClearFilters={(newFilters) => handleFilterChange(newFilters)}
+        excludeStatusFilter={true}
+        excludeSearchFilter={true}
       />
 
       <TableContainer
@@ -346,14 +348,15 @@ const ArrangementRow = ({
         </TableCell>
         <TableCell>{wfh_date}</TableCell>
         <TableCell>{wfh_type?.toUpperCase()}</TableCell>
-        <TableCell sx={{ maxWidth: 200 }}>
-          <Tooltip title="Scroll to view more">
+        <TableCell style={{ whiteSpace: "normal", wordWrap: "break-word" }}>
+          {/* <Tooltip title="Scroll to view more">
             <Box
               sx={{ overflowX: "scroll", maxWidth: 200, whiteSpace: "nowrap" }}
             >
               {reason_description}
             </Box>
-          </Tooltip>
+          </Tooltip> */}
+          {reason_description}
         </TableCell>
         <TableCell>
           {documents.length > 0 ? (

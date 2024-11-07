@@ -95,7 +95,6 @@ export const PendingRequests = () => {
           },
         }
       );
-
       const delegationRequests =
         response.data.pending_approval_delegations || [];
       const hasAcceptedDelegations = delegationRequests.some(
@@ -168,7 +167,22 @@ export const PendingRequests = () => {
         allRequests = [allRequests, ...delegatedRequests];
       }
 
-      setActionRequests(allRequests);
+      // Adjust requests to pull the names of the corresponding staff_id
+      const updatedRequests = await Promise.all(
+        allRequests.map(async (request) => {
+          const requester = await fetchEmployeeByStaffId(
+            request.requester_staff_id
+          );
+          return {
+            ...request,
+            requester_name: requester
+              ? `${requester.staff_fname} ${requester.staff_lname}`
+              : "Unknown",
+          };
+        })
+      );
+
+      setActionRequests(updatedRequests);
     } catch (error) {
       console.error("Failed to fetch requests:", error);
       setAlertStatus(AlertStatus.Error);
@@ -208,6 +222,9 @@ export const PendingRequests = () => {
       console.warn(
         `Action '${action}' is not allowed for status '${current_approval_status}'`
       );
+      console.warn(
+        `Action '${action}' is not allowed for status '${current_approval_status}'`
+      );
       return;
     }
 
@@ -228,9 +245,7 @@ export const PendingRequests = () => {
       );
 
       setAlertStatus(AlertStatus.Success);
-      setSnackbarMessage(
-        `Request '${action}' successfully updated to status '${nextStatus}'`
-      );
+      setSnackbarMessage(`WFH Request successfully updated to '${nextStatus}'`);
       setShowSnackbar(true);
       refreshData();
     } catch (error) {
@@ -293,6 +308,10 @@ export const PendingRequests = () => {
       <Filters
         onApplyFilters={(newFilters) => handleFilterChange(newFilters)}
         onClearFilters={(newFilters) => handleFilterChange(newFilters)}
+        statusOptions={[
+          ApprovalStatus.PendingApproval,
+          ApprovalStatus.PendingWithdrawal,
+        ]}
       />
 
       <Typography variant="h4" gutterBottom align="left" sx={{ marginTop: 4 }}>
@@ -333,10 +352,11 @@ export const PendingRequests = () => {
                   handleViewDocuments={handleViewDocuments}
                 />
               ))
-            )}
-          </TableBody>
-        </Table>
-      </TableContainer>
+            )
+            }
+          </TableBody >
+        </Table >
+      </TableContainer >
 
       <TablePagination
         component="div"
@@ -362,6 +382,7 @@ export const PendingRequests = () => {
         <DialogTitle>Reject Request</DialogTitle>
         <DialogContent>
           <TextField
+            data-cy="rejection-modal"
             label="Input a reason for rejection"
             fullWidth
             multiline
@@ -372,7 +393,7 @@ export const PendingRequests = () => {
           />
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleCloseRejectModal} variant="outlined">
+          <Button data-cy='cancel-modal-button' onClick={handleCloseRejectModal} variant="outlined">
             Cancel
           </Button>
           <Button
@@ -381,6 +402,7 @@ export const PendingRequests = () => {
             disabled={!rejectionReason.trim()}
             variant="outlined"
             sx={{ m: 2 }}
+            data-cy='reject-modal-button'
           >
             Reject Request
           </Button>
@@ -433,14 +455,8 @@ const ArrangementRow = ({
       <TableCell>{requester_name}</TableCell>
       <TableCell>{wfh_date}</TableCell>
       <TableCell>{wfh_type?.toUpperCase()}</TableCell>
-      <TableCell>
-        <Tooltip title="Scroll to view more">
-          <Box
-            sx={{ overflowX: "scroll", maxWidth: 200, whiteSpace: "nowrap" }}
-          >
-            {reason_description}
-          </Box>
-        </Tooltip>
+      <TableCell style={{ whiteSpace: "normal", wordWrap: "break-word" }}>
+        {reason_description}
       </TableCell>
       <TableCell>
         {documents.length > 0 ? (
@@ -460,6 +476,7 @@ const ArrangementRow = ({
               <Button
                 color="success"
                 startIcon={<CheckIcon />}
+                data-cy={`approve-button-${arrangement.arrangement_id}`}
                 onClick={() =>
                   handleRequestAction(
                     Action.Approve,
@@ -474,6 +491,7 @@ const ArrangementRow = ({
               <Button
                 color="error"
                 startIcon={<CloseIcon />}
+                data-cy={`reject-button-${arrangement.arrangement_id}`}
                 onClick={() => handleRejectClick(arrangement_id)}
               >
                 Reject
@@ -486,6 +504,7 @@ const ArrangementRow = ({
               <Button
                 color="warning" // orange color for "Withdraw"
                 startIcon={<CheckIcon />}
+                data-cy={`withdraw-button-${arrangement.arrangement_id}`}
                 onClick={() =>
                   handleRequestAction(
                     Action.Approve,
@@ -501,6 +520,7 @@ const ArrangementRow = ({
                 color="error"
                 startIcon={<CloseIcon />}
                 onClick={() => handleRejectClick(arrangement_id)}
+                data-cy={`reject-button-${arrangement.arrangement_id}`}
               >
                 Reject
               </Button>
