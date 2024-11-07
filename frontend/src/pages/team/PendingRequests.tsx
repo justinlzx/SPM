@@ -167,7 +167,20 @@ export const PendingRequests = () => {
         allRequests = [allRequests, ...delegatedRequests];
       }
 
-      setActionRequests(allRequests);
+      // Adjust requests to pull the names of the corresponding staff_id
+        const updatedRequests = await Promise.all(
+        allRequests.map(async (request) => {
+          const requester = await fetchEmployeeByStaffId(request.requester_staff_id);
+          return {
+            ...request,
+            requester_name: requester
+              ? `${requester.staff_fname} ${requester.staff_lname}`
+              : "Unknown",
+          };
+        })
+      );
+
+      setActionRequests(updatedRequests);
     } catch (error) {
       console.error("Failed to fetch requests:", error);
       setAlertStatus(AlertStatus.Error);

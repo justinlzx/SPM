@@ -15,7 +15,9 @@ import {
   Snackbar,
   Alert,
 } from "@mui/material";
+import { capitalize } from "../../utils/utils";
 import { ApprovalStatus } from "../../types/requests";
+import { fetchEmployeeByStaffId } from "../../hooks/employee/employee.utils";
 // import Filters from "../../common/Filters";
 import { UserContext } from "../../context/UserContextProvider";
 import axios from "axios";
@@ -26,6 +28,7 @@ type Arrangement = {
   arrangement_id: number;
   update_datetime: string;
   requester_staff_id: number;
+  requester_name?: string; 
   wfh_date: string;
   wfh_type: string;
   current_approval_status: ApprovalStatus;
@@ -95,7 +98,21 @@ export const RequestList = () => {
             }
           );
           setTotalItems(arrangementsResponse.data.pagination_meta.total_count);
-          const responseData = arrangementsResponse.data.data;
+          let responseData = arrangementsResponse.data.data;
+          responseData = await Promise.all(
+            responseData.map(async (arrangement: Arrangement) => {
+              const employee = await fetchEmployeeByStaffId(
+                arrangement.requester_staff_id
+              );
+              return {
+                ...arrangement,
+                requester_name: employee
+                  ? `${employee.staff_fname} ${employee.staff_lname}`
+                  : "Unknown",
+              };
+            })
+          );
+
           setArrangements(responseData);
         } catch (error) {
           console.error("Failed to fetch data:", error);
@@ -175,9 +192,8 @@ export const RequestList = () => {
         <Table stickyHeader>
           <TableHead>
             <TableRow>
-              <TableCell sx={{ fontWeight: "bold" }}>Arrangement ID</TableCell>
               <TableCell sx={{ fontWeight: "bold" }}>
-                Approving Officer
+                Staff Name
               </TableCell>
               <TableCell sx={{ fontWeight: "bold" }}>WFH Type</TableCell>
               <TableCell sx={{ fontWeight: "bold" }}>WFH Date</TableCell>
@@ -197,9 +213,8 @@ export const RequestList = () => {
                 <TableRow
                   key={arrangement.arrangement_id + arrangement.wfh_date}
                 >
-                  <TableCell>{arrangement.arrangement_id}</TableCell>
                   <TableCell>
-                    {arrangement.approving_officer || "N/A"}
+                    {arrangement.requester_name|| "N/A"}
                   </TableCell>
                   <TableCell>
                     {arrangement.wfh_type?.toUpperCase() || "N/A"}
@@ -207,7 +222,7 @@ export const RequestList = () => {
                   <TableCell>{arrangement.wfh_date || "N/A"}</TableCell>
                   <TableCell>
                     <Chip
-                      label={arrangement.current_approval_status}
+                      label={capitalize(arrangement.current_approval_status)}
                       color={getChipColor(arrangement.current_approval_status)}
                     />
                   </TableCell>
