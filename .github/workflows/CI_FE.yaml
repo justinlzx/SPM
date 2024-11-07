@@ -33,6 +33,14 @@ jobs:
     - name: Install Frontend dependencies
       run: npm install
       working-directory: frontend
+      
+    - name: Ensure frontend .env exists
+      run: |
+        if [ ! -f "frontend/.env" ]; then
+          echo "Creating .env file..."
+          touch frontend/.env
+          echo "REACT_APP_BACKEND_URL=${{ vars.REACT_APP_BACKEND_URL }}" >> frontend/.env
+        fi
 
     - name: Install backend dependencies
       run: |
