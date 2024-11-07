@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useState } from "react";
+import { useContext, useEffect, useState } from "react";
 import axios from "axios";
 import {
   Chip,
@@ -31,6 +31,7 @@ import CloseIcon from "@mui/icons-material/Close";
 import { capitalize } from "../../utils/utils";
 import { DelegationStatus } from "../../types/delegation";
 import { SnackBarComponent, AlertStatus } from "../../common/SnackBar";
+import { TFilters, Filters } from "../../common/Filters";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 
@@ -74,6 +75,14 @@ export const ApprovedRequests = () => {
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [totalItems, setTotalItems] = useState(0);
+
+  const [filters, setFilters] = useState<TFilters>({
+    startDate: null,
+    endDate: null,
+    status: [],
+    searchQuery: "",
+  });
+
   const { user } = useContext(UserContext);
   const userId = user?.id;
 
@@ -112,6 +121,10 @@ export const ApprovedRequests = () => {
           {
             params: {
               current_approval_status: "approved",
+              start_date: filters.startDate?.toISOString().split("T")[0],
+              end_date: filters.endDate?.toISOString().split("T")[0],
+              status: filters.status.join(","),
+              search_query: filters.searchQuery,
               items_per_page: rowsPerPage,
               page_num: page + 1,
             },
@@ -128,44 +141,15 @@ export const ApprovedRequests = () => {
     };
 
     fetchApprovedRequestsFromSubordinates();
-  }, [user, userId, page, rowsPerPage]);
+  }, [user, userId, page, rowsPerPage, filters]);
 
-  // const onApplyFilters = (filters: {
-  //   startDate: Date | null;
-  //   endDate: Date | null;
-  //   department: string[];
-  //   status: ApprovalStatus[];
-  //   searchQuery: string;
-  //   workStatus: string[];
-  // }) => {
-  //   const filtered = approvedRequests.filter((request) => {
-  //     const matchesDate =
-  //       (!filters.startDate ||
-  //         new Date(request.wfh_date) >= filters.startDate) &&
-  //       (!filters.endDate || new Date(request.wfh_date) <= filters.endDate);
+  const onApplyFilters = (filters: TFilters) => {
+    setFilters(filters);
+  };
 
-  //     const matchesStatus =
-  //       filters.status.length === 0 ||
-  //       filters.status.includes(request.current_approval_status);
-
-  //     const searchQuery = filters.searchQuery.toLowerCase();
-  //     const matchesSearchQuery =
-  //       !searchQuery ||
-  //       request.reason_description.toLowerCase().includes(searchQuery) ||
-  //       request.wfh_type.toLowerCase().includes(searchQuery) ||
-  //       request.wfh_date.includes(searchQuery) ||
-  //       request.requester_staff_id.toString().includes(searchQuery) ||
-  //       (request.requester_name &&
-  //         request.requester_name.toLowerCase().includes(searchQuery));
-
-  //     return matchesDate && matchesStatus && matchesSearchQuery;
-  //   });
-  //   setFilteredRequests(filtered);
-  // };
-
-  // const onClearFilters = () => {
-  //   setFilteredRequests(approvedRequests);
-  // };
+  const onClearFilters = (filters: TFilters) => {
+    setFilters(filters);
+  };
 
   const handleWithdrawApproval = async () => {
     if (!selectedArrangementId) return;
@@ -207,18 +191,17 @@ export const ApprovedRequests = () => {
     setWithdrawModalOpen(true);
   };
 
-  console.log("approved req", approvedRequests);
-
+  console.log(filters);
   return (
     <>
       <Typography variant="h4" gutterBottom align="left" sx={{ marginTop: 4 }}>
         Approved Requests
       </Typography>
 
-      {/* <Filters
-        onApplyFilters={onApplyFilters}
-        onClearFilters={onClearFilters}
-      /> */}
+      <Filters
+        onApplyFilters={(newFilters) => onApplyFilters(newFilters)}
+        onClearFilters={(newFilters) => onClearFilters(newFilters)}
+      />
 
       <TableContainer
         component={Paper}

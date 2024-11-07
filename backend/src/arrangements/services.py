@@ -63,6 +63,7 @@ def get_personal_arrangements(
         current_approval_status=current_approval_status, staff_ids=staff_id
     )
 
+    print(filters)
     logger.info(f"Service: Fetching personal arrangements for staff ID {staff_id}")
     arrangements = crud.get_arrangements(db, filters=filters)
     logger.info(f"Service: Found {len(arrangements)} arrangements for staff ID {staff_id}")
@@ -98,7 +99,6 @@ def get_subordinates_arrangements(
     arrangements = [ArrangementResponse.from_dict(arrangement) for arrangement in arrangements]
     logger.info(f"Service: Found {len(arrangements)} arrangements")
 
-    print(arrangements)
     # Get presigned URL for each supporting document in each arrangement
     for record in arrangements:
         record.supporting_doc_1 = create_presigned_url(record.supporting_doc_1)
@@ -121,8 +121,6 @@ def get_subordinates_arrangements(
         * pagination.items_per_page : pagination.page_num
         * pagination.items_per_page
     ]
-
-    print("dog", arrangements)
 
     return arrangements, pagination_meta
 
@@ -164,6 +162,7 @@ def get_team_arrangements(
     team_arrangements = [
         ArrangementResponse.from_dict(arrangement) for arrangement in team_arrangements
     ]
+    print(filters)
 
     # Get presigned URL for each supporting document in each arrangement
     for record in team_arrangements:
