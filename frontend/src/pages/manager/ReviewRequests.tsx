@@ -3,7 +3,6 @@ import { useNavigate } from "react-router-dom";
 import { PendingRequests } from "../team/PendingRequests";
 import { Container } from "@mui/material";
 import { UserContext } from "../../context/UserContextProvider";
-import { AllRequests } from "../team/AllRequests";
 
 export const ReviewRequests: React.FC = () => {
   const { user } = useContext(UserContext);
@@ -16,7 +15,6 @@ export const ReviewRequests: React.FC = () => {
   return (
     <Container>
       <PendingRequests />
-      {/* <AllRequests/> */}
     </Container>
   );
 };

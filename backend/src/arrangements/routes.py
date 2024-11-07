@@ -82,16 +82,20 @@ def get_arrangement_by_id(arrangement_id: int, db: Session = Depends(get_db)) ->
 )
 def get_personal_arrangements(
     staff_id: int,
-    current_approval_status: Optional[List[ApprovalStatus]] = Query(None),
+    request_filters: schemas.ArrangementFilters = Depends(schemas.ArrangementFilters.as_query),
     db: Session = Depends(get_db),
 ) -> JSendResponse:
     try:
+
+        # Convert to dataclasses
+        filters = dc.ArrangementFilters.from_dict(request_filters.model_dump())
+
         # Get arrangements
         logger.info(f"Route: Fetching personal arrangements for staff ID: {staff_id}")
         data = services.get_personal_arrangements(
             db=db,
             staff_id=staff_id,
-            current_approval_status=current_approval_status,
+            filters=filters,
         )
         logger.info(f"Route: Found {len(data)} arrangements for staff ID {staff_id}")
 
@@ -143,6 +147,7 @@ def get_subordinates_arrangements(
             data=response_data,
             pagination_meta=response_pagination_meta,
         )
+
     except ManagerWithIDNotFoundException as e:
         raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
@@ -161,6 +166,7 @@ def get_team_arrangements(
     db: Session = Depends(get_db),
 ) -> JSendResponse:
     try:
+
         # Convert to dataclasses
         filters = dc.ArrangementFilters.from_dict(request_filters.model_dump())
         pagination = dc.PaginationConfig.from_dict(request_pagination.model_dump())
@@ -181,6 +187,7 @@ def get_team_arrangements(
             data=response_data,
             pagination_meta=response_pagination_meta,
         )
+
     except Exception as e:
         logger.error(f"Error occurred: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
