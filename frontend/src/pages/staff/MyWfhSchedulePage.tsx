@@ -72,17 +72,8 @@ export const MyWfhSchedulePage = () => {
     fetchRequests();
   }, [user, userId, filters]);
 
-  const handleApplyFilters = (filters: TFilters) => {
+  const handleFilterChange = (filters: TFilters) => {
     setFilters(filters);
-  };
-
-  const handleClearFilters = (filters: TFilters) => {
-    setFilters({
-      startDate: null,
-      endDate: null,
-      workStatus: [],
-      searchQuery: "",
-    });
   };
 
   const handleSuccess = (id: number, action: "cancel" | "withdraw") => {
@@ -117,8 +108,8 @@ export const MyWfhSchedulePage = () => {
         My WFH Request Overview
       </Typography>
       <Filters
-        onApplyFilters={(filters) => handleApplyFilters(filters)}
-        onClearFilters={(filters) => handleClearFilters(filters)}
+        onApplyFilters={(filters) => handleFilterChange(filters)}
+        onClearFilters={(filters) => handleFilterChange(filters)}
       />
       <WFHRequestTable
         requests={requests}

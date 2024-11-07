@@ -143,11 +143,7 @@ export const ApprovedRequests = () => {
     fetchApprovedRequestsFromSubordinates();
   }, [user, userId, page, rowsPerPage, filters]);
 
-  const onApplyFilters = (filters: TFilters) => {
-    setFilters(filters);
-  };
-
-  const onClearFilters = (filters: TFilters) => {
+  const handleFilterChange = (filters: TFilters) => {
     setFilters(filters);
   };
 
@@ -191,7 +187,6 @@ export const ApprovedRequests = () => {
     setWithdrawModalOpen(true);
   };
 
-  console.log(filters);
   return (
     <>
       <Typography variant="h4" gutterBottom align="left" sx={{ marginTop: 4 }}>
@@ -199,8 +194,8 @@ export const ApprovedRequests = () => {
       </Typography>
 
       <Filters
-        onApplyFilters={(newFilters) => onApplyFilters(newFilters)}
-        onClearFilters={(newFilters) => onClearFilters(newFilters)}
+        onApplyFilters={(newFilters) => handleFilterChange(newFilters)}
+        onClearFilters={(newFilters) => handleFilterChange(newFilters)}
       />
 
       <TableContainer

@@ -72,6 +72,13 @@ export const Filters: React.FC<FiltersProps> = ({
       workStatus,
       searchQuery,
     }); // Call parent-provided clear function
+    
+    onClearFilters({
+      startDate,
+      endDate,
+      workStatus,
+      searchQuery,
+    });
   };
 
   return (
