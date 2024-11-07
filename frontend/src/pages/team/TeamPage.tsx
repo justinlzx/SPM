@@ -18,7 +18,7 @@ export const TeamPage = () => {
 
   return (
     <Container sx={{ flexGrow: 1 }}>
-      {(user?.role === 1 || user?.role === 3) && (
+      {((user?.role === 1 && user?.position === "Director") || user?.role === 3) && (
         <Box
           display="flex"
           alignItems="center"

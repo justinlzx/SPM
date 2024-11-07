@@ -1,4 +1,4 @@
-import { createBrowserRouter } from "react-router-dom";
+import { createBrowserRouter, RouteObject } from "react-router-dom";
 import { LoginPage } from "../pages/login-signup/LoginPage";
 import { SignUpPage } from "../pages/login-signup/SignUpPage";
 import { App } from "../App";
@@ -11,13 +11,8 @@ import { MyWfhSchedulePage } from "../pages/staff/MyWfhSchedulePage";
 import { DelegateManagerPage } from "../pages/manager/DelegateManagerPage";
 import { DepartmentOverviewPage } from "../pages/hr/DepartmentOverviewPage";
 
-type routesProps = {
-  path: string;
-  element: JSX.Element;
-  children?: routesProps[];
-};
 
-const routes: routesProps[] = [
+const routes: RouteObject[] = [
   {
     path: "/",
     element: <App />,
@@ -35,31 +30,35 @@ const routes: routesProps[] = [
         element: <Layout />,
         children: [
           {
-            path: "/home",
+            index: true, 
             element: <HomePage />,
           },
           {
-            path: "/create-request",
+            path: "home",
+            element: <HomePage />,
+          },
+          {
+            path: "create-request",
             element: <CreateWfhRequestPage />,
           },
           {
-            path: "/review-requests",
+            path: "review-requests",
             element: <ReviewRequests />,
           },
           {
-            path: "/team",
+            path: "team",
             element: <TeamPage />,
           },
           {
-            path: "/wfh-schedule",
+            path: "wfh-schedule",
             element: <MyWfhSchedulePage />,
           },
           {
-            path: "/delegate",
+            path: "delegate",
             element: <DelegateManagerPage />,
           },
           {
-            path: "/department-overview",
+            path: "department-overview",
             element: <DepartmentOverviewPage />,
           },
         ],
