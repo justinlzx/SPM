@@ -113,6 +113,7 @@ def get_arrangements(
         query = query.order_by(models.LatestArrangement.wfh_date.asc())
 
     results = query.all()
+
     logger.info(f"Crud: Found {len(results)} arrangements")
 
     return [result.__dict__ for result in results]
