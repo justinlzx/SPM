@@ -93,6 +93,11 @@ jobs:
         python -B -m uvicorn src.app:app --reload &
         echo $! > backend.pid
       working-directory: backend
+      
+    - name: Wait for backend server to start
+      run: |
+        npx wait-on http://localhost:8000  # Adjust the URL and port for your backend
+      
 
     # Optional: Uncomment to wait for services to be ready
     # - name: Wait for services
@@ -102,12 +107,15 @@ jobs:
     #     echo "All services are ready!"
     #   timeout-minutes: 2
 
-    - name: Install Cypress tests
+    - name: Install Cypress
       run: npm install --save cypress
       working-directory: .
 
+    - name: Clear Cypress cache
+      run: npx cypress cache clear
+
     - name: Run Cypress tests
-      run: npx cypress run
+      run: npx cypress run --headless --browser chrome
       working-directory: .
 
     - name: Build project
