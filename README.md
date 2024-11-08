@@ -309,6 +309,9 @@ SPM/
     └─ setup.sh
 ```
 
+## C4 Diagram
+- [Click Here](/C4_Diagram.jpg)
+
 ## Getting Started
 ### Setup development environment
 1. Ensure you are in the project root directory
