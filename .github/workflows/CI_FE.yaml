@@ -112,11 +112,11 @@ jobs:
       #     echo "All services are ready!"
       #   timeout-minutes: 2
 
-      # - name: Install Cypress
-      #   run: |
-      #     npm install cypress --save-dev
-      #     npx cypress verify
-      #   working-directory: .
+      - name: Install Cypress
+        run: |
+          npm install cypress --save-dev
+          npx cypress verify
+        working-directory: .
 
       # - name: Clear Cypress cache
       #   run: npx cypress cache clear
