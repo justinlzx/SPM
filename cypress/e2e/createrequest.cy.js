@@ -111,28 +111,7 @@ describe('Testing requests page', () => {
         cy.get('.MuiFormHelperText-root').should('contain', 'Reason is required');
     });
 
-    // // Test case 5 (Submitting w reason, WFH type but no proper date)
-    // it('Form should throw error --> No proper date', () => {
-    //     cy.visit('http://localhost:3000/login')
-    //     cy.get('[data-cy="email"]').type('rahim.khalid@allinone.com.sg')
-    //     cy.get('[data-cy="password"]').type('password')
-    //     cy.get('[data-cy="submit"]').click()
-    //     cy.url().should('eq', 'http://localhost:3000/home');
-    //     cy.get('[data-cy="create-request"]').first().click({ force: true });
-    //     cy.url().should('eq', 'http://localhost:3000/create-request');
-    //     // Fill in the form
-    //     cy.get('[name="reason"]').type('Working on project X');
-
-    //     // Interact with Material-UI select for WFH Type
-    //     cy.get('[data-cy="wfhType"]').click(); // Open the dropdown
-    //     cy.get('li[data-value="full"]').click(); // Select "Full-day" option
-    //     cy.get('[data-cy="submit-request"]').click();
-
-    //     // Assert the error message is shown for the date field
-    //     cy.get('.MuiFormHelperText-root').should('contain', 'Start date must be at least 1 day from today');
-    // });
-
-    // // Test case 6 (Submitting w no reason, no WFH type and no proper date)
+    // // Test case 5 (Submitting w no reason, no WFH type and no proper date)
     it('Form should throw error --> No reason, No WFH type and no proper date', () => {
         cy.visit('http://localhost:3000/login')
         cy.get('[data-cy="email"]').type('rahim.khalid@allinone.com.sg')

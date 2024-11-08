@@ -4,6 +4,7 @@ This project contains a frontend and backend application that can be easily spun
 
 ## Table of Contents
 - [Prerequisites](#prerequisites)
+- [Deployment](#deployment)
 - [Project Structure](#project-structure)
 - [Getting Started](#getting-started)
    - [Setup development environment](#setup-development-environment)
@@ -22,6 +23,51 @@ Before you begin, ensure you have the following installed on your system:
 
 - [Docker](https://www.docker.com/get-started)
 - [Docker Compose](https://docs.docker.com/compose/install/)
+
+
+## Deployment
+[Link to Deployed AllInOne Application](http://ec2-13-229-155-198.ap-southeast-1.compute.amazonaws.com/login)
+
+### Credentials:
+#### Set 1
+**Manager**
+- Email: Ernst.Sim@allinone.com.sg
+- Password: password
+
+**Employee**
+- Email: Priya.Lim@allinone.com.sg
+- Password: password
+
+#### Set 2
+**Manager**
+- Email: David.Yap@allinone.com.sg
+- Password: password
+
+**Employee**
+- Email: Narong.Pillai@allinone.com.sg
+- Password: password
+
+#### Set 3
+**Manager**
+- Email: Rahim.Khalid@allinone.com.sg
+- Password: password
+
+**Employee**
+- Email: William.Fu@allinone.com.sg
+- Password: password
+
+#### HR
+**HR**
+- Email: Sally.Loh@company.com
+- Password: password
+
+#### Special Case (Managing Director)
+**Managing Director**
+- Email: Jack.Sim@allinone.com.sg
+- Password: password
+
+#### All Login Credentials
+- [Click Here](/Login_Credentials.xlsx)
 
 ## Project Structure
 
