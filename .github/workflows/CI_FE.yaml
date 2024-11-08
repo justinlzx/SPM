@@ -33,7 +33,7 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-node-
 
-   # Add Cypress cache here
+      # Add Cypress cache here
       - name: Cache Cypress binaries
         uses: actions/cache@v3
         with:
@@ -122,7 +122,9 @@ jobs:
         run: npx cypress cache clear
 
       - name: Run Cypress tests
-        run: npx cypress run --headless --browser chrome
+        run: |
+          npx cypress install
+          npx cypress run --headless --browser chrome
         working-directory: .
 
       # - name: Build project
