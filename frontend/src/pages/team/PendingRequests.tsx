@@ -321,6 +321,7 @@ export const PendingRequests = () => {
         <DialogTitle>Reject Request</DialogTitle>
         <DialogContent>
           <TextField
+            data-cy="rejection-modal"
             label="Input a reason for rejection"
             fullWidth
             multiline
@@ -331,7 +332,7 @@ export const PendingRequests = () => {
           />
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleCloseRejectModal} variant="outlined">
+          <Button data-cy='cancel-modal-button' onClick={handleCloseRejectModal} variant="outlined">
             Cancel
           </Button>
           <Button
@@ -340,6 +341,7 @@ export const PendingRequests = () => {
             disabled={!rejectionReason.trim()}
             variant="outlined"
             sx={{ m: 2 }}
+            data-cy='reject-modal-button'
           >
             Reject Request
           </Button>
@@ -431,6 +433,7 @@ const ArrangementRow = ({
               <Button
                 color="success"
                 startIcon={<CheckIcon />}
+                data-cy={`approve-button-${arrangement.arrangement_id}`}
                 onClick={() =>
                   handleRequestAction(
                     Action.Approve,
@@ -445,6 +448,7 @@ const ArrangementRow = ({
               <Button
                 color="error"
                 startIcon={<CloseIcon />}
+                data-cy={`reject-button-${arrangement.arrangement_id}`}
                 onClick={() => handleRejectClick(arrangement_id)}
               >
                 Reject
@@ -457,6 +461,7 @@ const ArrangementRow = ({
               <Button
                 color="warning" 
                 startIcon={<CheckIcon />}
+                data-cy={`withdraw-button-${arrangement.arrangement_id}`}
                 onClick={() =>
                   handleRequestAction(
                     Action.Approve,
@@ -472,6 +477,7 @@ const ArrangementRow = ({
                 color="error"
                 startIcon={<CloseIcon />}
                 onClick={() => handleRejectClick(arrangement_id)}
+                data-cy={`reject-button-${arrangement.arrangement_id}`}
               >
                 Reject
               </Button>
