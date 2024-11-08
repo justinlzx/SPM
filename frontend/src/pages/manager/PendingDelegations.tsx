@@ -77,12 +77,52 @@ export const PendingDelegations = () => {
     fetchPendingDelegationRequests();
   }, [user, userId]);
 
+  // const handleDelegationAction = async (action: TAction, staff_id: number, reason?: string) => {
+  //   setActionLoading(true);
+  //   try {
+  //     await axios.put(
+  //       `${BACKEND_URL}/employees/manager/delegate/${userId}/status`,
+  //       { description: reason },
+  //       {
+  //         params: { status: action },
+  //         headers: {
+  //           "Content-Type": "application/x-www-form-urlencoded",
+  //         },
+  //       }
+  //     );
+
+  //     setSnackbarMessage(`Delegation request ${action} successfully!`);
+  //     setAlertStatus(AlertStatus.Success);
+  //     setShowSnackbar(true);
+
+  //     setRequests((prevRequests) =>
+  //       prevRequests.filter((req) => req.staff_id !== staff_id || action === "undelegated")
+  //     );
+
+  //     setOpenRejectModal(false);
+  //     setReason("");
+  //   } catch (error) {
+  //     console.error(`Error processing delegation request:`, error);
+  //     setSnackbarMessage(`Error processing delegation request.`);
+  //     setAlertStatus(AlertStatus.Error);
+  //     setShowSnackbar(true);
+  //   } finally {
+  //     setActionLoading(false);
+  //   }
+  // };
+
   const handleDelegationAction = async (action: TAction, staff_id: number, reason?: string) => {
     setActionLoading(true);
     try {
+      // Create URLSearchParams object for form-urlencoded data
+      const formData = new URLSearchParams();
+      if (reason) {
+        formData.append('description', reason);
+      }
+
       await axios.put(
         `${BACKEND_URL}/employees/manager/delegate/${userId}/status`,
-        { description: reason },
+        formData,  // Use formData instead of object
         {
           params: { status: action },
           headers: {

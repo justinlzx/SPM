@@ -130,7 +130,6 @@ export const ApprovedRequests = () => {
         );
 
         const data: TWFHRequest[] = response.data.data;
-
         setApprovedRequests(data);
         setTotalItems(response.data.pagination_meta.total_count);
       } catch (error) {
@@ -169,14 +168,14 @@ export const ApprovedRequests = () => {
       setWithdrawReason("");
       setSnackbarMessage("Request withdrawn successfully.");
       setAlertStatus(AlertStatus.Success);
-      setShowSnackbar(true); // Trigger snackbar
+      setShowSnackbar(true); 
     } catch (error) {
       console.error("Error withdrawing approval:", error);
       setSnackbarMessage("Failed to withdraw request.");
       setAlertStatus(AlertStatus.Error);
-      setShowSnackbar(true); // Trigger snackbar
+      setShowSnackbar(true);
     } finally {
-      setWithdrawLoading(false); // Set loading state to false
+      setWithdrawLoading(false); 
     }
   };
 
@@ -186,7 +185,7 @@ export const ApprovedRequests = () => {
   };
 
   return (
-    <>
+    <div data-cy="approved-requests-filter">
       <Typography variant="h4" gutterBottom align="left" sx={{ marginTop: 4 }}>
         Approved Requests
       </Typography>
@@ -200,9 +199,14 @@ export const ApprovedRequests = () => {
 
       <TableContainer
         component={Paper}
-        sx={{ marginTop: 3, textAlign: "center" }}
+        sx={{
+          marginTop: 3,
+          textAlign: "center",
+          maxHeight: "60vh", // Set a max height for the table container
+          overflow: "auto", // Enable scroll within the table container if needed
+        }}
       >
-        <Table>
+        <Table stickyHeader>
           <TableHead>
             <TableRow>
               <TableCell sx={{ fontWeight: "bold" }}>Staff ID</TableCell>
@@ -262,6 +266,7 @@ export const ApprovedRequests = () => {
             label="Input a reason for withdrawal"
             fullWidth
             multiline
+            data-cy="withdrawal-reason-team"
             rows={2}
             sx={{ mt: 2 }}
             margin="dense"
@@ -275,6 +280,7 @@ export const ApprovedRequests = () => {
             onClick={() => setWithdrawModalOpen(false)}
             color="secondary"
             variant="outlined"
+            data-cy="withdraw-cancel-button-team"
           >
             Cancel
           </Button>
@@ -283,6 +289,7 @@ export const ApprovedRequests = () => {
             color="warning"
             variant="outlined"
             disabled={!withdrawReason.trim() || withdrawLoading}
+            data-cy="withdraw-button-team"
           >
             {withdrawLoading ? (
               <CircularProgress size={24} color="inherit" />
@@ -300,7 +307,7 @@ export const ApprovedRequests = () => {
         alertStatus={alertStatus}
         snackbarMessage={snackbarMessage}
       />
-    </>
+    </div>
   );
 };
 
@@ -376,6 +383,7 @@ const ArrangementRow = ({
             color="warning"
             variant="outlined"
             onClick={() => openWithdrawModal(arrangement_id)}
+            data-cy="withdraw-button-team"
           >
             Withdraw
           </Button>

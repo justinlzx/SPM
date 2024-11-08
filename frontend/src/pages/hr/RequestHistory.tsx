@@ -83,7 +83,8 @@ export const RequestHistoryPage: React.FC = () => {
   const fetchLogs = async () => {
     try {
       const response = await axios.get(`${BACKEND_URL}/arrangements/logs/all`);
-      const fetchedLogs = response.data.data; // Adjust the path as necessary
+      const fetchedLogs = response.data.data; 
+      console.log(response.data);
       setLogs(fetchedLogs);
     } catch (error) {
       console.error("Error fetching arrangement logs:", error);
@@ -97,7 +98,7 @@ export const RequestHistoryPage: React.FC = () => {
 
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchTerm(e.target.value);
-    setPage(0); // Reset to first page when searching
+    setPage(0); 
   };
 
   const filteredLogs = logs.filter(
@@ -108,7 +109,13 @@ export const RequestHistoryPage: React.FC = () => {
       log.wfh_type?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       log.updated_approval_status
         ?.toLowerCase()
-        .includes(searchTerm.toLowerCase())
+        .includes(searchTerm.toLowerCase()) || 
+      log.approving_officer
+        .toString()
+        .includes(searchTerm) || 
+      log.requester_staff_id
+        .toString()
+        .includes(searchTerm)
   );
   const handleChangePage = (_event: unknown, newPage: number) => {
     setPage(newPage);

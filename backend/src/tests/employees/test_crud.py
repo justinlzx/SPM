@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from typing import Optional
 from unittest.mock import MagicMock
 
@@ -42,6 +42,10 @@ from src.employees.models import Base, DelegateLog, DelegationStatus, Employee
 # session.
 engine = create_engine("sqlite:///:memory:")
 SessionLocal = sessionmaker(bind=engine)
+
+
+UTC = timezone.utc
+current_time = datetime.now(UTC)
 
 
 @pytest.fixture(autouse=True)  # Automatically use this for each test
