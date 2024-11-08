@@ -1,9 +1,8 @@
-from enum import Enum
 import os
-from venv import logger
+from enum import Enum
+
 import uvicorn
 from dotenv import load_dotenv
-
 
 load_dotenv()
 

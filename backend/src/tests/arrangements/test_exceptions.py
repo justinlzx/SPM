@@ -1,8 +1,8 @@
 import pytest
 from src.arrangements.commons.enums import Action, ApprovalStatus
 from src.arrangements.commons.exceptions import (
-    ArrangementNotFoundException,
     ArrangementActionNotAllowedException,
+    ArrangementNotFoundException,
     S3UploadFailedException,
 )
 
@@ -120,7 +120,7 @@ class TestS3UploadFailedException:
 
 
 def test_exceptions_can_be_caught():
-    """Test that all custom exceptions can be caught as regular exceptions"""
+    """Test that all custom exceptions can be caught as regular exceptions."""
     exceptions = [
         ArrangementNotFoundException(789),
         ArrangementActionNotAllowedException(ApprovalStatus.PENDING_APPROVAL, Action.REJECT),

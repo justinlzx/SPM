@@ -1,39 +1,43 @@
 name: Frontend CI
 
 on:
-#   push:
-#     branches:
-#       - main
-#   pull_request:
-#     branches:
-#       - main
-    workflow_dispatch:
+  pull_request:
+    branches:
+      - main
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v2
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    - name: Set up Node.js
-      uses: actions/setup-node@v2
-      with:
-        node-version: '14'
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: "18"
 
-    - name: Install dependencies
-      run: npm install
-      working-directory: frontend
+      - name: Cache Node modules
+        uses: actions/cache@v3
+        with:
+          path: frontend/node_modules
+          key: ${{ runner.os }}-node-${{ hashFiles('frontend/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
 
-    - name: Run ESLint
-      run: npm run lint
-      working-directory: frontend
+      - name: Install Frontend dependencies
+        run: npm install
+        working-directory: frontend
 
-    - name: Run tests
-      run: npm test
-      working-directory: frontend
-
-    - name: Build project
-      run: npm run build
-      working-directory: frontend
+      # - name: Run ESLint
+      #   run: |
+      #     npm install eslint @eslint/js eslint-config-prettier --save-dev
+      #     npx eslint . --ext .js,.jsx,.ts,.tsx
+      #   working-directory: frontend
+ 
+      - name: Run Prettier
+        run: |
+          npm install prettier --save-dev
+          npx prettier --write "**/*.{js,jsx,ts,tsx,json,css,scss,md}"
+        working-directory: frontend

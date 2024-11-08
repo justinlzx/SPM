@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from datetime import timezone, datetime
+from datetime import datetime, timezone
 from typing import Optional
 from unittest.mock import MagicMock
 

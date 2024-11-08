@@ -255,14 +255,15 @@ def update_pending_arrangements_for_delegate(
 
 
 def get_delegation_log_by_manager(db: Session, staff_id: int):
-    """This function retrieves the first accepted delegation log entry by manager ID from the database.
+    """This function retrieves the first accepted delegation log entry by manager ID from the
+    database.
 
     :param db: The database session instance used to interact with the database
     :type db: Session
     :param staff_id: The unique identifier of the staff member/manager
     :type staff_id: int
-    :return: The first accepted delegation log entry for the specified manager, or None if no accepted
-            delegation exists
+    :return: The first accepted delegation log entry for the specified manager, or None if no
+        accepted delegation exists
     :rtype: models.DelegateLog | None
     """
     return (
