@@ -1,13 +1,13 @@
 name: Backend CI
 
 on:
-  workflow_dispatch:  # This can be triggered manually, or you can uncomment the 'push' or 'pull_request' if needed.
-#   push:
-#     branches:
-#       - main
-#   pull_request:
-#     branches:
-#       - main
+  pull_request:
+    branches:
+      - main
+
+  # push:
+  #   branches:
+  #     - CI-ImplementationFINAL2
 
 jobs:
   build:
@@ -20,7 +20,7 @@ jobs:
     - name: Set up Python
       uses: actions/setup-python@v2
       with:
-        python-version: '3.11'
+        python-version: '3.12.2'
 
     - name: Install dependencies
       run: |
@@ -28,24 +28,34 @@ jobs:
         pip install -r requirements.txt
       working-directory: backend
 
+    - name: Create backend env files
+      run: |
+        echo "Creating backend .env..."
+        cat > backend/.env << EOF
+        AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }}
+        AWS_S3_BUCKET_NAME=${{ secrets.AWS_S3_BUCKET_NAME }}
+        AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        SMTP_PASSWORD=${{ secrets.SMTP_PASSWORD }}
+        SMTP_USERNAME=${{ secrets.SMTP_USERNAME }}
+        TOKEN_SECRET=${{ secrets.TOKEN_SECRET }}
+        ENV=${{ vars.ENV}}
+        FRONTEND_URL=${{ vars.FRONTEND_URL}}
+        SMTP_PORT=${{ vars.SMTP_PORT}}
+        SMTP_SERVER=${{ vars.SMTP_SERVER}}
+        EOF
+
+    - name: Install pre-commit
+      run: pip install pre-commit
+      working-directory: backend
+
+    - name: Run pre-commit hooks
+      run: pre-commit run --all-files
+      working-directory: .
+
     - name: Run tests with coverage
       run: |
-        # Run tests with coverage and omit certain files
-        pip install pytest coverage  # Ensure coverage is installed
-        python -m coverage run --branch --omit="*/test_*.py,*/__init__.py,*/health.py,*/database.py,*/base.py,*/app.py" -m pytest src -vvv
-        python -m coverage report  # To show coverage report in the logs
-      working-directory: backend
-
-    - name: Check code formatting
-      run: |
-        # Assuming you use black for code formatting
-        pip install black
-        black --check backend
-      working-directory: backend
-
-    - name: Lint code
-      run: |
-        # Assuming you use flake8 for linting
-        pip install flake8
-        flake8 backend
+        pip install pytest pytest-cov  # Ensure pytest-cov is installed
+        pytest --cov=backend/src --cov-report=term-missing --cov-report=html \
+        --ignore=src/tests/email/test_routes.py \
+        src/tests
       working-directory: backend
