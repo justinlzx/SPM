@@ -87,7 +87,7 @@ jobs:
       # Start the backend application
       - name: Start backend server
         run: |
-          python -B -m uvicorn src.app:app --reload &
+          python -B -m main --reload &
           echo $! > backend.pid
         working-directory: backend
 
@@ -95,12 +95,6 @@ jobs:
       #   run: |
       #     npx wait-on http://127.0.0.1:8000  # Adjust the URL and port for your backend
 
-      - name: Wait for services
-        run: |
-          npx wait-on http://localhost:3000
-          npx wait-on http://127.0.0.1:8000
-          echo "All services are ready!"
-        timeout-minutes: 2
       # Optional: Uncomment to wait for services to be ready
       # - name: Wait for services
       #   run: |
