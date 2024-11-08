@@ -2,7 +2,7 @@ name: CI Pipeline
 
 on:
   push:
-    branches: ["main"]
+    branches: ["main", "justin/debug"]
     paths:
       # frontend files
       - "frontend/src/**"
@@ -32,69 +32,69 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          path: .
+      #   - name: Checkout
+      #     uses: actions/checkout@v4
+      #     with:
+      #       path: .
 
-      - name: Set up
-        uses: docker/setup-qemu-action@v3
+      #   - name: Set up
+      #     uses: docker/setup-qemu-action@v3
 
-      - name: Login to Docker Hub
-        uses: docker/login-action@v3
-        with:
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
+      #   - name: Login to Docker Hub
+      #     uses: docker/login-action@v3
+      #     with:
+      #       username: ${{ secrets.DOCKER_USERNAME }}
+      #       password: ${{ secrets.DOCKER_PASSWORD }}
 
-      - name: Cache node modules
-        id: cache-npm
-        uses: actions/cache@v3
-        env:
-          cache-name: cache-node-modules
-        with:
-          # npm cache files are stored in `~/.npm` on Linux/macOS
-          path: ~/.npm
-          key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('**/package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-build-${{ env.cache-name }}-
-            ${{ runner.os }}-build-
-            ${{ runner.os }}-
+      #   - name: Cache node modules
+      #     id: cache-npm
+      #     uses: actions/cache@v3
+      #     env:
+      #       cache-name: cache-node-modules
+      #     with:
+      #       # npm cache files are stored in `~/.npm` on Linux/macOS
+      #       path: ~/.npm
+      #       key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('**/package-lock.json') }}
+      #       restore-keys: |
+      #         ${{ runner.os }}-build-${{ env.cache-name }}-
+      #         ${{ runner.os }}-build-
+      #         ${{ runner.os }}-
 
-      - name: Create pip cache directory
-        run: |
-          mkdir -p ~/.cache/pip
-          chmod -R 777 ~/.cache/pip
+      #   - name: Create pip cache directory
+      #     run: |
+      #       mkdir -p ~/.cache/pip
+      #       chmod -R 777 ~/.cache/pip
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-          cache: "pip"
+      #   - name: Set up Python
+      #     uses: actions/setup-python@v5
+      #     with:
+      #       python-version: "3.11"
+      #       cache: "pip"
 
-      - name: Ensure frontend .env exists
-        run: |
-          if [ ! -f "frontend/.env" ]; then
-            echo "Creating .env file..."
-            touch frontend/.env
-            echo "REACT_APP_BACKEND_URL=${{ vars.REACT_APP_BACKEND_URL }}" >> frontend/.env
-          fi
+      #   - name: Ensure frontend .env exists
+      #     run: |
+      #       if [ ! -f "frontend/.env" ]; then
+      #         echo "Creating .env file..."
+      #         touch frontend/.env
+      #         echo "REACT_APP_BACKEND_URL=${{ vars.REACT_APP_BACKEND_URL }}" >> frontend/.env
+      #       fi
 
-      - name: Ensure backend .env exists
-        run: |
-          if [ ! -f "backend/.env" ]; then
-            echo "Creating .env file..."
-            touch backend/.env
-            echo "AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }}" >> backend/.env
-            echo "AWS_S3_BUCKET_NAME=${{ secrets.AWS_S3_BUCKET_NAME }}" >> backend/.env
-            echo "AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }}" >> backend/.env
-            echo "SMTP_PASSWORD=${{ secrets.SMTP_PASSWORD }}" >> backend/.env
-            echo "SMTP_USERNAME=${{ secrets.SMTP_USERNAME }}" >> backend/.env
-            echo "TOKEN_SECRET=${{ secrets.TOKEN_SECRET }}" >> backend/.env
-            echo "ENV=${{ vars.ENV}}" >> backend/.env
-            echo "FRONTEND_URL=${{ vars.FRONTEND_URL}}" >> backend/.env
-            echo "SMTP_PORT=${{ vars.SMTP_PORT}}" >> backend/.env
-            echo "SMTP_SERVER=${{ vars.SMTP_SERVER}}" >> backend/.env
-          fi
+      #   - name: Ensure backend .env exists
+      #     run: |
+      #       if [ ! -f "backend/.env" ]; then
+      #         echo "Creating .env file..."
+      #         touch backend/.env
+      #         echo "AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }}" >> backend/.env
+      #         echo "AWS_S3_BUCKET_NAME=${{ secrets.AWS_S3_BUCKET_NAME }}" >> backend/.env
+      #         echo "AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }}" >> backend/.env
+      #         echo "SMTP_PASSWORD=${{ secrets.SMTP_PASSWORD }}" >> backend/.env
+      #         echo "SMTP_USERNAME=${{ secrets.SMTP_USERNAME }}" >> backend/.env
+      #         echo "TOKEN_SECRET=${{ secrets.TOKEN_SECRET }}" >> backend/.env
+      #         echo "ENV=${{ vars.ENV}}" >> backend/.env
+      #         echo "FRONTEND_URL=${{ vars.FRONTEND_URL}}" >> backend/.env
+      #         echo "SMTP_PORT=${{ vars.SMTP_PORT}}" >> backend/.env
+      #         echo "SMTP_SERVER=${{ vars.SMTP_SERVER}}" >> backend/.env
+      #       fi
 
       - name: Build and push
         run: |
