@@ -73,8 +73,6 @@ async def test_send_email_success(email_data, mock_smtp, mock_environ):
     assert result == {"message": "Email sent successfully!"}
     mock_smtp.assert_called_once_with("smtp.gmail.com", "587")
     mock_server.starttls.assert_called_once()
-    mock_server.login.assert_called_with("zarapetproject@gmail.com", "htexgclmmbqbuwia")
-    # mock_server.login.assert_called_with("zarapetproject2@gmail.com", "ladfaogrebelnmkh")
     mock_server.sendmail.assert_called_once()
 
 

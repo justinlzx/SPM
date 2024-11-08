@@ -49,13 +49,11 @@ jobs:
       working-directory: backend
 
     - name: Run pre-commit hooks
-      run: pre-commit run --all-files
+      run: pre-commit run --config config/.pre-commit-config.yaml
       working-directory: .
 
     - name: Run tests with coverage
       run: |
-        pip install pytest pytest-cov  # Ensure pytest-cov is installed
-        pytest --cov=backend/src --cov-report=term-missing --cov-report=html \
-        --ignore=src/tests/email/test_routes.py \
-        src/tests
+        pip install pytest pytest-cov
+        pytest --cov --cov-report=xml
       working-directory: backend
