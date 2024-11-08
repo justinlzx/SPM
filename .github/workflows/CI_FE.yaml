@@ -4,14 +4,13 @@ on:
   pull_request:
     branches:
       - main
-  
-  push:
-    branches: 
-      - CI-implementationFINAL2
 
+  push:
+    branches:
+      - CI-ImplementationFINAL2
 
 jobs:
-  build: 
+  build:
     environment: production
     runs-on: ubuntu-latest
 
