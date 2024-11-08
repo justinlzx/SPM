@@ -222,6 +222,15 @@ export const PendingRequests = () => {
     }
   };
 
+  const filteredRequests = pendingRequests.filter(
+    (request) =>
+      (request.reason_description?.toLowerCase().includes(filters.searchQuery.toLowerCase()) ||
+       request.requester_staff_id.toString().includes(filters.searchQuery) ||
+       request.requester_name?.toLowerCase().includes(filters.searchQuery.toLowerCase()) ||
+       request.wfh_type?.toLowerCase().includes(filters.searchQuery.toLowerCase()) ||
+       request.requester_staff_id.toString().includes(filters.searchQuery))
+  );
+
   useEffect(() => {
     fetchPendingRequestsFromSubordinates();
   }, [user, userId, page, rowsPerPage, filters]);
@@ -276,14 +285,14 @@ export const PendingRequests = () => {
             </TableRow>
           </TableHead>
           <TableBody>
-            {pendingRequests.length === 0 ? (
+            {filteredRequests.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={7} align="center">
                   No pending requests
                 </TableCell>
               </TableRow>
             ) : (
-              pendingRequests.map((arrangement) => (
+              filteredRequests.map((arrangement) => (
                 <ArrangementRow
                   key={arrangement.arrangement_id}
                   arrangement={arrangement}
