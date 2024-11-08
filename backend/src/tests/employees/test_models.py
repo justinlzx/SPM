@@ -132,7 +132,7 @@ def test_create_delegate_log(mock_db_session):
     delegate_log = DelegateLog(
         manager_id=manager.staff_id,
         delegate_manager_id=delegate.staff_id,
-        date_of_delegation=datetime.utcnow(),
+        date_of_delegation=datetime.now(),
         status_of_delegation=DelegationStatus.pending,
         description="Test delegation",
     )
@@ -168,7 +168,7 @@ def test_delegate_status_change(mock_db_session):
     delegate_log = DelegateLog(
         manager_id=manager.staff_id,
         delegate_manager_id=delegate.staff_id,
-        date_of_delegation=datetime.utcnow(),
+        date_of_delegation=datetime.now(),
         status_of_delegation=DelegationStatus.pending,
     )
     mock_db_session.add(delegate_log)
@@ -205,7 +205,7 @@ def test_delegate_log_relationships(mock_db_session):
     delegate_log = DelegateLog(
         manager_id=manager.staff_id,
         delegate_manager_id=delegate.staff_id,
-        date_of_delegation=datetime.utcnow(),
+        date_of_delegation=datetime.now(),
         status_of_delegation=DelegationStatus.pending,
     )
     mock_db_session.add(delegate_log)

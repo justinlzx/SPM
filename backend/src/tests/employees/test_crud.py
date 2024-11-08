@@ -101,7 +101,7 @@ def seed_data(test_db):
 
     # Insert into LatestArrangement with update_datetime as datetime object
     arrangement = LatestArrangement(
-        update_datetime=datetime.utcnow(),  # Changed: Now passing datetime object directly
+        update_datetime=datetime.now(),  # Changed: Now passing datetime object directly
         requester_staff_id=1,
         wfh_date="2023-10-25",
         wfh_type="full",
@@ -445,7 +445,7 @@ def test_create_delegation_with_maximum_values(test_db):
 
 def test_update_pending_arrangements_for_delegate_with_pending_arrangements(test_db, seed_data):
     arrangement = LatestArrangement(
-        update_datetime=datetime.utcnow(),
+        update_datetime=datetime.now(),
         requester_staff_id=3,
         wfh_date="2023-10-26",
         wfh_type="FULL",
@@ -472,7 +472,7 @@ def test_get_delegation_log_by_manager_found(test_db, seed_data):
 
 def test_remove_delegate_from_arrangements(test_db, seed_data):
     arrangement = LatestArrangement(
-        update_datetime=datetime.utcnow(),
+        update_datetime=datetime.now(),
         requester_staff_id=4,
         wfh_date="2023-10-26",
         wfh_type="FULL",
@@ -541,7 +541,7 @@ def test_update_pending_arrangements_for_delegate_empty_db(test_db):
 
 def test_update_pending_arrangements_for_delegate_non_pending(test_db, seed_data):
     arrangement = LatestArrangement(
-        update_datetime=datetime.utcnow(),
+        update_datetime=datetime.now(),
         requester_staff_id=5,
         wfh_date="2023-10-26",
         wfh_type="FULL",
@@ -559,7 +559,7 @@ def test_update_pending_arrangements_for_delegate_non_pending(test_db, seed_data
 
 def test_remove_delegate_from_arrangements_non_pending(test_db, seed_data):
     arrangement = LatestArrangement(
-        update_datetime=datetime.utcnow(),
+        update_datetime=datetime.now(),
         requester_staff_id=6,
         wfh_date="2023-10-26",
         wfh_type="FULL",
@@ -853,7 +853,7 @@ def test_is_employee_locked_in_delegation_completed_status(test_db, seed_data):
         manager_id=3,
         delegate_manager_id=4,
         status_of_delegation=DelegationStatus.undelegated,
-        date_of_delegation=datetime.utcnow(),
+        date_of_delegation=datetime.now(),
     )
     test_db.add(delegation)
     test_db.commit()
@@ -870,7 +870,7 @@ def test_is_employee_locked_in_delegation_completed_status(test_db, seed_data):
         manager_id=3,
         delegate_manager_id=4,
         status_of_delegation=DelegationStatus.pending,
-        date_of_delegation=datetime.utcnow(),
+        date_of_delegation=datetime.now(),
     )
     test_db.add(pending_delegation)
     test_db.commit()
