@@ -1,4 +1,3 @@
-import os
 from enum import Enum
 from typing import List, Tuple, Union
 
@@ -151,8 +150,7 @@ async def delegate_manager(staff_id: int, delegate_manager_id: int, db: Session)
         notification_config = DelegateNotificationConfig(
             delegator=manager_employee, delegatee=delegatee_employee, action="delegate"
         )
-        if os.getenv("TESTING") == "false":
-            await craft_and_send_email(notification_config)
+        await craft_and_send_email(notification_config)
 
         return new_delegation  # Return the created delegation log
 
@@ -186,8 +184,7 @@ async def process_delegation_status(
         notification_config = DelegateNotificationConfig(
             delegator=manager_employee, delegatee=delegatee_employee, action="approved"
         )
-        if os.getenv("TESTING") == "false":
-            await craft_and_send_email(notification_config)
+        await craft_and_send_email(notification_config)
 
     elif status == DelegationApprovalStatus.reject:
         # Reject delegation and save the required description
@@ -199,8 +196,7 @@ async def process_delegation_status(
         notification_config = DelegateNotificationConfig(
             delegator=manager_employee, delegatee=delegatee_employee, action="rejected"
         )
-        if os.getenv("TESTING") == "false":
-            await craft_and_send_email(notification_config)
+        await craft_and_send_email(notification_config)
 
     return delegation_log
 
@@ -225,8 +221,7 @@ async def undelegate_manager(staff_id: int, db: Session):
     notification_config = DelegateNotificationConfig(
         delegator=manager_employee, delegatee=delegatee_employee, action="undelegate"
     )
-    if os.getenv("TESTING") == "false":
-        await craft_and_send_email(notification_config)
+    await craft_and_send_email(notification_config)
 
     return delegation_log
 
