@@ -1,5 +1,6 @@
 describe('Testing Team View, filter arrangements can see', () => {
     it('Should filter and see arrangements', () => {
+        cy.viewport(1920, 1080);
         // Step 1: Proceed to Sally Loh's Account
         cy.visit('http://localhost:3000/login');
         cy.get('[data-cy="email"]').type('sally.loh@allinone.com.sg');
@@ -35,6 +36,7 @@ describe('Testing Team View, filter arrangements can see', () => {
 
 describe('Testing Team View, check if approved requests works', () => {
     it('Should filter approved requests', () => {
+        cy.viewport(1920, 1080);
         // Step 1: Proceed to Rahim Khalid's Account
         cy.visit('http://localhost:3000/login');
         cy.get('[data-cy="email"]').type('rahim.khalid@allinone.com.sg');

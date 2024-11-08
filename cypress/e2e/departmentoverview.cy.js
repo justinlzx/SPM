@@ -2,6 +2,7 @@
 
 describe('Testing Department Overview Page', () => {
     it('Should filter and show a graph', () => {
+        cy.viewport(1920, 1080);
         // Step 1: Proceed to Sally Loh's Account
         cy.visit('http://localhost:3000/login');
         cy.get('[data-cy="email"]').type('sally.loh@allinone.com.sg');
@@ -45,6 +46,7 @@ describe('Testing Department Overview Page', () => {
 
 describe('Testing Department Overview Page, no data to be seen', () => {
     it('Should filter, but no results, so show "No arrangements made for the selected date"', () => {
+        cy.viewport(1920, 1080);
         // Step 1: Proceed to Sally Loh's Account
         cy.visit('http://localhost:3000/login');
         cy.get('[data-cy="email"]').type('sally.loh@allinone.com.sg');
@@ -86,6 +88,7 @@ describe('Testing Department Overview Page, no data to be seen', () => {
 
 describe('Testing Department Overview Page, no data to be seen, so try again for another date and department', () => {
     it('Should filter, but no results, so show "No arrangements made for the selected date", click refresh and reselect', () => {
+        cy.viewport(1920, 1080);
         // Step 1: Proceed to Sally Loh's Account
         cy.visit('http://localhost:3000/login');
         cy.get('[data-cy="email"]').type('sally.loh@allinone.com.sg');
@@ -159,6 +162,7 @@ describe('Testing Department Overview Page, no data to be seen, so try again for
 
 describe('Testing Department Overview Page (Trying out with Derek Tan)', () => {
     it('Should filter and show a graph', () => {
+        cy.viewport(1920, 1080);
         // Step 1: Proceed to Sally Loh's Account
         cy.visit('http://localhost:3000/login');
         cy.get('[data-cy="email"]').type('derek.tan@allinone.com.sg');

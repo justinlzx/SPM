@@ -1,8 +1,14 @@
+const manager_id = 170166;
+const manager_email = "david.yap@allinone.com.sg";
+const subordinate_id = 171014;
+const subordinate_email = "narong.pillai@allinone.com.sg";
+
 describe('Testing withdraw request', () => {
     it('Should create a request and then have it approved by a manager, and then withdraw request', () => {
+        cy.viewport(1920, 1080);
         // Step 1: Login as Rahim and create a WFH request
         cy.visit('http://localhost:3000/login');
-        cy.get('[data-cy="email"]').type('rahim.khalid@allinone.com.sg');
+        cy.get('[data-cy="email"]').type(subordinate_email);
         cy.get('[data-cy="password"]').type('password');
         cy.get('[data-cy="submit"]').click();
         cy.url().should('eq', 'http://localhost:3000/home');
@@ -20,7 +26,7 @@ describe('Testing withdraw request', () => {
         cy.get('[data-cy="submit-request"]').click();
 
         // Capture the latest request arrangement_id
-        cy.request('http://localhost:8000/arrangements/personal/140894').then((response) => {
+        cy.request(`http://localhost:8000/arrangements/personal/${subordinate_id}`).then((response) => {
             expect(response.body).to.have.property('data');
             const arrangements = response.body.data;
             const latestRequest = arrangements.reduce((latest, current) =>
@@ -32,7 +38,7 @@ describe('Testing withdraw request', () => {
         // Step 2: Log out and log in as Derek
         cy.get('[data-cy="logout"]').click();
         cy.url().should('eq', 'http://localhost:3000/login');
-        cy.get('[data-cy="email"]').type('Derek.Tan@allinone.com.sg');
+        cy.get('[data-cy="email"]').type(manager_email);
         cy.get('[data-cy="password"]').type('password');
         cy.get('[data-cy="submit"]').click();
         cy.url().should('eq', 'http://localhost:3000/home');
@@ -55,7 +61,7 @@ describe('Testing withdraw request', () => {
         // Step 4: Log out and log in as Rahim again
         cy.get('[data-cy="logout"]').click();
         cy.url().should('eq', 'http://localhost:3000/login');
-        cy.get('[data-cy="email"]').type('rahim.khalid@allinone.com.sg');
+        cy.get('[data-cy="email"]').type(subordinate_email);
         cy.get('[data-cy="password"]').type('password');
         cy.get('[data-cy="submit"]').click();
         cy.url().should('eq', 'http://localhost:3000/home');
@@ -64,7 +70,7 @@ describe('Testing withdraw request', () => {
         cy.get('[data-cy="my-wfh-schedule"]').first().click({ force: true });
         cy.url().should('eq', 'http://localhost:3000/wfh-schedule');
 
-        cy.request(`http://localhost:8000/arrangements/personal/${140894}`)
+        cy.request(`http://localhost:8000/arrangements/personal/${subordinate_id}`)
             .then((response) => {
                 // Log the entire response to debug
                 console.log('Response:', response);
@@ -104,9 +110,10 @@ describe('Testing withdraw request', () => {
 
 describe('Testing withdraw request, when withdrawing, press no', () => {
     it('Should create a request and then have it approved by a manager, then attempt to withdraw but change his mind and press no', () => {
+        cy.viewport(1920, 1080);
         // Step 1: Login as Rahim and create a WFH request
         cy.visit('http://localhost:3000/login');
-        cy.get('[data-cy="email"]').type('rahim.khalid@allinone.com.sg');
+        cy.get('[data-cy="email"]').type(subordinate_email);
         cy.get('[data-cy="password"]').type('password');
         cy.get('[data-cy="submit"]').click();
         cy.url().should('eq', 'http://localhost:3000/home');
@@ -124,7 +131,7 @@ describe('Testing withdraw request, when withdrawing, press no', () => {
         cy.get('[data-cy="submit-request"]').click();
 
         // Capture the latest request arrangement_id
-        cy.request('http://localhost:8000/arrangements/personal/140894').then((response) => {
+        cy.request(`http://localhost:8000/arrangements/personal/${subordinate_id}`).then((response) => {
             expect(response.body).to.have.property('data');
             const arrangements = response.body.data;
             const latestRequest = arrangements.reduce((latest, current) =>
@@ -136,7 +143,7 @@ describe('Testing withdraw request, when withdrawing, press no', () => {
         // Step 2: Log out and log in as Derek
         cy.get('[data-cy="logout"]').click();
         cy.url().should('eq', 'http://localhost:3000/login');
-        cy.get('[data-cy="email"]').type('Derek.Tan@allinone.com.sg');
+        cy.get('[data-cy="email"]').type(manager_email);
         cy.get('[data-cy="password"]').type('password');
         cy.get('[data-cy="submit"]').click();
         cy.url().should('eq', 'http://localhost:3000/home');
@@ -159,7 +166,7 @@ describe('Testing withdraw request, when withdrawing, press no', () => {
         // Step 4: Log out and log in as Rahim again
         cy.get('[data-cy="logout"]').click();
         cy.url().should('eq', 'http://localhost:3000/login');
-        cy.get('[data-cy="email"]').type('rahim.khalid@allinone.com.sg');
+        cy.get('[data-cy="email"]').type(subordinate_email);
         cy.get('[data-cy="password"]').type('password');
         cy.get('[data-cy="submit"]').click();
         cy.url().should('eq', 'http://localhost:3000/home');
@@ -168,7 +175,7 @@ describe('Testing withdraw request, when withdrawing, press no', () => {
         cy.get('[data-cy="my-wfh-schedule"]').first().click({ force: true });
         cy.url().should('eq', 'http://localhost:3000/wfh-schedule');
 
-        cy.request(`http://localhost:8000/arrangements/personal/${140894}`)
+        cy.request(`http://localhost:8000/arrangements/personal/${subordinate_id}`)
             .then((response) => {
                 // Log the entire response to debug
                 console.log('Response:', response);
@@ -206,9 +213,10 @@ describe('Testing withdraw request, when withdrawing, press no', () => {
 
 describe('Testing withdraw request, Manager should approve withdrawal too', () => {
     it('Should create a request and then have it approved by a manager, and then withdraw request, with manager approval now', () => {
-        // Step 1: Login as Rahim and create a WFH request
+        cy.viewport(1920, 1080);
+        // Step 1: Login as Narong Pillai and create a WFH request
         cy.visit('http://localhost:3000/login');
-        cy.get('[data-cy="email"]').type('rahim.khalid@allinone.com.sg');
+        cy.get('[data-cy="email"]').type(subordinate_email);
         cy.get('[data-cy="password"]').type('password');
         cy.get('[data-cy="submit"]').click();
         cy.url().should('eq', 'http://localhost:3000/home');
@@ -226,7 +234,7 @@ describe('Testing withdraw request, Manager should approve withdrawal too', () =
         cy.get('[data-cy="submit-request"]').click();
 
         // Capture the latest request arrangement_id
-        cy.request('http://localhost:8000/arrangements/personal/140894').then((response) => {
+        cy.request(`http://localhost:8000/arrangements/personal/${subordinate_id}`).then((response) => {
             expect(response.body).to.have.property('data');
             const arrangements = response.body.data;
             const latestRequest = arrangements.reduce((latest, current) =>
@@ -235,15 +243,15 @@ describe('Testing withdraw request, Manager should approve withdrawal too', () =
             cy.wrap(latestRequest.arrangement_id).as('latestArrangementId');
         });
 
-        // Step 2: Log out and log in as Derek
+        // Step 2: Log out and log in as David Yap
         cy.get('[data-cy="logout"]').click();
         cy.url().should('eq', 'http://localhost:3000/login');
-        cy.get('[data-cy="email"]').type('Derek.Tan@allinone.com.sg');
+        cy.get('[data-cy="email"]').type(manager_email);
         cy.get('[data-cy="password"]').type('password');
         cy.get('[data-cy="submit"]').click();
         cy.url().should('eq', 'http://localhost:3000/home');
 
-        // Step 3: Access the review requests page and approve Rahim's request
+        // Step 3: Access the review requests page and approve Narong Pillai's request
         cy.get('[data-cy="review-team-requests"]').first().click({ force: true });
         cy.url().should('eq', 'http://localhost:3000/review-requests');
 
@@ -258,10 +266,10 @@ describe('Testing withdraw request, Manager should approve withdrawal too', () =
             .and('contain', "WFH Request successfully updated to 'approved'");
 
 
-        // Step 4: Log out and log in as Rahim again
+        // Step 4: Log out and log in as Narong Pillai again
         cy.get('[data-cy="logout"]').click();
         cy.url().should('eq', 'http://localhost:3000/login');
-        cy.get('[data-cy="email"]').type('rahim.khalid@allinone.com.sg');
+        cy.get('[data-cy="email"]').type(subordinate_email);
         cy.get('[data-cy="password"]').type('password');
         cy.get('[data-cy="submit"]').click();
         cy.url().should('eq', 'http://localhost:3000/home');
@@ -270,7 +278,7 @@ describe('Testing withdraw request, Manager should approve withdrawal too', () =
         cy.get('[data-cy="my-wfh-schedule"]').first().click({ force: true });
         cy.url().should('eq', 'http://localhost:3000/wfh-schedule');
 
-        cy.request(`http://localhost:8000/arrangements/personal/${140894}`)
+        cy.request(`http://localhost:8000/arrangements/personal/${subordinate_id}`)
             .then((response) => {
                 // Log the entire response to debug
                 console.log('Response:', response);
@@ -304,10 +312,10 @@ describe('Testing withdraw request, Manager should approve withdrawal too', () =
                     .should('be.visible')
                     .and('contain', 'Withdrawal Request has been sent to your manager for review.');
 
-                // Step 6: Log out and log in as Derek
+                // Step 6: Log out and log in as David Yap
                 cy.get('[data-cy="logout"]').click();
                 cy.url().should('eq', 'http://localhost:3000/login');
-                cy.get('[data-cy="email"]').type('Derek.Tan@allinone.com.sg');
+                cy.get('[data-cy="email"]').type(manager_email);
                 cy.get('[data-cy="password"]').type('password');
                 cy.get('[data-cy="submit"]').click();
                 cy.url().should('eq', 'http://localhost:3000/home');
@@ -331,9 +339,10 @@ describe('Testing withdraw request, Manager should approve withdrawal too', () =
 
 describe('Testing withdraw request, Manager should reject withdrawal', () => {
     it('Should create a request and then have it approved by a manager, and then withdraw request, with manager approval now', () => {
-        // Step 1: Login as Rahim and create a WFH request
+        cy.viewport(1920, 1080);
+        // Step 1: Login as Narong Pillai and create a WFH request
         cy.visit('http://localhost:3000/login');
-        cy.get('[data-cy="email"]').type('rahim.khalid@allinone.com.sg');
+        cy.get('[data-cy="email"]').type(subordinate_email);
         cy.get('[data-cy="password"]').type('password');
         cy.get('[data-cy="submit"]').click();
         cy.url().should('eq', 'http://localhost:3000/home');
@@ -351,7 +360,7 @@ describe('Testing withdraw request, Manager should reject withdrawal', () => {
         cy.get('[data-cy="submit-request"]').click();
 
         // Capture the latest request arrangement_id
-        cy.request('http://localhost:8000/arrangements/personal/140894').then((response) => {
+        cy.request(`http://localhost:8000/arrangements/personal/${subordinate_id}`).then((response) => {
             expect(response.body).to.have.property('data');
             const arrangements = response.body.data;
             const latestRequest = arrangements.reduce((latest, current) =>
@@ -360,10 +369,10 @@ describe('Testing withdraw request, Manager should reject withdrawal', () => {
             cy.wrap(latestRequest.arrangement_id).as('latestArrangementId');
         });
 
-        // Step 2: Log out and log in as Derek
+        // Step 2: Log out and log in as David Yap
         cy.get('[data-cy="logout"]').click();
         cy.url().should('eq', 'http://localhost:3000/login');
-        cy.get('[data-cy="email"]').type('Derek.Tan@allinone.com.sg');
+        cy.get('[data-cy="email"]').type(manager_email);
         cy.get('[data-cy="password"]').type('password');
         cy.get('[data-cy="submit"]').click();
         cy.url().should('eq', 'http://localhost:3000/home');
@@ -383,10 +392,10 @@ describe('Testing withdraw request, Manager should reject withdrawal', () => {
             .and('contain', "WFH Request successfully updated to 'approved'");
 
 
-        // Step 4: Log out and log in as Rahim again
+        // Step 4: Log out and log in as Narong Pillai again
         cy.get('[data-cy="logout"]').click();
         cy.url().should('eq', 'http://localhost:3000/login');
-        cy.get('[data-cy="email"]').type('rahim.khalid@allinone.com.sg');
+        cy.get('[data-cy="email"]').type(subordinate_email);
         cy.get('[data-cy="password"]').type('password');
         cy.get('[data-cy="submit"]').click();
         cy.url().should('eq', 'http://localhost:3000/home');
@@ -395,7 +404,7 @@ describe('Testing withdraw request, Manager should reject withdrawal', () => {
         cy.get('[data-cy="my-wfh-schedule"]').first().click({ force: true });
         cy.url().should('eq', 'http://localhost:3000/wfh-schedule');
 
-        cy.request(`http://localhost:8000/arrangements/personal/${140894}`)
+        cy.request(`http://localhost:8000/arrangements/personal/${subordinate_id}`)
             .then((response) => {
                 // Log the entire response to debug
                 console.log('Response:', response);
@@ -429,10 +438,10 @@ describe('Testing withdraw request, Manager should reject withdrawal', () => {
                     .should('be.visible')
                     .and('contain', 'Withdrawal Request has been sent to your manager for review.');
 
-                // Step 6: Log out and log in as Derek
+                // Step 6: Log out and log in as David Yap
                 cy.get('[data-cy="logout"]').click();
                 cy.url().should('eq', 'http://localhost:3000/login');
-                cy.get('[data-cy="email"]').type('Derek.Tan@allinone.com.sg');
+                cy.get('[data-cy="email"]').type(manager_email);
                 cy.get('[data-cy="password"]').type('password');
                 cy.get('[data-cy="submit"]').click();
                 cy.url().should('eq', 'http://localhost:3000/home');
