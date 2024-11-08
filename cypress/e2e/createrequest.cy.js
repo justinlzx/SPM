@@ -133,7 +133,7 @@ describe('Testing requests page', () => {
         // cy.get('.MuiFormHelperText-root').should('contain', 'Start date must be at least 1 day from today');
     })
 
-    // // Test case 7 (Submitting w reason, no WFH type and no proper date)
+    // // Test case 6 (Submitting w reason, no WFH type and no proper date)
     it('Form should throw error --> no WFH type, no proper date', () => {
         cy.visit('http://localhost:3000/login')
         cy.get('[data-cy="email"]').type('rahim.khalid@allinone.com.sg')
@@ -155,7 +155,7 @@ describe('Testing requests page', () => {
         // cy.get('.MuiFormHelperText-root').should('contain', 'Start date must be at least 1 day from today');
     })
 
-    // // Test case 8 (Submitting w no reason, with valid WFH type but no proper date)
+    // // Test case 7 (Submitting w no reason, with valid WFH type but no proper date)
     it('Form should throw error --> No reason, no proper date', () => {
         cy.visit('http://localhost:3000/login')
         cy.get('[data-cy="email"]').type('rahim.khalid@allinone.com.sg')
@@ -175,7 +175,7 @@ describe('Testing requests page', () => {
         // cy.get('.MuiFormHelperText-root').should('contain', 'Start date must be at least 1 day from today');
     })
 
-    // // Test case 9 (Submitting w no reason, no WFH type but with proper date)
+    // // Test case 8 (Submitting w no reason, no WFH type but with proper date)
     it('Form should throw error --> no reason, no WFH type', () => {
         cy.visit('http://localhost:3000/login')
         cy.get('[data-cy="email"]').type('rahim.khalid@allinone.com.sg')
@@ -200,7 +200,7 @@ describe('Testing requests page', () => {
         });
     })
 
-    // // Test case 10 (Clicking Cancel button should return to homepage)
+    // // Test case 9 (Clicking Cancel button should return to homepage)
     it('Cancel button should return to homepage', () => {
         cy.visit('http://localhost:3000/login')
         cy.get('[data-cy="email"]').type('rahim.khalid@allinone.com.sg')
