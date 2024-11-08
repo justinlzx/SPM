@@ -410,7 +410,11 @@ Prerequisites: The `project_venv` is installed. If not, follow the instructions 
     ```
     npx cypress open
     ```
-    If you are using Cypress for the first time, follow the instructions in your terminal.
+    If you are using Cypress for the first time, you will need to install cypress first by using the following the command
+    ```
+    npm install cypress
+    ```
+    then follow the instructions in your terminal.
 
 4. Cypress UI will open. Click on "E2E Testing".
     ![alt text](cypress_ui_1.png)
