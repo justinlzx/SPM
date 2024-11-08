@@ -79,15 +79,17 @@ async def craft_and_send_email(
 
     email_errors = []
 
+    if getenv("TESTING") == "true":
+        logger.info("Skipping email sending due to TESTING environment variable")
+        return
+
     for email, subject, content in email_list:
         try:
             logger.info(
                 f"Sending email to {email} with the following content:\n\n{subject}\n{content}\n\n"
             )
             await send_email(email, subject, content)
-            logger.info(
-                f"Email sent successfully to {email} with the following content:\n\n{subject}\n{content}\n\n"
-            )
+            logger.info(f"Email sent successfully to {email}")
         except HTTPException:
             email_errors.append(email)
 

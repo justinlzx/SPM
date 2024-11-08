@@ -289,7 +289,7 @@ async def create_arrangements_from_request(
             manager=approving_officer,
         )
 
-        # Send notification emails
+        # Send notification emails (if not in test environment)
         await craft_and_send_email(notification_config)
 
         return created_arrangements
