@@ -5,7 +5,6 @@ const subordinate_email = "narong.pillai@allinone.com.sg";
 
 describe("Testing accept request", () => {
   it("Should create a request and then have it approved by a mid-level manager", () => {
-    cy.viewport(1920, 1080);
     // Step 1: Login as Narong Pillai and create a WFH request
     cy.visit("http://localhost:3000/login");
     cy.get('[data-cy="email"]').type(subordinate_email);
@@ -69,7 +68,6 @@ describe("Testing accept request", () => {
 
 describe("Testing reject request", () => {
   it("Should create a request and then have it rejected by a manager", () => {
-    cy.viewport(1920, 1080);
     // Step 1: Login as Rahim and create a WFH request
     cy.visit("http://localhost:3000/login");
     cy.get('[data-cy="email"]').type(subordinate_email);
@@ -136,7 +134,6 @@ describe("Testing reject request", () => {
 
 describe("Testing reject request, then press cancel, then press approve", () => {
   it("Should create a request and then have it rejected by a manager", () => {
-    cy.viewport(1920, 1080);
     // Step 1: Login as Rahim and create a WFH request
     cy.visit("http://localhost:3000/login");
     cy.get('[data-cy="email"]').type(subordinate_email);
@@ -200,7 +197,6 @@ describe("Testing reject request, then press cancel, then press approve", () => 
 
 describe("Testing reject request, then press cancel, then press approve", () => {
   it("Should create a request and then have it rejected by a manager", () => {
-    cy.viewport(1920, 1080);
     // Step 1: Login as Rahim and create a WFH request
     cy.visit("http://localhost:3000/login");
     cy.get('[data-cy="email"]').type(subordinate_email);

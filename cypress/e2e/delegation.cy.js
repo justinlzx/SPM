@@ -9,7 +9,6 @@ const subordinate_email = "rithy.saad@allinone.com.sg";
 
 describe("Testing delegation (Happy path) w Cancel", () => {
   it("Should create a request and then have it approved by a manager, then cancel to test other functions", () => {
-    cy.viewport(1920, 1080);
     // Step 1: Login as Rithy Saad and create a WFH request
     cy.visit("http://localhost:3000/login");
     cy.get('[data-cy="email"]').type(subordinate_email);
@@ -148,7 +147,6 @@ describe("Testing delegation (Happy path) w Cancel", () => {
 
 describe("Testing delegation Reject delegation request", () => {
   it("Should create a request and delegatee rejects it", () => {
-    cy.viewport(1920, 1080);
     // Step 1: Login as Rahim and create a WFH request
     cy.visit("http://localhost:3000/login");
     cy.get('[data-cy="email"]').type(subordinate_email);
@@ -242,7 +240,6 @@ describe("Testing delegation Reject delegation request", () => {
 
 describe("Testing delegation cancelling the reject delegation request and then accepting it", () => {
   it("Should create a delegate request, want to reject but then changed mind and accepts it", () => {
-    cy.viewport(1920, 1080);
     // Step 1: Login as Rithy Saad and create a WFH request
     cy.visit("http://localhost:3000/login");
     cy.get('[data-cy="email"]').type(subordinate_email);
@@ -263,18 +260,18 @@ describe("Testing delegation cancelling the reject delegation request and then a
     cy.get('[data-cy="submit-request"]').click();
 
     // Capture the latest request arrangement_id
-    cy.request(`http://localhost:8000/arrangements/personal/${subordinate_id}`).then(
-      (response) => {
-        expect(response.body).to.have.property("data");
-        const arrangements = response.body.data;
-        const latestRequest = arrangements.reduce((latest, current) =>
-          new Date(current.update_datetime) > new Date(latest.update_datetime)
-            ? current
-            : latest
-        );
-        cy.wrap(latestRequest.arrangement_id).as("latestArrangementId");
-      }
-    );
+    cy.request(
+      `http://localhost:8000/arrangements/personal/${subordinate_id}`
+    ).then((response) => {
+      expect(response.body).to.have.property("data");
+      const arrangements = response.body.data;
+      const latestRequest = arrangements.reduce((latest, current) =>
+        new Date(current.update_datetime) > new Date(latest.update_datetime)
+          ? current
+          : latest
+      );
+      cy.wrap(latestRequest.arrangement_id).as("latestArrangementId");
+    });
 
     // Step 2: Log out and log in as Narong Pillai
     cy.get('[data-cy="logout"]').click();
@@ -388,7 +385,6 @@ describe("Testing delegation cancelling the reject delegation request and then a
 
 describe("Testing delegation by accessing it through the button in the homepage", () => {
   it("Should create a request via homepage and then have it approved by a manager", () => {
-    cy.viewport(1920, 1080);
     // Step 1: Login as Jack Goh and create a WFH request via accessing the create form thru the homepage
     cy.visit("http://localhost:3000/login");
     cy.get('[data-cy="email"]').type("jack.goh@allinone.com.sg");

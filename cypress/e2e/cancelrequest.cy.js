@@ -4,7 +4,6 @@ const subordinate_email = "narong.pillai@allinone.com.sg";
 describe("Testing My WFH Schedule page", () => {
   // Test case 1 (Happy Path non-recurring, Cancel)
   it("(Non-recurring) Form should be created, should be visible and easily withdrawn", () => {
-    cy.viewport(1920, 1080);
     cy.visit("http://localhost:3000/login");
     cy.get('[data-cy="email"]').type(subordinate_email);
     cy.get('[data-cy="password"]').type("password");
@@ -72,7 +71,6 @@ describe("Testing My WFH Schedule page", () => {
 describe("Testing My WFH Schedule page", () => {
   // Test case 1 (Happy Path non-recurring, Cancel but then press No)
   it("(Non-recurring) Form should be created, should be visible and easily withdrawn", () => {
-    cy.viewport(1920, 1080);
     cy.visit("http://localhost:3000/login");
     cy.get('[data-cy="email"]').type(subordinate_email);
     cy.get('[data-cy="password"]').type("password");
@@ -138,7 +136,6 @@ describe("Testing My WFH Schedule page", () => {
 describe("Testing My WFH Schedule page, Filter Function (Status Filter)", () => {
   // Test case 1 (Happy Path non-recurring, Cancel but then press No)
   it("(Non-recurring) Form should be created, should be visible and easily withdrawn", () => {
-    cy.viewport(1920, 1080);
     cy.visit("http://localhost:3000/login");
     cy.get('[data-cy="email"]').type(subordinate_email);
     cy.get('[data-cy="password"]').type("password");
@@ -200,7 +197,6 @@ describe("Testing My WFH Schedule page, Filter Function (Status Filter)", () => 
 describe("Testing My WFH Schedule page, Filter Function (Status Filter, Multiple)", () => {
   // Test case 1 (Happy Path non-recurring, Cancel but then press No)
   it("(Non-recurring) Form should be created, should be visible and easily withdrawn", () => {
-    cy.viewport(1920, 1080);
     cy.visit("http://localhost:3000/login");
     cy.get('[data-cy="email"]').type(subordinate_email);
     cy.get('[data-cy="password"]').type("password");
@@ -265,7 +261,6 @@ describe("Testing My WFH Schedule page, Filter Function (Status Filter, Multiple
 describe("Testing My WFH Schedule page, Filter Function (Status Filter, Multiple, Clear Filters)", () => {
   // Test case 1 (Happy Path non-recurring, Cancel but then press No)
   it("(Non-recurring) Form should be created, should be visible and easily withdrawn", () => {
-    cy.viewport(1920, 1080);
     cy.visit("http://localhost:3000/login");
     cy.get('[data-cy="email"]').type(subordinate_email);
     cy.get('[data-cy="password"]').type("password");
@@ -334,7 +329,6 @@ describe("Testing My WFH Schedule page, Filter Function (Status Filter, Multiple
 describe("Testing My WFH Schedule page, Filter Function (Status Filter FAILURE)", () => {
   // Test case 1 (Happy Path non-recurring, Cancel but then press No)
   it("(Non-recurring) Form should be created, should be visible and easily withdrawn", () => {
-    cy.viewport(1920, 1080);
     cy.visit("http://localhost:3000/login");
     cy.get('[data-cy="email"]').type(subordinate_email);
     cy.get('[data-cy="password"]').type("password");
@@ -396,7 +390,6 @@ describe("Testing My WFH Schedule page, Filter Function (Status Filter FAILURE)"
 describe("Testing My WFH Schedule page, Filter Function (Status Filter FAILURE), Clear Filters", () => {
   // Test case 1 (Happy Path non-recurring, Cancel but then press No)
   it("(Non-recurring) Form should be created, should be visible and easily withdrawn", () => {
-    cy.viewport(1920, 1080);
     cy.visit("http://localhost:3000/login");
     cy.get('[data-cy="email"]').type(subordinate_email);
     cy.get('[data-cy="password"]').type("password");
