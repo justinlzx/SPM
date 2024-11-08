@@ -26,7 +26,9 @@ jobs:
       - name: Cache Node modules
         uses: actions/cache@v3
         with:
-          path: frontend/node_modules
+          path: |
+            frontend/node_modules
+            ~/.cache/Cypress
           key: ${{ runner.os }}-node-${{ hashFiles('frontend/package-lock.json') }}
           restore-keys: |
             ${{ runner.os }}-node-
@@ -93,6 +95,12 @@ jobs:
       #   run: |
       #     npx wait-on http://127.0.0.1:8000  # Adjust the URL and port for your backend
 
+      - name: Wait for services
+        run: |
+          npx wait-on http://localhost:3000
+          npx wait-on http://127.0.0.1:8000
+          echo "All services are ready!"
+        timeout-minutes: 2
       # Optional: Uncomment to wait for services to be ready
       # - name: Wait for services
       #   run: |
@@ -102,7 +110,9 @@ jobs:
       #   timeout-minutes: 2
 
       - name: Install Cypress
-        run: npm install --save cypress
+        run: |
+          npm install cypress --save-dev
+          npx cypress verify
         working-directory: .
 
       - name: Clear Cypress cache
@@ -117,6 +127,7 @@ jobs:
       #   working-directory: frontend
 
       - name: Stop servers
+        if: always()
         run: |
           kill $(cat frontend.pid)
           kill $(cat backend.pid)
