@@ -1,4 +1,3 @@
-import os
 from dataclasses import asdict
 from datetime import datetime
 from typing import Dict, List, Tuple, Union
@@ -291,8 +290,7 @@ async def create_arrangements_from_request(
         )
 
         # Send notification emails (if not in test environment)
-        if os.getenv("TESTING") == "false":
-            await craft_and_send_email(notification_config)
+        await craft_and_send_email(notification_config)
 
         return created_arrangements
 
@@ -359,9 +357,8 @@ async def update_arrangement_approval_status(
         auto_reject=wfh_update.auto_reject,
     )
 
-    # Send email notifications (if not in test environment)
-    if os.getenv("TESTING") == "false":
-        await craft_and_send_email(notification_config)
+    # Send email notifications
+    await craft_and_send_email(notification_config)
 
     return updated_arrangement
 
