@@ -81,7 +81,12 @@ export const Filters: React.FC<FiltersProps> = ({
   };
 
   return (
-    <Box>
+    <Box
+      sx={{
+        position: 'relative',
+        zIndex: 1000, 
+      }}
+    >
       {!excludeSearchFilter && (
         <TextField
           fullWidth

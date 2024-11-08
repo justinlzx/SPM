@@ -207,7 +207,7 @@ export const ApprovedRequests = () => {
         }}
       >
         <Table stickyHeader>
-          <TableHead>
+        <TableHead>
             <TableRow>
               <TableCell sx={{ fontWeight: "bold" }}>Staff ID</TableCell>
               <TableCell sx={{ fontWeight: "bold" }}>Staff Name</TableCell>
