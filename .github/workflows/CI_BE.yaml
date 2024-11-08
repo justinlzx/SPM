@@ -5,9 +5,9 @@ on:
     branches:
       - main
 
-  push:
-    branches:
-      - CI-ImplementationFINAL2
+  # push:
+  #   branches:
+  #     - CI-ImplementationFINAL2
 
 jobs:
   build:
