@@ -2,6 +2,20 @@
 
 This project contains a frontend and backend application that can be easily spun up using Docker Compose.
 
+## Table of Contents
+- [Prerequisites](#prerequisites)
+- [Project Structure](#project-structure)
+- [Getting Started](#getting-started)
+   - [Setup development environment](#setup-development-environment)
+   - [Start the application](#start-the-application)
+   - [Starting Individual Components](#starting-individual-components)
+- [Stopping the Application](#stopping-the-application)
+- [Logs](#logs)
+- [Troubleshooting](#troubleshooting)
+- [Testing](#testing)
+   - [Backend](#backend)
+   - [End To End](#end-to-end)
+
 ## Prerequisites
 
 Before you begin, ensure you have the following installed on your system:
@@ -245,8 +259,8 @@ SPM/
 ├─ package-lock.json
 ├─ README.md
 └─ scripts/
-   ├─ setup.bat
-   └─ setup.sh
+    ├─ setup.bat
+    └─ setup.sh
 ```
 
 ## Getting Started
@@ -286,15 +300,15 @@ Follow these steps to get your development environment running:
 
 1. Start the application using Docker Compose:
 
-   ```
-   docker-compose up -d
-   ```
+    ```
+    docker-compose up -d
+    ```
 
-   This command will build the images if they don't exist and start the containers in detached mode.
+    This command will build the images if they don't exist and start the containers in detached mode.
 
 3. Access the application:
-   - Frontend: http://localhost:3000
-   - Backend: http://localhost:8000
+    - Frontend: http://localhost:3000
+    - Backend: http://localhost:8000
 
 #### Services
 
@@ -312,14 +326,14 @@ To make changes to the application:
 1. Modify the code in the `frontend/` or `backend/` directories.
 2. Rebuild and restart the containers:
 
-   ```
-   docker-compose up -d --build
-   ```
+    ```
+    docker-compose up -d --build
+    ```
 
-   ### Starting Individual Components
+    ### Starting Individual Components
 
-   Frontend: [HERE](frontend/README.md)
-   Backend: [HERE](backend/README.md)
+    Frontend: [HERE](frontend/README.md)
+    Backend: [HERE](backend/README.md)
 
 ## Stopping the Application
 
@@ -362,3 +376,45 @@ If you encounter any issues:
 1. Ensure all required ports are free and not used by other applications.
 2. Check the logs for any error messages.
 3. Try rebuilding the images: `docker-compose build --no-cache`
+
+## Testing
+Prerequisites: The `project_venv` is installed. If not, follow the instructions in the [Getting Started](#getting-started) section.
+
+### Backend
+
+1. Run the backend Docker container
+2. Change to the backend directory
+3. Run the following command to perform tests with coverage
+    ```
+    coverage run -m pytest
+    ```
+4. Run
+    ```
+    coverage report
+    ```
+    To view test coverage in the console, or for a more comprehensive report
+    ```
+    coverage html
+    ```
+
+### End To End
+1. Run the backend Docker container on port 8000 using
+   ```
+   docker-compose up backend
+   ```
+2. Change directory to frontend. Run the frontend on port 3000 using
+   ```
+   npm start
+   ```
+3. Change back to the project root (SPM) and run the following command
+    ```
+    npx cypress open
+    ```
+    If you are using Cypress for the first time, follow the instructions in your terminal.
+
+4. Cypress UI will open. Click on "E2E Testing".
+    ![alt text](cypress_ui_1.png)
+5. Ensure Chrome is selected. Click on "Start E2E Testing in Chrome"
+    ![alt text](cypress_ui_2.png)
+6. This will open Google Chrome. Click on any e2e spec to run the test suite for that functionality.
+    ![alt text](cypress_ui_3.png)
