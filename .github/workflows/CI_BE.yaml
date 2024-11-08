@@ -55,7 +55,5 @@ jobs:
     - name: Run tests with coverage
       run: |
         pip install pytest pytest-cov  # Ensure pytest-cov is installed
-        pytest --cov=backend/src --cov-report=term-missing --cov-report=html \
-        --ignore=src/tests/email/test_routes.py \
-        src/tests
+        coverage run -m pytest
       working-directory: backend
