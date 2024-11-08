@@ -170,7 +170,7 @@ Staff_ID,Staff_FName,Staff_LName,Dept,Position,Country,Email,Reporting_Manager,R
 160008,Sally,Loh,HR,Director,Singapore,Sally.Loh@allinone.com.sg,130002,1
 170166,David,Yap,Finance,Director,Singapore,David.Yap@allinone.com.sg,130002,1
 180001,Ernst,Sim,Consultancy,Director,Singapore,Ernst.Sim@allinone.com.sg,130002,1
-210001,Peter,Yap,IT,Director,Singapore,Peter.aypallinone.com.sg,130002,1
+210001,Peter,Yap,IT,Director,Singapore,Peter.Yap@allinone.com,130002,1
 190019,Heng,Sim,Solutioning,Developers,Singapore,Heng.Sim@allinone.com.sg,150008,2
 190037,Susi,Abdullah,Solutioning,Developers,Singapore,Susi.Abdullah@allinone.com.sg,150008,2
 190059,Phuc,Le,Solutioning,Support Team,Singapore,Phuc.Le@allinone.com.sg,150008,2
