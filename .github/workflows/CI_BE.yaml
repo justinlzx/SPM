@@ -49,7 +49,7 @@ jobs:
       working-directory: backend
 
     - name: Run pre-commit hooks
-      run: pre-commit run --all-files
+      run: pre-commit run --config config/.pre-commit-config.yaml
       working-directory: .
 
     - name: Run tests with coverage
