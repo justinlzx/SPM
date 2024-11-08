@@ -168,7 +168,7 @@ export const RequestList = () => {
   }
 
   return (
-    <div>
+    <div data-cy="team-requests-filter">
       <Typography variant="h4" gutterBottom align="left" sx={{ marginTop: 4 }}>
         My Team's WFH/OOO Requests
       </Typography>
@@ -184,11 +184,11 @@ export const RequestList = () => {
         component={Paper}
         sx={{
           marginTop: 3,
-          maxHeight: "60vh", // Set a max height for the table container
-          overflow: "auto", // Enable scroll within the table container if needed
+          maxHeight: "60vh", 
+          overflow: "auto", 
         }}
       >
-        <Table>
+        <Table stickyHeader>
           <TableHead>
             <TableRow>
               <TableCell sx={{ fontWeight: "bold" }}>Staff Name</TableCell>
@@ -198,7 +198,7 @@ export const RequestList = () => {
               <TableCell sx={{ fontWeight: "bold" }}>Reason</TableCell>
             </TableRow>
           </TableHead>
-          <TableBody>
+          <TableBody data-cy="arrangement-list">
             {arrangements.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={6} align="center">

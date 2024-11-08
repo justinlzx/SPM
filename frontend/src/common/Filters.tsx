@@ -92,7 +92,7 @@ export const Filters: React.FC<FiltersProps> = ({
           onChange={(e) => setSearchQuery(e.target.value)}
           placeholder="Search by Staff ID, Date, Reason, or Type"
           sx={{ marginBottom: 2 }}
-          data-cy="search-input" // Added data-cy for search input
+          data-cy="search-input" 
         />
       )}
 

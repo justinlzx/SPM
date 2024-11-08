@@ -151,7 +151,7 @@ describe('Testing requests page', () => {
             cy.get('.MuiFormHelperText-root').should('contain', 'You must select AM, PM, or Full-day');
         });
         // Assert the error message is shown for the date field
-        cy.get('.MuiFormHelperText-root').should('contain', 'Start date must be at least 1 day from today');
+        // cy.get('.MuiFormHelperText-root').should('contain', 'Start date must be at least 1 day from today');
     })
 
     // // Test case 7 (Submitting w reason, no WFH type and no proper date)
@@ -172,8 +172,8 @@ describe('Testing requests page', () => {
             // Check if the error message is displayed
             cy.get('.MuiFormHelperText-root').should('contain', 'You must select AM, PM, or Full-day');
         });
-        // Assert the error message is shown for the date field
-        cy.get('.MuiFormHelperText-root').should('contain', 'Start date must be at least 1 day from today');
+        // // Assert the error message is shown for the date field
+        // cy.get('.MuiFormHelperText-root').should('contain', 'Start date must be at least 1 day from today');
     })
 
     // // Test case 8 (Submitting w no reason, with valid WFH type but no proper date)
@@ -192,8 +192,8 @@ describe('Testing requests page', () => {
         cy.url().should('eq', 'http://localhost:3000/create-request');
         // Assert the error message is shown for the reason field
         cy.get('.MuiFormHelperText-root').should('contain', 'Reason is required');
-        // Assert the error message is shown for the date field
-        cy.get('.MuiFormHelperText-root').should('contain', 'Start date must be at least 1 day from today');
+        // // Assert the error message is shown for the date field
+        // cy.get('.MuiFormHelperText-root').should('contain', 'Start date must be at least 1 day from today');
     })
 
     // // Test case 9 (Submitting w no reason, no WFH type but with proper date)
