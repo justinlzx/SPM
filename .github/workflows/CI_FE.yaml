@@ -33,6 +33,15 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-node-
 
+   # Add Cypress cache here
+      - name: Cache Cypress binaries
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/Cypress
+          key: ${{ runner.os }}-cypress-${{ hashFiles('frontend/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-cypress-
+
       - name: Install Frontend dependencies
         run: npm install
         working-directory: frontend
