@@ -271,6 +271,7 @@ export const PendingRequests = () => {
           ApprovalStatus.PendingApproval,
           ApprovalStatus.PendingWithdrawal,
         ]}
+        excludeSearchFilter={true}
       />
 
       <Typography variant="h4" gutterBottom align="left" sx={{ marginTop: 4 }}>
