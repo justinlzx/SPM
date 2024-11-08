@@ -310,7 +310,7 @@ SPM/
 ```
 
 ## C4 Diagram
-- [Click Here](/C4_Diagram.jpg)
+- [Click Here](/C4_Diagram.pdf)
 
 ## Getting Started
 ### Setup development environment
