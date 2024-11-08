@@ -4,6 +4,7 @@ This project contains a frontend and backend application that can be easily spun
 
 ## Table of Contents
 - [Prerequisites](#prerequisites)
+- [Deployment](#deployment)
 - [Project Structure](#project-structure)
 - [Getting Started](#getting-started)
    - [Setup development environment](#setup-development-environment)
@@ -22,6 +23,51 @@ Before you begin, ensure you have the following installed on your system:
 
 - [Docker](https://www.docker.com/get-started)
 - [Docker Compose](https://docs.docker.com/compose/install/)
+
+
+## Deployment
+[Link to Deployed AllInOne Application](http://ec2-13-229-155-198.ap-southeast-1.compute.amazonaws.com/login)
+
+### Credentials:
+#### Set 1
+**Manager**
+- Email: Ernst.Sim@allinone.com.sg
+- Password: password
+
+**Employee**
+- Email: Priya.Lim@allinone.com.sg
+- Password: password
+
+#### Set 2
+**Manager**
+- Email: David.Yap@allinone.com.sg
+- Password: password
+
+**Employee**
+- Email: Narong.Pillai@allinone.com.sg
+- Password: password
+
+#### Set 3
+**Manager**
+- Email: Rahim.Khalid@allinone.com.sg
+- Password: password
+
+**Employee**
+- Email: William.Fu@allinone.com.sg
+- Password: password
+
+#### HR
+**HR**
+- Email: Sally.Loh@company.com
+- Password: password
+
+#### Special Case (Managing Director)
+**Managing Director**
+- Email: Jack.Sim@allinone.com.sg
+- Password: password
+
+#### All Login Credentials
+- [Click Here](/Login_Credentials.xlsx)
 
 ## Project Structure
 
@@ -263,6 +309,9 @@ SPM/
     └─ setup.sh
 ```
 
+## C4 Diagram
+- [Click Here](/C4_Diagram.pdf)
+
 ## Getting Started
 ### Setup development environment
 1. Ensure you are in the project root directory
@@ -410,7 +459,11 @@ Prerequisites: The `project_venv` is installed. If not, follow the instructions 
     ```
     npx cypress open
     ```
-    If you are using Cypress for the first time, follow the instructions in your terminal.
+    If you are using Cypress for the first time, you will need to install cypress first by using the following the command
+    ```
+    npm install cypress
+    ```
+    then follow the instructions in your terminal.
 
 4. Cypress UI will open. Click on "E2E Testing".
     ![alt text](cypress_ui_1.png)
