@@ -117,7 +117,7 @@ export const SendDelegation: React.FC = () => {
 
     setLoading(true);
     try {
-      const response = await axios.post(`${BACKEND_URL}/employees/manager/delegate/${userId}`, null, {
+      await axios.post(`${BACKEND_URL}/employees/manager/delegate/${userId}`, null, {
         params: {
           delegate_manager_id: selectedPeer,
         },

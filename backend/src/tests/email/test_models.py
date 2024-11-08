@@ -1,11 +1,15 @@
 # tests/test_email_model.py
 
+import os
 import smtplib
 from unittest.mock import MagicMock, patch
 
 import pytest
 from src.email.exceptions import InvalidEmailException
 from src.email.models import EmailModel
+
+SMTP_USERNAME = os.getenv("SMTP_USERNAME")
+SMTP_PASSWORD = os.getenv("SMTP_PASSWORD")
 
 
 @pytest.fixture
@@ -29,10 +33,8 @@ def mock_environ():
     env_vars = {
         "SMTP_SERVER": "smtp.gmail.com",
         "SMTP_PORT": "587",
-        "SMTP_USERNAME": "zarapetproject@gmail.com",
-        "SMTP_PASSWORD": "htexgclmmbqbuwia",
-        # "SMTP_USERNAME": "zarapetproject2@gmail.com",
-        # "SMTP_PASSWORD": "ladfaogrebelnmkh",
+        "SMTP_USERNAME": SMTP_USERNAME,
+        "SMTP_PASSWORD": SMTP_PASSWORD,
     }
     with patch.dict("os.environ", env_vars):
         yield

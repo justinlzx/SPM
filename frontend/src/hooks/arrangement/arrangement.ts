@@ -21,8 +21,8 @@ export const useArrangement = () => {
 
 export const useUpdateArrangement = () => {
     return useMutation<string, Error, TUpdateArrangement>({
-        mutationFn: async ({updatedStatus, arrangement_id}) => {
-            const result = await updateArrangement(updatedStatus, arrangement_id);
+        mutationFn: async ({updatedStatus}) => {
+            const result = await updateArrangement(updatedStatus);
             if (!result) {
                 throw new Error('Update failed, no data returned');
             }

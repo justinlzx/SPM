@@ -1,3 +1,4 @@
+import os
 from unittest.mock import patch
 
 import pytest
@@ -5,6 +6,8 @@ from fastapi.testclient import TestClient
 from src.app import app
 
 client = TestClient(app)
+
+SMTP_USERNAME = os.getenv("SMTP_USERNAME")
 
 
 @pytest.fixture
@@ -18,8 +21,7 @@ def test_send_email_success(valid_email_data):
     assert response.status_code == 200
     assert response.json() == {
         "message": "Email sent successfully!",  # Updated to match the actual response
-        "sender_email": "zarapetproject@gmail.com",
-        # "sender_email": "zarapetproject2@gmail.com",
+        "sender_email": SMTP_USERNAME,
         "to_email": valid_email_data["to_email"],
         "subject": valid_email_data["subject"],
         "content": valid_email_data["content"],

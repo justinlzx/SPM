@@ -8,7 +8,6 @@ import {
   TableRow,
   Paper,
   Chip,
-  Typography,
   Button,
   Dialog,
   DialogTitle,
@@ -69,8 +68,8 @@ const DocumentDialog: React.FC<{
 export const PersonalRequests = () => {
   const [requests, setRequests] = useState<TWFHRequest[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
-  const [approvedCount, setApprovedCount] = useState<number>(0);
-  const [approvedThisMonth, setApprovedThisMonth] = useState<number>(0);
+  const [, setApprovedCount] = useState<number>(0);
+  const [, setApprovedThisMonth] = useState<number>(0);
   const [documentDialogOpen, setDocumentDialogOpen] = useState(false);
   const [documents, setDocuments] = useState<string[]>([]);
   const { user } = useContext(UserContext);

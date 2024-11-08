@@ -1,6 +1,4 @@
 #!/bin/sh
-. "$(dirname "$0")/_/husky.sh"
-
 echo "Running pre-commit hook..."
 if [ "$FULL_SCAN" = "true" ]; then
   echo "Mode: Full codebase scan (excluding .gitignore files)"

@@ -10,15 +10,12 @@ import {
   Typography,
   CircularProgress,
   Chip,
-  TextField,
   TablePagination,
   Snackbar,
   Alert,
 } from "@mui/material";
 import { capitalize } from "../../utils/utils";
 import { ApprovalStatus } from "../../types/requests";
-import { fetchEmployeeByStaffId } from "../../hooks/employee/employee.utils";
-// import Filters from "../../common/Filters";
 import { UserContext } from "../../context/UserContextProvider";
 import axios from "axios";
 import Filters, { TFilters } from "../../common/Filters";
@@ -58,17 +55,14 @@ const getChipColor = (status: string | undefined) => {
 
 export const RequestList = () => {
   const [arrangements, setArrangements] = useState<Arrangement[]>([]);
-  const [searchTerm, setSearchTerm] = useState("");
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [totalItems, setTotalItems] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showSnackbar, setShowSnackbar] = useState(false);
-  const [snackbarMessage, setSnackbarMessage] = useState("");
-  const [alertStatus, setAlertStatus] = useState<"success" | "error">(
-    "success"
-  );
+  const [snackbarMessage] = useState("");
+  const [alertStatus] = useState<"success" | "error">("success");
 
   const [filters, setFilters] = useState<TFilters>({
     startDate: null,
@@ -122,14 +116,6 @@ export const RequestList = () => {
     };
     fetchAllRequests();
   }, [user, page, rowsPerPage, filters]);
-
-  const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchTerm(e.target.value);
-  };
-
-  const handleSearchChange = (searchQuery: string) => {
-    setSearchTerm(searchQuery);
-  };
 
   const handleFilterChange = (filters: TFilters) => {
     setFilters(filters);
@@ -211,8 +197,9 @@ export const RequestList = () => {
                   key={arrangement.arrangement_id + arrangement.wfh_date}
                 >
                   <TableCell>
-                    {`${arrangement.requester_info.staff_fname} ${arrangement.requester_info.staff_lname}` ||
-                      "N/A"}
+                    {arrangement.requester_info
+                      ? `${arrangement.requester_info.staff_fname} ${arrangement.requester_info.staff_lname}`
+                      : "N/A"}
                   </TableCell>
                   <TableCell>
                     {arrangement.wfh_type?.toUpperCase() || "N/A"}

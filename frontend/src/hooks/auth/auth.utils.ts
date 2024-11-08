@@ -71,7 +71,7 @@ export const login = async (credentials: {
       position,
       dept
     };
-  } catch (error) {
+  } catch {
     throw new Error("Login failed");
   }
 };

@@ -51,7 +51,7 @@ export const PendingDelegations = () => {
   const [reason, setReason] = useState("");
   const [selectedStaffId, setSelectedStaffId] = useState<number | null>(null);
 
-  const [loading, setLoading] = useState(true);
+  const [, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
 
   useEffect(() => {

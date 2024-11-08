@@ -37,7 +37,7 @@ const formatDate = (date: Date) => {
 export const StatsFilters = ({ userInfo, action }: PropType) => {
   const [department, setDepartment] = useState(userInfo.department || "");
   const [date, setDate] = useState(new Date());
-  const [error, setError] = useState("");
+  const [error,] = useState("");
 
   const handleDateChange = (value: string) => {
     const date = new Date(value);

@@ -2,7 +2,6 @@ import React, { useContext, useEffect, useState } from "react";
 import { UserContext } from "../../context/UserContextProvider";
 import { useNavigate } from "react-router-dom";
 import {
-  Box,
   Container,
   Typography,
   Divider,
@@ -21,7 +20,6 @@ import {
   CircularProgress,
 } from "@mui/material";
 import axios from "axios";
-import { log } from "console";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 

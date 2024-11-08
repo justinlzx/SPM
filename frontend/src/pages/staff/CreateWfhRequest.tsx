@@ -18,7 +18,7 @@ import {
   Alert,
 } from "@mui/material";
 
-import { SnackBarComponent, AlertStatus } from "../../common/SnackBar";
+import { AlertStatus } from "../../common/SnackBar";
 import * as Yup from "yup";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
@@ -277,7 +277,14 @@ export const CreateWfhRequestPage: React.FC = () => {
       <Formik
         initialValues={{
           reason: "",
-          startDate: addDays(new Date(), 1),
+          startDate: (() => {
+        const today = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Singapore" }));
+        let startDate = addDays(today, 2);
+        if (isWeekend(startDate)) {
+          startDate = addDays(startDate, 1 - startDate.getDay()); // Move to next Monday
+        }
+        return startDate;
+          })(),
           endDate: null,
           wfhType: "",
           repeatInterval: 1,
@@ -359,11 +366,10 @@ export const CreateWfhRequestPage: React.FC = () => {
                   selected={values.startDate}
                   onChange={(date) => setFieldValue("startDate", date)}
                   dateFormat="dd/MM/yyyy"
-                  customInput={
-                    <TextField data-cy="start-datepicker" fullWidth />
-                  }
+                  customInput={<TextField data-cy="start-datepicker" fullWidth />}
                   required
-                  minDate={addDays(new Date(), 1)}
+                  minDate={addDays(new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Singapore" })), 2)}
+                  filterDate={(date) => !isWeekend(date)}
                   disabled={loading}
                 />
                 <FormHelperText error>

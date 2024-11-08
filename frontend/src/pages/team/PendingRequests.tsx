@@ -26,7 +26,11 @@ import CheckIcon from "@mui/icons-material/Check";
 import CloseIcon from "@mui/icons-material/Close";
 import { Filters, TFilters } from "../../common/Filters";
 import { fetchEmployeeByStaffId } from "../../hooks/employee/employee.utils";
-import { ApprovalStatus, Action, STATUS_ACTION_MAPPING } from "../../types/status";
+import {
+  ApprovalStatus,
+  Action,
+  STATUS_ACTION_MAPPING,
+} from "../../types/status";
 import { UserContext } from "../../context/UserContextProvider";
 import { SnackBarComponent, AlertStatus } from "../../common/SnackBar";
 import { LoadingSpinner } from "../../common/LoadingSpinner";
@@ -73,7 +77,9 @@ export const PendingRequests = () => {
   const [loading, setLoading] = useState(true);
 
   const [rejectModalOpen, setRejectModalOpen] = useState(false);
-  const [selectedArrangementId, setSelectedArrangementId] = useState<number | null>(null);
+  const [selectedArrangementId, setSelectedArrangementId] = useState<
+    number | null
+  >(null);
   const [rejectionReason, setRejectionReason] = useState("");
   const [documentDialogOpen, setDocumentDialogOpen] = useState(false);
   const [documents, setDocuments] = useState<string[]>([]);
@@ -85,7 +91,7 @@ export const PendingRequests = () => {
       const delegationResponse = await axios.get(
         `${BACKEND_URL}/employees/manager/viewdelegations/${userId}`
       );
-      
+
       const delegationStatus = delegationResponse.data.status_of_delegation;
       const delegateManagerId = delegationResponse.data.delegate_manager_id;
 
@@ -94,7 +100,8 @@ export const PendingRequests = () => {
           ? delegateManagerId
           : userId;
 
-      const approvalStatuses = filters.workStatus.length > 0
+      const approvalStatuses =
+        filters.workStatus.length > 0
           ? filters.workStatus
           : [ApprovalStatus.PendingApproval, ApprovalStatus.PendingWithdrawal];
 
@@ -119,7 +126,9 @@ export const PendingRequests = () => {
 
       data = await Promise.all(
         data.map(async (request) => {
-          const requester = await fetchEmployeeByStaffId(request.requester_staff_id);
+          const requester = await fetchEmployeeByStaffId(
+            request.requester_staff_id
+          );
           return {
             ...request,
             requester_name: requester
@@ -224,11 +233,17 @@ export const PendingRequests = () => {
 
   const filteredRequests = pendingRequests.filter(
     (request) =>
-      (request.reason_description?.toLowerCase().includes(filters.searchQuery.toLowerCase()) ||
-       request.requester_staff_id.toString().includes(filters.searchQuery) ||
-       request.requester_name?.toLowerCase().includes(filters.searchQuery.toLowerCase()) ||
-       request.wfh_type?.toLowerCase().includes(filters.searchQuery.toLowerCase()) ||
-       request.requester_staff_id.toString().includes(filters.searchQuery))
+      request.reason_description
+        ?.toLowerCase()
+        .includes(filters.searchQuery.toLowerCase()) ||
+      request.requester_staff_id.toString().includes(filters.searchQuery) ||
+      request.requester_name
+        ?.toLowerCase()
+        .includes(filters.searchQuery.toLowerCase()) ||
+      request.wfh_type
+        ?.toLowerCase()
+        .includes(filters.searchQuery.toLowerCase()) ||
+      request.requester_staff_id.toString().includes(filters.searchQuery)
   );
 
   useEffect(() => {
@@ -256,6 +271,7 @@ export const PendingRequests = () => {
           ApprovalStatus.PendingApproval,
           ApprovalStatus.PendingWithdrawal,
         ]}
+        excludeSearchFilter={true}
       />
 
       <Typography variant="h4" gutterBottom align="left" sx={{ marginTop: 4 }}>
@@ -299,7 +315,7 @@ export const PendingRequests = () => {
                   handleRequestAction={handleRequestAction}
                   handleRejectClick={handleRejectClick}
                   handleViewDocuments={handleViewDocuments}
-              />
+                />
               ))
             )}
           </TableBody>
@@ -341,7 +357,11 @@ export const PendingRequests = () => {
           />
         </DialogContent>
         <DialogActions>
-          <Button data-cy='cancel-modal-button' onClick={handleCloseRejectModal} variant="outlined">
+          <Button
+            data-cy="cancel-modal-button"
+            onClick={handleCloseRejectModal}
+            variant="outlined"
+          >
             Cancel
           </Button>
           <Button
@@ -350,7 +370,7 @@ export const PendingRequests = () => {
             disabled={!rejectionReason.trim()}
             variant="outlined"
             sx={{ m: 2 }}
-            data-cy='reject-modal-button'
+            data-cy="reject-modal-button"
           >
             Reject Request
           </Button>
@@ -358,7 +378,11 @@ export const PendingRequests = () => {
       </Dialog>
 
       {/* Document Dialog */}
-      <Dialog open={documentDialogOpen} onClose={handleCloseDocumentDialog} fullWidth>
+      <Dialog
+        open={documentDialogOpen}
+        onClose={handleCloseDocumentDialog}
+        fullWidth
+      >
         <DialogTitle>Supporting Documents</DialogTitle>
         <DialogContent>
           <List>
@@ -383,7 +407,6 @@ export const PendingRequests = () => {
 };
 
 export default PendingRequests;
-
 
 const ArrangementRow = ({
   arrangement,
@@ -468,7 +491,7 @@ const ArrangementRow = ({
           <>
             <ButtonGroup variant="contained">
               <Button
-                color="warning" 
+                color="warning"
                 startIcon={<CheckIcon />}
                 data-cy={`withdraw-button-${arrangement.arrangement_id}`}
                 onClick={() =>
@@ -498,35 +521,34 @@ const ArrangementRow = ({
   );
 };
 
-// DocumentDialog Component
-const DocumentDialog = ({
-  isOpen,
-  documents,
-  onClose,
-}: {
-  isOpen: boolean;
-  documents: string[];
-  onClose: () => void;
-}) => (
-  <Dialog open={isOpen} onClose={onClose} fullWidth>
-    <DialogTitle>Supporting Documents</DialogTitle>
-    <DialogContent>
-      <List>
-        {documents.map((document, idx) => (
-          <ListItem key={document}>
-            {idx + 1}.{" "}
-            <Link href={document} target="_blank" rel="noopener noreferrer">
-              Click to View...
-            </Link>
-          </ListItem>
-        ))}
-      </List>
-    </DialogContent>
-    <DialogActions>
-      <Button onClick={onClose}>
-        <CloseIcon />
-      </Button>
-    </DialogActions>
-  </Dialog>
-);
-
+// // DocumentDialog Component
+// const DocumentDialog = ({
+//   isOpen,
+//   documents,
+//   onClose,
+// }: {
+//   isOpen: boolean;
+//   documents: string[];
+//   onClose: () => void;
+// }) => (
+//   <Dialog open={isOpen} onClose={onClose} fullWidth>
+//     <DialogTitle>Supporting Documents</DialogTitle>
+//     <DialogContent>
+//       <List>
+//         {documents.map((document, idx) => (
+//           <ListItem key={document}>
+//             {idx + 1}.{" "}
+//             <Link href={document} target="_blank" rel="noopener noreferrer">
+//               Click to View...
+//             </Link>
+//           </ListItem>
+//         ))}
+//       </List>
+//     </DialogContent>
+//     <DialogActions>
+//       <Button onClick={onClose}>
+//         <CloseIcon />
+//       </Button>
+//     </DialogActions>
+//   </Dialog>
+// );
