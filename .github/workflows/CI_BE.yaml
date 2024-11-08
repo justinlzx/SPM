@@ -9,6 +9,10 @@ on:
     branches:
       - main
 
+  push:
+    branches:
+      - CI-ImplementationFINAL2
+
 jobs:
   build:
     runs-on: ubuntu-latest
