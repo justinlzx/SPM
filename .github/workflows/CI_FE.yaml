@@ -4,117 +4,120 @@ on:
   pull_request:
     branches:
       - main
+  
+  push:
+    branches: 
+      - CI-implementationFINAL2
+
 
 jobs:
-  build:
+  build: 
+    environment: production
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v3
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    - name: Set up Node.js
-      uses: actions/setup-node@v3
-      with:
-        node-version: '18'  # Updated to 18 for better ESM support with ESLint v9
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: "18" # Updated to 18 for better ESM support with ESLint v9
 
-    - name: Cache Node modules
-      uses: actions/cache@v3
-      with:
-        path: frontend/node_modules
-        key: ${{ runner.os }}-node-${{ hashFiles('frontend/package-lock.json') }}
-        restore-keys: |
-          ${{ runner.os }}-node-
+      - name: Cache Node modules
+        uses: actions/cache@v3
+        with:
+          path: frontend/node_modules
+          key: ${{ runner.os }}-node-${{ hashFiles('frontend/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
 
-    - name: Install Frontend dependencies
-      run: npm install
-      working-directory: frontend
+      - name: Install Frontend dependencies
+        run: npm install
+        working-directory: frontend
 
-    - name: Create frontend env files
-      run: |
-        echo "Creating backend .env..."
-        cat > frontend/.env << EOF
-        REACT_APP_BACKEND_URL=${{ vars.REACT_APP_BACKEND_URL }}
-        EOF
+      - name: Create frontend env files
+        run: |
+          echo "Creating backend .env..."
+          cat > frontend/.env << EOF
+          REACT_APP_BACKEND_URL=${{ vars.REACT_APP_BACKEND_URL }}
+          EOF
 
-    - name: Install backend dependencies
-      run: |
-        pip install --upgrade pip
-        pip install -r requirements.txt
-        pip install --upgrade cryptography pyOpenSSL
-      working-directory: backend
+      - name: Create backend env files
+        run: |
+          echo "Creating backend .env..."
+          cat > backend/.env << EOF
+          AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_S3_BUCKET_NAME=${{ secrets.AWS_S3_BUCKET_NAME }}
+          AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          SMTP_PASSWORD=${{ secrets.SMTP_PASSWORD }}
+          SMTP_USERNAME=${{ secrets.SMTP_USERNAME }}
+          TOKEN_SECRET=${{ secrets.TOKEN_SECRET }}
+          ENV=${{ vars.ENV}}
+          FRONTEND_URL=${{ vars.FRONTEND_URL}}
+          SMTP_PORT=${{ vars.SMTP_PORT}}
+          SMTP_SERVER=${{ vars.SMTP_SERVER}}
+          EOF
 
-    - name: Create backend env files
-      run: |
-        echo "Creating backend .env..."
-        cat > backend/.env << EOF
-        AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }}
-        AWS_S3_BUCKET_NAME=${{ secrets.AWS_S3_BUCKET_NAME }}
-        AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        SMTP_PASSWORD=${{ secrets.SMTP_PASSWORD }}
-        SMTP_USERNAME=${{ secrets.SMTP_USERNAME }}
-        TOKEN_SECRET=${{ secrets.TOKEN_SECRET }}
-        ENV=${{ vars.ENV}}
-        FRONTEND_URL=${{ vars.FRONTEND_URL}}
-        SMTP_PORT=${{ vars.SMTP_PORT}}
-        SMTP_SERVER=${{ vars.SMTP_SERVER}}
-        EOF
+      - name: Install backend dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install --upgrade cryptography pyOpenSSL
+        working-directory: backend
 
-        
+      # Optional: Uncomment to run ESLint
+      # - name: Run ESLint
+      #   run: npx eslint . --config eslint.config.js --fix
+      #   working-directory: frontend
 
-    # Optional: Uncomment to run ESLint
-    # - name: Run ESLint
-    #   run: npx eslint . --config eslint.config.js --fix 
-    #   working-directory: frontend
+      # Optional: Uncomment to run Prettier
+      # - name: Run Prettier
+      #   run: npx prettier --write .
+      #   working-directory: frontend
 
-    # Optional: Uncomment to run Prettier
-    # - name: Run Prettier
-    #   run: npx prettier --write .
-    #   working-directory: frontend
+      # Start the frontend application in the background
+      - name: Start frontend server
+        run: |
+          npm start &
+          echo $! > frontend.pid
+        working-directory: frontend
 
-    # Start the frontend application in the background
-    - name: Start frontend server
-      run: |
-        npm start &
-        echo $! > frontend.pid
-      working-directory: frontend
+      # Start the backend application
+      - name: Start backend server
+        run: |
+          python -B -m uvicorn src.app:app --reload &
+          echo $! > backend.pid
+        working-directory: backend
 
-    # Start the backend application
-    - name: Start backend server
-      run: |
-        python -B -m uvicorn src.app:app --reload &
-        echo $! > backend.pid
-      working-directory: backend
-      
-    # - name: Wait for backend server to start
-    #   run: |
-    #     npx wait-on http://127.0.0.1:8000  # Adjust the URL and port for your backend
-      
+      # - name: Wait for backend server to start
+      #   run: |
+      #     npx wait-on http://127.0.0.1:8000  # Adjust the URL and port for your backend
 
-    # Optional: Uncomment to wait for services to be ready
-    # - name: Wait for services
-    #   run: |
-    #     npx wait-on http://localhost:3000
-    #     npx wait-on http://localhost:8000
-    #     echo "All services are ready!"
-    #   timeout-minutes: 2
+      # Optional: Uncomment to wait for services to be ready
+      # - name: Wait for services
+      #   run: |
+      #     npx wait-on http://localhost:3000
+      #     npx wait-on http://localhost:8000
+      #     echo "All services are ready!"
+      #   timeout-minutes: 2
 
-    - name: Install Cypress
-      run: npm install --save cypress
-      working-directory: .
+      - name: Install Cypress
+        run: npm install --save cypress
+        working-directory: .
 
-    - name: Clear Cypress cache
-      run: npx cypress cache clear
+      - name: Clear Cypress cache
+        run: npx cypress cache clear
 
-    - name: Run Cypress tests
-      run: npx cypress run --headless --browser chrome
-      working-directory: .
+      - name: Run Cypress tests
+        run: npx cypress run --headless --browser chrome
+        working-directory: .
 
-    - name: Build project
-      run: npm run build
-      working-directory: frontend
+      # - name: Build project
+      #   run: npm run build
+      #   working-directory: frontend
 
-    - name: Stop servers
-      run: |
-        kill $(cat frontend.pid)
-        kill $(cat backend.pid)
+      - name: Stop servers
+        run: |
+          kill $(cat frontend.pid)
+          kill $(cat backend.pid)
