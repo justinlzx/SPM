@@ -31,12 +31,12 @@ python-dateutil==2.9.0.post0
 python-dotenv==1.0.1
 
 # API Dependencies
-python-multipart==0.0.9
+python-multipart==0.0.18
 pytz==2024.2
 
 # Database
 SQLAlchemy==2.0.34
-starlette==0.38.5
+starlette==0.40.0
 typing_extensions==4.12.2
 urllib3==2.2.3
 uvicorn==0.30.6
